@@ -1,0 +1,47 @@
+{
+  "id": "${artifactId}-${version}",
+  "name": "Ping",
+  "requires": [],
+  "provides": [
+    {
+      "id": "data-import-ping",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import-ping"
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/data-import-ping"
+        }
+      ]
+    },
+    {
+      "id": "_tenant",
+      "version": "1.0",
+      "interfaceType": "system",
+      "handlers": [
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/_/tenant"
+        },
+        {
+          "methods": [
+            "DELETE"
+          ],
+          "pathPattern": "/_/tenant"
+        }
+      ]
+    }
+  ],
+  "launchDescriptor": {
+    "dockerImage": "${artifactId}:${version}",
+    "dockerArgs": {
+      "HostConfig": { "PortBindings": { "8081/tcp":  [{ "HostPort": "%p" }] } }
+    },
+    "dockerPull" : false
+  }
+}

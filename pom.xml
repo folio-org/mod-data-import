@@ -126,6 +126,32 @@
             </configuration>
           </execution>
           <execution>
+            <id>generate_client</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
+              <!-- <executable>java</executable> -->
+              <cleanupDaemonThreads>false</cleanupDaemonThreads>
+              <systemProperties>
+                <systemProperty>
+                  <key>client.generate</key>
+                  <value>true</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>project.basedir</key>
+                  <value>${basedir}</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>json.type</key>
+                  <value>postgres</value>
+                </systemProperty>
+              </systemProperties>
+            </configuration>
+          </execution>
+          <execution>
             <id>git submodule update</id>
             <phase>initialize</phase>
             <goals>

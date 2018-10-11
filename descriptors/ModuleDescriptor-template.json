@@ -1,10 +1,13 @@
 {
   "id": "${artifactId}-${version}",
-  "name": "Ping",
-  "requires": [],
+  "name": "Data Import Module",
+  "requires": [{
+    "id": "source-record-manager",
+    "version": "1.0"
+  }],
   "provides": [
     {
-      "id": "data-import-ping",
+      "id": "data-import",
       "version": "1.0",
       "handlers": [
         {

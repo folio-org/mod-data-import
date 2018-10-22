@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "description": "Ping message",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "UUID",
+      "type": "string"
+    },
+    "location": {
+      "description": "The path to the file location",
+      "type": "string"
+    },
+    "name": {
+      "description": "Name of the file with extension",
+      "type": "string"
+    },
+    "jobExecutionId": {
+      "description": "Link to job execution for this file",
+      "type": "string"
+    },
+    "uploadDefinitionId": {
+      "description": "Link to Upload Definition",
+      "type": "string"
+    },
+    "loaded": {
+      "description": "Flag that indicates whether the file is loaded",
+      "type": "boolean"
+    },
+    "createDate": {
+      "description": "Date and time when the file definition was created",
+      "type": "string",
+      "format": "date-time"
+    },
+    "metadata": {
+      "description": "Metadata about creation and changes, provided by the server (client should not provide)",
+      "type": "object",
+      "$ref": "raml-util/schemas/metadata.schema",
+      "readonly": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

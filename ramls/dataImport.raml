@@ -1,0 +1,187 @@
+#%RAML 1.0
+
+title: Data import
+version: v0.1
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Data import API
+    content: API for uploading source records and processing them
+
+types:
+  error: !include raml-util/schemas/error.schema
+  errors: !include raml-util/schemas/errors.schema
+  files: !include file.json
+  uploadDefinition: !include uploadDefinition.json
+  definitionCollection: !include uploadDefinitionCollection.json
+
+traits:
+  validate: !include raml-util/traits/validation.raml
+  language: !include raml-util/traits/language.raml
+  pageable:  !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
+
+resourceTypes:
+  collection: !include raml-util/rtypes/collection.raml
+  collection-item: !include raml-util/rtypes/item-collection.raml
+
+/data-import:
+  /upload:
+    /definition:
+      displayName: Upload Definition
+      description: File Upload Definition API
+      type:
+        collection:
+          schemaCollection: uploadDefinition
+          schemaItem: uploadDefinition
+          exampleCollection: !include examples/uploadDefinitionCollection.sample
+          exampleItem: !include examples/uploadDefinition.sample
+      post:
+        is: [validate]
+        body:
+          application/json:
+            type: uploadDefinition
+        responses:
+          201:
+            body:
+              application/json:
+                type: uploadDefinition
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          422:
+            description: "Unprocessable Entity"
+            body:
+              application/json:
+                type: errors
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+      get:
+        description: Get a list of definitions
+        is: [
+          searchable: {
+            description:
+              "with valid searchable fields: for example id=67dfac11-1caf-4470-9ad1-d533f6360bdd",
+            example:
+              "id=67dfac11-1caf-4470-9ad1-d533f6360bdd"
+          },
+          pageable,
+          validate
+        ]
+        responses:
+          200:
+            body:
+              application/json:
+                type: definitionCollection
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+      /{definitionId}:
+        put:
+          description: Update upload definition
+          body:
+            application/json:
+              type: uploadDefinition
+          responses:
+            200:
+              body:
+                application/json:
+                  type: uploadDefinition
+            400:
+              description: "Bad request"
+              body:
+                text/plain:
+                  example: "Bad request"
+            404:
+              description: "Not found"
+              body:
+                text/plain:
+                  example: "Not found"
+            422:
+              description: "Unprocessable Entity"
+              body:
+                application/json:
+                  type: errors
+            500:
+              description: "Internal server error"
+              body:
+                text/plain:
+                  example: "Internal server error"
+        get:
+          description: Get upload definition by id
+          responses:
+            200:
+              body:
+                application/json:
+                  type: uploadDefinition
+            404:
+              description: "Not found"
+              body:
+                text/plain:
+                  example: "Not found"
+            500:
+              description: "Internal server error"
+              body:
+                text/plain:
+                  example: "Internal server error"
+    /file:
+      displayName: File upload
+      description: File Upload API
+      post:
+        description: Upload file
+        queryParameters:
+          jobExecutionId:
+          uploadDefinitionId:
+        body:
+          multipart/form-data:
+            properties:
+              file:
+                description: The file to be uploaded
+                required: true
+                type: file
+        responses:
+          201:
+            body:
+              application/json:
+                type: uploadDefinition
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+      /{fileId}:
+        delete:
+          description: Delete file by id
+          responses:
+            204:
+              body:
+                text/plain: !!null
+            404:
+              description: "File not found"
+              body:
+                text/plain:
+                  example: "File not found"
+            500:
+              description: "Internal server error"
+              body:
+                text/plain:
+                  example: "Internal server error"
+

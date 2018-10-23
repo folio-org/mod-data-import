@@ -22,7 +22,7 @@ public class DataImportImpl implements DataImport {
   public void postDataImportUploadDefinition(String lang, UploadDefinition entity, Map<String, String> okapiHeaders,
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
-      vertxContext.runOnContext((c) -> {
+      vertxContext.runOnContext(c -> {
         asyncResultHandler.handle(Future.succeededFuture(
           PostDataImportUploadDefinitionResponse
             .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionResponse.headersFor201())));
@@ -41,7 +41,7 @@ public class DataImportImpl implements DataImport {
                                             Handler<AsyncResult<Response>> asyncResultHandler,
                                             Context vertxContext) {
     try {
-      vertxContext.runOnContext((c) -> {
+      vertxContext.runOnContext(c -> {
         DefinitionCollection collection = new DefinitionCollection();
         collection.setTotalRecords(0);
         asyncResultHandler.handle(Future.succeededFuture(
@@ -62,7 +62,7 @@ public class DataImportImpl implements DataImport {
                                                           Handler<AsyncResult<Response>> asyncResultHandler,
                                                           Context vertxContext) {
     try {
-      vertxContext.runOnContext((c) -> {
+      vertxContext.runOnContext(c -> {
         asyncResultHandler.handle(Future.succeededFuture(
           PutDataImportUploadDefinitionByDefinitionIdResponse
             .respond200WithApplicationJson(entity)));
@@ -80,7 +80,7 @@ public class DataImportImpl implements DataImport {
                                                           Handler<AsyncResult<Response>> asyncResultHandler,
                                                           Context vertxContext) {
     try {
-      vertxContext.runOnContext((c) -> {
+      vertxContext.runOnContext(c -> {
         asyncResultHandler.handle(Future.succeededFuture(
           GetDataImportUploadDefinitionByDefinitionIdResponse
             .respond200WithApplicationJson(new UploadDefinition())));
@@ -98,7 +98,7 @@ public class DataImportImpl implements DataImport {
                                        DataImportUploadFilePostMultipartFormData entity, Map<String, String> okapiHeaders,
                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
-      vertxContext.runOnContext((c) -> {
+      vertxContext.runOnContext(c -> {
         asyncResultHandler.handle(Future.succeededFuture(
           PostDataImportUploadFileResponse
             .respond201WithApplicationJson(new UploadDefinition())));
@@ -117,7 +117,7 @@ public class DataImportImpl implements DataImport {
                                                  Handler<AsyncResult<Response>> asyncResultHandler,
                                                  Context vertxContext) {
     try {
-      vertxContext.runOnContext((c) -> {
+      vertxContext.runOnContext(c -> {
         asyncResultHandler.handle(Future.succeededFuture(
           DeleteDataImportUploadFileByFileIdResponse
             .respond204WithTextPlain("File was successfully deleted")));

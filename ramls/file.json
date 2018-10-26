@@ -1,14 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
-  "description": "Ping message",
+  "description": "Uploaded file metadata entity",
   "additionalProperties": false,
   "properties": {
     "id": {
       "description": "UUID",
       "type": "string"
     },
-    "location": {
+    "sourcePath": {
       "description": "The path to the file location",
       "type": "string"
     },
@@ -17,11 +17,11 @@
       "type": "string"
     },
     "jobExecutionId": {
-      "description": "Link to job execution for this file",
+      "description": "Link to JobExecution entity",
       "type": "string"
     },
     "uploadDefinitionId": {
-      "description": "Link to Upload Definition",
+      "description": "Link to UploadDefinition entity",
       "type": "string"
     },
     "loaded": {

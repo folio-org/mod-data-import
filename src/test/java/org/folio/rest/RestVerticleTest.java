@@ -131,7 +131,7 @@ public class RestVerticleTest {
       .statusCode(HttpStatus.SC_OK);
   }
 
-  //@Test
+  //@Test TODO add support of file storing
   public void fileUpload() {
     RestAssured.given()
       .spec(specUpload)

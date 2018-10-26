@@ -80,12 +80,12 @@
     },
     {
       "permissionName": "data-import.upload.file.post",
-      "displayName": "Data Import - upload file to the storage",
+      "displayName": "Data Import - upload file into the storage",
       "description": "upload file"
     },
     {
       "permissionName": "data-import.upload.file.delete",
-      "displayName": "Data Import - delete file from upload definition",
+      "displayName": "Data Import - delete file from upload definition and storage",
       "description": "Delete file"
     },
     {

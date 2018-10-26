@@ -4,6 +4,7 @@
   "description": "Collection of upload definitions",
   "properties": {
     "uploadDefinitions": {
+      "description": "Array of upload definitions",
       "type": "array",
       "items": {
         "type": "object",
@@ -11,6 +12,7 @@
       }
     },
     "totalRecords": {
+      "description": "Total records in collection",
       "type": "integer"
     }
   },

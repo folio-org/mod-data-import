@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
-  "description": "Ping message",
+  "description": "Upload process definition",
   "additionalProperties": false,
   "properties": {
     "id": {
@@ -23,6 +23,7 @@
       "format": "date-time"
     },
     "files": {
+      "description": "Array of file entities",
       "type": "array",
       "items": {
         "type": "object",

@@ -1,21 +1,23 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
-  "description": "Collection of ping messages",
+  "description": "Collection of upload definitions",
   "properties": {
-    "pingMessages": {
+    "uploadDefinitions": {
+      "description": "Array of upload definitions",
       "type": "array",
       "items": {
         "type": "object",
-        "$ref": "pingMessage.json"
+        "$ref": "uploadDefinition.json"
       }
     },
     "totalRecords": {
+      "description": "Total records in collection",
       "type": "integer"
     }
   },
   "required": [
-    "pingMessages",
+    "uploadDefinitions",
     "totalRecords"
   ]
 }

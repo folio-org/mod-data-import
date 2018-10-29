@@ -1,7 +1,6 @@
 package org.folio.service;
 
 import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.DataImportUploadFilePostMultipartFormData;
 import org.folio.rest.jaxrs.model.File;
 
 import java.util.List;
@@ -11,7 +10,7 @@ import java.util.Optional;
  * File service
  */
 
-public interface FileService {
+public interface FileStorageService {
 
   /**
    * Searches for Files
@@ -37,7 +36,7 @@ public interface FileService {
    * @param file File to save
    * @return future with generated id
    */
-  Future<String> addFile(File file, DataImportUploadFilePostMultipartFormData data);
+  Future<String> addFile(File file);
 
   /**
    * Updates File with given id

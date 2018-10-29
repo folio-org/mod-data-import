@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.folio.dao.FileDao;
 import org.folio.dao.FileDaoImpl;
+import org.folio.rest.jaxrs.model.DataImportUploadFilePostMultipartFormData;
 import org.folio.rest.jaxrs.model.File;
 
 import javax.ws.rs.NotFoundException;
@@ -36,7 +37,7 @@ public class FileServiceImpl implements FileService {
   }
 
   @Override
-  public Future<String> addFile(File file) {
+  public Future<String> addFile(File file, DataImportUploadFilePostMultipartFormData data) {
     file.setId(UUID.randomUUID().toString());
     return FileDao.addFile(file);
   }

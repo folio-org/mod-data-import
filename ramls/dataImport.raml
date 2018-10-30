@@ -1,7 +1,7 @@
 #%RAML 1.0
 
 title: Data import
-version: v0.1
+version: v1.0
 protocols: [ HTTP, HTTPS ]
 baseUri: http://localhost
 
@@ -162,6 +162,11 @@ resourceTypes:
             body:
               text/plain:
                 example: "Bad request"
+          404:
+            description: "Not found"
+            body:
+              text/plain:
+                example: "Not found"
           500:
             description: "Internal server error"
             body:

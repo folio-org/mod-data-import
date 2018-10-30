@@ -55,25 +55,25 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     }
     return future
       .map(Results::getResults)
-      .map(UploadDefinitions -> UploadDefinitions.isEmpty() ? Optional.empty() : Optional.of(UploadDefinitions.get(0)));
+      .map(uploadDefinitions -> uploadDefinitions.isEmpty() ? Optional.empty() : Optional.of(uploadDefinitions.get(0)));
   }
 
   @Override
-  public Future<String> addUploadDefinition(UploadDefinition UploadDefinition) {
+  public Future<String> addUploadDefinition(UploadDefinition uploadDefinition) {
     Future<String> future = Future.future();
-    pgClient.save(UPLOAD_DEFINITION_TABLE, UploadDefinition.getId(), UploadDefinition, future.completer());
+    pgClient.save(UPLOAD_DEFINITION_TABLE, uploadDefinition.getId(), uploadDefinition, future.completer());
     return future;
   }
 
   @Override
-  public Future<Boolean> updateUploadDefinition(UploadDefinition UploadDefinition) {
+  public Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition) {
     Future<UpdateResult> future = Future.future();
     try {
       Criteria idCrit = new Criteria();
       idCrit.addField(UPLOAD_DEFINITION_ID_FIELD);
       idCrit.setOperation("=");
-      idCrit.setValue(UploadDefinition.getId());
-      pgClient.update(UPLOAD_DEFINITION_TABLE, UploadDefinition, new Criterion(idCrit), true, future.completer());
+      idCrit.setValue(uploadDefinition.getId());
+      pgClient.update(UPLOAD_DEFINITION_TABLE, uploadDefinition, new Criterion(idCrit), true, future.completer());
     } catch (Exception e) {
       future.fail(e);
     }

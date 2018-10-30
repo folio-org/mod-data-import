@@ -33,18 +33,18 @@ public interface UploadDefinitionDao {
   /**
    * Saves {@link UploadDefinition} to database
    *
-   * @param UploadDefinition {@link UploadDefinition} to save
+   * @param uploadDefinition {@link UploadDefinition} to save
    * @return future with id of saved {@link UploadDefinition}
    */
-  Future<String> addUploadDefinition(UploadDefinition UploadDefinition);
+  Future<String> addUploadDefinition(UploadDefinition uploadDefinition);
 
   /**
    * Updates {@link UploadDefinition} in database
    *
-   * @param UploadDefinition {@link UploadDefinition} to update
+   * @param uploadDefinition {@link UploadDefinition} to update
    * @return future with true is succeeded
    */
-  Future<Boolean> updateUploadDefinition(UploadDefinition UploadDefinition);
+  Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition);
 
   /**
    * Deletes {@link UploadDefinition} from database

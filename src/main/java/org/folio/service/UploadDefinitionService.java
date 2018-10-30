@@ -33,18 +33,18 @@ public interface UploadDefinitionService {
   /**
    * Saves UploadDefinition with generated id
    *
-   * @param UploadDefinition UploadDefinition to save
+   * @param uploadDefinition UploadDefinition to save
    * @return future with generated id
    */
-  Future<String> addUploadDefinition(UploadDefinition UploadDefinition);
+  Future<String> addUploadDefinition(UploadDefinition uploadDefinition);
 
   /**
    * Updates UploadDefinition with given id
    *
-   * @param UploadDefinition UploadDefinition to update
+   * @param uploadDefinition UploadDefinition to update
    * @return future with true is succeeded
    */
-  Future<Boolean> updateUploadDefinition(UploadDefinition UploadDefinition);
+  Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition);
 
   /**
    * Deletes UploadDefinition by id

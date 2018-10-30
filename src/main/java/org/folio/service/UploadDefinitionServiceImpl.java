@@ -38,18 +38,18 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<String> addUploadDefinition(UploadDefinition UploadDefinition) {
-    UploadDefinition.setId(UUID.randomUUID().toString());
-    return uploadDefinitionDao.addUploadDefinition(UploadDefinition);
+  public Future<String> addUploadDefinition(UploadDefinition uploadDefinition) {
+    uploadDefinition.setId(UUID.randomUUID().toString());
+    return uploadDefinitionDao.addUploadDefinition(uploadDefinition);
   }
 
   @Override
-  public Future<Boolean> updateUploadDefinition(UploadDefinition UploadDefinition) {
-    return getUploadDefinitionById(UploadDefinition.getId())
+  public Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition) {
+    return getUploadDefinitionById(uploadDefinition.getId())
       .compose(optionalUploadDefinition -> optionalUploadDefinition
-        .map(t -> uploadDefinitionDao.updateUploadDefinition(UploadDefinition))
+        .map(t -> uploadDefinitionDao.updateUploadDefinition(uploadDefinition))
         .orElse(Future.failedFuture(new NotFoundException(
-          String.format("UploadDefinition with id '%s' not found", UploadDefinition.getId()))))
+          String.format("UploadDefinition with id '%s' not found", uploadDefinition.getId()))))
       );
   }
 

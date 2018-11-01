@@ -30,6 +30,14 @@ public interface FileDao {
   Future<Optional<File>> getFileById(String id);
 
   /**
+   * Searches for File by upload definition id
+   *
+   * @param id File id
+   * @return future with optional File
+   */
+  Future<List<File>> getFileByUploadDefinitionId(String id);
+
+  /**
    * Saves {@link File} to database
    *
    * @param file {@link File} to save

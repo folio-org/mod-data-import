@@ -8,9 +8,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.DataImportUploadFilePostMultipartFormData;
+import org.folio.rest.jaxrs.model.DataImportUploadFileFileIdPostMultipartFormData;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
-import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
@@ -23,7 +22,6 @@ import org.folio.util.DataImportHelper;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 
@@ -121,18 +119,13 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportUploadFile(String jobExecutionId, String uploadDefinitionId,
-                                       DataImportUploadFilePostMultipartFormData entity, Map<String, String> okapiHeaders,
-                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postDataImportUploadFileByFileId(String fileId, DataImportUploadFileFileIdPostMultipartFormData entity,
+                                               Map<String, String> okapiHeaders,
+                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        File file = new File()
-          .withCreateDate(new Date())
-          .withJobExecutionId(jobExecutionId)
-          .withUploadDefinitionId(uploadDefinitionId)
-          .withLoaded(false);
-        fileService.addFile(file, entity)
-          .map(buildFileCreateResponse(uploadDefinitionId))
+        fileService.uploadFile(fileId, entity)
+          .map(this::buildFileCreateResponse)
           .otherwise(DataImportHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
@@ -141,7 +134,6 @@ public class DataImportImpl implements DataImport {
       }
     });
   }
-
 
   @Override
   public void deleteDataImportUploadFileByFileId(String fileId, Map<String, String> okapiHeaders,
@@ -171,8 +163,8 @@ public class DataImportImpl implements DataImport {
 
   private Response buildFileCreateResponse(String uploadDefinitionId) {
     Optional<UploadDefinition> def = uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId).result();
-    return def.map(PostDataImportUploadFileResponse::respond201WithApplicationJson)
-      .orElseGet(() -> PostDataImportUploadFileResponse
+    return def.map(PostDataImportUploadFileByFileIdResponse::respond201WithApplicationJson)
+      .orElseGet(() -> PostDataImportUploadFileByFileIdResponse
         .respond404WithTextPlain("Upload Definition with id " + uploadDefinitionId + " not found"));
   }
 }

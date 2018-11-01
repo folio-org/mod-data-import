@@ -4,7 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.folio.dao.FileDao;
 import org.folio.dao.FileDaoImpl;
-import org.folio.rest.jaxrs.model.DataImportUploadFilePostMultipartFormData;
+import org.folio.rest.jaxrs.model.DataImportUploadFileFileIdPostMultipartFormData;
 import org.folio.rest.jaxrs.model.File;
 
 import javax.ws.rs.NotFoundException;
@@ -16,37 +16,48 @@ import java.util.UUID;
 public class FileServiceImpl implements FileService {
 
   private Vertx vertx;
-  private FileDao FileDao;
+  private FileDao fileDao;
 
-  public FileServiceImpl(FileDao FileDao) {
-    this.FileDao = FileDao;
+  public FileServiceImpl(FileDao fileDao) {
+    this.fileDao = fileDao;
   }
 
   public FileServiceImpl(Vertx vertx, String tenantId) {
     this.vertx = vertx;
-    FileDao = new FileDaoImpl(vertx, tenantId);
+    fileDao = new FileDaoImpl(vertx, tenantId);
   }
 
   public Future<List<File>> getFiles(String query, int offset, int limit) {
-    return FileDao.getFiles(query, offset, limit);
+    return fileDao.getFiles(query, offset, limit);
   }
 
   @Override
   public Future<Optional<File>> getFileById(String id) {
-    return FileDao.getFileById(id);
+    return fileDao.getFileById(id);
   }
 
   @Override
-  public Future<String> addFile(File file, DataImportUploadFilePostMultipartFormData data) {
+  public Future<List<File>> getFileByUploadDefinitionId(String id) {
+    return fileDao.getFileByUploadDefinitionId(id);
+  }
+
+  @Override
+  public Future<String> addFile(File file) {
     file.setId(UUID.randomUUID().toString());
-    return FileDao.addFile(file);
+    return fileDao.addFile(file);
+  }
+
+  @Override
+  public Future<String> uploadFile(String fileId, DataImportUploadFileFileIdPostMultipartFormData data) {
+//    fileDao.getFileByUploadDefinitionId(file.getUploadDefinitionId()).map(files -> files.);
+    return Future.succeededFuture(fileId);
   }
 
   @Override
   public Future<Boolean> updateFile(File file) {
     return getFileById(file.getId())
       .compose(optionalFile -> optionalFile
-        .map(t -> FileDao.updateFile(file))
+        .map(t -> fileDao.updateFile(file))
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("File with id '%s' not found", file.getId()))))
       );
@@ -54,7 +65,7 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public Future<Boolean> deleteFile(String id) {
-    return FileDao.deleteFile(id);
+    return fileDao.deleteFile(id);
   }
 
 }

@@ -1,7 +1,7 @@
 package org.folio.service;
 
 import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.DataImportUploadFilePostMultipartFormData;
+import org.folio.rest.jaxrs.model.DataImportUploadFileFileIdPostMultipartFormData;
 import org.folio.rest.jaxrs.model.File;
 
 import java.util.List;
@@ -32,12 +32,29 @@ public interface FileService {
   Future<Optional<File>> getFileById(String id);
 
   /**
+   * Searches for File by upload definition id
+   *
+   * @param id File id
+   * @return future with optional File
+   */
+  Future<List<File>>getFileByUploadDefinitionId(String id);
+
+  /**
    * Saves File with generated id
    *
    * @param file File to save
    * @return future with generated id
    */
-  Future<String> addFile(File file, DataImportUploadFilePostMultipartFormData data);
+  Future<String> addFile(File file);
+
+
+  /**
+   * Saves File with uploaded data
+   *
+   * @param fileId id of File to save
+   * @return future with {@link org.folio.rest.jaxrs.model.UploadDefinition} id
+   */
+  Future<String> uploadFile(String fileId, DataImportUploadFileFileIdPostMultipartFormData data);
 
   /**
    * Updates File with given id

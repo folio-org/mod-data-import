@@ -140,39 +140,36 @@ resourceTypes:
     /file:
       displayName: File upload
       description: File Upload API
-      post:
-        description: Upload file
-        queryParameters:
-          jobExecutionId:
-          uploadDefinitionId:
-        body:
-          multipart/form-data:
-            properties:
-              file:
-                description: The file to be uploaded
-                required: true
-                type: file
-        responses:
-          201:
-            body:
-              application/json:
-                type: uploadDefinition
-          400:
-            description: "Bad request"
-            body:
-              text/plain:
-                example: "Bad request"
-          404:
-            description: "Not found"
-            body:
-              text/plain:
-                example: "Not found"
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
       /{fileId}:
+        post:
+          description: Upload file
+          body:
+            multipart/form-data:
+              properties:
+                file:
+                  description: The file to be uploaded
+                  required: true
+                  type: file
+          responses:
+            201:
+              body:
+                application/json:
+                  type: uploadDefinition
+            400:
+              description: "Bad request"
+              body:
+                text/plain:
+                  example: "Bad request"
+            404:
+              description: "Not found"
+              body:
+                text/plain:
+                  example: "Not found"
+            500:
+              description: "Internal server error"
+              body:
+                 text/plain:
+                    example: "Internal server error"
         delete:
           description: Delete file by id
           responses:

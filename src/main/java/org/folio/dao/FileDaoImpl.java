@@ -21,6 +21,7 @@ public class FileDaoImpl implements FileDao {
   public static final String FILE_SCHEMA_PATH = "ramls/file.json";
   private static final String FILE_TABLE = "file";
   private static final String FILE_ID_FIELD = "'id'";
+  private static final String UPLOAD_DEFINITION_ID_FIELD = "'uploadDefinitionId'";
 
   private PostgresClient pgClient;
 
@@ -56,6 +57,22 @@ public class FileDaoImpl implements FileDao {
     return future
       .map(Results::getResults)
       .map(Files -> Files.isEmpty() ? Optional.empty() : Optional.of(Files.get(0)));
+  }
+
+  @Override
+  public Future<List<File>> getFileByUploadDefinitionId(String id) {
+    Future<Results<File>> future = Future.future();
+    try {
+      Criteria idCrit = new Criteria(FILE_SCHEMA_PATH);
+      idCrit.addField(UPLOAD_DEFINITION_ID_FIELD);
+      idCrit.setOperation("=");
+      idCrit.setValue(id);
+      pgClient.get(FILE_TABLE, File.class, new Criterion(idCrit), true, future.completer());
+    } catch (Exception e) {
+      future.fail(e);
+    }
+    return future
+      .map(Results::getResults);
   }
 
   @Override

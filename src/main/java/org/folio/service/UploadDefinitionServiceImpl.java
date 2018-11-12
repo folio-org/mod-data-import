@@ -37,13 +37,13 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<String> addUploadDefinition(UploadDefinition uploadDefinition) {
+  public Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition) {
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setStatus(UploadDefinition.Status.NEW);
     //TODO interact with source-record-manager and create job execution
     uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
     uploadDefinition.setCreateDate(new Date());
-    uploadDefinition.getFiles().forEach(f -> {
+    uploadDefinition.getFileDefinitions().forEach(f -> {
       f.withId(UUID.randomUUID().toString())
         .withCreateDate(new Date())
         .withLoaded(false)
@@ -51,14 +51,16 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .withJobExecutionId(UUID.randomUUID().toString())
         .withUploadDefinitionId(uploadDefinition.getId());
     });
-    return uploadDefinitionDao.addUploadDefinition(uploadDefinition);
+    return uploadDefinitionDao.addUploadDefinition(uploadDefinition)
+      .map(uploadDefinition);
   }
 
   @Override
-  public Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition) {
+  public Future<UploadDefinition> updateUploadDefinition(UploadDefinition uploadDefinition) {
     return getUploadDefinitionById(uploadDefinition.getId())
       .compose(optionalUploadDefinition -> optionalUploadDefinition
-        .map(t -> uploadDefinitionDao.updateUploadDefinition(uploadDefinition))
+        .map(t -> uploadDefinitionDao.updateUploadDefinition(uploadDefinition)
+          .map(uploadDefinition))
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("UploadDefinition with id '%s' not found", uploadDefinition.getId()))))
       );

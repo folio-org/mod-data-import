@@ -2,17 +2,13 @@ package org.folio.rest;
 
 
 import com.jayway.restassured.RestAssured;
-import com.jayway.restassured.builder.MultiPartSpecBuilder;
 import com.jayway.restassured.builder.RequestSpecBuilder;
 import com.jayway.restassured.http.ContentType;
-import com.jayway.restassured.specification.MultiPartSpecification;
 import com.jayway.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -28,6 +24,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.util.Objects;
 import java.util.UUID;
 
 @RunWith(VertxUnitRunner.class)
@@ -37,10 +34,8 @@ public class RestVerticleTest {
   private static final String DEFINITION_PATH = "/data-import/upload/definition";
   private static final String FILE_PATH = "/data-import/upload/file";
   private static final String UPLOAD_DEFINITION_TABLE = "uploadDefinition";
-  private static final Logger LOG = LoggerFactory.getLogger("mod-data-import-test");
 
   private static Vertx vertx;
-  private static int port;
   private static RequestSpecification spec;
   private static RequestSpecification specUpload;
 
@@ -50,13 +45,13 @@ public class RestVerticleTest {
     .put("name", "host.mrc");
 
   private static JsonObject uploadDef1 = new JsonObject()
-    .put("files", new JsonArray().add(file1).add(file2));
+    .put("fileDefinitions", new JsonArray().add(file1).add(file2));
 
   private static JsonObject uploadDef2 = new JsonObject()
-    .put("files", new JsonArray().add(file1));
+    .put("fileDefinitions", new JsonArray().add(file1));
 
   private static JsonObject uploadDef3 = new JsonObject()
-    .put("files", new JsonArray().add(file1));
+    .put("fileDefinitions", new JsonArray().add(file1));
 
   private void clearTable(TestContext context) {
     PostgresClient.getInstance(vertx, TENANT).delete(UPLOAD_DEFINITION_TABLE, new Criterion(), event -> {
@@ -70,7 +65,7 @@ public class RestVerticleTest {
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
-    port = NetworkUtils.nextFreePort();
+    int port = NetworkUtils.nextFreePort();
 
     String useExternalDatabase = System.getProperty(
       "org.folio.password.validator.test.database",
@@ -102,9 +97,9 @@ public class RestVerticleTest {
       .setConfig(new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
       try {
-        tenantClient.postTenant(null, res2 -> {
-          async.complete();
-        });
+        tenantClient.postTenant(null, res2 ->
+          async.complete()
+        );
       } catch (Exception e) {
         e.printStackTrace();
       }
@@ -247,16 +242,49 @@ public class RestVerticleTest {
 
   @Test
   public void fileUpload() {
+    String object = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all()
+      .extract().body().jsonPath().prettify();
+    JsonObject jsonObject = new JsonObject(object);
+    String uploadDefId = jsonObject.getString("id");
+    String fileId = jsonObject
+      .getJsonArray("fileDefinitions")
+      .getJsonObject(0)
+      .getString("id");
+
+    ClassLoader classLoader = getClass().getClassLoader();
+    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
+    RestAssured.given()
+      .spec(specUpload)
+      .when()
+      .body(file)
+      .post(FILE_PATH + "?uploadDefinitionId=" + uploadDefId + "&fileId=" + fileId)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("status", Matchers.is("IN_PROGRESS"));
+  }
+
+  @Test
+  public void fileUploadNotFound() {
     ClassLoader classLoader = getClass().getClassLoader();
     File file = new File(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc").getFile());
     RestAssured.given()
       .spec(specUpload)
       .when()
       .body(file)
-      .post(FILE_PATH + "?uploadDefinitionId=" + UUID.randomUUID().toString()+"&fileId="+UUID.randomUUID().toString())
+      .post(FILE_PATH
+        + "?uploadDefinitionId=" + UUID.randomUUID().toString()
+        + "&fileId=" + UUID.randomUUID().toString())
       .then()
       .log().all()
-      .statusCode(HttpStatus.SC_OK);
+      .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
   @Test
@@ -275,7 +303,9 @@ public class RestVerticleTest {
       .spec(spec)
       .when()
       .delete(FILE_PATH + "/"
-        + jsonObject.getJsonArray("files").getJsonObject(0).getString("id")
+        + jsonObject.getJsonArray("fileDefinitions")
+        .getJsonObject(0)
+        .getString("id")
         + "?uploadDefinitionId=" + jsonObject.getString("id")
       )
       .then()

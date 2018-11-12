@@ -22,7 +22,7 @@
       "type": "string",
       "format": "date-time"
     },
-    "files": {
+    "fileDefinitions": {
       "description": "Array of file entities",
       "type": "array",
       "items": {

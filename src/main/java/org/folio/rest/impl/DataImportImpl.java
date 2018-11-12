@@ -84,10 +84,8 @@ public class DataImportImpl implements DataImport {
       try {
         entity.setId(definitionId);
         uploadDefinitionService.updateUploadDefinition(entity)
-          .map(updated -> updated ?
-            PutDataImportUploadDefinitionByDefinitionIdResponse.respond200WithApplicationJson(entity) :
-            buildUploadDefinitionNotFound(definitionId)
-          )
+          .map(PutDataImportUploadDefinitionByDefinitionIdResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
           .otherwise(DataImportHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {

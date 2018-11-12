@@ -32,7 +32,7 @@
         },
         {
           "methods": ["POST"],
-          "pathPattern": "/data-import/upload/file/{fileId}",
+          "pathPattern": "/data-import/upload/file",
           "permissionsRequired": ["data-import.upload.file.post"]
         },
         {

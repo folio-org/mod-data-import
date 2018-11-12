@@ -9,7 +9,6 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
-import org.folio.rest.jaxrs.model.Files;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
@@ -24,7 +23,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.util.Map;
-import java.util.Optional;
 
 public class DataImportImpl implements DataImport {
 
@@ -120,17 +118,14 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportUploadFile(String uploadDefinitionId, Files entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-
-  }
-
-
-  @Override
-  public void putDataImportUploadFileByFileId(String fileId, String uploadDefinitionId, InputStream entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postDataImportUploadFile(String uploadDefinitionId, String fileId, InputStream entity,
+                                       Map<String, String> okapiHeaders,
+                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        fileService.uploadFile(fileId, entity)
-          .map(this::buildFileCreateResponse)
+        fileService.uploadFile(fileId, uploadDefinitionId, entity)
+          .map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
           .otherwise(DataImportHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
@@ -170,12 +165,5 @@ public class DataImportImpl implements DataImport {
       .type(MediaType.TEXT_PLAIN)
       .entity(String.format("Upload Definition with id '%s' not found", definitionId))
       .build();
-  }
-
-  private Response buildFileCreateResponse(String uploadDefinitionId) {
-    Optional<UploadDefinition> def = uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId).result();
-    return def.map(PutDataImportUploadFileByFileIdResponse::respond201WithApplicationJson)
-      .orElseGet(() -> PutDataImportUploadFileByFileIdResponse
-        .respond404WithTextPlain("Upload Definition with id " + uploadDefinitionId + " not found"));
   }
 }

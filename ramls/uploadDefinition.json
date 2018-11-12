@@ -27,7 +27,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "$ref": "file.json"
+        "$ref": "fileDefinition.json"
       }
     },
     "metadata": {

@@ -2,8 +2,10 @@ package org.folio.rest;
 
 
 import com.jayway.restassured.RestAssured;
+import com.jayway.restassured.builder.MultiPartSpecBuilder;
 import com.jayway.restassured.builder.RequestSpecBuilder;
 import com.jayway.restassured.http.ContentType;
+import com.jayway.restassured.specification.MultiPartSpecification;
 import com.jayway.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
@@ -117,6 +119,7 @@ public class RestVerticleTest {
     specUpload = new RequestSpecBuilder()
       .setContentType("application/octet-stream")
       .setBaseUri("http://localhost:" + port)
+      .addHeader("Accept", "text/plain, application/json")
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT)
       .build();
   }
@@ -242,19 +245,18 @@ public class RestVerticleTest {
       .log().all();
   }
 
-  //@Test
+  @Test
   public void fileUpload() {
     ClassLoader classLoader = getClass().getClassLoader();
     File file = new File(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc").getFile());
     RestAssured.given()
-      .header("Content-Disposition", "attachment;filename=" + file.getName())
       .spec(specUpload)
       .when()
       .body(file)
-      .put(FILE_PATH + "/" + UUID.randomUUID().toString() + "?uploadDefinitionId=" + UUID.randomUUID().toString())
+      .post(FILE_PATH + "?uploadDefinitionId=" + UUID.randomUUID().toString()+"&fileId="+UUID.randomUUID().toString())
       .then()
-      .statusCode(HttpStatus.SC_OK)
-      .log().all();
+      .log().all()
+      .statusCode(HttpStatus.SC_OK);
   }
 
   @Test

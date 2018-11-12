@@ -12,9 +12,10 @@ documentation:
 types:
   error: !include raml-util/schemas/error.schema
   errors: !include raml-util/schemas/errors.schema
-  files: !include file.json
+  fileDefinition: !include fileDefinition.json
   uploadDefinition: !include uploadDefinition.json
   definitionCollection: !include uploadDefinitionCollection.json
+  File:
 
 traits:
   validate: !include raml-util/traits/validation.raml
@@ -144,11 +145,11 @@ resourceTypes:
         description: Upload file
         queryParameters:
           uploadDefinitionId:
+          fileId:
         body:
-          application/json:
-            type: files
+            application/octet-stream:
         responses:
-          201:
+          200:
             body:
               application/json:
                 type: uploadDefinition
@@ -168,32 +169,6 @@ resourceTypes:
               text/plain:
                 example: "Internal server error"
       /{fileId}:
-        put:
-          description: Upload file
-          queryParameters:
-            uploadDefinitionId:
-          body:
-            application/octet-stream:
-          responses:
-            201:
-              body:
-                application/json:
-                  type: uploadDefinition
-            400:
-              description: "Bad request"
-              body:
-                text/plain:
-                  example: "Bad request"
-            404:
-              description: "Not found"
-              body:
-                text/plain:
-                  example: "Not found"
-            500:
-              description: "Internal server error"
-              body:
-                 text/plain:
-                    example: "Internal server error"
         delete:
           description: Delete file by id
           queryParameters:

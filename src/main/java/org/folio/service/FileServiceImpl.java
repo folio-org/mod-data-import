@@ -8,6 +8,7 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 
@@ -59,7 +60,8 @@ public class FileServiceImpl implements FileService {
           uploadDefinitionService.updateUploadDefinition(def.withFileDefinitions(def.getFileDefinitions()
             .stream()
             .filter(f -> !f.getId().equals(id))
-            .collect(Collectors.toList()))).map(true))
+            .collect(Collectors.toList())))
+            .map(Objects::nonNull))
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("Upload definition with id '%s' not found", uploadDefinitionId)))
         )

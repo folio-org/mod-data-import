@@ -8,8 +8,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.DataImportUploadFileFileIdPostMultipartFormData;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
+import org.folio.rest.jaxrs.model.Files;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
@@ -22,6 +22,7 @@ import org.folio.util.DataImportHelper;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.InputStream;
 import java.util.Map;
 import java.util.Optional;
 
@@ -119,9 +120,13 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportUploadFileByFileId(String fileId, DataImportUploadFileFileIdPostMultipartFormData entity,
-                                               Map<String, String> okapiHeaders,
-                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postDataImportUploadFile(String uploadDefinitionId, Files entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+
+  }
+
+
+  @Override
+  public void putDataImportUploadFileByFileId(String fileId, String uploadDefinitionId, InputStream entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         fileService.uploadFile(fileId, entity)
@@ -136,14 +141,20 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void deleteDataImportUploadFileByFileId(String fileId, Map<String, String> okapiHeaders,
+  public void deleteDataImportUploadFileByFileId(String fileId, String uploadDefinitionId,
+                                                 Map<String, String> okapiHeaders,
                                                  Handler<AsyncResult<Response>> asyncResultHandler,
                                                  Context vertxContext) {
     try {
       vertxContext.runOnContext(c -> {
-        asyncResultHandler.handle(Future.succeededFuture(
-          DeleteDataImportUploadFileByFileIdResponse
-            .respond204WithTextPlain("File was successfully deleted")));
+        fileService.deleteFile(fileId, uploadDefinitionId)
+          .map(deleted -> deleted ?
+            DeleteDataImportUploadFileByFileIdResponse.respond204WithTextPlain(
+              String.format("File with id: %s deleted", fileId)) :
+            buildUploadDefinitionNotFound(uploadDefinitionId)
+          )
+          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
       });
     } catch (Exception e) {
       LOG.error("Error during file delete", e);
@@ -163,8 +174,8 @@ public class DataImportImpl implements DataImport {
 
   private Response buildFileCreateResponse(String uploadDefinitionId) {
     Optional<UploadDefinition> def = uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId).result();
-    return def.map(PostDataImportUploadFileByFileIdResponse::respond201WithApplicationJson)
-      .orElseGet(() -> PostDataImportUploadFileByFileIdResponse
+    return def.map(PutDataImportUploadFileByFileIdResponse::respond201WithApplicationJson)
+      .orElseGet(() -> PutDataImportUploadFileByFileIdResponse
         .respond404WithTextPlain("Upload Definition with id " + uploadDefinitionId + " not found"));
   }
 }

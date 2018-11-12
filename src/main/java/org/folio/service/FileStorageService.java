@@ -11,6 +11,11 @@ import java.io.File;
 public interface FileStorageService {
 
   /**
+   * @return - service name to lookup implementation
+   */
+  String getServiceName();
+
+  /**
    * Search file at storage
    */
   Future<File> getFile(String path);

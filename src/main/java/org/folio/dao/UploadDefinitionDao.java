@@ -2,7 +2,6 @@ package org.folio.dao;
 
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.rest.jaxrs.model.UploadDefinition;
 
 import java.util.List;
 import java.util.Optional;

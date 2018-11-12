@@ -52,6 +52,6 @@ public interface UploadDefinitionService {
    * @param id UploadDefinition id
    * @return future with true is succeeded
    */
-  Future<Boolean> deleteUploadDefinition(String id);
+  Future deleteUploadDefinition(String id);
 
 }

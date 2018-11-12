@@ -10,7 +10,8 @@
     },
     "sourcePath": {
       "description": "The path to the file location",
-      "type": "string"
+      "type": "string",
+      "readonly": true
     },
     "name": {
       "description": "Name of the file with extension",

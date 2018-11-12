@@ -2,6 +2,8 @@ package org.folio.dao;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.Criteria.Criteria;
@@ -21,6 +23,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   public static final String UPLOAD_DEFINITION_SCHEMA_PATH = "ramls/uploadDefinition.json";
   private static final String UPLOAD_DEFINITION_TABLE = "uploadDefinition";
   private static final String UPLOAD_DEFINITION_ID_FIELD = "'id'";
+  private final Logger logger = LoggerFactory.getLogger(UploadDefinitionDaoImpl.class);
 
   private PostgresClient pgClient;
 
@@ -36,6 +39,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       CQLWrapper cql = getCQL(query, limit, offset);
       pgClient.get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
+      logger.error("Error during getting UploadDefinitions from view", e);
       future.fail(e);
     }
     return future.map(Results::getResults);
@@ -51,6 +55,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       idCrit.setValue(id);
       pgClient.get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), true, future.completer());
     } catch (Exception e) {
+      logger.error("Error during get UploadDefinition by ID from view", e);
       future.fail(e);
     }
     return future
@@ -75,6 +80,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       idCrit.setValue(uploadDefinition.getId());
       pgClient.update(UPLOAD_DEFINITION_TABLE, uploadDefinition, new Criterion(idCrit), true, future.completer());
     } catch (Exception e) {
+      logger.error("Error during updating UploadDefinition by ID", e);
       future.fail(e);
     }
     return future.map(updateResult -> updateResult.getUpdated() == 1);

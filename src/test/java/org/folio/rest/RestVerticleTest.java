@@ -16,13 +16,16 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.hamcrest.Matchers;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.util.UUID;
 
 @RunWith(VertxUnitRunner.class)
@@ -31,6 +34,7 @@ public class RestVerticleTest {
   private static final String TENANT = "diku";
   private static final String DEFINITION_PATH = "/data-import/upload/definition";
   private static final String FILE_PATH = "/data-import/upload/file";
+  private static final String UPLOAD_DEFINITION_TABLE = "uploadDefinition";
   private static final Logger LOG = LoggerFactory.getLogger("mod-data-import-test");
 
   private static Vertx vertx;
@@ -40,18 +44,25 @@ public class RestVerticleTest {
 
   private static JsonObject file1 = new JsonObject()
     .put("name", "bib.mrc");
+  private static JsonObject file2 = new JsonObject()
+    .put("name", "host.mrc");
+
   private static JsonObject uploadDef1 = new JsonObject()
-    .put("metaJobExecutionId", UUID.randomUUID().toString())
-    .put("status", "NEW")
-    .put("files", new JsonArray().add(file1));
+    .put("files", new JsonArray().add(file1).add(file2));
+
   private static JsonObject uploadDef2 = new JsonObject()
-    .put("metaJobExecutionId", UUID.randomUUID().toString())
-    .put("id", UUID.randomUUID().toString())
     .put("files", new JsonArray().add(file1));
+
   private static JsonObject uploadDef3 = new JsonObject()
-    .put("metaJobExecutionId", UUID.randomUUID().toString())
-    .put("id", UUID.randomUUID().toString())
     .put("files", new JsonArray().add(file1));
+
+  private void clearTable(TestContext context) {
+    PostgresClient.getInstance(vertx, TENANT).delete(UPLOAD_DEFINITION_TABLE, new Criterion(), event -> {
+      if (event.failed()) {
+        context.fail(event.cause());
+      }
+    });
+  }
 
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
@@ -90,13 +101,7 @@ public class RestVerticleTest {
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
       try {
         tenantClient.postTenant(null, res2 -> {
-          PostgresClient.getInstance(vertx, "diku")
-            .save("uploadDefinition", uploadDef2.getString("id"), uploadDef2.mapTo(UploadDefinition.class), h -> {
-            PostgresClient.getInstance(vertx, "diku")
-              .save("uploadDefinition", uploadDef3.getString("id"), uploadDef3.mapTo(UploadDefinition.class), h2 -> {
-              async.complete();
-            });
-          });
+          async.complete();
         });
       } catch (Exception e) {
         e.printStackTrace();
@@ -110,10 +115,15 @@ public class RestVerticleTest {
       .build();
 
     specUpload = new RequestSpecBuilder()
-      .setContentType("multipart/form-data")
+      .setContentType("application/octet-stream")
       .setBaseUri("http://localhost:" + port)
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT)
       .build();
+  }
+
+  @Before
+  public void setUp(TestContext context) {
+    clearTable(context);
   }
 
   @Test
@@ -124,57 +134,164 @@ public class RestVerticleTest {
       .when()
       .post(DEFINITION_PATH)
       .then()
-      .statusCode(HttpStatus.SC_CREATED);
+      .log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("metaJobExecutionId", Matchers.notNullValue())
+      .body("id", Matchers.notNullValue())
+      .body("status", Matchers.is("NEW"));
   }
 
   @Test
   public void uploadDefinitionGet() {
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(DEFINITION_PATH)
+      .get(DEFINITION_PATH + "?query=id==" + id)
       .then()
-      .statusCode(HttpStatus.SC_OK);
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", Matchers.is(1))
+      .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionGetNotFound() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(DEFINITION_PATH + "?query=id==" + UUID.randomUUID().toString())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", Matchers.is(0))
+      .log().all();
   }
 
   @Test
   public void uploadDefinitionGetById() {
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef2.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(DEFINITION_PATH + "/" + uploadDef2.getString("id"))
+      .get(DEFINITION_PATH + "/" + id)
       .then()
-      .statusCode(HttpStatus.SC_OK);
+      .statusCode(HttpStatus.SC_OK)
+      .body("metaJobExecutionId", Matchers.notNullValue())
+      .body("id", Matchers.notNullValue())
+      .body("status", Matchers.is("NEW"))
+      .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionGetByIdNotFound() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(DEFINITION_PATH + "/" + UUID.randomUUID())
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND)
+      .log().all();
   }
 
   @Test
   public void uploadDefinitionUpdate() {
+    String object = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all()
+      .extract().body().jsonPath().prettify();
+    JsonObject jsonObject = new JsonObject(object);
+    jsonObject.put("status", "LOADED");
+    RestAssured.given()
+      .spec(spec)
+      .body(jsonObject.encode())
+      .when()
+      .put(DEFINITION_PATH + "/" + jsonObject.getString("id"))
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .log().all()
+      .body("status", Matchers.is("LOADED"));
+  }
+
+  @Test
+  public void uploadDefinitionUpdateNotFound() {
     RestAssured.given()
       .spec(spec)
       .body(uploadDef3.encode())
       .when()
-      .put(DEFINITION_PATH + "/" + uploadDef3.getString("id"))
+      .put(DEFINITION_PATH + "/" + UUID.randomUUID().toString())
       .then()
-      .statusCode(HttpStatus.SC_OK);
+      .statusCode(HttpStatus.SC_NOT_FOUND)
+      .log().all();
   }
 
-  //@Test TODO add support of file storing
+  //@Test
   public void fileUpload() {
+    ClassLoader classLoader = getClass().getClassLoader();
+    File file = new File(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc").getFile());
     RestAssured.given()
+      .header("Content-Disposition", "attachment;filename=" + file.getName())
       .spec(specUpload)
       .when()
-      .post(FILE_PATH + "?jobExecutionId=" + UUID.randomUUID().toString() + "&uploadDefinitionId=" + UUID.randomUUID().toString())
+      .body(file)
+      .put(FILE_PATH + "/" + UUID.randomUUID().toString() + "?uploadDefinitionId=" + UUID.randomUUID().toString())
       .then()
-      .statusCode(HttpStatus.SC_CREATED);
+      .statusCode(HttpStatus.SC_OK)
+      .log().all();
   }
 
   @Test
   public void fileDelete() {
+    String object = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all()
+      .extract().body().jsonPath().prettify();
+    JsonObject jsonObject = new JsonObject(object);
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(FILE_PATH + "/" + UUID.randomUUID().toString())
+      .delete(FILE_PATH + "/"
+        + jsonObject.getJsonArray("files").getJsonObject(0).getString("id")
+        + "?uploadDefinitionId=" + jsonObject.getString("id")
+      )
       .then()
-      .statusCode(HttpStatus.SC_NO_CONTENT);
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+  }
+
+  @Test
+  public void fileDeleteNotFound() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(FILE_PATH + "/"
+        + UUID.randomUUID().toString()
+        + "?uploadDefinitionId=" + UUID.randomUUID().toString()
+      )
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND)
+      .log().all();
   }
 }

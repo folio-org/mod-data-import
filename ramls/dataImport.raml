@@ -137,6 +137,51 @@ resourceTypes:
               body:
                 text/plain:
                   example: "Internal server error"
+      /file:
+        post:
+          is: [validate]
+          body:
+            application/json:
+              type: fileDefinition
+          responses:
+            201:
+              body:
+                application/json:
+                  type: uploadDefinition
+            400:
+              description: "Bad request"
+              body:
+                text/plain:
+                  example: "Bad request"
+            422:
+              description: "Unprocessable Entity"
+              body:
+                application/json:
+                  type: errors
+            500:
+              description: "Internal server error"
+              body:
+                text/plain:
+                  example: "Internal server error"
+        /{fileId}:
+          delete:
+            description: Delete file by id
+            queryParameters:
+              uploadDefinitionId:
+            responses:
+              204:
+                body:
+                  text/plain: !!null
+              404:
+                description: "File not found"
+                body:
+                  text/plain:
+                    example: "File not found"
+              500:
+                description: "Internal server error"
+                body:
+                  text/plain:
+                    example: "Internal server error"
     /file:
       displayName: File upload
       description: File Upload API
@@ -167,23 +212,3 @@ resourceTypes:
             body:
               text/plain:
                 example: "Internal server error"
-      /{fileId}:
-        delete:
-          description: Delete file by id
-          queryParameters:
-            uploadDefinitionId:
-          responses:
-            204:
-              body:
-                text/plain: !!null
-            404:
-              description: "File not found"
-              body:
-                text/plain:
-                  example: "File not found"
-            500:
-              description: "Internal server error"
-              body:
-                text/plain:
-                  example: "Internal server error"
-

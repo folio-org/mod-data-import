@@ -33,6 +33,7 @@ public class RestVerticleTest {
   private static final String TENANT = "diku";
   private static final String DEFINITION_PATH = "/data-import/upload/definition";
   private static final String FILE_PATH = "/data-import/upload/file";
+  private static final String FILE_DEF_PATH = "/data-import/upload/definition/file";
   private static final String UPLOAD_DEFINITION_TABLE = "uploadDefinition";
 
   private static Vertx vertx;
@@ -274,7 +275,7 @@ public class RestVerticleTest {
   @Test
   public void fileUploadNotFound() {
     ClassLoader classLoader = getClass().getClassLoader();
-    File file = new File(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc").getFile());
+    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
     RestAssured.given()
       .spec(specUpload)
       .when()
@@ -302,7 +303,7 @@ public class RestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(FILE_PATH + "/"
+      .delete(FILE_DEF_PATH + "/"
         + jsonObject.getJsonArray("fileDefinitions")
         .getJsonObject(0)
         .getString("id")
@@ -318,7 +319,7 @@ public class RestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(FILE_PATH + "/"
+      .delete(FILE_DEF_PATH + "/"
         + UUID.randomUUID().toString()
         + "?uploadDefinitionId=" + UUID.randomUUID().toString()
       )

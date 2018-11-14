@@ -59,7 +59,7 @@ public class DataImportImpl implements DataImport {
                                             Map<String, String> okapiHeaders,
                                             Handler<AsyncResult<Response>> asyncResultHandler,
                                             Context vertxContext) {
-    vertxContext.runOnContext(v -> {
+    vertxContext.runOnContext(c -> {
       try {
         uploadDefinitionService.getUploadDefinitions(query, offset, limit)
           .map(definitions -> new DefinitionCollection()
@@ -81,7 +81,7 @@ public class DataImportImpl implements DataImport {
                                                           Map<String, String> okapiHeaders,
                                                           Handler<AsyncResult<Response>> asyncResultHandler,
                                                           Context vertxContext) {
-    vertxContext.runOnContext(v -> {
+    vertxContext.runOnContext(c -> {
       try {
         entity.setId(definitionId);
         uploadDefinitionService.updateUploadDefinition(entity)
@@ -100,7 +100,7 @@ public class DataImportImpl implements DataImport {
   public void getDataImportUploadDefinitionByDefinitionId(String definitionId, Map<String, String> okapiHeaders,
                                                           Handler<AsyncResult<Response>> asyncResultHandler,
                                                           Context vertxContext) {
-    vertxContext.runOnContext(v -> {
+    vertxContext.runOnContext(c -> {
       try {
         uploadDefinitionService.getUploadDefinitionById(definitionId)
           .map(optionalDefinition -> optionalDefinition.orElseThrow(() ->

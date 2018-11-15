@@ -1,16 +1,14 @@
-package org.folio.service;
+package org.folio.service.upload;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
+import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
 import javax.ws.rs.NotFoundException;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
@@ -69,5 +67,30 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Future<Boolean> deleteUploadDefinition(String id) {
     return uploadDefinitionDao.deleteUploadDefinition(id);
+  }
+
+  @Override
+  public Future<UploadDefinition> addFileDefinitionToUpload(FileDefinition fileDefinition) {
+    return getUploadDefinitionById(fileDefinition.getUploadDefinitionId())
+      .compose(optionalUploadDefinition -> optionalUploadDefinition
+        .map(uploadDefinition -> uploadDefinitionDao.updateUploadDefinition(uploadDefinition
+          .withFileDefinitions(addNewFileDefinition(uploadDefinition.getFileDefinitions(), fileDefinition)))
+          .map(uploadDefinition))
+        .orElse(Future.failedFuture(new NotFoundException(
+          String.format("UploadDefinition with id '%s' not found", fileDefinition.getUploadDefinitionId()))))
+      );
+  }
+
+  private List<FileDefinition> addNewFileDefinition(List<FileDefinition> list, FileDefinition def) {
+    if (list == null) {
+      list = new ArrayList<>();
+    }
+    list.add(def
+      .withCreateDate(new Date())
+      .withLoaded(false)
+      .withId(UUID.randomUUID().toString())
+      //TODO replace with rest call
+      .withJobExecutionId(UUID.randomUUID().toString()));
+    return list;
   }
 }

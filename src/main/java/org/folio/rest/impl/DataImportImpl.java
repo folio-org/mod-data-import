@@ -1,10 +1,6 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.http.HttpStatus;
@@ -13,10 +9,10 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.service.FileService;
-import org.folio.service.FileServiceImpl;
-import org.folio.service.UploadDefinitionService;
-import org.folio.service.UploadDefinitionServiceImpl;
+import org.folio.service.file.FileService;
+import org.folio.service.file.FileServiceImpl;
+import org.folio.service.upload.UploadDefinitionService;
+import org.folio.service.upload.UploadDefinitionServiceImpl;
 import org.folio.util.DataImportHelper;
 
 import javax.ws.rs.NotFoundException;
@@ -120,7 +116,18 @@ public class DataImportImpl implements DataImport {
   public void postDataImportUploadDefinitionFile(FileDefinition entity, Map<String, String> okapiHeaders,
                                                  Handler<AsyncResult<Response>> asyncResultHandler,
                                                  Context vertxContext) {
-
+    vertxContext.runOnContext(c -> {
+      try {
+        uploadDefinitionService.addFileDefinitionToUpload(entity)
+          .map(PostDataImportUploadDefinitionFileResponse::respond201WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        asyncResultHandler.handle(Future.succeededFuture(
+          DataImportHelper.mapExceptionToResponse(e)));
+      }
+    });
   }
 
   @Override
@@ -151,7 +158,7 @@ public class DataImportImpl implements DataImport {
                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        fileService.uploadFile(fileId, uploadDefinitionId, entity)
+        fileService.uploadFile(fileId, uploadDefinitionId, entity, okapiHeaders)
           .map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(DataImportHelper::mapExceptionToResponse)

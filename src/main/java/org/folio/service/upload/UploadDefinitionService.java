@@ -1,6 +1,7 @@
-package org.folio.service;
+package org.folio.service.upload;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
 import java.util.List;
@@ -52,6 +53,14 @@ public interface UploadDefinitionService {
    * @param id UploadDefinition id
    * @return future with true is succeeded
    */
-  Future deleteUploadDefinition(String id);
+  Future<Boolean> deleteUploadDefinition(String id);
+
+  /**
+   * Add File Definition into Upload Definition
+   *
+   * @param fileDefinition - new file definition to add
+   * @return future with updated UploadDefinition
+   */
+  Future<UploadDefinition> addFileDefinitionToUpload(FileDefinition fileDefinition);
 
 }

@@ -1,6 +1,10 @@
 package org.folio.rest;
 
 
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.common.ConsoleNotifier;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.builder.RequestSpecBuilder;
 import com.jayway.restassured.http.ContentType;
@@ -20,12 +24,17 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Objects;
 import java.util.UUID;
+
+import static org.folio.util.ConfigurationUtil.*;
 
 @RunWith(VertxUnitRunner.class)
 public class RestVerticleTest {
@@ -39,6 +48,7 @@ public class RestVerticleTest {
   private static Vertx vertx;
   private static RequestSpecification spec;
   private static RequestSpecification specUpload;
+  private static int port;
 
   private static JsonObject file1 = new JsonObject()
     .put("name", "bib.mrc");
@@ -54,6 +64,20 @@ public class RestVerticleTest {
   private static JsonObject uploadDef3 = new JsonObject()
     .put("fileDefinitions", new JsonArray().add(file1));
 
+  private static JsonObject config = new JsonObject().put("totalRecords", 1)
+    .put("configs", new JsonArray().add(new JsonObject()
+      .put("module", "DATA_IMPORT")
+      .put("code", "data.import.storage.path")
+      .put("value", "./storage")
+    ));
+
+  private static JsonObject config2 = new JsonObject().put("totalRecords", 1)
+    .put("configs", new JsonArray().add(new JsonObject()
+      .put("module", "DATA_IMPORT")
+      .put("code", "data.import.storage.type")
+      .put("value", "LOCAL_STORAGE")
+    ));
+
   private void clearTable(TestContext context) {
     PostgresClient.getInstance(vertx, TENANT).delete(UPLOAD_DEFINITION_TABLE, new Criterion(), event -> {
       if (event.failed()) {
@@ -62,11 +86,18 @@ public class RestVerticleTest {
     });
   }
 
+  @Rule
+  public WireMockRule userMockServer = new WireMockRule(
+    WireMockConfiguration.wireMockConfig()
+      .dynamicPort()
+      .notifier(new ConsoleNotifier(true)));
+
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
+    PostgresClient.stopEmbeddedPostgres();
     vertx = Vertx.vertx();
-    int port = NetworkUtils.nextFreePort();
+    port = NetworkUtils.nextFreePort();
 
     String useExternalDatabase = System.getProperty(
       "org.folio.password.validator.test.database",
@@ -105,24 +136,39 @@ public class RestVerticleTest {
         e.printStackTrace();
       }
     });
+  }
 
+  @Before
+  public void setUp(TestContext context) {
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
+      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + userMockServer.port())
+      .addHeader(OKAPI_TENANT_HEADER, TENANT)
       .setBaseUri("http://localhost:" + port)
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT)
       .build();
 
     specUpload = new RequestSpecBuilder()
       .setContentType("application/octet-stream")
+      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + userMockServer.port())
+      .addHeader(OKAPI_TENANT_HEADER, TENANT)
+      .addHeader(OKAPI_TOKEN_HEADER, "dummy")
       .setBaseUri("http://localhost:" + port)
       .addHeader("Accept", "text/plain, application/json")
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT)
       .build();
-  }
-
-  @Before
-  public void setUp(TestContext context) {
     clearTable(context);
+    try {
+      WireMock.stubFor(WireMock.get("/configurations/entries?query="
+        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")", "UTF-8")
+        + "&offset=0&limit=3&")
+        .willReturn(WireMock.okJson(config.toString())));
+      WireMock.stubFor(WireMock.get("/configurations/entries?query="
+        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", "UTF-8")
+        + "&offset=0&limit=3&")
+        .willReturn(WireMock.okJson(config2.toString())));
+    } catch (UnsupportedEncodingException ignored) {
+    }
   }
 
   @Test

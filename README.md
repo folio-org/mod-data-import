@@ -87,14 +87,17 @@ curl -w '\n' -X POST -D -   \
     -d @target/TenantModuleDescriptor.json \
     http://localhost:9130/_/proxy/tenants/<tenant_name>/modules
 ```
+## Module properties to set up at mod-configuration
 
-### Issue tracker
+* data.import.storage.type - type of uploaded data storing. Default value is LOCAL_STORAGE. Need to add another implementations for storing
+* data.import.storage.path - path where uploaded file will be storing
+
+## Issue tracker
 
 See project [MODDATAIMP](https://issues.folio.org/browse/MODDATAIMP)
 at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker/).
 
-
-# Additional information
+## Additional information
 
 The [raml-module-builder](https://github.com/folio-org/raml-module-builder) framework.
 

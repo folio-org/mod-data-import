@@ -1,13 +1,19 @@
-package org.folio.service;
+package org.folio.service.file;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.storage.FileStorageService;
+import org.folio.service.storage.FileStorageServiceBuilder;
+import org.folio.service.storage.LocalFileStorageService;
+import org.folio.service.upload.UploadDefinitionService;
+import org.folio.service.upload.UploadDefinitionServiceImpl;
 
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -16,7 +22,7 @@ public class FileServiceImpl implements FileService {
 
   private Vertx vertx;
   private UploadDefinitionService uploadDefinitionService;
-  private FileStorageService fileStorageService;
+  private String tenantId;
 
   public FileServiceImpl(UploadDefinitionService uploadDefinitionService) {
     this.uploadDefinitionService = uploadDefinitionService;
@@ -24,12 +30,12 @@ public class FileServiceImpl implements FileService {
 
   public FileServiceImpl(Vertx vertx, String tenantId) {
     this.vertx = vertx;
+    this.tenantId = tenantId;
     this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, tenantId);
-    this.fileStorageService = new AbstractFileStorageService(vertx, tenantId);
   }
 
   @Override
-  public Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data) {
+  public Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data, Map<String, String> okapiHeaders) {
     return uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
       .map(optionalUploadDefinition -> optionalUploadDefinition
         .map(UploadDefinition::getFileDefinitions)
@@ -38,18 +44,21 @@ public class FileServiceImpl implements FileService {
         .stream()
         .filter(fileFilter -> fileFilter.getId().equals(fileId))
         .findFirst()
-        .map(filteredFileDefinition -> fileStorageService.saveFile(data, filteredFileDefinition)
-          .map(savedFile -> uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
-            .map(optionalDef ->
-              optionalDef.map(def ->
-                uploadDefinitionService.updateUploadDefinition(def
-                  .withFileDefinitions(replaceFile(def.getFileDefinitions(), savedFile))
-                  .withStatus(UploadDefinition.Status.IN_PROGRESS))
-              ).orElseThrow(NotFoundException::new))))
+        .map(filteredFileDefinition -> FileStorageServiceBuilder.build(vertx, tenantId, okapiHeaders)
+          .map(service -> service.saveFile(data, filteredFileDefinition, okapiHeaders)
+            .map(savedFile -> uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
+              .map(optionalDef ->
+                optionalDef.map(def ->
+                  uploadDefinitionService.updateUploadDefinition(def
+                    .withFileDefinitions(replaceFile(def.getFileDefinitions(), savedFile))
+                    .withStatus(UploadDefinition.Status.IN_PROGRESS))
+                ).orElseThrow(NotFoundException::new))))
+        )
         .orElseThrow(NotFoundException::new))
       .compose(reply -> reply)
       .compose(fileReply -> fileReply)
-      .compose(defReply -> defReply);
+      .compose(defReply -> defReply)
+      .compose(result -> result);
   }
 
   @Override

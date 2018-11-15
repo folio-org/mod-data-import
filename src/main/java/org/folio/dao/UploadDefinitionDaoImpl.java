@@ -20,7 +20,7 @@ import java.util.Optional;
 
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
-  public static final String UPLOAD_DEFINITION_SCHEMA_PATH = "ramls/uploadDefinition.json";
+  private static final String UPLOAD_DEFINITION_SCHEMA_PATH = "ramls/uploadDefinition.json";
   private static final String UPLOAD_DEFINITION_TABLE = "uploadDefinition";
   private static final String UPLOAD_DEFINITION_ID_FIELD = "'id'";
   private final Logger logger = LoggerFactory.getLogger(UploadDefinitionDaoImpl.class);

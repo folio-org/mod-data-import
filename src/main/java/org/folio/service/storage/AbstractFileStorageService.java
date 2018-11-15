@@ -23,13 +23,7 @@ public abstract class AbstractFileStorageService implements FileStorageService {
   @Override
   public Future<Buffer> getFile(String path) {
     Future<Buffer> future = Future.future();
-    fs.readFile(path, result -> {
-      if (result.succeeded()) {
-        future.complete(result.result());
-      } else {
-        future.fail(result.cause());
-      }
-    });
+    fs.readFile(path, future.completer());
     return future;
   }
 

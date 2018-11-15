@@ -21,6 +21,9 @@ public class ConfigurationUtil {
   private static final Pattern HOST_PORT_PATTERN = Pattern.compile("https?://([^:/]+)(?::?(\\d+)?)");
   private static final int DEFAULT_PORT = 9030;
 
+  private ConfigurationUtil() {
+  }
+
   /**
    * Load property value from mod-config by code
    *

@@ -41,14 +41,12 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     //TODO interact with source-record-manager and create job execution
     uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
     uploadDefinition.setCreateDate(new Date());
-    uploadDefinition.getFileDefinitions().forEach(f -> {
-      f.withId(UUID.randomUUID().toString())
-        .withCreateDate(new Date())
-        .withLoaded(false)
-        //TODO interact with source-record-manager and create job execution
-        .withJobExecutionId(UUID.randomUUID().toString())
-        .withUploadDefinitionId(uploadDefinition.getId());
-    });
+    uploadDefinition.getFileDefinitions().forEach(fileDefinition -> fileDefinition.withId(UUID.randomUUID().toString())
+      .withCreateDate(new Date())
+      .withLoaded(false)
+      //TODO interact with source-record-manager and create job execution
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withUploadDefinitionId(uploadDefinition.getId()));
     return uploadDefinitionDao.addUploadDefinition(uploadDefinition)
       .map(uploadDefinition);
   }

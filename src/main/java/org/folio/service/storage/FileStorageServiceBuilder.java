@@ -4,6 +4,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.folio.util.ConfigurationUtil;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -12,6 +14,9 @@ import java.util.Map;
 public class FileStorageServiceBuilder {
 
   private static final String SERVICE_STORAGE_PROPERTY_CODE = "data.import.storage.type";
+
+  private FileStorageServiceBuilder() {
+  }
 
   /**
    * Build a service object by mod-configuration's values. If there are no properties build a default LocalStorage Service
@@ -29,16 +34,13 @@ public class FileStorageServiceBuilder {
         return;
       }
       String serviceCode = result.result();
-      switch (serviceCode) {
-        case LocalFileStorageService.FILE_STORAGE_PATH_CODE: {
-          future.complete(new LocalFileStorageService(vertx, tenantId));
-          break;
-        }
-        default: {
-          future.complete(new LocalFileStorageService(vertx, tenantId));
-          break;
-        }
-      }
+      List<FileStorageService> availableServices = Arrays.asList(new LocalFileStorageService(vertx, tenantId));
+      future.complete(availableServices
+        .stream()
+        .filter(service -> service.getServiceName().equals(serviceCode))
+        .findFirst()
+        .orElse(new LocalFileStorageService(vertx, tenantId))
+      );
     });
     return future;
   }

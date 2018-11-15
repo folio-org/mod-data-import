@@ -4,9 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
-import org.folio.service.storage.LocalFileStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
 

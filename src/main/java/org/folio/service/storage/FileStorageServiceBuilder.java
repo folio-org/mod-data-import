@@ -2,6 +2,8 @@ package org.folio.service.storage;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.util.ConfigurationUtil;
 
 import java.util.Arrays;
@@ -14,6 +16,7 @@ import java.util.Map;
 public class FileStorageServiceBuilder {
 
   private static final String SERVICE_STORAGE_PROPERTY_CODE = "data.import.storage.type";
+  private static final Logger logger = LoggerFactory.getLogger(FileStorageServiceBuilder.class);
 
   private FileStorageServiceBuilder() {
   }
@@ -30,6 +33,7 @@ public class FileStorageServiceBuilder {
     Future<FileStorageService> future = Future.future();
     ConfigurationUtil.getPropertyByCode(SERVICE_STORAGE_PROPERTY_CODE, okapiHeaders).setHandler(result -> {
       if (result.failed() || result.result() == null || result.result().isEmpty()) {
+        logger.warn("Request to mod-configuration was failed or property for lookup service is not define. Try to use default Local Storage!");
         future.complete(new LocalFileStorageService(vertx, tenantId));
         return;
       }

@@ -6,7 +6,6 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
-import org.folio.service.upload.UploadDefinitionServiceImpl;
 
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
@@ -26,10 +25,10 @@ public class FileServiceImpl implements FileService {
     this.uploadDefinitionService = uploadDefinitionService;
   }
 
-  public FileServiceImpl(Vertx vertx, String tenantId) {
+  public FileServiceImpl(Vertx vertx, String tenantId, UploadDefinitionService uploadDefinitionService) {
     this.vertx = vertx;
     this.tenantId = tenantId;
-    this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, tenantId);
+    this.uploadDefinitionService = uploadDefinitionService;
   }
 
   @Override

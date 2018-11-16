@@ -30,7 +30,7 @@ public class DataImportImpl implements DataImport {
   public DataImportImpl(Vertx vertx, String tenantId) {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
     this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, calculatedTenantId);
-    this.fileService = new FileServiceImpl(vertx, calculatedTenantId);
+    this.fileService = new FileServiceImpl(vertx, calculatedTenantId, this.uploadDefinitionService);
   }
 
   @Override

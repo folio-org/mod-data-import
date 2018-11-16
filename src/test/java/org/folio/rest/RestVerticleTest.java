@@ -34,7 +34,9 @@ import java.net.URLEncoder;
 import java.util.Objects;
 import java.util.UUID;
 
-import static org.folio.util.ConfigurationUtil.*;
+import static org.folio.util.ConfigurationUtil.OKAPI_TENANT_HEADER;
+import static org.folio.util.ConfigurationUtil.OKAPI_TOKEN_HEADER;
+import static org.folio.util.ConfigurationUtil.OKAPI_URL_HEADER;
 
 @RunWith(VertxUnitRunner.class)
 public class RestVerticleTest {

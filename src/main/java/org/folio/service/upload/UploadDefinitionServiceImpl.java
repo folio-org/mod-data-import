@@ -38,13 +38,13 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   public Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition) {
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setStatus(UploadDefinition.Status.NEW);
-    //TODO interact with source-record-manager and create job execution
+    //NEED interact with source-record-manager and create job execution
     uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
     uploadDefinition.setCreateDate(new Date());
     uploadDefinition.getFileDefinitions().forEach(fileDefinition -> fileDefinition.withId(UUID.randomUUID().toString())
       .withCreateDate(new Date())
       .withLoaded(false)
-      //TODO interact with source-record-manager and create job execution
+      //NEED interact with source-record-manager and create job execution
       .withJobExecutionId(UUID.randomUUID().toString())
       .withUploadDefinitionId(uploadDefinition.getId()));
     return uploadDefinitionDao.addUploadDefinition(uploadDefinition)
@@ -87,7 +87,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       .withCreateDate(new Date())
       .withLoaded(false)
       .withId(UUID.randomUUID().toString())
-      //TODO replace with rest call
+      //NEED replace with rest call
       .withJobExecutionId(UUID.randomUUID().toString()));
     return list;
   }

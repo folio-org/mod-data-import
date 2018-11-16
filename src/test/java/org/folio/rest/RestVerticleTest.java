@@ -100,7 +100,7 @@ public class RestVerticleTest {
     port = NetworkUtils.nextFreePort();
 
     String useExternalDatabase = System.getProperty(
-      "org.folio.password.validator.test.database",
+      "org.folio.data.import.test.database",
       "embedded");
 
     switch (useExternalDatabase) {

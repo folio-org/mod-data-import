@@ -8,7 +8,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
@@ -62,10 +61,7 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         uploadDefinitionService.getUploadDefinitions(query, offset, limit)
-          .map(definitions -> new DefinitionCollection()
-            .withUploadDefinitions(definitions)
-            .withTotalRecords(definitions.size())
-          ).map(GetDataImportUploadDefinitionResponse::respond200WithApplicationJson)
+          .map(GetDataImportUploadDefinitionResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(DataImportHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);

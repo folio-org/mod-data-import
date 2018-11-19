@@ -5,6 +5,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.UpdateResult;
+import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -15,7 +16,6 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
-import java.util.List;
 import java.util.Optional;
 
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
@@ -31,7 +31,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   @Override
-  public Future<List<UploadDefinition>> getUploadDefinitions(String query, int offset, int limit) {
+  public Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit) {
     Future<Results<UploadDefinition>> future = Future.future();
     try {
       String[] fieldList = {"*"};
@@ -41,7 +41,9 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       logger.error("Error during getting UploadDefinitions from view", e);
       future.fail(e);
     }
-    return future.map(Results::getResults);
+    return future.map(uploadDefinitionResults -> new DefinitionCollection()
+      .withUploadDefinitions(uploadDefinitionResults.getResults())
+      .withTotalRecords(uploadDefinitionResults.getResultInfo().getTotalRecords()));
   }
 
   @Override

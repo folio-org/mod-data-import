@@ -1,9 +1,9 @@
 package org.folio.dao;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -19,7 +19,7 @@ public interface UploadDefinitionDao {
    * @param limit  limit
    * @return future with list of {@link UploadDefinition}
    */
-  Future<List<UploadDefinition>> getUploadDefinitions(String query, int offset, int limit);
+  Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit);
 
   /**
    * Searches for {@link UploadDefinition} by id

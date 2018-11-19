@@ -1,6 +1,7 @@
 package org.folio.service.upload;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
@@ -21,7 +22,7 @@ public interface UploadDefinitionService {
    * @param limit  limit
    * @return future with list of UploadDefinitions
    */
-  Future<List<UploadDefinition>> getUploadDefinitions(String query, int offset, int limit);
+  Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit);
 
   /**
    * Searches for UploadDefinition by id

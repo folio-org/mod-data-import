@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
+import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
@@ -29,7 +30,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     uploadDefinitionDao = new UploadDefinitionDaoImpl(vertx, tenantId);
   }
 
-  public Future<List<UploadDefinition>> getUploadDefinitions(String query, int offset, int limit) {
+  public Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit) {
     return uploadDefinitionDao.getUploadDefinitions(query, offset, limit);
   }
 

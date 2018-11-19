@@ -10,21 +10,21 @@ documentation:
     content: API for uploading source records and processing them
 
 types:
-  error: !include raml-util/schemas/error.schema
-  errors: !include raml-util/schemas/errors.schema
-  fileDefinition: !include fileDefinition.json
-  uploadDefinition: !include uploadDefinition.json
-  definitionCollection: !include uploadDefinitionCollection.json
+  error: !include raml-storage/raml-util/schemas/error.schema
+  errors: !include raml-storage/raml-util/schemas/errors.schema
+  fileDefinition: !include raml-storage/schemas/mod-data-import/fileDefinition.json
+  uploadDefinition: !include raml-storage/schemas/mod-data-import/uploadDefinition.json
+  definitionCollection: !include raml-storage/schemas/mod-data-import/uploadDefinitionCollection.json
 
 traits:
-  validate: !include raml-util/traits/validation.raml
-  language: !include raml-util/traits/language.raml
-  pageable:  !include raml-util/traits/pageable.raml
-  searchable: !include raml-util/traits/searchable.raml
+  validate: !include raml-storage/raml-util/traits/validation.raml
+  language: !include raml-storage/raml-util/traits/language.raml
+  pageable:  !include raml-storage/raml-util/traits/pageable.raml
+  searchable: !include raml-storage/raml-util/traits/searchable.raml
 
 resourceTypes:
-  collection: !include raml-util/rtypes/collection.raml
-  collection-item: !include raml-util/rtypes/item-collection.raml
+  collection: !include raml-storage/raml-util/rtypes/collection.raml
+  collection-item: !include raml-storage/raml-util/rtypes/item-collection.raml
 
 /data-import:
   /upload:
@@ -35,8 +35,8 @@ resourceTypes:
         collection:
           schemaCollection: uploadDefinition
           schemaItem: uploadDefinition
-          exampleCollection: !include examples/uploadDefinitionCollection.sample
-          exampleItem: !include examples/uploadDefinition.sample
+          exampleCollection: !include raml-storage/examples/mod-data-import/uploadDefinitionCollection.sample
+          exampleItem: !include raml-storage/examples/mod-data-import/uploadDefinition.sample
       post:
         is: [validate]
         body:

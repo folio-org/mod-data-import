@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.util.OkapiConnectionParams;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,7 +39,7 @@ public interface UploadDefinitionService {
    * @param uploadDefinition UploadDefinition to save
    * @return future with generated id
    */
-  Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition);
+  Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, OkapiConnectionParams params);
 
   /**
    * Updates UploadDefinition with given id

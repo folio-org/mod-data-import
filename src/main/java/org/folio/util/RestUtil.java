@@ -3,6 +3,7 @@ package org.folio.util;
 import io.vertx.core.Future;
 import io.vertx.core.http.CaseInsensitiveHeaders;
 import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
@@ -14,6 +15,11 @@ import java.util.Map;
  * Util class with static method for sending http request
  */
 public class RestUtil {
+
+  public static final String OKAPI_TENANT_HEADER = "x-okapi-tenant";
+  public static final String OKAPI_TOKEN_HEADER = "x-okapi-token";
+  public static final String OKAPI_URL_HEADER = "x-okapi-url";
+
   public static class WrappedResponse {
     private int code;
     private String body;
@@ -62,11 +68,11 @@ public class RestUtil {
    * @param payload - body of request
    * @return - async http response
    */
-  public static Future<WrappedResponse> doRequest(HttpClient client, String url, HttpMethod method,
+  public static Future<WrappedResponse> doRequest(OkapiConnectionParams params, String url, HttpMethod method,
                                                   CaseInsensitiveHeaders headers, String payload) {
     Future<WrappedResponse> future = Future.future();
     try {
-      HttpClientRequest request = client.requestAbs(method, url);
+      HttpClientRequest request = getHttpClient(params).requestAbs(method, url);
       if (headers != null) {
         headers.add("Content-type", "application/json")
           .add("Accept", "application/json, text/plain");
@@ -89,5 +95,18 @@ public class RestUtil {
       future.fail(e);
       return future;
     }
+  }
+
+  /**
+   * Prepare HttpClient from OkapiConnection params
+   *
+   * @param params - Okapi connection params
+   * @return - Vertx Http Client
+   */
+  private static HttpClient getHttpClient(OkapiConnectionParams params) {
+    HttpClientOptions options = new HttpClientOptions();
+    options.setConnectTimeout(params.getTimeout());
+    options.setIdleTimeout(params.getTimeout());
+    return params.getVertx().createHttpClient(options);
   }
 }

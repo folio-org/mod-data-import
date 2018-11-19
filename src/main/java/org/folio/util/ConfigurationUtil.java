@@ -9,14 +9,15 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.folio.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.util.RestUtil.OKAPI_TOKEN_HEADER;
+import static org.folio.util.RestUtil.OKAPI_URL_HEADER;
+
 /**
  * Util for loading configuration values from mod-configuration
  */
 public class ConfigurationUtil {
 
-  public static final String OKAPI_URL_HEADER = "X-Okapi-URL";
-  public static final String OKAPI_TENANT_HEADER = "X-Okapi-Tenant";
-  public static final String OKAPI_TOKEN_HEADER = "X-Okapi-Token";
   private static final String MODULE_CODE = "DATA_IMPORT";
   private static final Pattern HOST_PORT_PATTERN = Pattern.compile("https?://([^:/]+)(?::?(\\d+)?)");
   private static final int DEFAULT_PORT = 9030;

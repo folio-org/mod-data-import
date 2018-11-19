@@ -17,6 +17,7 @@ import org.folio.service.file.FileServiceImpl;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
 import org.folio.util.DataImportHelper;
+import org.folio.util.OkapiConnectionParams;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.MediaType;
@@ -41,7 +42,8 @@ public class DataImportImpl implements DataImport {
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        uploadDefinitionService.addUploadDefinition(entity)
+        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+        uploadDefinitionService.addUploadDefinition(entity, params)
           .map((Response) PostDataImportUploadDefinitionResponse
             .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionResponse.headersFor201()))
           .otherwise(DataImportHelper::mapExceptionToResponse)

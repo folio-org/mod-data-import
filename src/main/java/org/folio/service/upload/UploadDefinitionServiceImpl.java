@@ -7,6 +7,7 @@ import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.util.OkapiConnectionParams;
 
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
@@ -40,7 +41,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition) {
+  public Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setStatus(UploadDefinition.Status.NEW);
     //NEED interact with source-record-manager and create job execution
@@ -52,7 +53,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       //NEED interact with source-record-manager and create job execution
       .withJobExecutionId(UUID.randomUUID().toString())
       .withUploadDefinitionId(uploadDefinition.getId()));
-    return uploadDefinitionDao.addUploadDefinition(uploadDefinition)
+    return createJobExecutions(uploadDefinition, params)
+      .map(def -> uploadDefinitionDao.addUploadDefinition(def))
       .map(uploadDefinition);
   }
 
@@ -82,6 +84,10 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("UploadDefinition with id '%s' not found", fileDefinition.getUploadDefinitionId()))))
       );
+  }
+
+  private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, OkapiConnectionParams params) {
+    return Future.future().map(definition);
   }
 
   private List<FileDefinition> addNewFileDefinition(List<FileDefinition> list, FileDefinition def) {

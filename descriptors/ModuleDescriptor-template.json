@@ -52,8 +52,7 @@
             "data-import.upload.definition.put"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get",
-            "change-manager.jobexecution.post"
+            "configuration.entries.collection.get"
           ]
         },
         {
@@ -91,8 +90,7 @@
             "data-import.upload.definition.file.delete"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get",
-            "change-manager.jobexecution.post"
+            "configuration.entries.collection.get"
           ]
         }
       ]

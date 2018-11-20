@@ -54,6 +54,8 @@ public class RestVerticleTest {
     .put("name", "bib.mrc");
   private static JsonObject file2 = new JsonObject()
     .put("name", "host.mrc");
+  private static JsonObject file3 = new JsonObject()
+    .put("name", "CornellFOLIOExemplars_Bibs.mrc");
 
   private static JsonObject uploadDef1 = new JsonObject()
     .put("fileDefinitions", new JsonArray().add(file1).add(file2));
@@ -62,7 +64,7 @@ public class RestVerticleTest {
     .put("fileDefinitions", new JsonArray().add(file1));
 
   private static JsonObject uploadDef3 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1));
+    .put("fileDefinitions", new JsonArray().add(file3));
 
   private static JsonObject config = new JsonObject().put("totalRecords", 1)
     .put("configs", new JsonArray().add(new JsonObject()
@@ -78,7 +80,13 @@ public class RestVerticleTest {
       .put("value", "LOCAL_STORAGE")
     ));
 
-  private static JsonObject jobExecutionCreate = new JsonObject();
+  private static JsonObject jobExecutionCreate = new JsonObject()
+    .put("parentJobExecutionId", UUID.randomUUID().toString())
+    .put("jobExecutions", new JsonArray()
+      .add(new JsonObject()
+        .put("sourcePath", "bib.mrc")
+        .put("id", UUID.randomUUID().toString())
+      ));
 
   private void clearTable(TestContext context) {
     PostgresClient.getInstance(vertx, TENANT).delete(UPLOAD_DEFINITION_TABLE, new Criterion(), event -> {

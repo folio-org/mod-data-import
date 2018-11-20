@@ -3,6 +3,7 @@ package org.folio.service.upload;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -54,14 +55,10 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   public Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setStatus(UploadDefinition.Status.NEW);
-    //NEED interact with source-record-manager and create job execution
-    uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
     uploadDefinition.setCreateDate(new Date());
     uploadDefinition.getFileDefinitions().forEach(fileDefinition -> fileDefinition.withId(UUID.randomUUID().toString())
       .withCreateDate(new Date())
       .withLoaded(false)
-      //NEED interact with source-record-manager and create job execution
-      .withJobExecutionId(UUID.randomUUID().toString())
       .withUploadDefinitionId(uploadDefinition.getId()));
     return createJobExecutions(uploadDefinition, params)
       .map(def -> uploadDefinitionDao.addUploadDefinition(def))
@@ -99,15 +96,37 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, OkapiConnectionParams params) {
     Future<UploadDefinition> future = Future.future();
     JsonObject request = new JsonObject();
+    JsonArray files = new JsonArray();
+    for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
+      files.add(new JsonObject().put("name", fileDefinition.getName()));
+    }
+    request.put("files", files);
     RestUtil.doRequest(params, JOB_EXECUTION_CREATE_URL, HttpMethod.POST, request.encode())
       .setHandler(responseResult -> {
-        int responseCode = responseResult.result().getCode();
-        if (responseResult.failed() || responseCode != CREATED_STATUS_CODE) {
-          logger.error("Error during request new jobExecution. Response code: " + responseCode, responseResult.cause());
-          future.fail(responseResult.cause());
-        } else {
-          JsonObject responseBody = responseResult.result().getJson();
-          future.complete(definition);
+        try {
+          int responseCode = responseResult.result().getCode();
+          if (responseResult.failed() || responseCode != CREATED_STATUS_CODE) {
+            logger.error("Error during request new jobExecution. Response code: " + responseCode, responseResult.cause());
+            future.fail(responseResult.cause());
+          } else {
+            JsonObject responseBody = responseResult.result().getJson();
+            JsonArray jobExecutions = responseBody.getJsonArray("jobExecutions");
+            for (int i = 0; i < jobExecutions.size(); i++) {
+              JsonObject jobExecution = jobExecutions.getJsonObject(i);
+              String jobExecutionPath = jobExecution.getString("sourcePath");
+              definition.getFileDefinitions()
+                .forEach(fileDefinition -> {
+                  if (jobExecutionPath != null && jobExecutionPath.equals(fileDefinition.getName())) {
+                    fileDefinition.setJobExecutionId(jobExecution.getString("id"));
+                  }
+                });
+            }
+            definition.setMetaJobExecutionId(responseBody.getString("parentJobExecutionId"));
+            future.complete(definition);
+          }
+        } catch (Exception e) {
+          logger.error("Error during creating jobExecutions for files", e);
+          future.fail(e);
         }
       });
     return future;

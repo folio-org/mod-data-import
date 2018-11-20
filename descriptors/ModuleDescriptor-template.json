@@ -21,7 +21,8 @@
             "data-import.upload.definition.post"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get"
+            "configuration.entries.collection.get",
+            "change-manager.jobexecution.post"
           ]
         },
         {
@@ -51,7 +52,8 @@
             "data-import.upload.definition.put"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get"
+            "configuration.entries.collection.get",
+            "change-manager.jobexecution.post"
           ]
         },
         {
@@ -63,7 +65,8 @@
             "data-import.upload.file.post"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get"
+            "configuration.entries.collection.get",
+            "change-manager.jobexecution.post"
           ]
         },
         {
@@ -75,7 +78,8 @@
             "data-import.upload.definition.file.post"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get"
+            "configuration.entries.collection.get",
+            "change-manager.jobexecution.post"
           ]
         },
         {
@@ -87,7 +91,8 @@
             "data-import.upload.definition.file.delete"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get"
+            "configuration.entries.collection.get",
+            "change-manager.jobexecution.post"
           ]
         }
       ]

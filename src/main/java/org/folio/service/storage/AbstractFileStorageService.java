@@ -7,8 +7,6 @@ import io.vertx.core.file.FileSystem;
 import org.folio.util.ConfigurationUtil;
 import org.folio.util.OkapiConnectionParams;
 
-import java.util.Map;
-
 public abstract class AbstractFileStorageService implements FileStorageService {
 
   protected Vertx vertx;

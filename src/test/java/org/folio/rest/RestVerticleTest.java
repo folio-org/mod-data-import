@@ -50,21 +50,17 @@ public class RestVerticleTest {
   private static RequestSpecification specUpload;
   private static int port;
 
-  private static JsonObject file1 = new JsonObject()
-    .put("name", "bib.mrc");
-  private static JsonObject file2 = new JsonObject()
-    .put("name", "host.mrc");
-  private static JsonObject file3 = new JsonObject()
+  private static JsonObject file = new JsonObject()
     .put("name", "CornellFOLIOExemplars_Bibs.mrc");
 
   private static JsonObject uploadDef1 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1).add(file2));
+    .put("fileDefinitions", new JsonArray().add(file));
 
   private static JsonObject uploadDef2 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1));
+    .put("fileDefinitions", new JsonArray().add(file));
 
   private static JsonObject uploadDef3 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file3));
+    .put("fileDefinitions", new JsonArray().add(file));
 
   private static JsonObject config = new JsonObject().put("totalRecords", 1)
     .put("configs", new JsonArray().add(new JsonObject()
@@ -84,7 +80,7 @@ public class RestVerticleTest {
     .put("parentJobExecutionId", UUID.randomUUID().toString())
     .put("jobExecutions", new JsonArray()
       .add(new JsonObject()
-        .put("sourcePath", "bib.mrc")
+        .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
         .put("id", UUID.randomUUID().toString())
       ));
 

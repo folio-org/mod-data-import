@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.util.OkapiConnectionParams;
 import org.folio.util.RestUtil;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -61,6 +62,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       .withLoaded(false)
       .withUploadDefinitionId(uploadDefinition.getId()));
     return createJobExecutions(uploadDefinition, params)
+      .map(this::checkUploadDefinitionBeforeSave).compose(defCheck -> defCheck)
       .map(def -> uploadDefinitionDao.addUploadDefinition(def))
       .map(uploadDefinition);
   }
@@ -143,5 +145,23 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       //NEED replace with rest call
       .withJobExecutionId(UUID.randomUUID().toString()));
     return list;
+  }
+
+  private Future<UploadDefinition> checkUploadDefinitionBeforeSave(UploadDefinition definition) {
+    Future<UploadDefinition> future = Future.future();
+    if (definition.getMetaJobExecutionId() == null || definition.getMetaJobExecutionId().isEmpty()) {
+      future.fail(new BadRequestException());
+      logger.error("Cant save Upload Definition without MetaJobExecutionId");
+      return future;
+    }
+    for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
+      if (fileDefinition.getJobExecutionId() == null || fileDefinition.getJobExecutionId().isEmpty()) {
+        logger.error("Cant save File Definition without JobExecutionId");
+        future.fail(new BadRequestException());
+        return future;
+      }
+    }
+    future.complete(definition);
+    return future;
   }
 }

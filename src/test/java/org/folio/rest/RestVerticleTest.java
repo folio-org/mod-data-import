@@ -78,6 +78,8 @@ public class RestVerticleTest {
       .put("value", "LOCAL_STORAGE")
     ));
 
+  private static JsonObject jobExecutionCreate = new JsonObject();
+
   private void clearTable(TestContext context) {
     PostgresClient.getInstance(vertx, TENANT).delete(UPLOAD_DEFINITION_TABLE, new Criterion(), event -> {
       if (event.failed()) {
@@ -167,6 +169,8 @@ public class RestVerticleTest {
         + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", "UTF-8")
         + "&offset=0&limit=3&")
         .willReturn(WireMock.okJson(config2.toString())));
+      WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
+        .willReturn(WireMock.created().withBody(jobExecutionCreate.toString())));
     } catch (UnsupportedEncodingException ignored) {
     }
   }
@@ -315,7 +319,7 @@ public class RestVerticleTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("status", Matchers.is("IN_PROGRESS"));
+      .body("status", Matchers.is("LOADED"));
   }
 
   @Test

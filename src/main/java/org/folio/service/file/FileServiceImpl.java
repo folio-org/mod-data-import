@@ -11,7 +11,6 @@ import org.folio.util.OkapiConnectionParams;
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -49,7 +48,9 @@ public class FileServiceImpl implements FileService {
                 optionalDef.map(def ->
                   uploadDefinitionService.updateUploadDefinition(def
                     .withFileDefinitions(replaceFile(def.getFileDefinitions(), savedFile))
-                    .withStatus(UploadDefinition.Status.IN_PROGRESS))
+                    .withStatus(def.getFileDefinitions().stream().allMatch(FileDefinition::getLoaded)
+                      ? UploadDefinition.Status.LOADED
+                      : UploadDefinition.Status.IN_PROGRESS))
                 ).orElseThrow(NotFoundException::new))))
         )
         .orElseThrow(NotFoundException::new))

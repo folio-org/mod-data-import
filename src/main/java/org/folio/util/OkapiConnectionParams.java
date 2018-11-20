@@ -1,6 +1,7 @@
 package org.folio.util;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.http.CaseInsensitiveHeaders;
 
 import java.util.Map;
 
@@ -19,6 +20,7 @@ public class OkapiConnectionParams {
   private String token;
   private Vertx vertx;
   private Integer timeout;
+  private CaseInsensitiveHeaders headers = new CaseInsensitiveHeaders();
 
   public OkapiConnectionParams(Map<String, String> okapiHeaders, Vertx vertx, Integer timeout) {
     this.okapiUrl = okapiHeaders.getOrDefault(OKAPI_URL_HEADER, "localhost");
@@ -26,14 +28,11 @@ public class OkapiConnectionParams {
     this.token = okapiHeaders.getOrDefault(OKAPI_TOKEN_HEADER, "dummy");
     this.vertx = vertx;
     this.timeout = timeout != null ? timeout : DEF_TIMEOUT;
+    this.headers.addAll(okapiHeaders);
   }
 
   public OkapiConnectionParams(Map<String, String> okapiHeaders, Vertx vertx) {
-    this.okapiUrl = okapiHeaders.getOrDefault(OKAPI_URL_HEADER, "localhost");
-    this.tenantId = okapiHeaders.getOrDefault(OKAPI_TENANT_HEADER, "");
-    this.token = okapiHeaders.getOrDefault(OKAPI_TOKEN_HEADER, "dummy");
-    this.vertx = vertx;
-    this.timeout = DEF_TIMEOUT;
+    this(okapiHeaders, vertx, null);
   }
 
   public String getOkapiUrl() {
@@ -54,5 +53,13 @@ public class OkapiConnectionParams {
 
   public int getTimeout() {
     return timeout;
+  }
+
+  public CaseInsensitiveHeaders getHeaders() {
+    return headers;
+  }
+
+  public void setHeaders(CaseInsensitiveHeaders headers) {
+    this.headers = headers;
   }
 }

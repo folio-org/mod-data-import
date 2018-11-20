@@ -19,6 +19,7 @@ public class RestUtil {
   public static final String OKAPI_TENANT_HEADER = "x-okapi-tenant";
   public static final String OKAPI_TOKEN_HEADER = "x-okapi-token";
   public static final String OKAPI_URL_HEADER = "x-okapi-url";
+  public static final int CREATED_STATUS_CODE = 201;
 
   public static class WrappedResponse {
     private int code;
@@ -61,18 +62,18 @@ public class RestUtil {
   /**
    * Create http request
    *
-   * @param client  - vertx http client
    * @param url     - url for http request
    * @param method  - http method
-   * @param headers - map with request's headers
    * @param payload - body of request
    * @return - async http response
    */
-  public static Future<WrappedResponse> doRequest(OkapiConnectionParams params, String url, HttpMethod method,
-                                                  CaseInsensitiveHeaders headers, String payload) {
+  public static Future<WrappedResponse> doRequest(OkapiConnectionParams params, String url,
+                                                  HttpMethod method, String payload) {
     Future<WrappedResponse> future = Future.future();
     try {
-      HttpClientRequest request = getHttpClient(params).requestAbs(method, url);
+      CaseInsensitiveHeaders headers = params.getHeaders();
+      String requestUrl = params.getOkapiUrl() + url;
+      HttpClientRequest request = getHttpClient(params).requestAbs(method, requestUrl);
       if (headers != null) {
         headers.add("Content-type", "application/json")
           .add("Accept", "application/json, text/plain");

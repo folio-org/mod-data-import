@@ -2,12 +2,17 @@ package org.folio.service.upload;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.util.OkapiConnectionParams;
+import org.folio.util.RestUtil;
 
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
@@ -16,8 +21,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.folio.util.RestUtil.CREATED_STATUS_CODE;
+
 
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
+
+  private static final String JOB_EXECUTION_CREATE_URL = "/change-manager/jobExecutions";
+  private static final Logger logger = LoggerFactory.getLogger(UploadDefinitionServiceImpl.class);
 
   private Vertx vertx;
   private UploadDefinitionDao uploadDefinitionDao;
@@ -87,8 +97,19 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, OkapiConnectionParams params) {
-    Future future = Future.future();
-    future.complete(definition);
+    Future<UploadDefinition> future = Future.future();
+    JsonObject request = new JsonObject();
+    RestUtil.doRequest(params, JOB_EXECUTION_CREATE_URL, HttpMethod.POST, request.encode())
+      .setHandler(responseResult -> {
+        int responseCode = responseResult.result().getCode();
+        if (responseResult.failed() || responseCode != CREATED_STATUS_CODE) {
+          logger.error("Error during request new jobExecution. Response code: " + responseCode, responseResult.cause());
+          future.fail(responseResult.cause());
+        } else {
+          JsonObject responseBody = responseResult.result().getJson();
+          future.complete(definition);
+        }
+      });
     return future;
   }
 

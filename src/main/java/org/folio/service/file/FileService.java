@@ -2,9 +2,9 @@ package org.folio.service.file;
 
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.util.OkapiConnectionParams;
 
 import java.io.InputStream;
-import java.util.Map;
 
 /**
  * File service
@@ -20,7 +20,7 @@ public interface FileService {
    * @param data               stream with uploaded data
    * @return future with {@link org.folio.rest.jaxrs.model.UploadDefinition} id
    */
-  Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data, Map<String, String> okapiHeaders);
+  Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data, OkapiConnectionParams params);
 
   /**
    * Deletes File by id and Upload Definition Id

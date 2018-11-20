@@ -6,6 +6,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
+import org.folio.util.OkapiConnectionParams;
 
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
@@ -32,7 +33,7 @@ public class FileServiceImpl implements FileService {
   }
 
   @Override
-  public Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data, Map<String, String> okapiHeaders) {
+  public Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data, OkapiConnectionParams params) {
     return uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
       .map(optionalUploadDefinition -> optionalUploadDefinition
         .map(UploadDefinition::getFileDefinitions)
@@ -41,8 +42,8 @@ public class FileServiceImpl implements FileService {
         .stream()
         .filter(fileFilter -> fileFilter.getId().equals(fileId))
         .findFirst()
-        .map(filteredFileDefinition -> FileStorageServiceBuilder.build(vertx, tenantId, okapiHeaders)
-          .map(service -> service.saveFile(data, filteredFileDefinition, okapiHeaders)
+        .map(filteredFileDefinition -> FileStorageServiceBuilder.build(vertx, tenantId, params)
+          .map(service -> service.saveFile(data, filteredFileDefinition, params)
             .map(savedFile -> uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
               .map(optionalDef ->
                 optionalDef.map(def ->

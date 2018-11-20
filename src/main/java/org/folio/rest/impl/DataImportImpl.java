@@ -160,7 +160,8 @@ public class DataImportImpl implements DataImport {
                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        fileService.uploadFile(fileId, uploadDefinitionId, entity, okapiHeaders)
+        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+        fileService.uploadFile(fileId, uploadDefinitionId, entity, params)
           .map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(DataImportHelper::mapExceptionToResponse)

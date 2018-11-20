@@ -87,7 +87,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, OkapiConnectionParams params) {
-    return Future.future().map(definition);
+    Future future = Future.future();
+    future.complete(definition);
+    return future;
   }
 
   private List<FileDefinition> addNewFileDefinition(List<FileDefinition> list, FileDefinition def) {

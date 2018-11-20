@@ -19,7 +19,6 @@ import org.apache.http.HttpStatus;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.JwtUtils;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.hamcrest.Matchers;
 import org.junit.Before;
@@ -35,7 +34,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 import static org.folio.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.util.RestUtil.OKAPI_TOKEN_HEADER;
 import static org.folio.util.RestUtil.OKAPI_URL_HEADER;
 
 @RunWith(VertxUnitRunner.class)
@@ -46,7 +44,6 @@ public class RestVerticleTest {
   private static final String FILE_PATH = "/data-import/upload/file";
   private static final String FILE_DEF_PATH = "/data-import/upload/definition/file";
   private static final String UPLOAD_DEFINITION_TABLE = "uploadDefinition";
-  private static final String TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwidXNlcl9pZCI6IkpvaG5Eb2UiLCJhZG1pbiI6dHJ1ZSwianRpIjoiMDA5MTg4YjktNjZlZS00M2RlLThjYmMtMTI2YzA1YTEyYmE0IiwiaWF0IjoxNTQyNjM5NDQwLCJleHAiOjE1NDI2NDMyMjF9.FBrCsjPFCjVUEnWwjLpHVO0jfq7w0QlEg55bDFuNNmk";
 
   private static Vertx vertx;
   private static RequestSpecification spec;
@@ -127,7 +124,7 @@ public class RestVerticleTest {
         throw new Exception(message);
     }
 
-    TenantClient tenantClient = new TenantClient("localhost", port, "diku", TOKEN);
+    TenantClient tenantClient = new TenantClient("localhost", port, "diku", "dummy.token");
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
@@ -156,7 +153,7 @@ public class RestVerticleTest {
       .setContentType("application/octet-stream")
       .addHeader(OKAPI_URL_HEADER, "http://localhost:" + userMockServer.port())
       .addHeader(OKAPI_TENANT_HEADER, TENANT)
-      .addHeader(OKAPI_TOKEN_HEADER, TOKEN)
+      .addHeader(RestVerticle.OKAPI_USERID_HEADER, UUID.randomUUID().toString())
       .setBaseUri("http://localhost:" + port)
       .addHeader("Accept", "text/plain, application/json")
       .build();

@@ -5,13 +5,8 @@ import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.client.ConfigurationsClient;
 
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static org.folio.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.util.RestUtil.OKAPI_TOKEN_HEADER;
-import static org.folio.util.RestUtil.OKAPI_URL_HEADER;
 
 /**
  * Util for loading configuration values from mod-configuration
@@ -31,11 +26,11 @@ public class ConfigurationUtil {
    * @param code - property code
    * @return a list of user fields to use for search
    */
-  public static Future<String> getPropertyByCode(String code, Map<String, String> okapiHeaders) {
+  public static Future<String> getPropertyByCode(String code, OkapiConnectionParams params) {
     Future<String> future = Future.future();
-    String okapiURL = okapiHeaders.get(OKAPI_URL_HEADER);
-    String tenant = okapiHeaders.get(OKAPI_TENANT_HEADER);
-    String token = okapiHeaders.get(OKAPI_TOKEN_HEADER);
+    String okapiURL = params.getOkapiUrl();
+    String tenant = params.getTenantId();
+    String token = params.getToken();
     try {
       Matcher matcher = HOST_PORT_PATTERN.matcher(okapiURL);
       if (!matcher.find()) {

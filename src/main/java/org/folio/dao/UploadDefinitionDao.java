@@ -46,6 +46,15 @@ public interface UploadDefinitionDao {
   Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition);
 
   /**
+   * Updates {@link UploadDefinition} in database with row blocking
+   *
+   * @param uploadDefinitionId - id of {@link UploadDefinition}
+   * @param mutator            - callback for change {@link UploadDefinition} before save
+   * @return - future with updated {@link UploadDefinition}
+   */
+  Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator);
+
+  /**
    * Deletes {@link UploadDefinition} from database
    *
    * @param id id of {@link UploadDefinition} to delete

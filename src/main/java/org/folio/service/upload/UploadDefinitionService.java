@@ -1,6 +1,7 @@
 package org.folio.service.upload;
 
 import io.vertx.core.Future;
+import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -47,6 +48,15 @@ public interface UploadDefinitionService {
    * @return future with true is succeeded
    */
   Future<UploadDefinition> updateUploadDefinition(UploadDefinition uploadDefinition);
+
+  /**
+   * Updates {@link UploadDefinition} in database with row blocking
+   *
+   * @param uploadDefinitionId - id of {@link UploadDefinition}
+   * @param mutator            - callback for change {@link UploadDefinition} before save
+   * @return - future with updated {@link UploadDefinition}
+   */
+  Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator);
 
   /**
    * Deletes UploadDefinition by id

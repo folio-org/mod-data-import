@@ -79,6 +79,11 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
+  public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator) {
+    return uploadDefinitionDao.updateBlocking(uploadDefinitionId, mutator);
+  }
+
+  @Override
   public Future<Boolean> deleteUploadDefinition(String id) {
     return uploadDefinitionDao.deleteUploadDefinition(id);
   }

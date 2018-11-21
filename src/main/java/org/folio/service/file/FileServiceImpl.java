@@ -32,35 +32,6 @@ public class FileServiceImpl implements FileService {
     this.uploadDefinitionService = uploadDefinitionService;
   }
 
-//  @Override
-//  public Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data, OkapiConnectionParams params) {
-//    return uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
-//      .map(optionalUploadDefinition -> optionalUploadDefinition
-//        .map(UploadDefinition::getFileDefinitions)
-//        .orElseThrow(NotFoundException::new))
-//      .map(fileDefinitions -> fileDefinitions
-//        .stream()
-//        .filter(fileFilter -> fileFilter.getId().equals(fileId))
-//        .findFirst()
-//        .map(filteredFileDefinition -> FileStorageServiceBuilder.build(vertx, tenantId, params)
-//          .map(service -> service.saveFile(data, filteredFileDefinition, params)
-//            .map(savedFile -> uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
-//              .map(optionalDef ->
-//                optionalDef.map(def ->
-//                  uploadDefinitionService.updateUploadDefinition(def
-//                    .withFileDefinitions(replaceFile(def.getFileDefinitions(), savedFile))
-//                    .withStatus(def.getFileDefinitions().stream().allMatch(FileDefinition::getLoaded)
-//                      ? UploadDefinition.Status.LOADED
-//                      : UploadDefinition.Status.IN_PROGRESS))
-//                ).orElseThrow(NotFoundException::new))))
-//        )
-//        .orElseThrow(NotFoundException::new))
-//      .compose(reply -> reply)
-//      .compose(fileReply -> fileReply)
-//      .compose(defReply -> defReply)
-//      .compose(result -> result);
-//  }
-
   @Override
   public Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data, OkapiConnectionParams params) {
     return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDefinition -> {

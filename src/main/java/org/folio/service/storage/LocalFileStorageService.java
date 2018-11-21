@@ -8,10 +8,10 @@ import io.vertx.core.file.OpenOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.util.OkapiConnectionParams;
 
 import javax.ws.rs.BadRequestException;
 import java.io.InputStream;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -31,10 +31,10 @@ public class LocalFileStorageService extends AbstractFileStorageService {
   }
 
   @Override
-  public Future<FileDefinition> saveFile(InputStream data, FileDefinition fileDefinition, Map<String, String> okapiHeaders) {
+  public Future<FileDefinition> saveFile(InputStream data, FileDefinition fileDefinition, OkapiConnectionParams params) {
     Future<FileDefinition> future = Future.future();
     String fileId = fileDefinition.getId();
-    getStoragePath(FILE_STORAGE_PATH_CODE, fileDefinition.getId(), okapiHeaders)
+    getStoragePath(FILE_STORAGE_PATH_CODE, fileDefinition.getId(), params)
       .setHandler(pathReply -> {
         if (pathReply.succeeded()) {
           try {

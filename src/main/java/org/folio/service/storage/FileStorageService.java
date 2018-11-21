@@ -3,9 +3,9 @@ package org.folio.service.storage;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.util.OkapiConnectionParams;
 
 import java.io.InputStream;
-import java.util.Map;
 
 /**
  * File storage service. For each implementation should implement this service
@@ -26,6 +26,6 @@ public interface FileStorageService {
   /**
    * Saves File to the storage and return its path
    */
-  Future<FileDefinition> saveFile(InputStream data, FileDefinition fileDefinition, Map<String, String> okapiHeaders);
+  Future<FileDefinition> saveFile(InputStream data, FileDefinition fileDefinition, OkapiConnectionParams params);
 
 }

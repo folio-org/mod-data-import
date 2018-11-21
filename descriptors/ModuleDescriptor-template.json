@@ -19,6 +19,10 @@
           "pathPattern": "/data-import/upload/definition",
           "permissionsRequired": [
             "data-import.upload.definition.post"
+          ],
+          "modulePermissions": [
+            "configuration.entries.collection.get",
+            "change-manager.jobexecution.post"
           ]
         },
         {
@@ -46,6 +50,9 @@
           "pathPattern": "/data-import/upload/definition/{uploadDefinitionId}",
           "permissionsRequired": [
             "data-import.upload.definition.put"
+          ],
+          "modulePermissions": [
+            "configuration.entries.collection.get"
           ]
         },
         {
@@ -55,6 +62,10 @@
           "pathPattern": "/data-import/upload/file",
           "permissionsRequired": [
             "data-import.upload.file.post"
+          ],
+          "modulePermissions": [
+            "configuration.entries.collection.get",
+            "change-manager.jobexecution.post"
           ]
         },
         {
@@ -64,6 +75,10 @@
           "pathPattern": "/data-import/upload/definition/file",
           "permissionsRequired": [
             "data-import.upload.definition.file.post"
+          ],
+          "modulePermissions": [
+            "configuration.entries.collection.get",
+            "change-manager.jobexecution.post"
           ]
         },
         {
@@ -73,6 +88,9 @@
           "pathPattern": "/data-import/upload/definition/file/{fileId}",
           "permissionsRequired": [
             "data-import.upload.definition.file.delete"
+          ],
+          "modulePermissions": [
+            "configuration.entries.collection.get"
           ]
         }
       ]

@@ -5,8 +5,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.FileSystem;
 import org.folio.util.ConfigurationUtil;
-
-import java.util.Map;
+import org.folio.util.OkapiConnectionParams;
 
 public abstract class AbstractFileStorageService implements FileStorageService {
 
@@ -27,9 +26,9 @@ public abstract class AbstractFileStorageService implements FileStorageService {
     return future;
   }
 
-  protected Future<String> getStoragePath(String code, String uploadDefId, Map<String, String> okapiHeaders) {
+  protected Future<String> getStoragePath(String code, String uploadDefId, OkapiConnectionParams params) {
     Future<String> pathFuture = Future.future();
-    ConfigurationUtil.getPropertyByCode(code, okapiHeaders).setHandler(configValue -> {
+    ConfigurationUtil.getPropertyByCode(code, params).setHandler(configValue -> {
       if (configValue.succeeded()) {
         pathFuture.complete(configValue.result());
       } else {

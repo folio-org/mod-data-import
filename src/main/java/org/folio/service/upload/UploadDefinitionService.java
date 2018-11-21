@@ -1,10 +1,12 @@
 package org.folio.service.upload;
 
 import io.vertx.core.Future;
+import org.folio.dao.UploadDefinitionDaoImpl;
+import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.util.OkapiConnectionParams;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -21,7 +23,7 @@ public interface UploadDefinitionService {
    * @param limit  limit
    * @return future with list of UploadDefinitions
    */
-  Future<List<UploadDefinition>> getUploadDefinitions(String query, int offset, int limit);
+  Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit);
 
   /**
    * Searches for UploadDefinition by id
@@ -37,7 +39,7 @@ public interface UploadDefinitionService {
    * @param uploadDefinition UploadDefinition to save
    * @return future with generated id
    */
-  Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition);
+  Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, OkapiConnectionParams params);
 
   /**
    * Updates UploadDefinition with given id
@@ -46,6 +48,15 @@ public interface UploadDefinitionService {
    * @return future with true is succeeded
    */
   Future<UploadDefinition> updateUploadDefinition(UploadDefinition uploadDefinition);
+
+  /**
+   * Updates {@link UploadDefinition} in database with row blocking
+   *
+   * @param uploadDefinitionId - id of {@link UploadDefinition}
+   * @param mutator            - callback for change {@link UploadDefinition} before save
+   * @return - future with updated {@link UploadDefinition}
+   */
+  Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator);
 
   /**
    * Deletes UploadDefinition by id

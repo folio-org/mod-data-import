@@ -2,11 +2,20 @@ package org.folio.service.upload;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
+import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.util.OkapiConnectionParams;
+import org.folio.util.RestUtil;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -14,8 +23,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.folio.util.RestUtil.CREATED_STATUS_CODE;
+
 
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
+
+  private static final String JOB_EXECUTION_CREATE_URL = "/change-manager/jobExecutions";
+  private static final Logger logger = LoggerFactory.getLogger(UploadDefinitionServiceImpl.class);
 
   private Vertx vertx;
   private UploadDefinitionDao uploadDefinitionDao;
@@ -29,7 +43,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     uploadDefinitionDao = new UploadDefinitionDaoImpl(vertx, tenantId);
   }
 
-  public Future<List<UploadDefinition>> getUploadDefinitions(String query, int offset, int limit) {
+  public Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit) {
     return uploadDefinitionDao.getUploadDefinitions(query, offset, limit);
   }
 
@@ -39,19 +53,17 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition) {
+  public Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setStatus(UploadDefinition.Status.NEW);
-    //NEED interact with source-record-manager and create job execution
-    uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
     uploadDefinition.setCreateDate(new Date());
     uploadDefinition.getFileDefinitions().forEach(fileDefinition -> fileDefinition.withId(UUID.randomUUID().toString())
       .withCreateDate(new Date())
       .withLoaded(false)
-      //NEED interact with source-record-manager and create job execution
-      .withJobExecutionId(UUID.randomUUID().toString())
       .withUploadDefinitionId(uploadDefinition.getId()));
-    return uploadDefinitionDao.addUploadDefinition(uploadDefinition)
+    return createJobExecutions(uploadDefinition, params)
+      .map(this::checkUploadDefinitionBeforeSave).compose(defCheck -> defCheck)
+      .map(def -> uploadDefinitionDao.addUploadDefinition(def))
       .map(uploadDefinition);
   }
 
@@ -64,6 +76,11 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("UploadDefinition with id '%s' not found", uploadDefinition.getId()))))
       );
+  }
+
+  @Override
+  public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator) {
+    return uploadDefinitionDao.updateBlocking(uploadDefinitionId, mutator);
   }
 
   @Override
@@ -83,6 +100,45 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       );
   }
 
+  private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, OkapiConnectionParams params) {
+    Future<UploadDefinition> future = Future.future();
+    JsonObject request = new JsonObject();
+    JsonArray files = new JsonArray();
+    for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
+      files.add(new JsonObject().put("name", fileDefinition.getName()));
+    }
+    request.put("files", files);
+    RestUtil.doRequest(params, JOB_EXECUTION_CREATE_URL, HttpMethod.POST, request.encode())
+      .setHandler(responseResult -> {
+        try {
+          int responseCode = responseResult.result().getCode();
+          if (responseResult.failed() || responseCode != CREATED_STATUS_CODE) {
+            logger.error("Error during request new jobExecution. Response code: " + responseCode, responseResult.cause());
+            future.fail(responseResult.cause());
+          } else {
+            JsonObject responseBody = responseResult.result().getJson();
+            JsonArray jobExecutions = responseBody.getJsonArray("jobExecutions");
+            for (int i = 0; i < jobExecutions.size(); i++) {
+              JsonObject jobExecution = jobExecutions.getJsonObject(i);
+              String jobExecutionPath = jobExecution.getString("sourcePath");
+              definition.getFileDefinitions()
+                .forEach(fileDefinition -> {
+                  if (jobExecutionPath != null && jobExecutionPath.equals(fileDefinition.getName())) {
+                    fileDefinition.setJobExecutionId(jobExecution.getString("id"));
+                  }
+                });
+            }
+            definition.setMetaJobExecutionId(responseBody.getString("parentJobExecutionId"));
+            future.complete(definition);
+          }
+        } catch (Exception e) {
+          logger.error("Error during creating jobExecutions for files", e);
+          future.fail(e);
+        }
+      });
+    return future;
+  }
+
   private List<FileDefinition> addNewFileDefinition(List<FileDefinition> list, FileDefinition def) {
     if (list == null) {
       list = new ArrayList<>();
@@ -94,5 +150,23 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       //NEED replace with rest call
       .withJobExecutionId(UUID.randomUUID().toString()));
     return list;
+  }
+
+  private Future<UploadDefinition> checkUploadDefinitionBeforeSave(UploadDefinition definition) {
+    Future<UploadDefinition> future = Future.future();
+    if (definition.getMetaJobExecutionId() == null || definition.getMetaJobExecutionId().isEmpty()) {
+      future.fail(new BadRequestException());
+      logger.error("Cant save Upload Definition without MetaJobExecutionId");
+      return future;
+    }
+    for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
+      if (fileDefinition.getJobExecutionId() == null || fileDefinition.getJobExecutionId().isEmpty()) {
+        logger.error("Cant save File Definition without JobExecutionId");
+        future.fail(new BadRequestException());
+        return future;
+      }
+    }
+    future.complete(definition);
+    return future;
   }
 }

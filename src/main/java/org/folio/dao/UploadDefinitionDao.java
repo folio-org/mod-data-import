@@ -1,9 +1,9 @@
 package org.folio.dao;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -19,7 +19,7 @@ public interface UploadDefinitionDao {
    * @param limit  limit
    * @return future with list of {@link UploadDefinition}
    */
-  Future<List<UploadDefinition>> getUploadDefinitions(String query, int offset, int limit);
+  Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit);
 
   /**
    * Searches for {@link UploadDefinition} by id
@@ -44,6 +44,15 @@ public interface UploadDefinitionDao {
    * @return future with true is succeeded
    */
   Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition);
+
+  /**
+   * Updates {@link UploadDefinition} in database with row blocking
+   *
+   * @param uploadDefinitionId - id of {@link UploadDefinition}
+   * @param mutator            - callback for change {@link UploadDefinition} before save
+   * @return - future with updated {@link UploadDefinition}
+   */
+  Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator);
 
   /**
    * Deletes {@link UploadDefinition} from database

@@ -5,7 +5,6 @@ import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.client.ConfigurationsClient;
 
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -14,9 +13,6 @@ import java.util.regex.Pattern;
  */
 public class ConfigurationUtil {
 
-  public static final String OKAPI_URL_HEADER = "X-Okapi-URL";
-  public static final String OKAPI_TENANT_HEADER = "X-Okapi-Tenant";
-  public static final String OKAPI_TOKEN_HEADER = "X-Okapi-Token";
   private static final String MODULE_CODE = "DATA_IMPORT";
   private static final Pattern HOST_PORT_PATTERN = Pattern.compile("https?://([^:/]+)(?::?(\\d+)?)");
   private static final int DEFAULT_PORT = 9030;
@@ -30,11 +26,11 @@ public class ConfigurationUtil {
    * @param code - property code
    * @return a list of user fields to use for search
    */
-  public static Future<String> getPropertyByCode(String code, Map<String, String> okapiHeaders) {
+  public static Future<String> getPropertyByCode(String code, OkapiConnectionParams params) {
     Future<String> future = Future.future();
-    String okapiURL = okapiHeaders.get(OKAPI_URL_HEADER);
-    String tenant = okapiHeaders.get(OKAPI_TENANT_HEADER);
-    String token = okapiHeaders.get(OKAPI_TOKEN_HEADER);
+    String okapiURL = params.getOkapiUrl();
+    String tenant = params.getTenantId();
+    String token = params.getToken();
     try {
       Matcher matcher = HOST_PORT_PATTERN.matcher(okapiURL);
       if (!matcher.find()) {

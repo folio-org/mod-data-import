@@ -33,9 +33,8 @@ import java.net.URLEncoder;
 import java.util.Objects;
 import java.util.UUID;
 
-import static org.folio.util.ConfigurationUtil.OKAPI_TENANT_HEADER;
-import static org.folio.util.ConfigurationUtil.OKAPI_TOKEN_HEADER;
-import static org.folio.util.ConfigurationUtil.OKAPI_URL_HEADER;
+import static org.folio.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.util.RestUtil.OKAPI_URL_HEADER;
 
 @RunWith(VertxUnitRunner.class)
 public class RestVerticleTest {
@@ -51,19 +50,17 @@ public class RestVerticleTest {
   private static RequestSpecification specUpload;
   private static int port;
 
-  private static JsonObject file1 = new JsonObject()
-    .put("name", "bib.mrc");
-  private static JsonObject file2 = new JsonObject()
-    .put("name", "host.mrc");
+  private static JsonObject file = new JsonObject()
+    .put("name", "CornellFOLIOExemplars_Bibs.mrc");
 
   private static JsonObject uploadDef1 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1).add(file2));
+    .put("fileDefinitions", new JsonArray().add(file));
 
   private static JsonObject uploadDef2 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1));
+    .put("fileDefinitions", new JsonArray().add(file));
 
   private static JsonObject uploadDef3 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1));
+    .put("fileDefinitions", new JsonArray().add(file));
 
   private static JsonObject config = new JsonObject().put("totalRecords", 1)
     .put("configs", new JsonArray().add(new JsonObject()
@@ -78,6 +75,14 @@ public class RestVerticleTest {
       .put("code", "data.import.storage.type")
       .put("value", "LOCAL_STORAGE")
     ));
+
+  private static JsonObject jobExecutionCreate = new JsonObject()
+    .put("parentJobExecutionId", UUID.randomUUID().toString())
+    .put("jobExecutions", new JsonArray()
+      .add(new JsonObject()
+        .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
+        .put("id", UUID.randomUUID().toString())
+      ));
 
   private void clearTable(TestContext context) {
     PostgresClient.getInstance(vertx, TENANT).delete(UPLOAD_DEFINITION_TABLE, new Criterion(), event -> {
@@ -125,7 +130,7 @@ public class RestVerticleTest {
         throw new Exception(message);
     }
 
-    TenantClient tenantClient = new TenantClient("localhost", port, "diku", "dummy-token");
+    TenantClient tenantClient = new TenantClient("localhost", port, "diku", "dummy.token");
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
@@ -145,18 +150,18 @@ public class RestVerticleTest {
       .setContentType(ContentType.JSON)
       .addHeader(OKAPI_URL_HEADER, "http://localhost:" + userMockServer.port())
       .addHeader(OKAPI_TENANT_HEADER, TENANT)
+      .addHeader(RestVerticle.OKAPI_USERID_HEADER, UUID.randomUUID().toString())
+      .addHeader("Accept", "text/plain, application/json")
       .setBaseUri("http://localhost:" + port)
-      .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT)
       .build();
 
     specUpload = new RequestSpecBuilder()
       .setContentType("application/octet-stream")
       .addHeader(OKAPI_URL_HEADER, "http://localhost:" + userMockServer.port())
       .addHeader(OKAPI_TENANT_HEADER, TENANT)
-      .addHeader(OKAPI_TOKEN_HEADER, "dummy")
+      .addHeader(RestVerticle.OKAPI_USERID_HEADER, UUID.randomUUID().toString())
       .setBaseUri("http://localhost:" + port)
       .addHeader("Accept", "text/plain, application/json")
-      .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT)
       .build();
     clearTable(context);
     try {
@@ -168,6 +173,8 @@ public class RestVerticleTest {
         + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", "UTF-8")
         + "&offset=0&limit=3&")
         .willReturn(WireMock.okJson(config2.toString())));
+      WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
+        .willReturn(WireMock.created().withBody(jobExecutionCreate.toString())));
     } catch (UnsupportedEncodingException ignored) {
     }
   }
@@ -316,7 +323,7 @@ public class RestVerticleTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("status", Matchers.is("IN_PROGRESS"));
+      .body("status", Matchers.is("LOADED"));
   }
 
   @Test

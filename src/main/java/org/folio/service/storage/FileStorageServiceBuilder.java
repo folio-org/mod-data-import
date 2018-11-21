@@ -5,10 +5,10 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.util.ConfigurationUtil;
+import org.folio.util.OkapiConnectionParams;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Async file storage service builder builder
@@ -24,14 +24,14 @@ public class FileStorageServiceBuilder {
   /**
    * Build a service object by mod-configuration's values. If there are no properties build a default LocalStorage Service
    *
-   * @param vertx        - vertx object
-   * @param tenantId     - current tenant id
-   * @param okapiHeaders - Map with headers and token
+   * @param vertx    - vertx object
+   * @param tenantId - current tenant id
+   * @param params   - Wrapper for Okapi connection params
    * @return - new Service object
    */
-  public static Future<FileStorageService> build(Vertx vertx, String tenantId, Map<String, String> okapiHeaders) {
+  public static Future<FileStorageService> build(Vertx vertx, String tenantId, OkapiConnectionParams params) {
     Future<FileStorageService> future = Future.future();
-    ConfigurationUtil.getPropertyByCode(SERVICE_STORAGE_PROPERTY_CODE, okapiHeaders).setHandler(result -> {
+    ConfigurationUtil.getPropertyByCode(SERVICE_STORAGE_PROPERTY_CODE, params).setHandler(result -> {
       if (result.failed() || result.result() == null || result.result().isEmpty()) {
         logger.warn("Request to mod-configuration was failed or property for lookup service is not define. Try to use default Local Storage!");
         future.complete(new LocalFileStorageService(vertx, tenantId));

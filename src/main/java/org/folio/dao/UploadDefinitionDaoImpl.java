@@ -33,7 +33,15 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     this.schema = PostgresClient.convertToPsqlStandard(tenantId);
   }
 
+  /**
+   * Functional interface for change UploadDefinition in blocking update statement
+   */
+  @FunctionalInterface
   public interface UploadDefinitionMutator {
+    /**
+     * @param definition - Loaded from DB UploadDefinition
+     * @return - changed Upload Definition ready for save into database
+     */
     Future<UploadDefinition> mutate(UploadDefinition definition);
   }
 

@@ -3,15 +3,15 @@
 ## Introduction
 
 This API is responsible for uploading files to storage. 
-mod-data-import module use uploaded files for parsing and importing files to storage and another FOLIO modules usage.
-File Upload API provides a possibility to upload several files and store state of uploaded files. 
+**mod-data-import** module use uploaded files for parsing and importing files to storage and another FOLIO modules usage.
+File Upload API provides a ability to upload several files and store state of uploaded files. 
 A user can delete or add another one file from uploading session.
 
 ## Entities
 
 ### UploadDefinition
 
-Upload Definition describes an upload process and contains a list of file definitions.
+Upload Definition entity describes an upload process and contains a list of file definitions.
 Each file upload session process starts from creating UploadDefinition.
 
 | Field | Description |
@@ -24,7 +24,7 @@ Each file upload session process starts from creating UploadDefinition.
 
 ### FileDefinition
 
-File Definition describes an upload process of particular file and store this process's state.
+File Definition entity describes an upload process of particular file and store this process's state.
 
 | Field | Description |
 | ------ | ------ |
@@ -38,7 +38,7 @@ File Definition describes an upload process of particular file and store this pr
 
 ## File Upload API
 
-For all necessary file upload lifecycle operations mod-data-import provide following endpoints: 
+For all necessary file upload lifecycle operations mod-data-import provides following endpoints: 
 
 | Method | URL | ContentType |Description |
 | ------ |------ | ------ |------ |
@@ -220,7 +220,7 @@ curl -w '\n' -X POST -D -   \
    http://localhost:9130/data-import/upload/definition/file
 ```
 
-Body of new fileDefinition should have uploadDefinitionId and file name.
+Body of new fileDefinition should has uploadDefinitionId and file name.
 
 ```
 {  

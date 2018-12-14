@@ -323,7 +323,8 @@ public class RestVerticleTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("status", Matchers.is("LOADED"));
+      .body("status", Matchers.is("LOADED"))
+      .body("fileDefinitions.uploadedDate", Matchers.notNullValue());
   }
 
   @Test

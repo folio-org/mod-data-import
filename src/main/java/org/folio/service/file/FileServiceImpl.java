@@ -10,6 +10,7 @@ import org.folio.util.OkapiConnectionParams;
 
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -45,7 +46,8 @@ public class FileServiceImpl implements FileService {
           .map(service -> service.saveFile(data, fileDefinition, params)
             .setHandler(onFileSave -> {
               if (onFileSave.succeeded()) {
-                uploadDefinition.setFileDefinitions(replaceFile(uploadDefinition.getFileDefinitions(), onFileSave.result()));
+                uploadDefinition.setFileDefinitions(replaceFile(uploadDefinition.getFileDefinitions(),
+                  onFileSave.result().withUploadedDate(new Date())));
                 uploadDefinition.setStatus(uploadDefinition.getFileDefinitions().stream().allMatch(FileDefinition::getLoaded)
                   ? UploadDefinition.Status.LOADED
                   : UploadDefinition.Status.IN_PROGRESS);

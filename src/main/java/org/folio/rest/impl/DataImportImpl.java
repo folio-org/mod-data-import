@@ -9,9 +9,12 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.ProcessChunkingRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.service.chunking.FileBlockingChunkingHandlerImpl;
+import org.folio.service.chunking.FileChunkingHandler;
 import org.folio.service.file.FileService;
 import org.folio.service.file.FileServiceImpl;
 import org.folio.service.upload.UploadDefinitionService;
@@ -30,11 +33,13 @@ public class DataImportImpl implements DataImport {
   private static final Logger LOG = LoggerFactory.getLogger("mod-data-import");
   private UploadDefinitionService uploadDefinitionService;
   private FileService fileService;
+  private FileChunkingHandler fileChunkingHandler;
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
     this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, calculatedTenantId);
     this.fileService = new FileServiceImpl(vertx, calculatedTenantId, this.uploadDefinitionService);
+    this.fileChunkingHandler = new FileBlockingChunkingHandlerImpl(vertx, tenantId);
   }
 
   @Override

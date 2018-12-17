@@ -1,7 +1,6 @@
 package org.folio.service.chunking;
 
 import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.JobExecutionProfile;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.util.OkapiConnectionParams;
 

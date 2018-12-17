@@ -6,7 +6,7 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.util.OkapiConnectionParams;
 
 /**
- * Interface for the file chunking.
+ * Interface for the file chunking handler.
  */
 public interface FileChunkingHandler {
 

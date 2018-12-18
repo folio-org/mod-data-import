@@ -10,7 +10,10 @@ import io.vertx.core.logging.LoggerFactory;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
+import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.util.OkapiConnectionParams;
 import org.folio.util.RestUtil;
@@ -20,10 +23,12 @@ import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-import static org.folio.util.RestUtil.CREATED_STATUS_CODE;
+import static javax.ws.rs.core.Response.Status.CREATED;
 
 
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
@@ -101,20 +106,28 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, OkapiConnectionParams params) {
+    Metadata metadata = definition.getMetadata();
+
+    InitJobExecutionsRqDto initJobExecutionsRqDto =
+      new InitJobExecutionsRqDto()
+        .withFiles(definition.getFileDefinitions()
+          .stream()
+          .map(fd -> new File().withName(fd.getName()))
+          .collect(Collectors.toList()))
+      .withUserId(Objects.nonNull(metadata) ? metadata.getCreatedByUserId() : null);
+
     Future<UploadDefinition> future = Future.future();
-    JsonObject request = new JsonObject();
-    JsonArray files = new JsonArray();
-    for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
-      files.add(new JsonObject().put("name", fileDefinition.getName()));
-    }
-    request.put("files", files);
-    RestUtil.doRequest(params, JOB_EXECUTION_CREATE_URL, HttpMethod.POST, request.encode())
+
+    RestUtil.doRequest(params, JOB_EXECUTION_CREATE_URL, HttpMethod.POST, initJobExecutionsRqDto)
       .setHandler(responseResult -> {
         try {
           int responseCode = responseResult.result().getCode();
-          if (responseResult.failed() || responseCode != CREATED_STATUS_CODE) {
+          if (responseResult.failed()) {
             logger.error("Error during request new jobExecution. Response code: " + responseCode, responseResult.cause());
             future.fail(responseResult.cause());
+          } else if (responseCode != CREATED.getStatusCode()) {
+            JsonObject response = responseResult.result().getJson();
+            future.fail(new IllegalArgumentException(Objects.nonNull(response) ? response.encode() : "HTTP Response: " + responseCode));
           } else {
             JsonObject responseBody = responseResult.result().getJson();
             JsonArray jobExecutions = responseBody.getJsonArray("jobExecutions");

@@ -239,7 +239,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         JobExecutionCollection jobExecutionCollection = getResult.result().getJson().mapTo(JobExecutionCollection.class);
         future.complete(jobExecutionCollection);
       } else {
-        future.fail("Error getting children JobExecutions for parent " + jobExecutionParentId);
+        String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
+        logger.error(errorMessage);
+        future.fail(errorMessage);
       }
     });
     return future;
@@ -253,7 +255,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         JobExecution jobExecution = getResult.result().getJson().mapTo(JobExecution.class);
         future.complete(jobExecution);
       } else {
-        future.fail("Error getting JobExecution by id " + jobExecutionId);
+        String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
+        future.fail(errorMessage);
       }
     });
     return future;

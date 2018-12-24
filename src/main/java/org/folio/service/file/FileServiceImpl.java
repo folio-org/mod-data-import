@@ -2,6 +2,8 @@ package org.folio.service.file;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.StatusDto;
@@ -18,6 +20,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class FileServiceImpl implements FileService {
+
+  private static final Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
 
   private Vertx vertx;
   private UploadDefinitionService uploadDefinitionService;
@@ -56,15 +60,21 @@ public class FileServiceImpl implements FileService {
                     if (booleanAsyncResult.succeeded()) {
                       future.complete(uploadDefinition);
                     } else {
-                      future.fail("Error updating JobExecution status");
+                      String statusUpdateErrorMessage = "Error updating status for JobExecution with id " + fileDefinition.getJobExecutionId();
+                      logger.error(statusUpdateErrorMessage);
+                      future.fail(statusUpdateErrorMessage);
                     }
                   });
               } else {
-                future.fail("Error during file save");
+                String fileSaveErrorMessage = "Error during file save";
+                logger.error(fileSaveErrorMessage);
+                future.fail(fileSaveErrorMessage);
               }
             }));
       } else {
-        future.fail("FileDefinition not found. FileDefinition ID: " + fileId);
+        String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
+        logger.error(errorMessage);
+        future.fail(errorMessage);
       }
       return future;
     });

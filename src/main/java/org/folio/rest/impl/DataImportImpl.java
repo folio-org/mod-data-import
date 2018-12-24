@@ -115,6 +115,29 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
+  public void deleteDataImportUploadDefinitionByDefinitionId(String definitionId, Map<String, String> okapiHeaders,
+                                                             Handler<AsyncResult<Response>> asyncResultHandler,
+                                                             Context vertxContext) {
+    vertxContext.runOnContext(c -> {
+      try {
+        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+        uploadDefinitionService.deleteUploadDefinition(definitionId, params)
+          .map(deleted -> deleted ?
+            DeleteDataImportUploadDefinitionByDefinitionIdResponse.respond204WithTextPlain(
+              String.format("Upload definition with id '%s' was successfully deleted", definitionId)) :
+            buildUploadDefinitionNotFound(definitionId))
+          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Error while deleting upload definition", e);
+        asyncResultHandler.handle(Future.succeededFuture(
+          DeleteDataImportUploadDefinitionByDefinitionIdResponse.
+            respond500WithTextPlain(Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase())));
+      }
+    });
+  }
+
+  @Override
   public void postDataImportUploadDefinitionFile(FileDefinition entity, Map<String, String> okapiHeaders,
                                                  Handler<AsyncResult<Response>> asyncResultHandler,
                                                  Context vertxContext) {
@@ -177,7 +200,7 @@ public class DataImportImpl implements DataImport {
     return Response
       .status(HttpStatus.SC_NOT_FOUND)
       .type(MediaType.TEXT_PLAIN)
-      .entity(String.format("Upload Definition with id '%s' not found", definitionId))
+      .entity(String.format("Upload Definition with id '%s' was not found", definitionId))
       .build();
   }
 }

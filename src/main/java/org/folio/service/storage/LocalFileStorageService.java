@@ -67,4 +67,16 @@ public class LocalFileStorageService extends AbstractFileStorageService {
     return future;
   }
 
+  @Override
+  public Future<Boolean> deleteFile(FileDefinition fileDefinition) {
+    Future<Boolean> future = Future.future();
+    try {
+      fs.deleteBlocking(fileDefinition.getSourcePath());
+      future.complete(true);
+    } catch (Exception e) {
+      future.complete(false);
+    }
+    return future;
+  }
+
 }

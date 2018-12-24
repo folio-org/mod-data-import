@@ -16,6 +16,9 @@ types:
   uploadDefinition: !include raml-storage/schemas/mod-data-import/uploadDefinition.json
   definitionCollection: !include raml-storage/schemas/mod-data-import/uploadDefinitionCollection.json
   initJobExecutionsRqDto: !include raml-storage/schemas/dto/initJobExecutionsRqDto.json
+  jobExecution: !include raml-storage/schemas/mod-source-record-manager/jobExecution.json
+  jobExecutionCollection: !include raml-storage/schemas/mod-source-record-manager/jobExecutionCollection.json
+  statusDto: !include raml-storage/schemas/dto/statusDto.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -128,6 +131,22 @@ resourceTypes:
               body:
                 application/json:
                   type: uploadDefinition
+            404:
+              description: "Not found"
+              body:
+                text/plain:
+                  example: "Not found"
+            500:
+              description: "Internal server error"
+              body:
+                text/plain:
+                  example: "Internal server error"
+        delete:
+          description: Delete upload definition by id
+          responses:
+            204:
+              body:
+                text/plain: !!null
             404:
               description: "Not found"
               body:

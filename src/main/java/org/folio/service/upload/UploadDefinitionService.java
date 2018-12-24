@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.util.OkapiConnectionParams;
 
@@ -62,9 +63,9 @@ public interface UploadDefinitionService {
    * Deletes UploadDefinition by id
    *
    * @param id UploadDefinition id
-   * @return future with true is succeeded
+   * @return future with true if succeeded
    */
-  Future<Boolean> deleteUploadDefinition(String id);
+  Future<Boolean> deleteUploadDefinition(String id, OkapiConnectionParams params);
 
   /**
    * Add File Definition into Upload Definition
@@ -73,5 +74,15 @@ public interface UploadDefinitionService {
    * @return future with updated UploadDefinition
    */
   Future<UploadDefinition> addFileDefinitionToUpload(FileDefinition fileDefinition);
+
+  /**
+   * Updates JobExecution status
+   *
+   * @param jobExecutionId JobExecution id
+   * @param status         new status
+   * @param params         OKAPI connection parameters
+   * @return future with true if succeeded
+   */
+  Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, OkapiConnectionParams params);
 
 }

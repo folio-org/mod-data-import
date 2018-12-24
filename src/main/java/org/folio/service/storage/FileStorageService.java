@@ -28,4 +28,9 @@ public interface FileStorageService {
    */
   Future<FileDefinition> saveFile(InputStream data, FileDefinition fileDefinition, OkapiConnectionParams params);
 
+  /**
+   * Deletes File from the storage and returns true if succeeded
+   */
+  Future<Boolean> deleteFile(FileDefinition fileDefinition);
+
 }

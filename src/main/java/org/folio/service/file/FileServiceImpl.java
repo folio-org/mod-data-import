@@ -3,6 +3,7 @@ package org.folio.service.file;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
@@ -15,7 +16,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
 
 public class FileServiceImpl implements FileService {
 
@@ -51,7 +51,14 @@ public class FileServiceImpl implements FileService {
                 uploadDefinition.setStatus(uploadDefinition.getFileDefinitions().stream().allMatch(FileDefinition::getLoaded)
                   ? UploadDefinition.Status.LOADED
                   : UploadDefinition.Status.IN_PROGRESS);
-                future.complete(uploadDefinition);
+                uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
+                  .setHandler(booleanAsyncResult -> {
+                    if (booleanAsyncResult.succeeded()) {
+                      future.complete(uploadDefinition);
+                    } else {
+                      future.fail("Error updating JobExecution status");
+                    }
+                  });
               } else {
                 future.fail("Error during file save");
               }

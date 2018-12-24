@@ -1,5 +1,6 @@
 package org.folio.service.upload;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -10,6 +11,8 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
+import org.folio.dataImport.util.OkapiConnectionParams;
+import org.folio.dataImport.util.RestUtil;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -20,10 +23,9 @@ import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageServiceBuilder;
-import org.folio.util.OkapiConnectionParams;
-import org.folio.util.RestUtil;
 
 import javax.ws.rs.BadRequestException;
+import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -134,7 +136,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Future<Boolean> future = Future.future();
     RestUtil.doRequest(params, JOB_EXECUTION_URL + "/" + jobExecutionId, HttpMethod.PUT, status)
       .setHandler(updateResult -> {
-        if (RestUtil.validateAsyncResult(updateResult, future)) {
+        if (validateAsyncResult(updateResult, future)) {
           future.complete(true);
         }
       });
@@ -233,7 +235,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Future<JobExecutionCollection> future = Future.future();
     String url = JOB_EXECUTION_URL + "/" + jobExecutionParentId + "/children";
     RestUtil.doRequest(params, url, HttpMethod.GET, null).setHandler(getResult -> {
-      if (RestUtil.validateAsyncResult(getResult, future)) {
+      if (validateAsyncResult(getResult, future)) {
         JobExecutionCollection jobExecutionCollection = getResult.result().getJson().mapTo(JobExecutionCollection.class);
         future.complete(jobExecutionCollection);
       } else {
@@ -247,7 +249,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Future<JobExecution> future = Future.future();
     String url = JOB_EXECUTION_URL + "/" + jobExecutionId;
     RestUtil.doRequest(params, url, HttpMethod.GET, null).setHandler(getResult -> {
-      if (RestUtil.validateAsyncResult(getResult, future)) {
+      if (validateAsyncResult(getResult, future)) {
         JobExecution jobExecution = getResult.result().getJson().mapTo(JobExecution.class);
         future.complete(jobExecution);
       } else {
@@ -284,6 +286,39 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return FileStorageServiceBuilder
       .build(vertx, tenantId, params)
       .compose(service -> service.deleteFile(fileDefinition));
+  }
+
+  /**
+   * Validate http response and fail future if necessary
+   *
+   * @param asyncResult - http response callback
+   * @param future      - future of callback
+   * @return - boolean value is response ok
+   */
+  public static boolean validateAsyncResult(AsyncResult<RestUtil.WrappedResponse> asyncResult, Future future) {
+   String httpErrorMessage = "Response HTTP code is not equals 200. Response code: ";
+    if (asyncResult.failed()) {
+      logger.error("Error during HTTP request", asyncResult.cause());
+      future.fail(asyncResult.cause());
+      return false;
+    } else if (asyncResult.result() == null) {
+      logger.error("Error during get response");
+      future.fail(new BadRequestException());
+      return false;
+    } else if (asyncResult.result().getCode() == 404) {
+      logger.error(httpErrorMessage + asyncResult.result().getCode());
+      future.fail(new NotFoundException());
+      return false;
+    } else if (asyncResult.result().getCode() == 500) {
+      logger.error(httpErrorMessage + asyncResult.result().getCode());
+      future.fail(new InternalServerErrorException());
+      return false;
+    } else if (asyncResult.result().getCode() == 200 || asyncResult.result().getCode() == 201) {
+      return true;
+    }
+    logger.error(httpErrorMessage + asyncResult.result().getCode());
+    future.fail(new BadRequestException());
+    return false;
   }
 
 }

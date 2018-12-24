@@ -7,8 +7,8 @@ import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.util.OkapiConnectionParams;
 
 import javax.ws.rs.BadRequestException;
 import java.io.InputStream;

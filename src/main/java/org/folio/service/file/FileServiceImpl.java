@@ -2,12 +2,12 @@ package org.folio.service.file;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
-import org.folio.util.OkapiConnectionParams;
 
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;

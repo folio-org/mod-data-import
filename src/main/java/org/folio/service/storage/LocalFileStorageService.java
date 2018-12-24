@@ -7,8 +7,8 @@ import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.util.OkapiConnectionParams;
 
 import javax.ws.rs.BadRequestException;
 import java.io.InputStream;
@@ -64,6 +64,19 @@ public class LocalFileStorageService extends AbstractFileStorageService {
           future.fail(new BadRequestException());
         }
       });
+    return future;
+  }
+
+  @Override
+  public Future<Boolean> deleteFile(FileDefinition fileDefinition) {
+    Future<Boolean> future = Future.future();
+    try {
+      fs.deleteBlocking(fileDefinition.getSourcePath());
+      future.complete(true);
+    } catch (Exception e) {
+      logger.error("Error deleting the file from the storage");
+      future.complete(false);
+    }
     return future;
   }
 

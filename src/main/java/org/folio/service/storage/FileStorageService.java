@@ -2,8 +2,8 @@ package org.folio.service.storage;
 
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
+import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.util.OkapiConnectionParams;
 
 import java.io.InputStream;
 
@@ -27,5 +27,10 @@ public interface FileStorageService {
    * Saves File to the storage and return its path
    */
   Future<FileDefinition> saveFile(InputStream data, FileDefinition fileDefinition, OkapiConnectionParams params);
+
+  /**
+   * Deletes File from the storage and returns true if succeeded
+   */
+  Future<Boolean> deleteFile(FileDefinition fileDefinition);
 
 }

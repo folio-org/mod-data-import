@@ -4,6 +4,8 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.builder.RequestSpecBuilder;
 import com.jayway.restassured.http.ContentType;
@@ -33,8 +35,9 @@ import java.net.URLEncoder;
 import java.util.Objects;
 import java.util.UUID;
 
-import static org.folio.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.util.RestUtil.OKAPI_URL_HEADER;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static org.folio.dataImport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.dataImport.util.RestUtil.OKAPI_URL_HEADER;
 
 @RunWith(VertxUnitRunner.class)
 public class RestVerticleTest {
@@ -50,17 +53,39 @@ public class RestVerticleTest {
   private static RequestSpecification specUpload;
   private static int port;
 
-  private static JsonObject file = new JsonObject()
+  private static JsonObject file1 = new JsonObject()
     .put("name", "CornellFOLIOExemplars_Bibs.mrc");
 
+  private static JsonObject file2 = new JsonObject()
+    .put("name", "CornellFOLIOExemplars.mrc");
+
   private static JsonObject uploadDef1 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file));
+    .put("fileDefinitions", new JsonArray().add(file1));
 
   private static JsonObject uploadDef2 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file));
+    .put("fileDefinitions", new JsonArray().add(file1));
 
   private static JsonObject uploadDef3 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file));
+    .put("fileDefinitions", new JsonArray().add(file1));
+
+  private static JsonObject uploadDef4 = new JsonObject()
+    .put("fileDefinitions", new JsonArray().add(file1).add(file2));
+
+  private JsonObject jobExecution = new JsonObject()
+    .put("id", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
+    .put("hrId", "1000")
+    .put("parentJobId", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
+    .put("subordinationType", "PARENT_SINGLE")
+    .put("status", "NEW")
+    .put("uiStatus", "INITIALIZATION")
+    .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
+    .put("jobProfileName", "Marc jobs profile")
+    .put("userId", UUID.randomUUID().toString());
+
+  private JsonObject childrenJobExecutions = new JsonObject()
+    .put("jobExecutions", new JsonArray()
+      .add(jobExecution).add(jobExecution))
+    .put("totalRecords", 2);
 
   private static JsonObject config = new JsonObject().put("totalRecords", 1)
     .put("configs", new JsonArray().add(new JsonObject()
@@ -76,13 +101,23 @@ public class RestVerticleTest {
       .put("value", "LOCAL_STORAGE")
     ));
 
-  private static JsonObject jobExecutionCreate = new JsonObject()
+  private static JsonObject jobExecutionCreateSingleFile = new JsonObject()
     .put("parentJobExecutionId", UUID.randomUUID().toString())
     .put("jobExecutions", new JsonArray()
       .add(new JsonObject()
         .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
         .put("id", UUID.randomUUID().toString())
       ));
+
+  private static JsonObject jobExecutionCreateMultipleFiles = new JsonObject()
+    .put("parentJobExecutionId", UUID.randomUUID().toString())
+    .put("jobExecutions", new JsonArray()
+      .add(new JsonObject()
+        .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
+        .put("id", UUID.randomUUID().toString()))
+      .add(new JsonObject()
+        .put("sourcePath", "CornellFOLIOExemplars.mrc")
+        .put("id", UUID.randomUUID().toString())));
 
   private void clearTable(TestContext context) {
     PostgresClient.getInstance(vertx, TENANT).delete(UPLOAD_DEFINITION_TABLE, new Criterion(), event -> {
@@ -173,8 +208,16 @@ public class RestVerticleTest {
         + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", "UTF-8")
         + "&offset=0&limit=3&")
         .willReturn(WireMock.okJson(config2.toString())));
-      WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
-        .willReturn(WireMock.created().withBody(jobExecutionCreate.toString())));
+      WireMock.stubFor(WireMock.post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
+        .willReturn(WireMock.created().withBody(jobExecutionCreateSingleFile.toString())));
+      WireMock.stubFor(WireMock.post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 2)]"))
+        .willReturn(WireMock.created().withBody(jobExecutionCreateMultipleFiles.toString())));
+      WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecution/.*"), true))
+        .willReturn(WireMock.ok()));
+      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecution/.*{36}"), true))
+        .willReturn(WireMock.ok().withBody(jobExecution.toString())));
+      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecution/.*{36}/children"), true))
+        .willReturn(WireMock.ok().withBody(childrenJobExecutions.toString())));
     } catch (UnsupportedEncodingException ignored) {
     }
   }
@@ -380,6 +423,55 @@ public class RestVerticleTest {
       )
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND)
+      .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionDeleteNotFound() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + UUID.randomUUID().toString())
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND)
+      .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionDeleteSuccessful() {
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionMultipleFilesDeleteSuccessful() {
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef4.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
   }
 }

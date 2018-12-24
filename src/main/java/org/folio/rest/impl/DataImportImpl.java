@@ -11,9 +11,12 @@ import org.apache.http.HttpStatus;
 import org.folio.dataImport.util.ExceptionHelper;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.ProcessChunkingRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.service.chunking.FileBlockingChunkingHandlerImpl;
+import org.folio.service.chunking.FileChunkingHandler;
 import org.folio.service.file.FileService;
 import org.folio.service.file.FileServiceImpl;
 import org.folio.service.upload.UploadDefinitionService;
@@ -30,11 +33,14 @@ public class DataImportImpl implements DataImport {
   private static final Logger LOG = LoggerFactory.getLogger("mod-data-import");
   private UploadDefinitionService uploadDefinitionService;
   private FileService fileService;
+  private FileChunkingHandler fileChunkingHandler;
+
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
     this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, calculatedTenantId);
     this.fileService = new FileServiceImpl(vertx, calculatedTenantId, this.uploadDefinitionService);
+    this.fileChunkingHandler = new FileBlockingChunkingHandlerImpl(vertx);
   }
 
   @Override
@@ -192,6 +198,24 @@ public class DataImportImpl implements DataImport {
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
           ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+
+  @Override
+  public void postDataImportProcessFiles(ProcessChunkingRqDto request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(c -> {
+      try {
+        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+        fileChunkingHandler.handle(request.getUploadDefinition(), request.getProfile(), params)
+          .map(PostDataImportProcessFilesResponse::respond201WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        asyncResultHandler.handle(Future.succeededFuture(
+          DataImportHelper.mapExceptionToResponse(e)));
       }
     });
   }

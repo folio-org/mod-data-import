@@ -106,8 +106,21 @@
           "modulePermissions": [
             "configuration.entries.collection.get"
           ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/data-import/processFiles",
+          "permissionsRequired": [
+            "data-import.upload.definition.file.post"
+          ],
+          "modulePermissions": [
+            "change-manager.jobexecution.put",
+            "change-manager.records.post"
+          ]
         }
-      ]
+      ],
     },
     {
       "id": "_tenant",
@@ -163,7 +176,7 @@
     {
       "permissionName": "data-import.upload.definition.file.post",
       "displayName": "Data Import - Create new File Definition",
-      "description": "Create file Definition"
+      "description": "Create and handle file Definition"
     },
     {
       "permissionName": "data-import.upload.all",

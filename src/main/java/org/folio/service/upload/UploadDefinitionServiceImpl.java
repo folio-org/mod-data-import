@@ -41,7 +41,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
   private static final Logger logger = LoggerFactory.getLogger(UploadDefinitionServiceImpl.class);
   private static final String JOB_EXECUTION_CREATE_URL = "/change-manager/jobExecutions";
-  private static final String JOB_EXECUTION_URL = "/change-manager/jobExecution/";
+  private static final String JOB_EXECUTION_URL = "/change-manager/jobExecution";
 
   private Vertx vertx;
   private String tenantId;
@@ -133,7 +133,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, OkapiConnectionParams params) {
     Future<Boolean> future = Future.future();
-    RestUtil.doRequest(params, JOB_EXECUTION_URL + "/" + jobExecutionId, HttpMethod.PUT, status)
+    RestUtil.doRequest(params, JOB_EXECUTION_URL + "/" + jobExecutionId + "/status", HttpMethod.PUT, status)
       .setHandler(updateResult -> {
         if (validateAsyncResult(updateResult, future)) {
           future.complete(true);

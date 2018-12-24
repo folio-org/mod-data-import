@@ -211,11 +211,11 @@ public class DataImportImpl implements DataImport {
         fileChunkingHandler.handle(request.getUploadDefinition(), request.getProfile(), params)
           .map(PostDataImportProcessFilesResponse::respond201WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
-          DataImportHelper.mapExceptionToResponse(e)));
+          ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }

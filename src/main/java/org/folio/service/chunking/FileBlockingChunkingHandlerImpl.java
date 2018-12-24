@@ -8,14 +8,15 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.http.HttpStatus;
+import org.folio.dataImport.util.RestUtil;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.Profile;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.util.OkapiConnectionParams;
-import org.folio.util.RestUtil;
+import org.folio.dataImport.util.OkapiConnectionParams;
+
 
 import java.util.ArrayList;
 import java.util.List;

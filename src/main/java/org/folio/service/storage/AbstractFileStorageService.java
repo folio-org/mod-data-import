@@ -4,8 +4,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.FileSystem;
-import org.folio.util.ConfigurationUtil;
-import org.folio.util.OkapiConnectionParams;
+import org.folio.dataImport.util.ConfigurationUtil;
+import org.folio.dataImport.util.OkapiConnectionParams;
 
 public abstract class AbstractFileStorageService implements FileStorageService {
 

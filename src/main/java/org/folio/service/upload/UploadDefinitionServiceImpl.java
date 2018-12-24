@@ -15,8 +15,8 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.util.OkapiConnectionParams;
-import org.folio.util.RestUtil;
+import org.folio.dataImport.util.OkapiConnectionParams;
+import org.folio.dataImport.util.RestUtil;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;

@@ -33,8 +33,8 @@ import java.net.URLEncoder;
 import java.util.Objects;
 import java.util.UUID;
 
-import static org.folio.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.dataImport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.dataImport.util.RestUtil.OKAPI_URL_HEADER;
 
 @RunWith(VertxUnitRunner.class)
 public class RestVerticleTest {

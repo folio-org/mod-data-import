@@ -5,7 +5,7 @@ import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.util.OkapiConnectionParams;
+import org.folio.dataImport.util.OkapiConnectionParams;
 
 import java.util.Optional;
 

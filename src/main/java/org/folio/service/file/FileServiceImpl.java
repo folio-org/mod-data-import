@@ -6,7 +6,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
-import org.folio.util.OkapiConnectionParams;
+import org.folio.dataImport.util.OkapiConnectionParams;
 
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;

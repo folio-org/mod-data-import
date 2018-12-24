@@ -8,6 +8,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.http.HttpStatus;
+import org.folio.dataImport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.ProcessChunkingRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -19,8 +20,7 @@ import org.folio.service.file.FileService;
 import org.folio.service.file.FileServiceImpl;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
-import org.folio.util.DataImportHelper;
-import org.folio.util.OkapiConnectionParams;
+import org.folio.dataImport.util.OkapiConnectionParams;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.MediaType;
@@ -52,11 +52,11 @@ public class DataImportImpl implements DataImport {
         uploadDefinitionService.addUploadDefinition(entity, params)
           .map((Response) PostDataImportUploadDefinitionResponse
             .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionResponse.headersFor201()))
-          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
-          DataImportHelper.mapExceptionToResponse(e)));
+          ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -71,11 +71,11 @@ public class DataImportImpl implements DataImport {
         uploadDefinitionService.getUploadDefinitions(query, offset, limit)
           .map(GetDataImportUploadDefinitionResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
-          DataImportHelper.mapExceptionToResponse(e)));
+          ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -91,11 +91,11 @@ public class DataImportImpl implements DataImport {
         uploadDefinitionService.updateUploadDefinition(entity)
           .map(PutDataImportUploadDefinitionByDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
-          DataImportHelper.mapExceptionToResponse(e)));
+          ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -111,11 +111,11 @@ public class DataImportImpl implements DataImport {
             new NotFoundException(String.format("Upload Definition with id '%s' not found", definitionId))))
           .map(GetDataImportUploadDefinitionByDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
-          DataImportHelper.mapExceptionToResponse(e)));
+          ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -129,11 +129,11 @@ public class DataImportImpl implements DataImport {
         uploadDefinitionService.addFileDefinitionToUpload(entity)
           .map(PostDataImportUploadDefinitionFileResponse::respond201WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
-          DataImportHelper.mapExceptionToResponse(e)));
+          ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -150,7 +150,7 @@ public class DataImportImpl implements DataImport {
             String.format("File with id: %s deleted", fileId)) :
           buildUploadDefinitionNotFound(uploadDefinitionId)
         )
-        .otherwise(DataImportHelper::mapExceptionToResponse)
+        .otherwise(ExceptionHelper::mapExceptionToResponse)
         .setHandler(asyncResultHandler));
     } catch (Exception e) {
       LOG.error("Error during file delete", e);
@@ -170,11 +170,11 @@ public class DataImportImpl implements DataImport {
         fileService.uploadFile(fileId, uploadDefinitionId, entity, params)
           .map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
-          DataImportHelper.mapExceptionToResponse(e)));
+          ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -188,11 +188,11 @@ public class DataImportImpl implements DataImport {
         fileChunkingHandler.handle(request.getUploadDefinition(), request.getProfile(), params)
           .map(PostDataImportProcessFilesResponse::respond201WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(DataImportHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
-          DataImportHelper.mapExceptionToResponse(e)));
+          ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }

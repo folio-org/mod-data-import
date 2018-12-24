@@ -3,7 +3,7 @@ package org.folio.service.chunking;
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.Profile;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.util.OkapiConnectionParams;
+import org.folio.dataImport.util.OkapiConnectionParams;
 
 /**
  * Interface for the file chunking.

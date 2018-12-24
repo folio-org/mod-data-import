@@ -100,21 +100,6 @@ public class RestUtil {
   }
 
   /**
-   * Creates HTTP request.
-   * Useful in a case when request body represented as POJO.
-   *
-   * @param params      - parameters necessary to connect to the OKAPI
-   * @param url         - url for http request
-   * @param method      - http method
-   * @param payloadPojo - body of the request
-   * @return - async http response
-   */
-  public static Future<WrappedResponse> doRequest(OkapiConnectionParams params, String url,
-                                                  HttpMethod method, Object payloadPojo) {
-    return doRequest(params, url, method, JsonObject.mapFrom(payloadPojo).toString());
-  }
-
-  /**
    * Prepare HttpClient from OkapiConnection params
    *
    * @param params - Okapi connection params

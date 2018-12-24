@@ -1,6 +1,7 @@
 package org.folio.service.chunking;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.Profile;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.util.OkapiConnectionParams;
 
@@ -16,9 +17,9 @@ public interface FileChunkingHandler {
    * and sends it the mod-source-record-manager.
    *
    * @param uploadDefinition UploadDefinition entity which files will be handled
-   * @param profile          choosen JobExecutionProfile by the user
+   * @param profile          choosen JobProfile by the user
    * @param params           parameters necessary to connect to the OKAPI
    * @return Future parametrized by handled {@link UploadDefinition}
    */
-  Future<UploadDefinition> handle(UploadDefinition uploadDefinition, JobExecutionProfile profile, OkapiConnectionParams params);
+  Future<UploadDefinition> handle(UploadDefinition uploadDefinition, Profile profile, OkapiConnectionParams params);
 }

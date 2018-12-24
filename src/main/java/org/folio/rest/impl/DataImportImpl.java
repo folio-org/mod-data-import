@@ -39,7 +39,7 @@ public class DataImportImpl implements DataImport {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
     this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, calculatedTenantId);
     this.fileService = new FileServiceImpl(vertx, calculatedTenantId, this.uploadDefinitionService);
-    this.fileChunkingHandler = new FileBlockingChunkingHandlerImpl(vertx, tenantId);
+    this.fileChunkingHandler = new FileBlockingChunkingHandlerImpl(vertx);
   }
 
   @Override
@@ -179,12 +179,12 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportProcessFileChunking(ProcessChunkingRqDto request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postDataImportProcessFiles(ProcessChunkingRqDto request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-        fileChunkingHandler.handle(request.getUploadDefinition(), request.getJobExecutionProfile(), params)
-          .map(PostDataImportProcessFileChunkingResponse::respond201WithApplicationJson)
+        fileChunkingHandler.handle(request.getUploadDefinition(), request.getProfile(), params)
+          .map(PostDataImportProcessFilesResponse::respond201WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(DataImportHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);

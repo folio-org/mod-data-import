@@ -35,7 +35,7 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
   private static final String UPDATE_JOB_STATUS_SERVICE_URL = "/change-manager/jobExecution/%s/status";
   private static final String UPDATE_JOB_PROFILE_SERVICE_URL = "/change-manager/jobExecution/%s";
   private static final String POST_RAW_RECORDS_PATH = "/change-manager/records/$s";
-  private final String marcRecordPath = "src/main/resources/sample/records/marcRecord.sample";
+  private static final String marcRecordPath = "src/main/resources/sample/records/marcRecord.sample";
 
   private Vertx vertx;
 

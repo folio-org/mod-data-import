@@ -202,7 +202,10 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
     RestUtil.doRequest(params, String.format(UPDATE_JOB_PROFILE_SERVICE_URL, metaJobExecutionId), HttpMethod.PUT, parentJobExecution)
       .setHandler(responseResult -> {
         if (responseResult.failed() || responseResult.result() == null || responseResult.result().getCode() != HttpStatus.SC_OK) {
-          logger.error("Error while updating JobProfile with id: %s for JobExecution with id:", jobProfile.getId(), metaJobExecutionId);
+          String errorMessage = String.format("Error while updating JobProfile with id: %s for JobExecution with id: %s",
+            jobProfile.getId(),
+            metaJobExecutionId);
+          logger.error(errorMessage);
           future.fail(responseResult.cause());
         } else {
           future.complete(true);
@@ -225,7 +228,7 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
     RestUtil.doRequest(params, String.format(UPDATE_JOB_STATUS_SERVICE_URL, jobExecutionId), HttpMethod.PUT, statusDto)
       .setHandler(responseResult -> {
         if (responseResult.failed() || responseResult.result() == null || responseResult.result().getCode() != HttpStatus.SC_OK) {
-          logger.error("Error while updating status for JobExecution with id %s: ", jobExecutionId);
+          logger.error("Error while updating status for JobExecution with id: " + jobExecutionId);
           future.fail(responseResult.cause());
         } else {
           future.complete(true);

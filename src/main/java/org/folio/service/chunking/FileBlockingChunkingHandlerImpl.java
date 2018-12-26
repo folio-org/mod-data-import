@@ -12,7 +12,7 @@ import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.dataImport.util.RestUtil;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.Profile;
+import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -34,8 +34,8 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
 
   private static final String UPDATE_JOB_STATUS_SERVICE_URL = "/change-manager/jobExecution/%s/status";
   private static final String UPDATE_JOB_PROFILE_SERVICE_URL = "/change-manager/jobExecution/%s";
-  private static final String POST_RAW_RECORDS_PATH = "/change-manager/records/$s";
-  private static final String marcRecordPath = "src/main/resources/sample/records/marcRecord.sample";
+  private static final String POST_RAW_RECORDS_PATH = "/change-manager/records/%s";
+  private static final String SAMPLE_RECORDS_PATH = "src/main/resources/sample/records/marcRecord.sample";
 
   private Vertx vertx;
 
@@ -44,12 +44,12 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
   }
 
   @Override
-  public Future<UploadDefinition> handle(UploadDefinition uploadDefinition, Profile profile, OkapiConnectionParams params) {
+  public Future<UploadDefinition> handle(UploadDefinition uploadDefinition, JobProfile jobProfile, OkapiConnectionParams params) {
     Future<UploadDefinition> future = Future.future();
-    updateJobExecutionProfile(uploadDefinition.getMetaJobExecutionId(), profile, params).setHandler(updatedProfileAsyncResult -> {
+    updateJobExecutionProfile(uploadDefinition.getMetaJobExecutionId(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
       if (updatedProfileAsyncResult.failed()) {
         logger.error(String.format("Can not update JobProfile with id: %s having MetaJobExecution id: %s",
-          profile.getId(),
+          jobProfile.getId(),
           uploadDefinition.getMetaJobExecutionId())
         );
         future.fail(updatedProfileAsyncResult.cause());
@@ -70,7 +70,7 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
   private void runBlockingChunkingProcess(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
     logger.info("Running blocking process for UploadDefinition with id: " + uploadDefinition.getId());
     vertx.executeBlocking(
-      blockingFuture -> {
+      blockingFuture ->
         updateStatusForJobsOfUploadDefinition(uploadDefinition, IMPORT_IN_PROGRESS, params)
           .compose(ar -> handleFileDefinitions(uploadDefinition.getFileDefinitions(), params))
           .compose(ar -> postRawRecords(uploadDefinition.getMetaJobExecutionId(), new RawRecordsDto().withLast(true), params))
@@ -81,8 +81,8 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
             } else {
               blockingFuture.complete();
             }
-          });
-      },
+          })
+      ,
       asyncResult -> {
         if (asyncResult.failed()) {
           String errorMessage = String.format("Error while executing blocking process for UploadDefinition with id: %s. Cause: %s",
@@ -138,9 +138,9 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
     // This is stub implementation, will be overridden in a scope of MODDATAIMP-45
     // For now let's upload and parse only one sample file for the first FileDefinition
     FileDefinition fileDefinition = fileDefinitions.get(0);
-    this.vertx.fileSystem().readFile(marcRecordPath, bufferAsyncResult -> {
+    this.vertx.fileSystem().readFile(SAMPLE_RECORDS_PATH, bufferAsyncResult -> {
       if (bufferAsyncResult.failed()) {
-        logger.error("Can not read file from the file system by the path: " + marcRecordPath);
+        logger.error("Can not read file from the file system by the path: " + SAMPLE_RECORDS_PATH);
         chunkHandlingFuture.fail(bufferAsyncResult.cause());
       } else {
         Buffer buffer = bufferAsyncResult.result();
@@ -194,11 +194,11 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
    * @param params             parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Boolean> updateJobExecutionProfile(String metaJobExecutionId, Profile jobProfile, OkapiConnectionParams params) {
+  private Future<Boolean> updateJobExecutionProfile(String metaJobExecutionId, JobProfile jobProfile, OkapiConnectionParams params) {
     Future<Boolean> future = Future.future();
     JobExecution parentJobExecution = new JobExecution()
       .withId(metaJobExecutionId)
-      .withProfile(jobProfile);
+      .withJobProfile(jobProfile);
     RestUtil.doRequest(params, String.format(UPDATE_JOB_PROFILE_SERVICE_URL, metaJobExecutionId), HttpMethod.PUT, parentJobExecution)
       .setHandler(responseResult -> {
         if (responseResult.failed() || responseResult.result() == null || responseResult.result().getCode() != HttpStatus.SC_OK) {

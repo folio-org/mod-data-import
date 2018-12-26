@@ -208,7 +208,7 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-        fileChunkingHandler.handle(request.getUploadDefinition(), request.getProfile(), params)
+        fileChunkingHandler.handle(request.getUploadDefinition(), request.getJobProfile(), params)
           .map(PostDataImportProcessFilesResponse::respond201WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

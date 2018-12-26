@@ -104,7 +104,8 @@
             "data-import.upload.definition.file.delete"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get"
+            "configuration.entries.collection.get",
+            "change-manager.jobexecution.put"
           ]
         }
       ]

@@ -15,9 +15,7 @@ import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class FileServiceImpl implements FileService {
 
@@ -81,15 +79,29 @@ public class FileServiceImpl implements FileService {
   }
 
   @Override
-  public Future<Boolean> deleteFile(String id, String uploadDefinitionId) {
+  public Future<Boolean> deleteFile(String id, String uploadDefinitionId, OkapiConnectionParams params) {
+    Future<Boolean> future = Future.future();
     return uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
       .compose(optionalDef -> optionalDef
-        .map(def ->
-          uploadDefinitionService.updateUploadDefinition(def.withFileDefinitions(def.getFileDefinitions()
+        .map(def -> {
+          List<FileDefinition> definitionList = def.getFileDefinitions();
+          Optional<FileDefinition> optionalFileDefinition = definitionList
             .stream()
-            .filter(f -> !f.getId().equals(id))
-            .collect(Collectors.toList())))
-            .map(Objects::nonNull))
+            .filter(f -> f.getId().equals(id)).findFirst();
+          if (optionalFileDefinition.isPresent()) {
+            FileDefinition fileDefinition = optionalFileDefinition.get();
+            definitionList.remove(fileDefinition);
+            return uploadDefinitionService.updateUploadDefinition(def.withFileDefinitions(definitionList))
+              .compose(uploadDefinition -> uploadDefinitionService.deleteFile(fileDefinition, params))
+              .compose(deleted ->
+                uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.DISCARDED), params));
+          } else {
+            String errorMessage = String.format("FileDefinition with id '%s' was not found", id);
+            logger.error(errorMessage);
+            future.fail(new NotFoundException(errorMessage));
+            return future;
+          }
+        })
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("Upload definition with id '%s' not found", uploadDefinitionId)))
         )

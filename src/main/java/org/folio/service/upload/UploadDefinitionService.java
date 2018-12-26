@@ -85,4 +85,13 @@ public interface UploadDefinitionService {
    */
   Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, OkapiConnectionParams params);
 
+  /**
+   * Deletes file from storage
+   *
+   * @param fileDefinition FileDefinition
+   * @param params         OKAPI connection parameters
+   * @return future with true if succeeded
+   */
+  Future<Boolean> deleteFile(FileDefinition fileDefinition, OkapiConnectionParams params);
+
 }

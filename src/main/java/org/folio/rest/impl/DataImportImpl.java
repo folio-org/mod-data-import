@@ -161,7 +161,8 @@ public class DataImportImpl implements DataImport {
                                                            Handler<AsyncResult<Response>> asyncResultHandler,
                                                            Context vertxContext) {
     try {
-      vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId)
+      OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+      vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId, params)
         .map(deleted -> deleted ?
           DeleteDataImportUploadDefinitionFileByFileIdResponse.respond204WithTextPlain(
             String.format("File with id: %s deleted", fileId)) :

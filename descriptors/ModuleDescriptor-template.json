@@ -116,6 +116,7 @@
             "data-import.upload.definition.file.post"
           ],
           "modulePermissions": [
+            "change-manager.jobexecution.get",
             "change-manager.jobexecution.put",
             "change-manager.records.post"
           ]

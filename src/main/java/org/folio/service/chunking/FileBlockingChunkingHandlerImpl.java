@@ -16,12 +16,10 @@ import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.upload.UploadDefinitionService;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.folio.rest.jaxrs.model.JobExecution.Status.IMPORT_FINISHED;
-import static org.folio.rest.jaxrs.model.JobExecution.Status.IMPORT_IN_PROGRESS;
 
 /**
  * Implementation of the FileChunkingHandler.
@@ -32,21 +30,22 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
 
   private static final Logger logger = LoggerFactory.getLogger(FileBlockingChunkingHandlerImpl.class);
 
-  private static final String UPDATE_JOB_STATUS_SERVICE_URL = "/change-manager/jobExecution/%s/status";
-  private static final String UPDATE_JOB_PROFILE_SERVICE_URL = "/change-manager/jobExecution/%s";
-  private static final String POST_RAW_RECORDS_PATH = "/change-manager/records/%s";
+  private static final String JOB_SERVICE_URL = "/change-manager/jobExecution/";
+  private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/records/";
   private static final String SAMPLE_RECORDS_PATH = "src/main/resources/sample/records/marcRecord.sample";
 
   private Vertx vertx;
+  private UploadDefinitionService uploadDefinitionService;
 
-  public FileBlockingChunkingHandlerImpl(Vertx vertx) {
+  public FileBlockingChunkingHandlerImpl(Vertx vertx, UploadDefinitionService uploadDefinitionService) {
     this.vertx = vertx;
+    this.uploadDefinitionService = uploadDefinitionService;
   }
 
   @Override
   public Future<UploadDefinition> handle(UploadDefinition uploadDefinition, JobProfile jobProfile, OkapiConnectionParams params) {
     Future<UploadDefinition> future = Future.future();
-    updateJobExecutionProfile(uploadDefinition.getMetaJobExecutionId(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
+    updateJobExecutionProfileByParentJobId(uploadDefinition.getMetaJobExecutionId(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
       if (updatedProfileAsyncResult.failed()) {
         logger.error(String.format("Can not update JobProfile with id: %s having MetaJobExecution id: %s",
           jobProfile.getId(),
@@ -71,10 +70,10 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
     logger.info("Running blocking process for UploadDefinition with id: " + uploadDefinition.getId());
     vertx.executeBlocking(
       blockingFuture ->
-        updateStatusForJobsOfUploadDefinition(uploadDefinition, IMPORT_IN_PROGRESS, params)
+        updateStatusForUploadDefinitionJobs(uploadDefinition.getFileDefinitions(), StatusDto.Status.IMPORT_IN_PROGRESS, params)
           .compose(ar -> handleFileDefinitions(uploadDefinition.getFileDefinitions(), params))
           .compose(ar -> postRawRecords(uploadDefinition.getMetaJobExecutionId(), new RawRecordsDto().withLast(true), params))
-          .compose(ar -> updateStatusForJobsOfUploadDefinition(uploadDefinition, IMPORT_FINISHED, params))
+          .compose(ar -> updateStatusForUploadDefinitionJobs(uploadDefinition.getFileDefinitions(), StatusDto.Status.IMPORT_FINISHED, params))
           .setHandler(ar -> {
             if (ar.failed()) {
               blockingFuture.fail(ar.cause());
@@ -97,23 +96,23 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
     );
   }
 
-
   /**
    * Updates status for the jobs related to received upload definition
    * TODO for the sake of simplicity let's stay with updating all the jobs at one time
    * TODO this functionality may be affected further
    *
-   * @param uploadDefinition target upload definition entity
-   * @param status           job status value
-   * @param params           connection params enough to connect to OKAPI
+   * @param fileDefinitions list of file definitions which job statuses will be updated
+   * @param status          job status value
+   * @param params          connection params enough to connect to OKAPI
    * @return Future
    */
-  private Future<Void> updateStatusForJobsOfUploadDefinition(UploadDefinition uploadDefinition, JobExecution.Status status, OkapiConnectionParams params) {
+  private Future<Void> updateStatusForUploadDefinitionJobs(List<FileDefinition> fileDefinitions, StatusDto.Status status, OkapiConnectionParams params) {
     Future<Void> resultFuture = Future.future();
-    List<Future> updatedJobStatusFutures = new ArrayList<>(uploadDefinition.getFileDefinitions().size());
-    for (FileDefinition fileDefinition : uploadDefinition.getFileDefinitions()) {
+    StatusDto statusDto = new StatusDto().withStatus(status);
+    List<Future> updatedJobStatusFutures = new ArrayList<>(fileDefinitions.size());
+    for (FileDefinition fileDefinition : fileDefinitions) {
       Future updateJobStatusFuture =
-        updateJobExecutionStatus(fileDefinition.getJobExecutionId(), status, params);
+        uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), statusDto, params);
       updatedJobStatusFutures.add(updateJobStatusFuture);
     }
     CompositeFuture.all(updatedJobStatusFutures).setHandler(compositeFutureAr -> {
@@ -172,7 +171,7 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
    */
   private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, OkapiConnectionParams params) {
     Future<Void> future = Future.future();
-    RestUtil.doRequest(params, String.format(POST_RAW_RECORDS_PATH, jobExecutionId), HttpMethod.POST, chunk)
+    RestUtil.doRequest(params, RAW_RECORDS_SERVICE_URL + jobExecutionId, HttpMethod.POST, chunk)
       .setHandler(responseResult -> {
         if (responseResult.failed()
           || responseResult.result() == null
@@ -194,46 +193,29 @@ public class FileBlockingChunkingHandlerImpl implements FileChunkingHandler {
    * @param params             parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Boolean> updateJobExecutionProfile(String metaJobExecutionId, JobProfile jobProfile, OkapiConnectionParams params) {
+  private Future<Boolean> updateJobExecutionProfileByParentJobId(String metaJobExecutionId, JobProfile jobProfile, OkapiConnectionParams params) {
     Future<Boolean> future = Future.future();
-    JobExecution parentJobExecution = new JobExecution()
-      .withId(metaJobExecutionId)
-      .withJobProfile(jobProfile);
-    RestUtil.doRequest(params, String.format(UPDATE_JOB_PROFILE_SERVICE_URL, metaJobExecutionId), HttpMethod.PUT, parentJobExecution)
-      .setHandler(responseResult -> {
-        if (responseResult.failed() || responseResult.result() == null || responseResult.result().getCode() != HttpStatus.SC_OK) {
-          String errorMessage = String.format("Error while updating JobProfile with id: %s for JobExecution with id: %s",
-            jobProfile.getId(),
-            metaJobExecutionId);
-          logger.error(errorMessage);
-          future.fail(responseResult.cause());
-        } else {
-          future.complete(true);
-        }
-      });
-    return future;
-  }
-
-  /**
-   * Updates status for JobExecution with given status value
-   *
-   * @param jobExecutionId job id
-   * @param status         new status value
-   * @param params         parameters necessary for connection to the OKAPI
-   * @return Future
-   */
-  private Future<Boolean> updateJobExecutionStatus(String jobExecutionId, JobExecution.Status status, OkapiConnectionParams params) {
-    Future<Boolean> future = Future.future();
-    StatusDto statusDto = new StatusDto().withStatus(StatusDto.Status.valueOf(status.value()));
-    RestUtil.doRequest(params, String.format(UPDATE_JOB_STATUS_SERVICE_URL, jobExecutionId), HttpMethod.PUT, statusDto)
-      .setHandler(responseResult -> {
-        if (responseResult.failed() || responseResult.result() == null || responseResult.result().getCode() != HttpStatus.SC_OK) {
-          logger.error("Error while updating status for JobExecution with id: " + jobExecutionId);
-          future.fail(responseResult.cause());
-        } else {
-          future.complete(true);
-        }
-      });
+    RestUtil.doRequest(params, JOB_SERVICE_URL + metaJobExecutionId, HttpMethod.GET, null).setHandler(parentJobAr -> {
+      if (parentJobAr.failed()) {
+        logger.error("Error while getting JobExecution by id: " + jobProfile.getId());
+        future.fail(parentJobAr.cause());
+      } else {
+        JobExecution parentJobExecution = parentJobAr.result().getJson().mapTo(JobExecution.class);
+        parentJobExecution.withJobProfile(jobProfile);
+        RestUtil.doRequest(params, JOB_SERVICE_URL + metaJobExecutionId, HttpMethod.PUT, parentJobExecution)
+          .setHandler(responseResult -> {
+            if (responseResult.failed() || responseResult.result() == null || responseResult.result().getCode() != HttpStatus.SC_OK) {
+              String errorMessage = String.format("Error while updating JobProfile with id: %s for JobExecution with id: %s",
+                jobProfile.getId(),
+                metaJobExecutionId);
+              logger.error(errorMessage);
+              future.fail(responseResult.cause());
+            } else {
+              future.complete(true);
+            }
+          });
+      }
+    });
     return future;
   }
 }

@@ -142,6 +142,13 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return future;
   }
 
+  @Override
+  public Future<Boolean> deleteFile(FileDefinition fileDefinition, OkapiConnectionParams params) {
+    return FileStorageServiceBuilder
+      .build(vertx, tenantId, params)
+      .compose(service -> service.deleteFile(fileDefinition));
+  }
+
   private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, OkapiConnectionParams params) {
     Metadata metadata = definition.getMetadata();
 
@@ -282,12 +289,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       futures.add(deleteFile(fileDefinition, params));
     }
     return CompositeFuture.all(futures).map(Future::succeeded);
-  }
-
-  private Future<Boolean> deleteFile(FileDefinition fileDefinition, OkapiConnectionParams params) {
-    return FileStorageServiceBuilder
-      .build(vertx, tenantId, params)
-      .compose(service -> service.deleteFile(fileDefinition));
   }
 
 }

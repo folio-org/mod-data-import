@@ -27,8 +27,9 @@ public interface FileService {
    *
    * @param id                 File id
    * @param uploadDefinitionId Upload Definition id
+   * @param params             OKAPI connection parameters
    * @return future with true is succeeded
    */
-  Future<Boolean> deleteFile(String id, String uploadDefinitionId);
+  Future<Boolean> deleteFile(String id, String uploadDefinitionId, OkapiConnectionParams params);
 
 }

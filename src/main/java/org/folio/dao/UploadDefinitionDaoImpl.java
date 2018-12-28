@@ -47,7 +47,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator) {
     Future<UploadDefinition> future = Future.future();
-    String rollbackMessage = "Rollback transaction. Error during upload definition update. uploadDefinitionId" + uploadDefinitionId;
+    String rollbackMessage = "Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId;
     pgClient.startTx(tx -> {
       try {
         StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ")

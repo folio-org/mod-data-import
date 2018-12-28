@@ -11,10 +11,10 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 
-import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class FileServiceImpl implements FileService {
@@ -80,32 +80,39 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public Future<Boolean> deleteFile(String id, String uploadDefinitionId, OkapiConnectionParams params) {
-    Future<Boolean> future = Future.future();
-    return uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
-      .compose(optionalDef -> optionalDef
-        .map(def -> {
-          List<FileDefinition> definitionList = def.getFileDefinitions();
-          Optional<FileDefinition> optionalFileDefinition = definitionList
-            .stream()
-            .filter(f -> f.getId().equals(id)).findFirst();
-          if (optionalFileDefinition.isPresent()) {
-            FileDefinition fileDefinition = optionalFileDefinition.get();
-            definitionList.remove(fileDefinition);
-            return uploadDefinitionService.updateUploadDefinition(def.withFileDefinitions(definitionList))
-              .compose(uploadDefinition -> uploadDefinitionService.deleteFile(fileDefinition, params))
-              .compose(deleted ->
-                uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.DISCARDED), params));
-          } else {
-            String errorMessage = String.format("FileDefinition with id '%s' was not found", id);
-            logger.error(errorMessage);
-            future.fail(new NotFoundException(errorMessage));
-            return future;
-          }
-        })
-        .orElse(Future.failedFuture(new NotFoundException(
-          String.format("Upload definition with id '%s' not found", uploadDefinitionId)))
-        )
-      );
+    return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDefinition -> {
+      Future<UploadDefinition> future = Future.future();
+      List<FileDefinition> definitionList = uploadDefinition.getFileDefinitions();
+      Optional<FileDefinition> optionalFileDefinition = definitionList
+        .stream()
+        .filter(f -> f.getId().equals(id)).findFirst();
+      if (optionalFileDefinition.isPresent()) {
+        FileDefinition fileDefinition = optionalFileDefinition.get();
+        uploadDefinitionService.deleteFile(fileDefinition, params)
+          .setHandler(deleteFileResult -> {
+            if (deleteFileResult.succeeded()) {
+              definitionList.remove(fileDefinition);
+              uploadDefinition.setFileDefinitions(definitionList);
+              future.complete(uploadDefinition);
+              uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
+                .setHandler(updateStatusResult -> {
+                  if (updateStatusResult.failed()) {
+                    logger.error(String.format(
+                      "Couldn't update JobExecution status with id %s to DISCARDED after file with id %s was deleted",
+                      fileDefinition.getJobExecutionId(), id));
+                  }
+                });
+            } else {
+              future.fail(deleteFileResult.cause());
+            }
+          });
+      } else {
+        String errorMessage = String.format("FileDefinition with id %s was not fount", id);
+        logger.error(errorMessage);
+        future.fail(errorMessage);
+      }
+      return future;
+    }).map(Objects::nonNull);
   }
 
   private List<FileDefinition> replaceFile(List<FileDefinition> list, FileDefinition fileDefinition) {

@@ -74,7 +74,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
       fs.deleteBlocking(fileDefinition.getSourcePath());
       future.complete(true);
     } catch (Exception e) {
-      logger.error("Error deleting the file from the storage");
+      logger.error(String.format("Couldn't delete the file with id %s from the storage", fileDefinition.getId()), e);
       future.complete(false);
     }
     return future;

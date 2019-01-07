@@ -9,7 +9,17 @@ import org.folio.rest.jaxrs.model.RawRecordsDto;
  */
 public interface SourceReader {
 
+  /**
+   * Reads next chunk of raw records
+   *
+   * @return Future
+   */
   Future<RawRecordsDto> readNext();
 
+  /**
+   * Returns {@code true} if the iteration has more elements.
+   *
+   * @return boolean
+   */
   boolean hasNext();
 }

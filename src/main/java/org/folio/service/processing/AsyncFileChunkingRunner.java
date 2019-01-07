@@ -12,9 +12,11 @@ import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionCollection;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.upload.UploadDefinitionService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.folio.dataImport.util.RestUtil.validateAsyncResult;
 
@@ -28,7 +30,8 @@ public class AsyncFileChunkingRunner implements FileProcessingRunner {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncFileChunkingRunner.class);
 
-  private static final String JOB_SERVICE_URL = "/change-manager/jobExecution/";
+  private static final String JOB_CHILDREN_SERVICE_URL = "/change-manager/jobExecution/%s/children";
+  private static final String JOB_PROFILE_SERVICE_URL = "/change-manager/jobExecution/%s/jobProfile";
 
   private Vertx vertx;
   private FileProcessor fileProcessor;
@@ -36,9 +39,9 @@ public class AsyncFileChunkingRunner implements FileProcessingRunner {
   public AsyncFileChunkingRunner() {
   }
 
-  public AsyncFileChunkingRunner(Vertx vertx, String tenantId) {
+  public AsyncFileChunkingRunner(Vertx vertx, String tenantId, UploadDefinitionService uploadDefinitionService) {
     this.vertx = vertx;
-    this.fileProcessor = new ParallelFileChunkingProcessor(vertx, tenantId);
+    this.fileProcessor = new ParallelFileChunkingProcessor(vertx, tenantId, uploadDefinitionService);
   }
 
   @Override
@@ -80,19 +83,14 @@ public class AsyncFileChunkingRunner implements FileProcessingRunner {
    */
   private Future<Boolean> updateJobsProfile(String metaJobExecutionId, JobProfile jobProfile, OkapiConnectionParams params) {
     Future<Boolean> future = Future.future();
-    RestUtil.doRequest(params, JOB_SERVICE_URL + metaJobExecutionId + "/children", HttpMethod.GET, null).setHandler(childrenJobsAr -> {
+    RestUtil.doRequest(params, String.format(JOB_CHILDREN_SERVICE_URL, metaJobExecutionId), HttpMethod.GET, null).setHandler(childrenJobsAr -> {
       if (validateAsyncResult(childrenJobsAr, future)) {
-        future.complete(true);
-      } else {
-        List<JobExecution> childJobs = childrenJobsAr
-          .result()
-          .getJson()
-          .mapTo(JobExecutionCollection.class)
-          .getJobExecutions();
+        List<JobExecution> childJobs = childrenJobsAr.result().getJson().mapTo(JobExecutionCollection.class).getJobExecutions();
+        // TODO remove id generating when UI will receive proper job profile with id
+        jobProfile.withId(UUID.randomUUID().toString());
         List<Future> updateJobProfileFutures = new ArrayList<>(childJobs.size());
         for (JobExecution job : childJobs) {
-          job.setJobProfile(jobProfile);
-          updateJobProfileFutures.add(updateJob(job, params));
+          updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
         }
         CompositeFuture.all(updateJobProfileFutures).setHandler(updatedJobsProfileAr -> {
           if (updatedJobsProfileAr.failed()) {
@@ -108,15 +106,16 @@ public class AsyncFileChunkingRunner implements FileProcessingRunner {
   }
 
   /**
-   * Updates job
+   * Updates job profile
    *
-   * @param job    jobExecution entity
-   * @param params parameters necessary for connection to the OKAPI
-   * @return future
+   * @param jobId      id of the JobExecution entity
+   * @param jobProfile JobProfile entity
+   * @param params     parameters necessary for connection to the OKAPI
+   * @return Future
    */
-  private Future updateJob(JobExecution job, OkapiConnectionParams params) {
+  private Future updateJobProfile(String jobId, JobProfile jobProfile, OkapiConnectionParams params) {
     Future future = Future.future();
-    RestUtil.doRequest(params, JOB_SERVICE_URL + job.getId(), HttpMethod.PUT, job).setHandler(childrenJobsAr -> {
+    RestUtil.doRequest(params, String.format(JOB_PROFILE_SERVICE_URL, jobId), HttpMethod.PUT, jobProfile).setHandler(childrenJobsAr -> {
       if (validateAsyncResult(childrenJobsAr, future)) {
         future.complete();
       }

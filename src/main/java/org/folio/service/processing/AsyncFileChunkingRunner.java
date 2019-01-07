@@ -51,9 +51,9 @@ public class AsyncFileChunkingRunner implements FileProcessingRunner {
       if (updatedProfileAsyncResult.failed()) {
         future.fail(updatedProfileAsyncResult.cause());
       } else {
-        vertx.executeBlocking(asyncFuture ->
-            fileProcessor.process(uploadDefinition, params)
-          , asyncResult -> {
+        vertx.executeBlocking(
+          asyncFuture -> fileProcessor.process(uploadDefinition, params),
+          asyncResult -> {
             if (asyncResult.failed()) {
               String errorMessage =
                 String.format("Error while executing blocking process for upload definition with id: %s. Cause: %s",

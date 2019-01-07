@@ -2,6 +2,9 @@ package org.folio.service.processing.splitter;
 
 public class RecordSplitterBuilder {
 
+  public RecordSplitterBuilder() {
+  }
+
   public static RecordSplitter build(String source) {
     for (RecordFormat format : RecordFormat.values()) {
       RecordFormat.ContentDelimiter contentDelimiter = format.findDelimiterBySource(source);

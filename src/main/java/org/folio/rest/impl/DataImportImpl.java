@@ -35,7 +35,6 @@ public class DataImportImpl implements DataImport {
   private FileService fileService;
   private FileProcessingRunner fileProcessingRunner;
 
-
   public DataImportImpl(Vertx vertx, String tenantId) {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
     this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, calculatedTenantId);

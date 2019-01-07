@@ -16,7 +16,7 @@ public interface FileProcessingRunner {
    * @param uploadDefinition UploadDefinition entity which files will be handled
    * @param jobProfile       JobProfile chosen by the user
    * @param params           parameters necessary to connect to the OKAPI
-   * @return Future parametrized by handled {@link UploadDefinition}
+   * @return Future
    */
-  Future<UploadDefinition> run(UploadDefinition uploadDefinition, JobProfile jobProfile, OkapiConnectionParams params);
+  Future<Void> run(UploadDefinition uploadDefinition, JobProfile jobProfile, OkapiConnectionParams params);
 }

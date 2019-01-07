@@ -33,17 +33,19 @@ public class AsyncFileChunkingRunner implements FileProcessingRunner {
   private Vertx vertx;
   private FileProcessor fileProcessor;
 
+  public AsyncFileChunkingRunner() {
+  }
+
   public AsyncFileChunkingRunner(Vertx vertx, String tenantId) {
     this.vertx = vertx;
     this.fileProcessor = new ParallelFileChunkingProcessor(vertx, tenantId);
   }
 
   @Override
-  public Future<UploadDefinition> run(UploadDefinition uploadDefinition, JobProfile jobProfile, OkapiConnectionParams params) {
-    Future<UploadDefinition> future = Future.future();
+  public Future<Void> run(UploadDefinition uploadDefinition, JobProfile jobProfile, OkapiConnectionParams params) {
+    Future<Void> future = Future.future();
     updateJobsProfile(uploadDefinition.getMetaJobExecutionId(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
       if (updatedProfileAsyncResult.failed()) {
-        logger.error("Can not update profile for jobs with parent id: " + uploadDefinition.getMetaJobExecutionId());
         future.fail(updatedProfileAsyncResult.cause());
       } else {
         vertx.executeBlocking(asyncFuture ->

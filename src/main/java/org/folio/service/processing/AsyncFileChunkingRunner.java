@@ -39,8 +39,8 @@ public class AsyncFileChunkingRunner implements FileProcessingRunner {
   }
 
   @Override
-  public Future<UploadDefinition> run(UploadDefinition uploadDefinition, JobProfile jobProfile, OkapiConnectionParams params) {
-    Future<UploadDefinition> future = Future.future();
+  public Future<Void> run(UploadDefinition uploadDefinition, JobProfile jobProfile, OkapiConnectionParams params) {
+    Future<Void> future = Future.future();
     updateJobsProfile(uploadDefinition.getMetaJobExecutionId(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
       if (updatedProfileAsyncResult.failed()) {
         logger.error("Can not update profile for jobs with parent id: " + uploadDefinition.getMetaJobExecutionId());

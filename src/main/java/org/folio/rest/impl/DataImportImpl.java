@@ -15,8 +15,8 @@ import org.folio.rest.jaxrs.model.ProcessChunkingRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.service.chunking.FileBlockingChunkingHandlerImpl;
-import org.folio.service.chunking.FileChunkingHandler;
+import org.folio.service.processing.AsyncFileChunkingRunner;
+import org.folio.service.processing.FileProcessingRunner;
 import org.folio.service.file.FileService;
 import org.folio.service.file.FileServiceImpl;
 import org.folio.service.upload.UploadDefinitionService;
@@ -33,14 +33,14 @@ public class DataImportImpl implements DataImport {
   private static final Logger LOG = LoggerFactory.getLogger("mod-data-import");
   private UploadDefinitionService uploadDefinitionService;
   private FileService fileService;
-  private FileChunkingHandler fileChunkingHandler;
+  private FileProcessingRunner fileProcessingRunner;
 
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
     this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, calculatedTenantId);
     this.fileService = new FileServiceImpl(vertx, calculatedTenantId, this.uploadDefinitionService);
-    this.fileChunkingHandler = new FileBlockingChunkingHandlerImpl(vertx, this.uploadDefinitionService);
+    this.fileProcessingRunner = new AsyncFileChunkingRunner(vertx, calculatedTenantId);
   }
 
   @Override
@@ -208,8 +208,8 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-        fileChunkingHandler.handle(request.getUploadDefinition(), request.getJobProfile(), params)
-          .map(PostDataImportProcessFilesResponse::respond201WithApplicationJson)
+        fileProcessingRunner.run(request.getUploadDefinition(), request.getJobProfile(), params)
+          .map(PostDataImportProcessFilesResponse::respond204WithTextPlain)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);

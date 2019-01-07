@@ -235,20 +235,19 @@ resourceTypes:
               text/plain:
                 example: "Internal server error"
   /processFiles:
-    displayName: Chunking service
-    description: File chunking API
+    displayName: File processing service
+    description: File processing API
     post:
-      description: Divides files into chunks
+      description: Does the file processing
       is: [validate]
       body:
         application/json:
           type: processChunkingRqDto
       responses:
-        201:
+        204:
           description: "Successful request"
           body:
-            application/json:
-              type: uploadDefinition
+            text/plain: !!null
         400:
           description: "Bad request"
           body:

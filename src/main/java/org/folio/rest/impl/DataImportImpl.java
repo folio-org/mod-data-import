@@ -5,6 +5,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.http.HttpStatus;
@@ -15,10 +16,9 @@ import org.folio.rest.jaxrs.model.ProcessChunkingRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.service.processing.AsyncFileChunkingRunner;
-import org.folio.service.processing.FileProcessingRunner;
 import org.folio.service.file.FileService;
 import org.folio.service.file.FileServiceImpl;
+import org.folio.service.processing.FileProcessor;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
 
@@ -33,13 +33,13 @@ public class DataImportImpl implements DataImport {
   private static final Logger LOG = LoggerFactory.getLogger("mod-data-import");
   private UploadDefinitionService uploadDefinitionService;
   private FileService fileService;
-  private FileProcessingRunner fileProcessingRunner;
+  private FileProcessor fileProcessor;
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
     this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, calculatedTenantId);
     this.fileService = new FileServiceImpl(vertx, calculatedTenantId, this.uploadDefinitionService);
-    this.fileProcessingRunner = new AsyncFileChunkingRunner(vertx, calculatedTenantId, this.uploadDefinitionService);
+    this.fileProcessor = FileProcessor.createProxy(vertx);
   }
 
   @Override
@@ -206,10 +206,11 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-        fileProcessingRunner.run(request.getUploadDefinition(), request.getJobProfile(), params)
+        LOG.info("Starting file processing for upload definition " + request.getUploadDefinition().getId());
+        fileProcessor.process(JsonObject.mapFrom(request), JsonObject.mapFrom(params));
+        Future.succeededFuture()
           .map(PostDataImportProcessFilesResponse::respond204WithTextPlain)
           .map(Response.class::cast)
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(

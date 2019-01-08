@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.folio.dataImport.util.RestUtil.validateAsyncResult;
+import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.IMPORT_FINISHED;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.IMPORT_IN_PROGRESS;
 
@@ -41,7 +42,8 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.IMPORT_IN_PROGRESS;
  * Every chunk represents collection of source records, see ({@link org.folio.rest.jaxrs.model.RawRecordsDto}).
  */
 public class ParallelFileChunkingProcessor implements FileProcessor {
-  private static final int THREAD_POOL_SIZE = 20;
+  private static final int THREAD_POOL_SIZE =
+    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.thread.pool.size", "20"));
   private static final String JOB_PROFILE_SERVICE_URL = "/change-manager/jobExecution/%s/jobProfile";
   private static final String JOB_CHILDREN_SERVICE_URL = "/change-manager/jobExecution/%s/children";
   private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/records/";

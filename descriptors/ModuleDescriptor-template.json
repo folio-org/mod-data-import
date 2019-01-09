@@ -10,7 +10,7 @@
   "provides": [
     {
       "id": "data-import",
-      "version": "1.2",
+      "version": "2.0",
       "handlers": [
         {
           "methods": [
@@ -107,6 +107,20 @@
             "configuration.entries.collection.get",
             "change-manager.jobexecution.put"
           ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/data-import/processFiles",
+          "permissionsRequired": [
+            "data-import.upload.definition.file.post"
+          ],
+          "modulePermissions": [
+            "change-manager.jobexecution.get",
+            "change-manager.jobexecution.put",
+            "change-manager.records.post"
+          ]
         }
       ]
     },
@@ -164,7 +178,7 @@
     {
       "permissionName": "data-import.upload.definition.file.post",
       "displayName": "Data Import - Create new File Definition",
-      "description": "Create file Definition"
+      "description": "Create and handle File Definition"
     },
     {
       "permissionName": "data-import.upload.all",

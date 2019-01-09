@@ -14,10 +14,11 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>23.0.0</raml-module-builder.version>
+    <raml-module-builder.version>23.3.1</raml-module-builder.version>
     <vertx.version>3.5.4</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>3.1.1</rest-assured.version>
+    <jackson.version>2.9.8</jackson.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mod-configuration-client.version>4.0.3</mod-configuration-client.version>
@@ -66,7 +67,7 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>2.9.6</version>
+      <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.github.tomakehurst</groupId>

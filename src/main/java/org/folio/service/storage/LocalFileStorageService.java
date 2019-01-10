@@ -2,18 +2,17 @@ package org.folio.service.storage;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.file.AsyncFile;
-import io.vertx.core.file.OpenOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.io.IOUtils;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 
 import javax.ws.rs.BadRequestException;
+import java.io.File;
 import java.io.InputStream;
-import java.util.Objects;
-import java.util.Scanner;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 public class LocalFileStorageService extends AbstractFileStorageService {
 
@@ -37,28 +36,34 @@ public class LocalFileStorageService extends AbstractFileStorageService {
     getStoragePath(FILE_STORAGE_PATH_CODE, fileDefinition.getId(), params)
       .setHandler(pathReply -> {
         if (pathReply.succeeded()) {
-          try {
-            String path = pathReply.result();
-            fs.mkdirsBlocking(path);
-            String pathToFile = path + "/" + fileDefinition.getName();
-            Scanner scanner = new Scanner(data);
-            AsyncFile file = null;
-            while (scanner.hasNext()) {
-              if (file == null) {
-                fs.writeFileBlocking(pathToFile, Buffer.buffer(scanner.next()));
-                file = fs.openBlocking(pathToFile, new OpenOptions().setAppend(true));
-              } else {
-                file.write(Buffer.buffer(scanner.next()));
+          String path = pathReply.result();
+          vertx.<Long>executeBlocking(b -> {
+              try {
+                fs.mkdirsBlocking(path);
+                String pathToFile = path + "/" + fileDefinition.getName();
+                File targetFile = new File(pathToFile);
+                Long bytes = Files.copy(
+                  data,
+                  targetFile.toPath(),
+                  StandardCopyOption.REPLACE_EXISTING);
+                IOUtils.closeQuietly(data);
+                fileDefinition.setSourcePath(path + "/" + fileDefinition.getName());
+                fileDefinition.setLoaded(true);
+                b.complete(bytes);
+              } catch (Exception e) {
+                logger.error("Error during save file source data to the local system's storage. FileId: " + fileId, e);
+                b.fail(e);
               }
-            }
-            Objects.requireNonNull(file).close();
-            fileDefinition.setSourcePath(path + "/" + fileDefinition.getName());
-            fileDefinition.setLoaded(true);
-            future.complete(fileDefinition);
-          } catch (Exception e) {
-            logger.error("Error during save file source data to the local system's storage. FileId: " + fileId, e);
-            future.fail(e);
-          }
+            },
+            r -> {
+              if (r.failed()) {
+                logger.error("Error during calculating path for file save. FileId: " + fileId);
+                future.fail(r.cause());
+              } else {
+                logger.info("File was saved to the storage. File size " + (r.result() / 1024) / 1024 + " mb");
+                future.complete(fileDefinition);
+              }
+            });
         } else {
           logger.error("Error during calculating path for file save. FileId: " + fileId);
           future.fail(new BadRequestException());

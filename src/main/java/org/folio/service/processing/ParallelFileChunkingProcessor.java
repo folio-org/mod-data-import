@@ -101,7 +101,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               if (ar.failed()) {
                 LOGGER.error("Error while processing files of upload definition " + uploadDefinition.getId() + ". Cause: " + ar.cause());
               } else {
-                LOGGER.info("All the file of upload definition " + uploadDefinition.getId() + "are successfully processed.");
+                LOGGER.info("All the files of upload definition " + uploadDefinition.getId() + "are successfully processed.");
               }
             });
           }

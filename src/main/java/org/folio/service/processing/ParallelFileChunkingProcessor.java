@@ -99,7 +99,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
             }
             CompositeFuture.all(fileBlockingFutures).setHandler(ar -> {
               if (ar.failed()) {
-                LOGGER.error("Error while processing file of upload definition " + uploadDefinition.getId() + ". Cause: " + ar.cause());
+                LOGGER.error("Error while processing files of upload definition " + uploadDefinition.getId() + ". Cause: " + ar.cause());
               } else {
                 LOGGER.info("All the file of upload definition " + uploadDefinition.getId() + "are successfully processed.");
               }

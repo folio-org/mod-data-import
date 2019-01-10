@@ -3,7 +3,6 @@ package org.folio.service.processing;
 import io.vertx.codegen.annotations.ProxyGen;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.folio.service.processing.FileProcessorVertxEBProxy;
 
 /**
  * Processing files associated with given request.

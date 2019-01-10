@@ -9,9 +9,9 @@ import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 
 import javax.ws.rs.BadRequestException;
-import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
 public class LocalFileStorageService extends AbstractFileStorageService {
@@ -41,10 +41,9 @@ public class LocalFileStorageService extends AbstractFileStorageService {
               try {
                 fs.mkdirsBlocking(path);
                 String pathToFile = path + "/" + fileDefinition.getName();
-                File targetFile = new File(pathToFile);
                 Long bytes = Files.copy(
                   data,
-                  targetFile.toPath(),
+                  Paths.get(pathToFile),
                   StandardCopyOption.REPLACE_EXISTING);
                 IOUtils.closeQuietly(data);
                 fileDefinition.setSourcePath(path + "/" + fileDefinition.getName());

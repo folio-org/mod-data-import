@@ -17,6 +17,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -30,6 +31,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Objects;
@@ -339,7 +341,7 @@ public class RestVerticleTest {
   }
 
   @Test
-  public void fileUpload() {
+  public void fileUpload() throws IOException {
     String object = RestAssured.given()
       .spec(spec)
       .body(uploadDef3.encode())
@@ -361,7 +363,7 @@ public class RestVerticleTest {
     RestAssured.given()
       .spec(specUpload)
       .when()
-      .body(file)
+      .body(FileUtils.openInputStream(file))
       .post(FILE_PATH + "?uploadDefinitionId=" + uploadDefId + "&fileId=" + fileId)
       .then()
       .log().all()

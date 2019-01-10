@@ -39,7 +39,7 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.IMPORT_IN_PROGRESS;
  * Processing files in parallel threads. One thread per one file.
  * File chunking process implies reading and splitting the file into chunks of data.
  * Every chunk represents collection of source records, see ({@link org.folio.rest.jaxrs.model.RawRecordsDto}).
- * After splitting the file into records ParallelFileChunkingProcessor sends records to the mod-source-record-manager
+ * After the target file gets split into records, ParallelFileChunkingProcessor sends records to the mod-source-record-manager
  * for further processing.
  */
 public class ParallelFileChunkingProcessor implements FileProcessor {

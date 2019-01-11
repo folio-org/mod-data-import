@@ -12,7 +12,7 @@ import org.apache.http.HttpStatus;
 import org.folio.dataImport.util.ExceptionHelper;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.ProcessChunkingRqDto;
+import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
@@ -203,7 +203,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportProcessFiles(ProcessChunkingRqDto request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postDataImportProcessFiles(ProcessFilesRqDto request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());

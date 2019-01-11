@@ -15,7 +15,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionCollection;
 import org.folio.rest.jaxrs.model.JobProfile;
-import org.folio.rest.jaxrs.model.ProcessChunkingRqDto;
+import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -39,7 +39,7 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.IMPORT_IN_PROGRESS;
  * Processing files in parallel threads. One thread per one file.
  * File chunking process implies reading and splitting the file into chunks of data.
  * Every chunk represents collection of source records, see ({@link org.folio.rest.jaxrs.model.RawRecordsDto}).
- * After splitting the file into records ParallelFileChunkingProcessor sends records to the mod-source-record-manager
+ * After the target file gets split into records, ParallelFileChunkingProcessor sends records to the mod-source-record-manager
  * for further processing.
  */
 public class ParallelFileChunkingProcessor implements FileProcessor {
@@ -61,7 +61,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   @Override
   public void process(JsonObject jsonRequest, JsonObject jsonParams) {
-    ProcessChunkingRqDto request = jsonRequest.mapTo(ProcessChunkingRqDto.class);
+    ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
     UploadDefinition uploadDefinition = request.getUploadDefinition();
     JobProfile jobProfile = request.getJobProfile();
     OkapiConnectionParams params = jsonParams.mapTo(OkapiConnectionParams.class);
@@ -99,9 +99,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
             }
             CompositeFuture.all(fileBlockingFutures).setHandler(ar -> {
               if (ar.failed()) {
-                LOGGER.error("Error while processing file of upload definition " + uploadDefinition.getId() + ". Cause: " + ar.cause());
+                LOGGER.error("Error while processing files of upload definition " + uploadDefinition.getId() + ". Cause: " + ar.cause());
               } else {
-                LOGGER.info("All the file of upload definition " + uploadDefinition.getId() + "are successfully processed.");
+                LOGGER.info("All the files of upload definition " + uploadDefinition.getId() + "are successfully processed.");
               }
             });
           }

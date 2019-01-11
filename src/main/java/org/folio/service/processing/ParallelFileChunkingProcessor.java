@@ -15,7 +15,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionCollection;
 import org.folio.rest.jaxrs.model.JobProfile;
-import org.folio.rest.jaxrs.model.ProcessChunkingRqDto;
+import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -61,7 +61,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   @Override
   public void process(JsonObject jsonRequest, JsonObject jsonParams) {
-    ProcessChunkingRqDto request = jsonRequest.mapTo(ProcessChunkingRqDto.class);
+    ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
     UploadDefinition uploadDefinition = request.getUploadDefinition();
     JobProfile jobProfile = request.getJobProfile();
     OkapiConnectionParams params = jsonParams.mapTo(OkapiConnectionParams.class);

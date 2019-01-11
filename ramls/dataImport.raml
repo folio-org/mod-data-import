@@ -19,7 +19,7 @@ types:
   jobExecution: !include raml-storage/schemas/mod-source-record-manager/jobExecution.json
   jobExecutionCollection: !include raml-storage/schemas/mod-source-record-manager/jobExecutionCollection.json
   statusDto: !include raml-storage/schemas/dto/statusDto.json
-  processChunkingRqDto: !include raml-storage/schemas/dto/processChunkingRqDto.json
+  processFilesRqDto: !include raml-storage/schemas/dto/processFilesRqDto.json
   rawRecordsDto: !include raml-storage/schemas/dto/rawRecordsDto.json
 
 traits:
@@ -242,7 +242,7 @@ resourceTypes:
       is: [validate]
       body:
         application/json:
-          type: processChunkingRqDto
+          type: processFilesRqDto
       responses:
         204:
           description: "Successful request"

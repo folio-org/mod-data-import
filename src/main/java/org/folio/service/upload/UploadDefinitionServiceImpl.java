@@ -1,18 +1,23 @@
 package org.folio.service.upload;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.io.FileSystemUtils;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.dataImport.util.RestUtil;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
@@ -21,10 +26,13 @@ import org.folio.rest.jaxrs.model.JobExecutionCollection;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.service.storage.FileStorageServiceBuilder;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -42,6 +50,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private static final Logger logger = LoggerFactory.getLogger(UploadDefinitionServiceImpl.class);
   private static final String JOB_EXECUTION_CREATE_URL = "/change-manager/jobExecutions";
   private static final String JOB_EXECUTION_URL = "/change-manager/jobExecution";
+  private static final String FILE_UPLOAD_ERROR_MESSAGE = "File is too big to be uploaded";
 
   private Vertx vertx;
   private String tenantId;
@@ -147,6 +156,54 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return FileStorageServiceBuilder
       .build(vertx, tenantId, params)
       .compose(service -> service.deleteFile(fileDefinition));
+  }
+
+  @Override
+  public Boolean checkNewUploadDefinition(UploadDefinition definition, Handler<AsyncResult<Response>> asyncResultHandler) {
+    boolean isValid = true;
+    List<Error> errorsList = new ArrayList<>(definition.getFileDefinitions().size());
+    for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
+      if (fileDefinition.getSize() != null) {
+        isValid = validateFreeSpace(isValid, fileDefinition, errorsList);
+        isValid = validateHeapSpace(isValid, fileDefinition, errorsList);
+      }
+    }
+    if (!isValid) {
+      asyncResultHandler.handle(Future.succeededFuture(DataImport.PostDataImportUploadDefinitionResponse
+        .respond422WithApplicationJson(new Errors()
+          .withErrors(errorsList)
+          .withTotalRecords(errorsList.size()))));
+    }
+    return isValid;
+  }
+
+  private boolean validateFreeSpace(boolean valid, FileDefinition fileDefinition, List<Error> errors) {
+    if (valid) {
+      try {
+        if (FileSystemUtils.freeSpaceKb() - fileDefinition.getSize() <= 0) { //NOSONAR
+          valid = false;
+          errors.add(new Error()
+            .withMessage(FILE_UPLOAD_ERROR_MESSAGE)
+            .withCode(fileDefinition.getName()));
+        }
+      } catch (IOException e) {
+        valid = false;
+        errors.add(new Error()
+          .withMessage("Error during check file's size")
+          .withCode(fileDefinition.getName()));
+      }
+    }
+    return valid;
+  }
+
+  private boolean validateHeapSpace(boolean valid, FileDefinition fileDefinition, List<Error> errors) {
+    if (valid && (Runtime.getRuntime().maxMemory() / 1024) - fileDefinition.getSize() <= 0) {
+      valid = false;
+      errors.add(new Error()
+        .withMessage(FILE_UPLOAD_ERROR_MESSAGE)
+        .withCode(fileDefinition.getName()));
+    }
+    return valid;
   }
 
   private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, OkapiConnectionParams params) {
@@ -277,7 +334,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
   private Future<Boolean> updateJobExecutionStatuses(List<JobExecution> jobExecutions, StatusDto status, OkapiConnectionParams params) {
     List<Future> futures = new ArrayList<>();
-    for (JobExecution jobExecution: jobExecutions) {
+    for (JobExecution jobExecution : jobExecutions) {
       futures.add(updateJobExecutionStatus(jobExecution.getId(), status, params));
     }
     return CompositeFuture.all(futures).map(Future::succeeded);
@@ -285,7 +342,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
   private Future<Boolean> deleteFiles(List<FileDefinition> fileDefinitions, OkapiConnectionParams params) {
     List<Future> futures = new ArrayList<>();
-    for (FileDefinition fileDefinition: fileDefinitions) {
+    for (FileDefinition fileDefinition : fileDefinitions) {
       futures.add(deleteFile(fileDefinition, params));
     }
     return CompositeFuture.all(futures).map(Future::succeeded);

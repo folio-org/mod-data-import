@@ -47,12 +47,14 @@ public class DataImportImpl implements DataImport {
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-        uploadDefinitionService.addUploadDefinition(entity, params)
-          .map((Response) PostDataImportUploadDefinitionResponse
-            .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionResponse.headersFor201()))
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+        if (uploadDefinitionService.checkNewUploadDefinition(entity, asyncResultHandler)) {
+          OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+          uploadDefinitionService.addUploadDefinition(entity, params)
+            .map((Response) PostDataImportUploadDefinitionResponse
+              .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionResponse.headersFor201()))
+            .otherwise(ExceptionHelper::mapExceptionToResponse)
+            .setHandler(asyncResultHandler);
+        }
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
           ExceptionHelper.mapExceptionToResponse(e)));

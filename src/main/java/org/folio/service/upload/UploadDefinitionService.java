@@ -1,6 +1,8 @@
 package org.folio.service.upload;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
@@ -8,6 +10,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
+import javax.ws.rs.core.Response;
 import java.util.Optional;
 
 /**
@@ -93,5 +96,13 @@ public interface UploadDefinitionService {
    * @return future with true if succeeded
    */
   Future<Boolean> deleteFile(FileDefinition fileDefinition, OkapiConnectionParams params);
+
+  /**
+   * Validate new UploadDefinition before saving it
+   * @param definition - object with new upload definition
+   * @param asyncResultHandler - request's result handler
+   * @return - is Upload Definition is valid
+   */
+  Boolean checkNewUploadDefinition(UploadDefinition definition, Handler<AsyncResult<Response>> asyncResultHandler);
 
 }

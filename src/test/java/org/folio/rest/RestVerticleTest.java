@@ -56,10 +56,16 @@ public class RestVerticleTest {
   private static int port;
 
   private static JsonObject file1 = new JsonObject()
-    .put("name", "CornellFOLIOExemplars_Bibs.mrc");
+    .put("name", "CornellFOLIOExemplars_Bibs.mrc")
+    .put("size", 209);
 
   private static JsonObject file2 = new JsonObject()
-    .put("name", "CornellFOLIOExemplars.mrc");
+    .put("name", "CornellFOLIOExemplars.mrc")
+    .put("size", 209);
+
+  private static JsonObject file3 = new JsonObject()
+    .put("name", "CornellFOLIOExemplars.mrc")
+    .put("size", Integer.MAX_VALUE);
 
   private static JsonObject uploadDef1 = new JsonObject()
     .put("fileDefinitions", new JsonArray().add(file1));
@@ -72,6 +78,9 @@ public class RestVerticleTest {
 
   private static JsonObject uploadDef4 = new JsonObject()
     .put("fileDefinitions", new JsonArray().add(file1).add(file2));
+
+  private static JsonObject uploadDef5 = new JsonObject()
+    .put("fileDefinitions", new JsonArray().add(file3));
 
   private JsonObject jobExecution = new JsonObject()
     .put("id", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
@@ -475,5 +484,17 @@ public class RestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionCreateValidationTest() {
+    RestAssured.given()
+      .spec(spec)
+      .body(uploadDef5.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
 }

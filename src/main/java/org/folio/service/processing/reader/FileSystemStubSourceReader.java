@@ -24,7 +24,7 @@ public class FileSystemStubSourceReader implements SourceReader {
     Future<RawRecordsDto> future = Future.future();
     fileSystem.readFile(SAMPLE_RECORDS_FILE_PATH, fileAr -> {
       if (fileAr.failed()) {
-        logger.error("Can not read file by source path: " + SAMPLE_RECORDS_FILE_PATH);
+        logger.error("Can not read file by source path: {}", SAMPLE_RECORDS_FILE_PATH);
         future.fail(fileAr.cause());
       } else {
         RawRecordsDto chunk = new RawRecordsDto();

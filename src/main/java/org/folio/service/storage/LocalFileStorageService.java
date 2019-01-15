@@ -50,21 +50,21 @@ public class LocalFileStorageService extends AbstractFileStorageService {
                 fileDefinition.setLoaded(true);
                 b.complete(bytes);
               } catch (Exception e) {
-                logger.error("Error during save file source data to the local system's storage. FileId: " + fileId, e);
+                logger.error("Error during save file source data to the local system's storage. FileId: {}", fileId, e);
                 b.fail(e);
               }
             },
             r -> {
               if (r.failed()) {
-                logger.error("Error during calculating path for file save. FileId: " + fileId);
+                logger.error("Error during calculating path for file save. FileId: {}", fileId);
                 future.fail(r.cause());
               } else {
-                logger.info("File was saved to the storage. File size " + (r.result() / 1024) / 1024 + " mb");
+                logger.info("File was saved to the storage. File size {} mb", (r.result() / 1024) / 1024);
                 future.complete(fileDefinition);
               }
             });
         } else {
-          logger.error("Error during calculating path for file save. FileId: " + fileId);
+          logger.error("Error during calculating path for file save. FileId: {}", fileId);
           future.fail(new BadRequestException());
         }
       });
@@ -78,7 +78,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
       fs.deleteBlocking(fileDefinition.getSourcePath());
       future.complete(true);
     } catch (Exception e) {
-      logger.error(String.format("Couldn't delete the file with id %s from the storage", fileDefinition.getId()), e);
+      logger.error("Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
       future.complete(false);
     }
     return future;

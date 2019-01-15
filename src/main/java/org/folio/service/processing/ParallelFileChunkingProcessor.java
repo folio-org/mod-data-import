@@ -69,13 +69,13 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, tenantId);
     FileStorageServiceBuilder.build(this.vertx, tenantId, params).setHandler(fileStorageServiceAr -> {
       if (fileStorageServiceAr.failed()) {
-        LOGGER.error("Can not build file storage service. Cause: " + fileStorageServiceAr.cause());
+        LOGGER.error("Can not build file storage service. Cause: {}", fileStorageServiceAr.cause());
       } else {
         FileStorageService fileStorageService = fileStorageServiceAr.result();
         List<FileDefinition> fileDefinitions = uploadDefinition.getFileDefinitions();
         updateJobsProfile(uploadDefinition.getMetaJobExecutionId(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
           if (updatedProfileAsyncResult.failed()) {
-            LOGGER.error("Can not update profile for jobs. Cause: " + updatedProfileAsyncResult.cause());
+            LOGGER.error("Can not update profile for jobs. Cause: {}", updatedProfileAsyncResult.cause());
           } else {
             List<Future> fileBlockingFutures = new ArrayList<>(fileDefinitions.size());
             for (FileDefinition fileDefinition : fileDefinitions) {
@@ -87,10 +87,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                     .compose(ar -> uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_FINISHED), params))
                     .setHandler(ar -> {
                       if (ar.failed()) {
-                        LOGGER.error("Can not process file " + fileDefinition.getSourcePath() + ". Cause: " + ar.cause());
+                        LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
                         blockingFuture.fail(ar.cause());
                       } else {
-                        LOGGER.info("File " + fileDefinition.getSourcePath() + " successfully processed.");
+                        LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
                         blockingFuture.complete();
                       }
                     });
@@ -99,9 +99,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
             }
             CompositeFuture.all(fileBlockingFutures).setHandler(ar -> {
               if (ar.failed()) {
-                LOGGER.error("Error while processing files of upload definition " + uploadDefinition.getId() + ". Cause: " + ar.cause());
+                LOGGER.error("Error while processing files of upload definition {}. Cause: {}", uploadDefinition.getId(), ar.cause());
               } else {
-                LOGGER.info("All the files of upload definition " + uploadDefinition.getId() + "are successfully processed.");
+                LOGGER.info("All the files of upload definition {} are successfully processed.", uploadDefinition.getId());
               }
             });
           }
@@ -125,7 +125,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     while (reader.hasNext()) {
       reader.readNext().setHandler(readRecordsAr -> {
         if (readRecordsAr.failed()) {
-          LOGGER.error("Can not read next chunk of records for the file " + fileDefinition.getSourcePath());
+          LOGGER.error("Can not read next chunk of records for the file {}", fileDefinition.getSourcePath());
           future.fail(readRecordsAr.cause());
         } else {
           RawRecordsDto chunk = readRecordsAr.result();
@@ -134,7 +134,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               future.fail(postedRecordsAr.cause());
             } else {
               if (!reader.hasNext()) {
-                LOGGER.info("All the chunks for file " + fileDefinition.getSourcePath() + " successfully sent.");
+                LOGGER.info("All the chunks for file {} successfully sent.", fileDefinition.getSourcePath());
                 future.complete();
               }
             }
@@ -160,10 +160,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         if (responseResult.failed()
           || responseResult.result() == null
           || responseResult.result().getCode() != HttpStatus.SC_NO_CONTENT) {
-          LOGGER.error("Can not post raw records for job " + jobExecutionId);
+          LOGGER.error("Can not post raw records for job {}", jobExecutionId);
           future.fail(responseResult.cause());
         } else {
-          LOGGER.info("Chunk of records with size " + chunk.getRecords().size() + " successfully posted for job " + jobExecutionId);
+          LOGGER.info("Chunk of records with size {} successfully posted for job {}", chunk.getRecords().size(), jobExecutionId);
           future.complete();
         }
       });
@@ -194,7 +194,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
           if (updatedJobsProfileAr.failed()) {
             future.fail(updatedJobsProfileAr.cause());
           } else {
-            LOGGER.info("All the child jobs have been updated by job profile, parent job " + metaJobExecutionId);
+            LOGGER.info("All the child jobs have been updated by job profile, parent job {}", metaJobExecutionId);
             future.complete();
           }
         });
@@ -215,10 +215,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     Future future = Future.future();
     RestUtil.doRequest(params, String.format(JOB_PROFILE_SERVICE_URL, jobId), HttpMethod.PUT, jobProfile).setHandler(ar -> {
       if (ar.failed()) {
-        LOGGER.error("Can not update job profile for job " + jobId);
+        LOGGER.error("Can not update job profile for job {}", jobId);
         future.fail(ar.cause());
       } else {
-        LOGGER.info("Job profile for job " + jobId + " successfully updated.");
+        LOGGER.info("Job profile for job {} successfully updated.", jobId);
         future.complete();
       }
     });

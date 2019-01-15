@@ -30,7 +30,7 @@ import java.util.Map;
 
 public class DataImportImpl implements DataImport {
 
-  private static final Logger LOG = LoggerFactory.getLogger("mod-data-import");
+  private static final Logger LOG = LoggerFactory.getLogger(DataImportImpl.class);
   private UploadDefinitionService uploadDefinitionService;
   private FileService fileService;
   private FileProcessor fileProcessor;
@@ -209,7 +209,7 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-        LOG.info("Starting file processing for upload definition " + request.getUploadDefinition().getId());
+        LOG.info("Starting file processing for upload definition {}", request.getUploadDefinition().getId());
         fileProcessor.process(JsonObject.mapFrom(request), JsonObject.mapFrom(params));
         Future.succeededFuture()
           .map(PostDataImportProcessFilesResponse::respond204WithTextPlain)

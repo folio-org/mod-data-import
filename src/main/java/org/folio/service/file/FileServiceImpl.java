@@ -97,9 +97,9 @@ public class FileServiceImpl implements FileService {
               uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
                 .setHandler(updateStatusResult -> {
                   if (updateStatusResult.failed()) {
-                    logger.error(String.format(
-                      "Couldn't update JobExecution status with id %s to DISCARDED after file with id %s was deleted",
-                      fileDefinition.getJobExecutionId(), id));
+                    logger.error(
+                      "Couldn't update JobExecution status with id {} to DISCARDED after file with id {} was deleted",
+                      fileDefinition.getJobExecutionId(), id);
                   }
                 });
             } else {

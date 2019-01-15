@@ -224,7 +224,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         try {
           int responseCode = responseResult.result().getCode();
           if (responseResult.failed()) {
-            logger.error("Error during request new jobExecution. Response code: " + responseCode, responseResult.cause());
+            logger.error("Error during request new jobExecution. Response code: {}", responseCode, responseResult.cause());
             future.fail(responseResult.cause());
           } else if (responseCode != CREATED.getStatusCode()) {
             JsonObject response = responseResult.result().getJson();

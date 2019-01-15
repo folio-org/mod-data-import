@@ -33,7 +33,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
   public Future<FileDefinition> saveFile(InputStream data, FileDefinition fileDefinition, OkapiConnectionParams params) {
     Future<FileDefinition> future = Future.future();
     String fileId = fileDefinition.getId();
-    getStoragePath(FILE_STORAGE_PATH_CODE, fileDefinition.getId(), params)
+    getStoragePath(FILE_STORAGE_PATH_CODE, fileDefinition, params)
       .setHandler(pathReply -> {
         if (pathReply.succeeded()) {
           String path = pathReply.result();

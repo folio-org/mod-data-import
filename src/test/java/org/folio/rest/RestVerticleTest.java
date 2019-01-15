@@ -56,14 +56,17 @@ public class RestVerticleTest {
   private static int port;
 
   private static JsonObject file1 = new JsonObject()
+    .put("uiKey", "CornellFOLIOExemplars_Bibs.mrc.md1547160916680")
     .put("name", "CornellFOLIOExemplars_Bibs.mrc")
     .put("size", 209);
 
   private static JsonObject file2 = new JsonObject()
+    .put("uiKey", "CornellFOLIOExemplars.mrc.md1547160916680")
     .put("name", "CornellFOLIOExemplars.mrc")
     .put("size", 209);
 
   private static JsonObject file3 = new JsonObject()
+    .put("uiKey", "CornellFOLIOExemplars.mrc.md1547160916680")
     .put("name", "CornellFOLIOExemplars.mrc")
     .put("size", Integer.MAX_VALUE);
 

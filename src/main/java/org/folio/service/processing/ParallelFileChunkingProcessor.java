@@ -141,7 +141,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     RawRecordsDto chunk = new RawRecordsDto().withLast(true).withTotal(totalChunkCounter);
     postRawRecords(fileDefinition.getJobExecutionId(), chunk, params).setHandler(postedRecordsAr -> {
       if (postedRecordsAr.failed()) {
-        LOGGER.info("Can not send last chunk of the file " + fileDefinition.getSourcePath() + ". Cause: " + postedRecordsAr.cause());
+        LOGGER.info("Can not send last chunk of the file: {}. Cause: {}.", fileDefinition.getSourcePath(), postedRecordsAr.cause());
         // TODO set JobExecution error status
       }
     });

@@ -2,11 +2,12 @@ package org.folio.service.storage;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.FileSystem;
 import org.folio.dataImport.util.ConfigurationUtil;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
+
+import java.io.File;
 
 public abstract class AbstractFileStorageService implements FileStorageService {
 
@@ -21,10 +22,8 @@ public abstract class AbstractFileStorageService implements FileStorageService {
   }
 
   @Override
-  public Future<Buffer> getFile(String path) {
-    Future<Buffer> future = Future.future();
-    fs.readFile(path, future.completer());
-    return future;
+  public File getFile(String path) {
+    return new File(path);
   }
 
   protected Future<String> getStoragePath(String code, FileDefinition fileDefinition, OkapiConnectionParams params) {

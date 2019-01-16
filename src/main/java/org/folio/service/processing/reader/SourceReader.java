@@ -1,7 +1,6 @@
 package org.folio.service.processing.reader;
 
-import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.RawRecordsDto;
+import java.util.List;
 
 
 /**
@@ -12,14 +11,12 @@ public interface SourceReader {
   /**
    * Reads next chunk of raw records
    *
-   * @return Future
+   * @return list of source records
    */
-  Future<RawRecordsDto> readNext();
+  List<String> readNext();
 
   /**
-   * Returns {@code true} if the iteration has more elements.
-   *
-   * @return boolean
+   * Releases any system resources associated with the file reading process.
    */
-  boolean hasNext();
+  void close();
 }

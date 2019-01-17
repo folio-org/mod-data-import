@@ -23,8 +23,6 @@ import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
  * <p>
  * Read iteration may cache (<code>sourceCache<code/>) the last record in order to prevent handling of partially-read record entry.
  * If the last record is cached (<code>sourceCache<code/>), next read iteration appends it to the beginning of source buffer.
- *
- * @see RecordSplitter
  */
 public class LocalStorageSourceReader implements SourceReader {
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalStorageSourceReader.class);
@@ -47,7 +45,7 @@ public class LocalStorageSourceReader implements SourceReader {
   @Override
   public List<String> readNext() {
     RecordsBuffer recordsBuffer = new RecordsBuffer();
-    /* Read data to the RecordsBuffer while it is not full and the file has not come to the end. */
+    /* Reading source data to the RecordsBuffer while it is not full and the file has not come to the end. */
     while (!recordsBuffer.isFull() && this.hasNext) {
       CharBuffer readBuffer = CharBuffer.allocate(READ_BUFFER_SIZE);
       try {
@@ -72,8 +70,9 @@ public class LocalStorageSourceReader implements SourceReader {
       } catch (IOException e) {
         readBuffer.clear();
         this.close();
-        LOGGER.error("Can not read next buffer the file: {}. Cause: {}.", this.file.getPath(), e.getCause());
-//      TODO throw runtime exception
+        String errorMessage = String.format("Can not read next buffer of the file: %s. Cause: %s.", this.file.getPath(), e.getCause());
+        LOGGER.error(errorMessage);
+        throw new RuntimeException(errorMessage);
       }
     }
     return recordsBuffer.getRecords();
@@ -86,8 +85,9 @@ public class LocalStorageSourceReader implements SourceReader {
     try {
       this.inputStreamReader.close();
     } catch (IOException e) {
-      LOGGER.error("Can not close stream reader for the file: {}. Cause: {}.", this.file.getPath(), e.getCause());
-      // TODO throw runtime exception
+      String errorMessage = String.format("Can not close stream reader for the file: %s. Cause: %s.", this.file.getPath(), e.getCause());
+      LOGGER.error(errorMessage);
+      throw new IllegalStateException(errorMessage);
     }
   }
 
@@ -99,12 +99,11 @@ public class LocalStorageSourceReader implements SourceReader {
         try (InputStreamReader inputStreamReader = new InputStreamReader(inputStream, READ_BUFFER_CHARSET)) {
           this.inputStreamReader = inputStreamReader;
         } catch (IOException e) {
-          LOGGER.error("Can not close InputStream for the file: {}. Cause: {}.", this.file.getPath(), e.getCause());
-          // TODO throw new RuntimeException
+          LOGGER.error("Can not close InputStreamReader for the file: {}. Cause: {}.", this.file.getPath(), e.getCause());
         }
       } catch (FileNotFoundException e) {
-        LOGGER.error("Can not open file: {}. Cause: {}.", this.file.getPath(), e.getCause());
-        // TODO throw new RuntimeException
+        String errorMessage = String.format("Can not open file: %s. Cause: %s.", this.file.getPath(), e.getCause());
+        throw new IllegalArgumentException(errorMessage);
       }
     }
   }

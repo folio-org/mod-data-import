@@ -133,10 +133,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
           postRawRecords(fileDefinition.getJobExecutionId(), chunk, params).setHandler(ar -> {
             if (ar.failed()) {
               canSendNextChunk.set(false);
+              reader.close();
             }
           });
         } else {
-          reader.close();
           return Future.failedFuture(new IllegalStateException("File processing stopped. Can not send chunks of the file " + fileDefinition.getSourcePath() + " to the consumer."));
         }
       }

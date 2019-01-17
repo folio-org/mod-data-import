@@ -131,7 +131,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         if (canSendNextChunk.get()) {
           RawRecordsDto chunk = new RawRecordsDto().withLast(false).withRecords(records).withTotal(totalChunkCounter);
           postRawRecords(fileDefinition.getJobExecutionId(), chunk, params).setHandler(ar -> {
-
+            if (ar.failed()) {
+              canSendNextChunk.set(false);
+            }
           });
         } else {
           reader.close();

@@ -145,7 +145,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         // TODO set JobExecution error status
       }
     });
-    reader.close();
     return Future.succeededFuture();
   }
 

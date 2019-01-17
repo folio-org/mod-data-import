@@ -328,7 +328,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private boolean canDeleteUploadDefinition(List<JobExecution> jobExecutions) {
     return jobExecutions.stream().filter(jobExecution ->
       JobExecution.Status.NEW.equals(jobExecution.getStatus()) ||
-        JobExecution.Status.FILE_UPLOADED.equals(jobExecution.getStatus()))
+        JobExecution.Status.FILE_UPLOADED.equals(jobExecution.getStatus()) ||
+        JobExecution.Status.DISCARDED.equals(jobExecution.getStatus()))
       .collect(Collectors.toList()).size() == jobExecutions.size();
   }
 

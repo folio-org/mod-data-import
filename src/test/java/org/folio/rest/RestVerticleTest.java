@@ -20,6 +20,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -484,6 +485,34 @@ public class RestVerticleTest {
       .spec(spec)
       .when()
       .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionDiscardedFileDeleteSuccessful() {
+    UploadDefinition uploadDefinition = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef4.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().as(UploadDefinition.class);
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(FILE_DEF_PATH + "/"
+        + uploadDefinition.getFileDefinitions().get(0).getId()
+        + "?uploadDefinitionId=" + uploadDefinition.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + uploadDefinition.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();

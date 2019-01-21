@@ -112,7 +112,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param fileDefinition     fileDefinition entity
    * @param fileStorageService service to obtain file
    * @param params             parameters necessary for connection to the OKAPI
-   * @return Future parametrized by the total chunk counter value
+   * @return Future parametrized by the records counter, returns total records number
    */
   private Future<Integer> processFile(FileDefinition fileDefinition,
                                       FileStorageService fileStorageService,

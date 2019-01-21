@@ -84,7 +84,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                 .updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_IN_PROGRESS), params)
                 .compose(ar -> processFile(fileDefinition, fileStorageService, params))
                 .compose(totalRecords ->
-                  postRawRecords(fileDefinition.getJobExecutionId(), new RawRecordsDto().withTotal(totalRecords).withLast(true), params))
+                  postRawRecords(fileDefinition.getJobExecutionId(), new RawRecordsDto().withCounter(totalRecords).withLast(true), params))
                 .compose(ar -> uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_FINISHED), params))
                 .setHandler(ar -> {
                   if (ar.failed()) {
@@ -127,9 +127,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       */
       AtomicBoolean canSendNextChunk = new AtomicBoolean(true);
       for (List<String> records = reader.readNext(); records.size() > 0; records = reader.readNext(), recordsCounter+=records.size()) {
-        /* Sending the next read chunk */
         if (canSendNextChunk.get()) {
-          RawRecordsDto chunk = new RawRecordsDto().withLast(false).withRecords(records).withTotal(recordsCounter);
+          RawRecordsDto chunk = new RawRecordsDto().withLast(false).withRecords(records).withCounter(recordsCounter);
           postRawRecords(fileDefinition.getJobExecutionId(), chunk, params).setHandler(ar -> {
             if (ar.failed()) {
               canSendNextChunk.set(false);
@@ -161,14 +160,12 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     Future<Void> future = Future.future();
     RestUtil.doRequest(params, RAW_RECORDS_SERVICE_URL + jobExecutionId, HttpMethod.POST, chunk)
       .setHandler(responseResult -> {
-        if (responseResult.failed()
-          || responseResult.result() == null
-          || responseResult.result().getCode() != HttpStatus.SC_NO_CONTENT) {
-          LOGGER.error("Can not post raw records for job {}", jobExecutionId);
-          future.fail(responseResult.cause());
-        } else {
+        if (validateAsyncResult(responseResult, future)) {
           LOGGER.info("Chunk of records with size {} successfully posted for job {}", chunk.getRecords().size(), jobExecutionId);
           future.complete();
+        } else {
+          LOGGER.error("Can not post raw records for job {}", jobExecutionId);
+          future.fail(responseResult.cause());
         }
       });
     return future;

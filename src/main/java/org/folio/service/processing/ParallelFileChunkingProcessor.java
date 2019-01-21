@@ -83,8 +83,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               this.executor.executeBlocking(blockingFuture -> uploadDefinitionService
                 .updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_IN_PROGRESS), params)
                 .compose(ar -> processFile(fileDefinition, fileStorageService, params))
-                .compose(totalChunkCounter ->
-                  postRawRecords(fileDefinition.getJobExecutionId(), new RawRecordsDto().withTotal(totalChunkCounter).withLast(true), params))
+                .compose(totalRecords ->
+                  postRawRecords(fileDefinition.getJobExecutionId(), new RawRecordsDto().withTotal(totalRecords).withLast(true), params))
                 .compose(ar -> uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_FINISHED), params))
                 .setHandler(ar -> {
                   if (ar.failed()) {
@@ -117,7 +117,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   private Future<Integer> processFile(FileDefinition fileDefinition,
                                       FileStorageService fileStorageService,
                                       OkapiConnectionParams params) {
-    int totalChunkCounter = 0;
+    int recordsCounter = 0;
     try {
       SourceReader reader = new LocalStorageSourceReader(fileStorageService.getFile(fileDefinition.getSourcePath()));
 
@@ -126,10 +126,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         in a terms of the target file processing.
       */
       AtomicBoolean canSendNextChunk = new AtomicBoolean(true);
-      for (List<String> records = reader.readNext(); records.size() > 0; records = reader.readNext(), totalChunkCounter++) {
+      for (List<String> records = reader.readNext(); records.size() > 0; records = reader.readNext(), recordsCounter++) {
         /* Sending the next read chunk */
         if (canSendNextChunk.get()) {
-          RawRecordsDto chunk = new RawRecordsDto().withLast(false).withRecords(records).withTotal(totalChunkCounter);
+          RawRecordsDto chunk = new RawRecordsDto().withLast(false).withRecords(records).withTotal(recordsCounter);
           postRawRecords(fileDefinition.getJobExecutionId(), chunk, params).setHandler(ar -> {
             if (ar.failed()) {
               canSendNextChunk.set(false);
@@ -146,7 +146,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       return Future.failedFuture(errorMessage);
     }
 
-    return Future.succeededFuture(totalChunkCounter);
+    return Future.succeededFuture(recordsCounter);
   }
 
   /**

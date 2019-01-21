@@ -21,7 +21,7 @@ import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
  * Implementation reads source records from the local file system in fixed-size buffer.
  * Once the buffer is read, the implementation calls {@link RecordSplitter} to divide source buffer into records.
  * <p>
- * Read iteration may cache (<code>sourceCache<code/>) the last record in order to prevent handling of partially-read record entry.
+ * Every read iteration may cache (<code>sourceCache<code/>) the last record in order to prevent handling of partially-read record entry.
  * If the last record is cached (<code>sourceCache<code/>), next read iteration appends it to the beginning of source buffer.
  */
 public class LocalStorageSourceReader implements SourceReader {
@@ -30,21 +30,26 @@ public class LocalStorageSourceReader implements SourceReader {
     Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.read.size", "1024"));
   private static final Charset READ_BUFFER_CHARSET
     = Charset.forName(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.read.charset", "UTF_8"));
+  private static final int CHUNK_SIZE =
+    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.chunk.size", "100"));
+
 
   private File file;
   private RecordSplitter recordSplitter;
   private InputStreamReader inputStreamReader;
-  private StringBuilder sourceCache = new StringBuilder();
-  private boolean hasNext = true;
+  private StringBuilder sourceCache;
+  private boolean hasNext;
 
   public LocalStorageSourceReader(File file) {
     this.file = file;
+    this.sourceCache = new StringBuilder();
+    this.hasNext = true;
     initInputStreamReader();
   }
 
   @Override
   public List<String> readNext() {
-    RecordsBuffer recordsBuffer = new RecordsBuffer();
+    RecordsBuffer recordsBuffer = new RecordsBuffer(CHUNK_SIZE);
     /* Reading source data to the RecordsBuffer while it is not full and the file has not come to the end. */
     while (!recordsBuffer.isFull() && this.hasNext) {
       CharBuffer readBuffer = CharBuffer.allocate(READ_BUFFER_SIZE);

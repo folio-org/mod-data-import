@@ -3,19 +3,17 @@ package org.folio.service.processing.reader;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
-
 /**
  * Represents buffer with source records.
  */
 public class RecordsBuffer {
 
-  private static final int CHUNK_SIZE =
-    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.chunk.size", "100"));
+  private List<String> records;
+  private int chunkSize;
 
-  private List<String> records = new ArrayList<>(CHUNK_SIZE);
-
-  RecordsBuffer() {
+  RecordsBuffer(int chunkSize) {
+    this.chunkSize = chunkSize;
+    this.records = new ArrayList<>(chunkSize);
   }
 
   public List<String> getRecords() {
@@ -27,6 +25,6 @@ public class RecordsBuffer {
   }
 
   public boolean isFull() {
-    return this.records.size() > CHUNK_SIZE;
+    return this.records.size() >= chunkSize;
   }
 }

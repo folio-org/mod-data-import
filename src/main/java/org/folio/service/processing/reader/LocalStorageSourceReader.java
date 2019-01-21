@@ -2,12 +2,11 @@ package org.folio.service.processing.reader;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.io.FileUtils;
 import org.folio.service.processing.splitter.RecordSplitter;
 import org.folio.service.processing.splitter.RecordSplitterBuilder;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -32,7 +31,6 @@ public class LocalStorageSourceReader implements SourceReader {
     = Charset.forName(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.read.charset", "UTF_8"));
   private static final int CHUNK_SIZE =
     Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.chunk.size", "100"));
-
 
   private File file;
   private RecordSplitter recordSplitter;
@@ -59,6 +57,7 @@ public class LocalStorageSourceReader implements SourceReader {
           this.hasNext = readBuffer.remaining() == readBuffer.capacity();
           String source = this.sourceCache.append(readBuffer).toString();
           readBuffer.clear();
+          this.sourceCache = null;
           List<String> records = splitSourceIntoRecords(source);
           if (this.hasNext) {
             /*
@@ -66,7 +65,7 @@ public class LocalStorageSourceReader implements SourceReader {
               in order to append it to the source which is read on the next iteration.
             */
             String lastRecord = records.remove(records.size() - 1);
-            this.sourceCache.append(lastRecord);
+            this.sourceCache = new StringBuilder(lastRecord);
           } else {
             this.close();
           }
@@ -99,14 +98,14 @@ public class LocalStorageSourceReader implements SourceReader {
   private void initInputStreamReader() {
     if (this.inputStreamReader == null) {
       try {
-        InputStream inputStream = new FileInputStream(this.file);
+        InputStream inputStream = FileUtils.openInputStream(this.file);
         /*  When the InputStreamReader is closed it will also close the InputStream instance it reads from. */
         try (InputStreamReader inputStreamReader = new InputStreamReader(inputStream, READ_BUFFER_CHARSET)) {
           this.inputStreamReader = inputStreamReader;
         } catch (IOException e) {
           LOGGER.error("Can not close InputStreamReader for the file: {}. Cause: {}.", this.file.getPath(), e.getCause());
         }
-      } catch (FileNotFoundException e) {
+      } catch (IOException e) {
         String errorMessage = String.format("Can not open file: %s. Cause: %s.", this.file.getPath(), e.getCause());
         throw new IllegalArgumentException(errorMessage);
       }

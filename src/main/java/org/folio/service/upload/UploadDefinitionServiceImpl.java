@@ -35,6 +35,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -285,12 +286,18 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   private Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
-    if (uploadDefinition.getFileDefinitions().size() == 1) {
+    if (!uploadDefinition.getFileDefinitions().isEmpty()) {
       return getJobExecutionById(uploadDefinition.getMetaJobExecutionId(), params)
-        .map(Arrays::asList);
+        .compose(jobExecution -> {
+          if (JobExecution.SubordinationType.PARENT_MULTIPLE.equals(jobExecution.getSubordinationType())) {
+            return getChildrenJobExecutions(jobExecution.getId(), params)
+              .map(JobExecutionCollection::getJobExecutions);
+          } else {
+            return Future.succeededFuture(Arrays.asList(jobExecution));
+          }
+        });
     } else {
-      return getChildrenJobExecutions(uploadDefinition.getMetaJobExecutionId(), params)
-        .map(JobExecutionCollection::getJobExecutions);
+      return Future.succeededFuture(Collections.emptyList());
     }
   }
 

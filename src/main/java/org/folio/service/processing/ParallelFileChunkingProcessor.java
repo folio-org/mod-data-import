@@ -126,7 +126,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         in a terms of the target file processing.
       */
       AtomicBoolean canSendNextChunk = new AtomicBoolean(true);
-      for (List<String> records = reader.readNext(); records.size() > 0; records = reader.readNext(), recordsCounter++) {
+      for (List<String> records = reader.readNext(); records.size() > 0; records = reader.readNext(), recordsCounter+=records.size()) {
         /* Sending the next read chunk */
         if (canSendNextChunk.get()) {
           RawRecordsDto chunk = new RawRecordsDto().withLast(false).withRecords(records).withTotal(recordsCounter);

@@ -35,6 +35,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -296,7 +297,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
           }
         });
     } else {
-      return Future.succeededFuture(new ArrayList<>());
+      return Future.succeededFuture(Collections.emptyList());
     }
   }
 

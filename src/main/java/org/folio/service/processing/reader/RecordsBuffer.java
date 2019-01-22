@@ -20,8 +20,8 @@ public class RecordsBuffer {
     return this.records;
   }
 
-  public void add(List<String> records) {
-    this.records.addAll(records);
+  public void add(String records) {
+    this.records.add(records);
   }
 
   public boolean isFull() {

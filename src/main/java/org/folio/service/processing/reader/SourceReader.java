@@ -9,14 +9,18 @@ import java.util.List;
 public interface SourceReader {
 
   /**
-   * Reads next chunk of raw records
+   * Returns the next list of source records in the iteration.
    *
-   * @return list of source records
+   * @return the next element in the iteration
    */
-  List<String> readNext();
+  List<String> next();
 
   /**
-   * Releases any system resources associated with the file reading process.
+   * Returns {@code true} if the iteration has more elements.
+   * (In other words, returns {@code true} if {@link #next} would
+   * return an element rather than throwing an exception.)
+   *
+   * @return {@code true} if the iteration has more elements
    */
-  void close();
+  boolean hasNext();
 }

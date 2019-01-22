@@ -8,7 +8,6 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.http.HttpStatus;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.dataImport.util.RestUtil;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -19,13 +18,14 @@ import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.service.processing.reader.LocalStorageSourceReader;
 import org.folio.service.processing.reader.SourceReader;
+import org.folio.service.processing.reader.SourceReaderBuilder;
 import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -38,7 +38,7 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.IMPORT_FINISHED;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.IMPORT_IN_PROGRESS;
 
 /**
- * Processing files in parallel threads. One thread per one file.
+ * Processing files in parallel threads, one thread per one file.
  * File chunking process implies reading and splitting the file into chunks of data.
  * Every chunk represents collection of source records, see ({@link org.folio.rest.jaxrs.model.RawRecordsDto}).
  * After the target file gets split into records, ParallelFileChunkingProcessor sends records to the mod-source-record-manager
@@ -81,21 +81,21 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
           } else {
             for (FileDefinition fileDefinition : fileDefinitions) {
               this.executor.executeBlocking(blockingFuture -> uploadDefinitionService
-                .updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_IN_PROGRESS), params)
-                .compose(ar -> processFile(fileDefinition, fileStorageService, params))
-                .compose(totalRecords ->
-                  postRawRecords(fileDefinition.getJobExecutionId(), new RawRecordsDto().withCounter(totalRecords).withLast(true), params))
-                .compose(ar -> uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_FINISHED), params))
-                .setHandler(ar -> {
-                  if (ar.failed()) {
-                    LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-                    uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
-                    blockingFuture.fail(ar.cause());
-                  } else {
-                    LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
-                    blockingFuture.complete();
-                  }
-                }),
+                  .updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_IN_PROGRESS), params)
+                  .compose(ar -> processFile(fileDefinition, jobProfile, fileStorageService, params))
+                  .compose(totalRecords ->
+                    postRawRecords(fileDefinition.getJobExecutionId(), new RawRecordsDto().withCounter(totalRecords).withLast(true), params))
+                  .compose(ar -> uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_FINISHED), params))
+                  .setHandler(ar -> {
+                    if (ar.failed()) {
+                      LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
+                      uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
+                      blockingFuture.fail(ar.cause());
+                    } else {
+                      LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+                      blockingFuture.complete();
+                    }
+                  }),
                 false,
                 null
               );
@@ -110,42 +110,48 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * Processing file
    *
    * @param fileDefinition     fileDefinition entity
+   * @param jobProfile         job profile, contains profile type
    * @param fileStorageService service to obtain file
    * @param params             parameters necessary for connection to the OKAPI
    * @return Future parametrized by the records counter, returns total records number
    */
   private Future<Integer> processFile(FileDefinition fileDefinition,
+                                      JobProfile jobProfile,
                                       FileStorageService fileStorageService,
                                       OkapiConnectionParams params) {
+    Future<Integer> future = Future.future();
     int recordsCounter = 0;
     try {
-      SourceReader reader = new LocalStorageSourceReader(fileStorageService.getFile(fileDefinition.getSourcePath()));
-
+      File file = fileStorageService.getFile(fileDefinition.getSourcePath());
+      SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
       /*
         If one of the dedicated handlers for sending chunks is failed, then all the other senders have to be aware of that
         in a terms of the target file processing.
       */
       AtomicBoolean canSendNextChunk = new AtomicBoolean(true);
-      for (List<String> records = reader.readNext(); records.size() > 0; records = reader.readNext(), recordsCounter+=records.size()) {
-        if (canSendNextChunk.get()) {
-          RawRecordsDto chunk = new RawRecordsDto().withLast(false).withRecords(records).withCounter(recordsCounter);
-          postRawRecords(fileDefinition.getJobExecutionId(), chunk, params).setHandler(ar -> {
-            if (ar.failed()) {
-              canSendNextChunk.set(false);
-              reader.close();
-            }
-          });
-        } else {
-          return Future.failedFuture(new IllegalStateException("File processing stopped. Can not send chunks of the file " + fileDefinition.getSourcePath() + " to the consumer."));
-        }
+      while (reader.hasNext() && canSendNextChunk.get()) {
+        List<String> records = reader.next();
+        recordsCounter += records.size();
+        RawRecordsDto chunk = new RawRecordsDto().withRecords(records).withCounter(recordsCounter).withLast(false);
+        postRawRecords(fileDefinition.getJobExecutionId(), chunk, params).setHandler(ar -> {
+          if (ar.failed()) {
+            canSendNextChunk.set(false);
+            String errorMessage =
+              "File processing stopped. Can not send chunks of the file " + fileDefinition.getSourcePath() + " to the consumer.";
+            LOGGER.error(errorMessage);
+            future.fail(errorMessage);
+          }
+        });
+      }
+      if (!future.failed()) {
+        future.complete();
       }
     } catch (Exception e) {
       String errorMessage = String.format("Can not process file: %s. Cause: %s", fileDefinition.getSourcePath(), e.getCause());
       LOGGER.error(errorMessage);
-      return Future.failedFuture(errorMessage);
+      future.fail(errorMessage);
     }
-
-    return Future.succeededFuture(recordsCounter);
+    return future;
   }
 
   /**

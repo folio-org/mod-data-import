@@ -8,6 +8,7 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.dataImport.util.RestUtil;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -83,8 +84,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               this.executor.executeBlocking(blockingFuture -> uploadDefinitionService
                   .updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_IN_PROGRESS), params)
                   .compose(ar -> processFile(fileDefinition, jobProfile, fileStorageService, params))
-                  .compose(totalRecords ->
-                    postRawRecords(fileDefinition.getJobExecutionId(), new RawRecordsDto().withCounter(totalRecords).withLast(true), params))
                   .compose(ar -> uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_FINISHED), params))
                   .setHandler(ar -> {
                     if (ar.failed()) {
@@ -113,14 +112,14 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param jobProfile         job profile, contains profile type
    * @param fileStorageService service to obtain file
    * @param params             parameters necessary for connection to the OKAPI
-   * @return Future parametrized by the records counter, returns total records number
+   * @return Future
    */
-  private Future<Integer> processFile(FileDefinition fileDefinition,
-                                      JobProfile jobProfile,
-                                      FileStorageService fileStorageService,
-                                      OkapiConnectionParams params) {
-    Future<Integer> future = Future.future();
-    int recordsCounter = 0;
+  private Future<Void> processFile(FileDefinition fileDefinition,
+                                   JobProfile jobProfile,
+                                   FileStorageService fileStorageService,
+                                   OkapiConnectionParams params) {
+    Future<Void> resultFuture = Future.future();
+    MutableInt recordsCounter = new MutableInt(0);
     try {
       File file = fileStorageService.getFile(fileDefinition.getSourcePath());
       SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
@@ -129,49 +128,67 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         in a terms of the target file processing.
       */
       AtomicBoolean canSendNextChunk = new AtomicBoolean(true);
-      while (reader.hasNext() && canSendNextChunk.get()) {
-        List<String> records = reader.next();
-        recordsCounter += records.size();
-        RawRecordsDto chunk = new RawRecordsDto().withRecords(records).withCounter(recordsCounter).withLast(false);
-        postRawRecords(fileDefinition.getJobExecutionId(), chunk, params).setHandler(ar -> {
-          if (ar.failed()) {
-            canSendNextChunk.set(false);
-            String errorMessage =
-              "File processing stopped. Can not send chunks of the file " + fileDefinition.getSourcePath() + " to the consumer.";
-            LOGGER.error(errorMessage);
-            future.fail(errorMessage);
-          }
-        });
+      List<Future> chunkSentFutures = new ArrayList<>();
+      while (reader.hasNext()) {
+        if (canSendNextChunk.get()) {
+          List<String> records = reader.next();
+          recordsCounter.add(records.size());
+          RawRecordsDto chunk = new RawRecordsDto().withRecords(records).withCounter(recordsCounter.getValue()).withLast(false);
+          chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, params));
+        } else {
+          String errorMessage = "Can not send next chunk of file " + fileDefinition.getSourcePath();
+          LOGGER.error(errorMessage);
+          return Future.failedFuture(errorMessage);
+        }
       }
-      if (!future.failed()) {
-        future.complete();
-      }
+      CompositeFuture.all(chunkSentFutures).setHandler(ar -> {
+        if (ar.failed()) {
+          String errorMessage = "File processing stopped. Can not send chunks of the file " + fileDefinition.getSourcePath();
+          LOGGER.error(errorMessage);
+          resultFuture.fail(errorMessage);
+        } else {
+          // Sending the last chunk
+          RawRecordsDto chunk = new RawRecordsDto().withCounter(recordsCounter.getValue()).withLast(true);
+          postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, params).setHandler(r -> {
+            if (r.failed()) {
+              String errorMessage = "File processing stopped. Can not send the last chunk of the file " + fileDefinition.getSourcePath();
+              LOGGER.error(errorMessage);
+              resultFuture.fail(errorMessage);
+            } else {
+              LOGGER.info("File " + fileDefinition.getSourcePath() + " has been successfully sent.");
+              resultFuture.complete();
+            }
+          });
+        }
+      });
     } catch (Exception e) {
       String errorMessage = String.format("Can not process file: %s. Cause: %s", fileDefinition.getSourcePath(), e.getCause());
       LOGGER.error(errorMessage);
-      future.fail(errorMessage);
+      resultFuture.fail(errorMessage);
     }
-    return future;
+    return resultFuture;
   }
 
   /**
    * Sends chunk with records to the corresponding consumer
    *
-   * @param jobExecutionId job id
-   * @param chunk          chunk of records
-   * @param params         parameters necessary for connection to the OKAPI
+   * @param jobExecutionId   job id
+   * @param chunk            chunk of records
+   * @param canSendNextChunk
+   * @param params           parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, OkapiConnectionParams params) {
+  private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, AtomicBoolean canSendNextChunk, OkapiConnectionParams params) {
     Future<Void> future = Future.future();
     RestUtil.doRequest(params, RAW_RECORDS_SERVICE_URL + jobExecutionId, HttpMethod.POST, chunk)
       .setHandler(responseResult -> {
-        if (validateAsyncResult(responseResult, future)) {
+        if (responseResult.failed()) {
+          String errorMessage = "Can not post raw records for job " + jobExecutionId + ". Cause: " + responseResult.cause();
+          LOGGER.error(errorMessage);
+          future.fail(errorMessage);
+        } else {
           LOGGER.info("Chunk of records with size {} successfully posted for job {}", chunk.getRecords().size(), jobExecutionId);
           future.complete();
-        } else {
-          LOGGER.error("Can not post raw records for job {}", jobExecutionId);
-          future.fail(responseResult.cause());
         }
       });
     return future;

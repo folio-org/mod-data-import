@@ -41,6 +41,7 @@ import java.util.UUID;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static org.folio.dataImport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataImport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.hamcrest.core.Is.is;
 
 @RunWith(VertxUnitRunner.class)
 public class RestVerticleTest {
@@ -71,6 +72,11 @@ public class RestVerticleTest {
     .put("name", "CornellFOLIOExemplars.mrc")
     .put("size", Integer.MAX_VALUE);
 
+  private static JsonObject file4 = new JsonObject()
+    .put("uiKey", "CornellFOLIOExemplars1.mrc.md1547160916681")
+    .put("name", "CornellFOLIOExemplars1.mrc")
+    .put("size", Integer.MAX_VALUE);
+
   private static JsonObject uploadDef1 = new JsonObject()
     .put("fileDefinitions", new JsonArray().add(file1));
 
@@ -84,7 +90,7 @@ public class RestVerticleTest {
     .put("fileDefinitions", new JsonArray().add(file1).add(file2));
 
   private static JsonObject uploadDef5 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file3));
+    .put("fileDefinitions", new JsonArray().add(file3).add(file4));
 
   private JsonObject jobExecution = new JsonObject()
     .put("id", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
@@ -527,6 +533,7 @@ public class RestVerticleTest {
       .post(DEFINITION_PATH)
       .then()
       .log().all()
-      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("total_records", is(2));
   }
 }

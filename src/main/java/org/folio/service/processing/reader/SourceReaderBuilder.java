@@ -5,13 +5,19 @@ import org.folio.rest.jaxrs.model.JobProfile;
 
 import java.io.File;
 
+import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
+
 /**
  * Builds source reader depending on job profile type
  */
 public class SourceReaderBuilder {
 
+  private static final int CHUNK_SIZE =
+    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.chunk.size", "50"));
+
+
   public static SourceReader build(File file, JobProfile jobProfile) { // NOSONAR
     // TODO find proper SourceReader by profile file type
-    return new MarcSourceReader(file);
+    return new MarcSourceReader(file, CHUNK_SIZE);
   }
 }

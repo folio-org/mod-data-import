@@ -126,6 +126,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       /*
         If one of the dedicated handlers for sending chunks is failed, then all the other senders have to be aware of that
         in a terms of the target file processing.
+        Using atomic variable because it's value stored in worker thread, but changes in event-loop thread.
       */
       AtomicBoolean canSendNextChunk = new AtomicBoolean(true);
       List<Future> chunkSentFutures = new ArrayList<>();
@@ -162,7 +163,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         }
       });
     } catch (Exception e) {
-      String errorMessage = String.format("Can not process file: %s. Cause: %s", fileDefinition.getSourcePath(), e.getCause());
+      String errorMessage = String.format("Can not process file: %s. Cause: %s", fileDefinition.getSourcePath(), e.getMessage());
       LOGGER.error(errorMessage);
       resultFuture.fail(errorMessage);
     }
@@ -174,7 +175,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    *
    * @param jobExecutionId   job id
    * @param chunk            chunk of records
-   * @param canSendNextChunk
+   * @param canSendNextChunk flag the identifies has the last record been successfully sent and can the
    * @param params           parameters necessary for connection to the OKAPI
    * @return Future
    */
@@ -183,6 +184,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     RestUtil.doRequest(params, RAW_RECORDS_SERVICE_URL + jobExecutionId, HttpMethod.POST, chunk)
       .setHandler(responseResult -> {
         if (responseResult.failed()) {
+          canSendNextChunk.set(false);
           String errorMessage = "Can not post raw records for job " + jobExecutionId + ". Cause: " + responseResult.cause();
           LOGGER.error(errorMessage);
           future.fail(errorMessage);

@@ -19,20 +19,16 @@ import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
  */
 public class MarcSourceReader implements SourceReader {
   private static final Logger LOGGER = LoggerFactory.getLogger(MarcSourceReader.class);
-  private static final int CHUNK_SIZE =
-    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.chunk.size", "50"));
-  private static final Charset READ_BUFFER_CHARSET
-    = Charset.forName(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.record.charset", "UTF_8"));
-
+  private static final Charset CHARSET = Charset.forName(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.record.charset", "UTF8"));
   private RawRecordReader reader;
-  private File file;
+  private int chunkSize;
 
-  public MarcSourceReader(File file) {
-    this.file = file;
+  public MarcSourceReader(File file, int chunkSize) {
+    this.chunkSize = chunkSize;
     try {
-      this.reader = new RawRecordReader(FileUtils.openInputStream(this.file));
+      this.reader = new RawRecordReader(FileUtils.openInputStream(file));
     } catch (IOException e) {
-      String errorMessage = "Can not initialize reader. Cause: " + e.getCause();
+      String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
       LOGGER.error(errorMessage);
       throw new IllegalArgumentException(errorMessage);
     }
@@ -40,10 +36,10 @@ public class MarcSourceReader implements SourceReader {
 
   @Override
   public List<String> next() {
-    RecordsBuffer recordsBuffer = new RecordsBuffer(CHUNK_SIZE);
+    RecordsBuffer recordsBuffer = new RecordsBuffer(this.chunkSize);
     while (this.reader.hasNext()) {
-      RawRecord rawRecord = reader.next();
-      recordsBuffer.add(new String(rawRecord.getRecordBytes(), READ_BUFFER_CHARSET));
+      RawRecord rawRecord = this.reader.next();
+      recordsBuffer.add(new String(rawRecord.getRecordBytes(), CHARSET));
       if (recordsBuffer.isFull()) {
         return recordsBuffer.getRecords();
       }

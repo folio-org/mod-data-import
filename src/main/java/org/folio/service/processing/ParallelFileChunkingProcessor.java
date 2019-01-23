@@ -175,7 +175,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    *
    * @param jobExecutionId   job id
    * @param chunk            chunk of records
-   * @param canSendNextChunk flag the identifies has the last record been successfully sent and can the
+   * @param canSendNextChunk flag the identifies has the last record been successfully sent and can the other handlers
+   *                         send raw records (chunks)
    * @param params           parameters necessary for connection to the OKAPI
    * @return Future
    */
@@ -204,9 +205,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params             parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Boolean> updateJobsProfile(String metaJobExecutionId, JobProfile jobProfile, OkapiConnectionParams
+  private Future<Void> updateJobsProfile(String metaJobExecutionId, JobProfile jobProfile, OkapiConnectionParams
     params) {
-    Future<Boolean> future = Future.future();
+    Future<Void> future = Future.future();
     RestUtil.doRequest(params, String.format(JOB_CHILDREN_SERVICE_URL, metaJobExecutionId), HttpMethod.GET, null).setHandler(childrenJobsAr -> {
       if (validateAsyncResult(childrenJobsAr, future)) {
         List<JobExecution> childJobs = childrenJobsAr.result().getJson().mapTo(JobExecutionCollection.class).getJobExecutions();
@@ -237,7 +238,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params     parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future updateJobProfile(String jobId, JobProfile jobProfile, OkapiConnectionParams params) {
+  private Future<Void> updateJobProfile(String jobId, JobProfile jobProfile, OkapiConnectionParams params) {
     Future future = Future.future();
     RestUtil.doRequest(params, String.format(JOB_PROFILE_SERVICE_URL, jobId), HttpMethod.PUT, jobProfile).setHandler(ar -> {
       if (ar.failed()) {

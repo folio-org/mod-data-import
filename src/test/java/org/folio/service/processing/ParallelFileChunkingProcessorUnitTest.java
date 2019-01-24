@@ -52,14 +52,12 @@ public class ParallelFileChunkingProcessorUnitTest {
   private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/records/";
   private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
   private static final int RECORDS_NUMBER = 62;
-  private static final int CHUNK_SIZE = 50;
   private static final int CHUNKS_NUMBER = 2;
 
   @Spy
   private HttpClient httpClient = Vertx.vertx().createHttpClient();
   @InjectMocks
   private ParallelFileChunkingProcessor fileProcessor = new ParallelFileChunkingProcessor();
-  private String jobExecutionId = UUID.randomUUID().toString();
   private Map<String, String> headers = new HashMap<>();
   private Vertx vertx = Vertx.vertx();
 
@@ -74,9 +72,6 @@ public class ParallelFileChunkingProcessorUnitTest {
     headers.put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port());
     headers.put(OKAPI_TENANT_HEADER, TENANT);
     headers.put(OKAPI_TOKEN_HEADER, TOKEN);
-
-    WireMock.stubFor(WireMock.post(RAW_RECORDS_SERVICE_URL + jobExecutionId)
-      .willReturn(WireMock.ok()));
   }
 
   @Test
@@ -84,6 +79,11 @@ public class ParallelFileChunkingProcessorUnitTest {
     /* given */
     Async async = context.async();
     String stubSourcePath = StringUtils.EMPTY;
+
+    String jobExecutionId = UUID.randomUUID().toString();
+    WireMock.stubFor(WireMock.post(RAW_RECORDS_SERVICE_URL + jobExecutionId)
+      .willReturn(WireMock.ok()));
+
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)
       .withJobExecutionId(jobExecutionId);
@@ -105,19 +105,49 @@ public class ParallelFileChunkingProcessorUnitTest {
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       Assert.assertEquals(expectedRequestsNumber, requests.size());
 
-      RawRecordsDto firstChunk = new JsonObject(requests.get(0).getBodyAsString()).mapTo(RawRecordsDto.class);
-      Assert.assertEquals(CHUNK_SIZE, firstChunk.getRecords().size());
-      Assert.assertEquals(CHUNK_SIZE, firstChunk.getCounter().intValue());
-      Assert.assertEquals(false, firstChunk.getLast());
-      RawRecordsDto secondChunk = new JsonObject(requests.get(1).getBodyAsString()).mapTo(RawRecordsDto.class);
-      Assert.assertEquals(RECORDS_NUMBER - CHUNK_SIZE, secondChunk.getRecords().size());
-      Assert.assertEquals(RECORDS_NUMBER, secondChunk.getCounter().intValue());
-      Assert.assertEquals(false, secondChunk.getLast());
-      RawRecordsDto lastChunk = new JsonObject(requests.get(2).getBodyAsString()).mapTo(RawRecordsDto.class);
-      Assert.assertEquals(0, lastChunk.getRecords().size());
-      Assert.assertEquals(RECORDS_NUMBER, lastChunk.getCounter().intValue());
-      Assert.assertEquals(true, lastChunk.getLast());
+      int actualTotalRecordsNumber = 0;
+      int actualLastChunkRecordsCounter = 0;
+      for (LoggedRequest loggedRequest : requests) {
+        RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
+        actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
+        if (rawRecordsDto.getLast()) {
+          actualLastChunkRecordsCounter = rawRecordsDto.getCounter();
+        }
+      }
+      Assert.assertEquals(expectedRequestsNumber, requests.size());
+      Assert.assertEquals(actualLastChunkRecordsCounter, RECORDS_NUMBER);
+      Assert.assertEquals(actualTotalRecordsNumber, RECORDS_NUMBER);
+      async.complete();
+    });
+  }
 
+  @Test
+  public void shouldReadAndStopSendingChunksOnServerError(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+
+    String jobExecutionId = UUID.randomUUID().toString();
+    WireMock.stubFor(WireMock.post(RAW_RECORDS_SERVICE_URL + jobExecutionId)
+      .willReturn(WireMock.serverError()));
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfile jobProfile = new JobProfile();
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
+    future.setHandler(ar -> {
+      Assert.assertTrue(ar.failed());
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      Assert.assertTrue(!requests.isEmpty());
       async.complete();
     });
   }

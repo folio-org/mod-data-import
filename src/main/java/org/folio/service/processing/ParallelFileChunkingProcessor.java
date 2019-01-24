@@ -187,14 +187,13 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     Future<Void> future = Future.future();
     RestUtil.doRequest(params, RAW_RECORDS_SERVICE_URL + jobExecutionId, HttpMethod.POST, chunk)
       .setHandler(responseResult -> {
-        if (responseResult.failed()) {
+        if (validateAsyncResult(responseResult, future)) {
+          LOGGER.info("Chunk of records with size {} successfully posted for job {}", chunk.getRecords().size(), jobExecutionId);
+          future.complete();
+        } else {
           canSendNextChunk.set(false);
           String errorMessage = "Can not post raw records for job " + jobExecutionId + ". Cause: " + responseResult.cause();
           LOGGER.error(errorMessage);
-          future.fail(errorMessage);
-        } else {
-          LOGGER.info("Chunk of records with size {} successfully posted for job {}", chunk.getRecords().size(), jobExecutionId);
-          future.complete();
         }
       });
     return future;

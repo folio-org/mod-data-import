@@ -57,6 +57,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   /* WorkerExecutor provides separate worker pool for code execution */
   private WorkerExecutor executor;
 
+  public ParallelFileChunkingProcessor() {
+  }
+
   public ParallelFileChunkingProcessor(Vertx vertx) {
     this.vertx = vertx;
     this.executor = this.vertx.createSharedWorkerExecutor("processing-files-thread-pool", THREAD_POOL_SIZE);
@@ -114,10 +117,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params             parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> processFile(FileDefinition fileDefinition,
-                                   JobProfile jobProfile,
-                                   FileStorageService fileStorageService,
-                                   OkapiConnectionParams params) {
+  protected Future<Void> processFile(FileDefinition fileDefinition,
+                                     JobProfile jobProfile,
+                                     FileStorageService fileStorageService,
+                                     OkapiConnectionParams params) {
     Future<Void> resultFuture = Future.future();
     MutableInt recordsCounter = new MutableInt(0);
     try {
@@ -239,7 +242,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @return Future
    */
   private Future<Void> updateJobProfile(String jobId, JobProfile jobProfile, OkapiConnectionParams params) {
-    Future future = Future.future();
+    Future<Void> future = Future.future();
     RestUtil.doRequest(params, String.format(JOB_PROFILE_SERVICE_URL, jobId), HttpMethod.PUT, jobProfile).setHandler(ar -> {
       if (ar.failed()) {
         LOGGER.error("Can not update job profile for job {}", jobId);

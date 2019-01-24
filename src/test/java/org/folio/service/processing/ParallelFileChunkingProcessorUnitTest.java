@@ -64,14 +64,14 @@ public class ParallelFileChunkingProcessorUnitTest {
   private Vertx vertx = Vertx.vertx();
 
   @Rule
-  public WireMockRule userMockServer = new WireMockRule(
+  public WireMockRule mockServer = new WireMockRule(
     WireMockConfiguration.wireMockConfig()
       .dynamicPort()
       .notifier(new Slf4jNotifier(true)));
 
   @Before
   public void setUp() {
-    headers.put(OKAPI_URL_HEADER, "http://localhost:" + userMockServer.port());
+    headers.put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port());
     headers.put(OKAPI_TENANT_HEADER, TENANT);
     headers.put(OKAPI_TOKEN_HEADER, TOKEN);
 

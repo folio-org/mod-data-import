@@ -30,15 +30,20 @@ import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.service.storage.FileStorageServiceBuilder;
 
 import javax.ws.rs.BadRequestException;
+import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -50,7 +55,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private static final Logger logger = LoggerFactory.getLogger(UploadDefinitionServiceImpl.class);
   private static final String JOB_EXECUTION_CREATE_URL = "/change-manager/jobExecutions";
   private static final String JOB_EXECUTION_URL = "/change-manager/jobExecution";
-  private static final String FILE_UPLOAD_ERROR_MESSAGE = "File is too big to be uploaded";
+  private static final String FILE_UPLOAD_ERROR_MESSAGE = "upload.fileSize.invalid";
 
   private Vertx vertx;
   private String tenantId;
@@ -160,48 +165,44 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
   @Override
   public Boolean checkNewUploadDefinition(UploadDefinition definition, Handler<AsyncResult<Response>> asyncResultHandler) {
-    boolean isValid = true;
-    List<Error> errorsList = new ArrayList<>(definition.getFileDefinitions().size());
-    for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
-      if (fileDefinition.getSize() != null) {
-        isValid = validateFreeSpace(isValid, fileDefinition, errorsList);
-        isValid = validateHeapSpace(isValid, fileDefinition, errorsList);
-      }
-    }
+    Set<Error> errorsList = new HashSet<>(definition.getFileDefinitions().size());
+    boolean isValid = validateFreeSpace(definition.getFileDefinitions(), errorsList)
+      && validateHeapSpace(definition.getFileDefinitions(), errorsList);
     if (!isValid) {
       asyncResultHandler.handle(Future.succeededFuture(DataImport.PostDataImportUploadDefinitionResponse
         .respond422WithApplicationJson(new Errors()
-          .withErrors(errorsList)
+          .withErrors(new ArrayList<>(errorsList))
           .withTotalRecords(errorsList.size()))));
     }
     return isValid;
   }
 
-  private boolean validateFreeSpace(boolean valid, FileDefinition fileDefinition, List<Error> errors) {
-    if (valid) {
+  private boolean validateFreeSpace(List<FileDefinition> fileDefinitions, Collection<Error> errors) {
+    boolean valid = true;
+    for (FileDefinition fileDefinition : fileDefinitions) {
       try {
-        if (FileSystemUtils.freeSpaceKb() - fileDefinition.getSize() <= 0) { //NOSONAR
+        if (fileDefinition.getSize() != null && FileSystemUtils.freeSpaceKb() - fileDefinition.getSize() <= 0) { //NOSONAR
           valid = false;
           errors.add(new Error()
             .withMessage(FILE_UPLOAD_ERROR_MESSAGE)
             .withCode(fileDefinition.getName()));
         }
       } catch (IOException e) {
-        valid = false;
-        errors.add(new Error()
-          .withMessage("Error during check file's size")
-          .withCode(fileDefinition.getName()));
+        throw new InternalServerErrorException("Error during check file's size");
       }
     }
     return valid;
   }
 
-  private boolean validateHeapSpace(boolean valid, FileDefinition fileDefinition, List<Error> errors) {
-    if (valid && (Runtime.getRuntime().maxMemory() / 1024) - fileDefinition.getSize() <= 0) {
-      valid = false;
-      errors.add(new Error()
-        .withMessage(FILE_UPLOAD_ERROR_MESSAGE)
-        .withCode(fileDefinition.getName()));
+  private boolean validateHeapSpace(List<FileDefinition> fileDefinitions, Collection<Error> errors) {
+    boolean valid = true;
+    for (FileDefinition fileDefinition : fileDefinitions) {
+      if (fileDefinition.getSize() != null && (Runtime.getRuntime().maxMemory() / 1024) - fileDefinition.getSize() <= 0) {
+        valid = false;
+        errors.add(new Error()
+          .withMessage(FILE_UPLOAD_ERROR_MESSAGE)
+          .withCode(fileDefinition.getName()));
+      }
     }
     return valid;
   }
@@ -285,12 +286,18 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   private Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
-    if (uploadDefinition.getFileDefinitions().size() == 1) {
+    if (!uploadDefinition.getFileDefinitions().isEmpty()) {
       return getJobExecutionById(uploadDefinition.getMetaJobExecutionId(), params)
-        .map(Arrays::asList);
+        .compose(jobExecution -> {
+          if (JobExecution.SubordinationType.PARENT_MULTIPLE.equals(jobExecution.getSubordinationType())) {
+            return getChildrenJobExecutions(jobExecution.getId(), params)
+              .map(JobExecutionCollection::getJobExecutions);
+          } else {
+            return Future.succeededFuture(Arrays.asList(jobExecution));
+          }
+        });
     } else {
-      return getChildrenJobExecutions(uploadDefinition.getMetaJobExecutionId(), params)
-        .map(JobExecutionCollection::getJobExecutions);
+      return Future.succeededFuture(Collections.emptyList());
     }
   }
 
@@ -328,7 +335,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private boolean canDeleteUploadDefinition(List<JobExecution> jobExecutions) {
     return jobExecutions.stream().filter(jobExecution ->
       JobExecution.Status.NEW.equals(jobExecution.getStatus()) ||
-        JobExecution.Status.FILE_UPLOADED.equals(jobExecution.getStatus()))
+        JobExecution.Status.FILE_UPLOADED.equals(jobExecution.getStatus()) ||
+        JobExecution.Status.DISCARDED.equals(jobExecution.getStatus()))
       .collect(Collectors.toList()).size() == jobExecutions.size();
   }
 

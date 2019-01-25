@@ -19,7 +19,11 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
+import org.drools.core.util.StringUtils;
 import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
+import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -34,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -49,6 +54,7 @@ public class RestVerticleTest {
   private static final String FILE_PATH = "/data-import/upload/file";
   private static final String FILE_DEF_PATH = "/data-import/upload/definition/file";
   private static final String UPLOAD_DEFINITION_TABLE = "uploadDefinition";
+  private static final String PROCESS_FILE_IMPORT_PATH = "/data-import/processFiles";
 
   private static Vertx vertx;
   private static RequestSpecification spec;
@@ -496,6 +502,50 @@ public class RestVerticleTest {
       .body(uploadDef5.encode())
       .when()
       .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @Test
+  public void postFilesProcessingSuccessful() {
+    UploadDefinition uploadDefinition = new UploadDefinition();
+    uploadDefinition.setId(UUID.randomUUID().toString());
+    uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
+    uploadDefinition.setCreateDate(new Date());
+    uploadDefinition.setStatus(UploadDefinition.Status.IN_PROGRESS);
+    JobProfile jobProfile = new JobProfile();
+    jobProfile.setId(UUID.randomUUID().toString());
+    jobProfile.setName(StringUtils.EMPTY);
+    ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
+      .withUploadDefinition(uploadDefinition)
+      .withJobProfile(jobProfile);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(JsonObject.mapFrom(processFilesRqDto).encode())
+      .when()
+      .post(PROCESS_FILE_IMPORT_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+  }
+
+  @Test
+  public void postFilesProcessingWithUnprocessableEntity() {
+    UploadDefinition uploadDefinition = new UploadDefinition()
+      .withId(UUID.randomUUID().toString())
+      .withStatus(UploadDefinition.Status.IN_PROGRESS);
+    JobProfile jobProfile = new JobProfile().withId(UUID.randomUUID().toString());
+    ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
+      .withUploadDefinition(uploadDefinition)
+      .withJobProfile(jobProfile);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(JsonObject.mapFrom(processFilesRqDto).encode())
+      .when()
+      .post(PROCESS_FILE_IMPORT_PATH)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);

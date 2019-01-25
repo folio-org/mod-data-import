@@ -28,6 +28,7 @@ import org.folio.service.upload.UploadDefinitionServiceImpl;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -70,7 +71,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
     UploadDefinition uploadDefinition = request.getUploadDefinition();
     JobProfile jobProfile = request.getJobProfile();
-    OkapiConnectionParams params = jsonParams.mapTo(OkapiConnectionParams.class);
+    OkapiConnectionParams params = new OkapiConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
     String tenantId = params.getTenantId();
     UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, tenantId);
     FileStorageServiceBuilder.build(this.vertx, tenantId, params).setHandler(fileStorageServiceAr -> {

@@ -208,9 +208,8 @@ public class DataImportImpl implements DataImport {
   public void postDataImportProcessFiles(ProcessFilesRqDto request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
         LOG.info("Starting file processing for upload definition {}", request.getUploadDefinition().getId());
-        fileProcessor.process(JsonObject.mapFrom(request), JsonObject.mapFrom(params));
+        fileProcessor.process(JsonObject.mapFrom(request), JsonObject.mapFrom(okapiHeaders));
         Future.succeededFuture()
           .map(PostDataImportProcessFilesResponse::respond204WithTextPlain)
           .map(Response.class::cast)

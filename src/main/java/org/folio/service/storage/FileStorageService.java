@@ -1,10 +1,10 @@
 package org.folio.service.storage;
 
 import io.vertx.core.Future;
-import io.vertx.core.buffer.Buffer;
 import org.folio.dataImport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 
+import java.io.File;
 import java.io.InputStream;
 
 /**
@@ -21,7 +21,7 @@ public interface FileStorageService {
   /**
    * Search file at storage
    */
-  Future<Buffer> getFile(String path);
+  File getFile(String path);
 
   /**
    * Saves File to the storage and return its path

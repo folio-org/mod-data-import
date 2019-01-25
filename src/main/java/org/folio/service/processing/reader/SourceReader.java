@@ -1,7 +1,6 @@
 package org.folio.service.processing.reader;
 
-import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.RawRecordsDto;
+import java.util.List;
 
 
 /**
@@ -10,16 +9,18 @@ import org.folio.rest.jaxrs.model.RawRecordsDto;
 public interface SourceReader {
 
   /**
-   * Reads next chunk of raw records
+   * Returns the next list of source records in the iteration.
    *
-   * @return Future
+   * @return the next element in the iteration
    */
-  Future<RawRecordsDto> readNext();
+  List<String> next();
 
   /**
    * Returns {@code true} if the iteration has more elements.
+   * (In other words, returns {@code true} if {@link #next} would
+   * return an element rather than throwing an exception.)
    *
-   * @return boolean
+   * @return {@code true} if the iteration has more elements
    */
   boolean hasNext();
 }

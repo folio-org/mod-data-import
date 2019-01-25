@@ -21,7 +21,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.drools.core.util.StringUtils;
 import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;

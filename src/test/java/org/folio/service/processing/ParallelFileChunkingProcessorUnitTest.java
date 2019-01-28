@@ -115,8 +115,8 @@ public class ParallelFileChunkingProcessorUnitTest {
         }
       }
       Assert.assertEquals(expectedRequestsNumber, requests.size());
-      Assert.assertEquals(actualLastChunkRecordsCounter, RECORDS_NUMBER);
-      Assert.assertEquals(actualTotalRecordsNumber, RECORDS_NUMBER);
+      Assert.assertEquals(RECORDS_NUMBER, actualLastChunkRecordsCounter);
+      Assert.assertEquals(RECORDS_NUMBER, actualTotalRecordsNumber);
       async.complete();
     });
   }

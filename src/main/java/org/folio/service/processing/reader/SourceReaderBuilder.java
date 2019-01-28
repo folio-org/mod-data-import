@@ -15,9 +15,11 @@ public class SourceReaderBuilder {
   private static final int CHUNK_SIZE =
     Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.chunk.size", "50"));
 
+  private SourceReaderBuilder() {
+  }
 
   public static SourceReader build(File file, JobProfile jobProfile) { // NOSONAR
-    // TODO find proper SourceReader by profile file type
+    // find proper SourceReader by profile file type
     return new MarcSourceReader(file, CHUNK_SIZE);
   }
 }

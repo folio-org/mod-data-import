@@ -88,6 +88,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     uploadDefinition.getFileDefinitions().forEach(fileDefinition -> fileDefinition.withId(UUID.randomUUID().toString())
       .withCreateDate(new Date())
       .withLoaded(false)
+      .withStatus(FileDefinition.Status.NEW)
       .withUploadDefinitionId(uploadDefinition.getId()));
     return createJobExecutions(uploadDefinition, params)
       .map(this::checkUploadDefinitionBeforeSave).compose(defCheck -> defCheck)

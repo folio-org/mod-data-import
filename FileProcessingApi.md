@@ -3,7 +3,7 @@
 ## Introduction
 
 This documentation describes API for the file processing. 
-**mod-data-import** module performs processing for already uploaded files. If you would like to know more about how to upload files, please see [(documentation for file uploading)](FileUploadApi.md).
+**mod-data-import** module performs processing for already uploaded files. For more information on file upload, please see [(documentation for file uploading)](FileUploadApi.md).
 File processing implies dividing files into chunks of complete raw records and sending these chunks to another FOLIO modules for the further handling.
 
 ## Responsible entities and DTOs
@@ -33,7 +33,7 @@ The user has to choose JobProfile on UI and only then start file processing.
 
 ## File Processing Workflow
 
-To start file processing send POST request containing UploadDefinition (with list of files) and JobProfile.
+To initiate file processing send POST request containing UploadDefinition (with list of files) and JobProfile.
 ```
 curl -w '\n' -X POST -D - \
    -H "Content-type: application/json" \
@@ -68,4 +68,4 @@ curl -w '\n' -X POST -D - \
 
 ##### Response
 
-If the processing has been successfully started to the target request, there is no additional content to send in the response payload body (HTTP status 204).
+If the file processing is successfully initiated, there won't be any content in the response (HTTP status 204).

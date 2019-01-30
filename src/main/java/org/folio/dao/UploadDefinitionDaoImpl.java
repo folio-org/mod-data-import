@@ -1,9 +1,11 @@
 package org.folio.dao;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -184,6 +186,23 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       idCrit.setOperation("=");
       idCrit.setValue(uploadDefinition.getId());
       pgClient.update(UPLOAD_DEFINITION_TABLE, uploadDefinition, new Criterion(idCrit), true, future.completer());
+    } catch (Exception e) {
+      logger.error("Error during updating UploadDefinition by ID", e);
+      future.fail(e);
+    }
+    return future.map(updateResult -> updateResult.getUpdated() == 1);
+  }
+
+  @Override
+  public Future<Boolean> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition) {
+    Future<UpdateResult> future = Future.future();
+    try {
+      Criteria idCrit = new Criteria();
+      idCrit.addField(UPLOAD_DEFINITION_ID_FIELD);
+      idCrit.setOperation("=");
+      idCrit.setValue(uploadDefinition.getId());
+      CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + uploadDefinition.getId());
+      pgClient.update(tx, UPLOAD_DEFINITION_TABLE, uploadDefinition, filter, true, future.completer());
     } catch (Exception e) {
       logger.error("Error during updating UploadDefinition by ID", e);
       future.fail(e);

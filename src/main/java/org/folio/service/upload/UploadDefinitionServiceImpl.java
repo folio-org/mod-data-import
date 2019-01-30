@@ -87,7 +87,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     uploadDefinition.setCreateDate(new Date());
     uploadDefinition.getFileDefinitions().forEach(fileDefinition -> fileDefinition.withId(UUID.randomUUID().toString())
       .withCreateDate(new Date())
-      .withLoaded(false)
       .withStatus(FileDefinition.Status.NEW)
       .withUploadDefinitionId(uploadDefinition.getId()));
     return createJobExecutions(uploadDefinition, params)
@@ -261,7 +260,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     }
     list.add(def
       .withCreateDate(new Date())
-      .withLoaded(false)
+      .withStatus(FileDefinition.Status.NEW)
       .withId(UUID.randomUUID().toString())
       //NEED replace with rest call
       .withJobExecutionId(UUID.randomUUID().toString()));

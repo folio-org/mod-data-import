@@ -50,7 +50,9 @@ public class FileServiceImpl implements FileService {
               if (onFileSave.succeeded()) {
                 uploadDefinition.setFileDefinitions(replaceFile(uploadDefinition.getFileDefinitions(),
                   onFileSave.result().withUploadedDate(new Date())));
-                uploadDefinition.setStatus(uploadDefinition.getFileDefinitions().stream().allMatch(FileDefinition::getLoaded)
+                uploadDefinition.setStatus(uploadDefinition.getFileDefinitions()
+                  .stream()
+                  .allMatch(fileDef -> fileDef.getStatus().equals(FileDefinition.Status.UPLOADED))
                   ? UploadDefinition.Status.LOADED
                   : UploadDefinition.Status.IN_PROGRESS);
                 uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)

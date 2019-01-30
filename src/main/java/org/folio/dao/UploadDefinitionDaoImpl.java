@@ -3,6 +3,7 @@ package org.folio.dao;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.SQLConnection;
@@ -58,72 +59,59 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
           .append(UPLOAD_DEFINITION_TABLE)
           .append(" WHERE _id ='")
           .append(uploadDefinitionId).append("' LIMIT 1 FOR UPDATE;");
-        pgClient.execute(tx, selectUploadDefinitionQuery.toString(), selectResult -> {
-          if (selectResult.failed() || selectResult.result().getUpdated() != 1) {
+        pgClient.select(tx, selectUploadDefinitionQuery.toString(), uploadDefResult -> {
+          if (uploadDefResult.failed()
+            || uploadDefResult.result() == null
+            || uploadDefResult.result().getNumRows() < 1) {
             pgClient.rollbackTx(tx, r -> {
-              logger.error(rollbackMessage, selectResult.cause());
+              logger.error(rollbackMessage);
               future.fail(new NotFoundException(rollbackMessage));
             });
           } else {
-            Criteria idCrit = new Criteria();
-            idCrit.addField(UPLOAD_DEFINITION_ID_FIELD);
-            idCrit.setOperation("=");
-            idCrit.setValue(uploadDefinitionId);
-            pgClient.get(tx, UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), false, true, uploadDefResult -> {
-              if (uploadDefResult.failed()
-                || uploadDefResult.result() == null
-                || uploadDefResult.result().getResultInfo() == null
-                || uploadDefResult.result().getResultInfo().getTotalRecords() < 1) {
-                pgClient.rollbackTx(tx, r -> {
-                  logger.error(rollbackMessage);
-                  future.fail(new NotFoundException(rollbackMessage));
-                });
-              } else {
-                try {
-                  UploadDefinition definition = uploadDefResult.result().getResults().get(0);
-                  mutator.mutate(definition)
-                    .setHandler(onMutate -> {
-                      if (onMutate.succeeded()) {
-                        try {
-                          CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + definition.getId());
-                          pgClient.update(tx, UPLOAD_DEFINITION_TABLE, onMutate.result(), filter, true, updateHandler -> {
-                            if (updateHandler.succeeded() && updateHandler.result().getUpdated() == 1) {
-                              pgClient.endTx(tx, endTx -> {
-                                if (endTx.succeeded()) {
-                                  future.complete(definition);
-                                } else {
-                                  logger.error(rollbackMessage);
-                                  future.fail("Error during updating UploadDefinition with id: " + uploadDefinitionId);
-                                }
-                              });
+            try {
+              UploadDefinition definition = new JsonObject(uploadDefResult.result().getRows().get(0).getString("jsonb"))
+                .mapTo(UploadDefinition.class);
+              mutator.mutate(definition)
+                .setHandler(onMutate -> {
+                  if (onMutate.succeeded()) {
+                    try {
+                      CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + definition.getId());
+                      pgClient.update(tx, UPLOAD_DEFINITION_TABLE, onMutate.result(), filter, true, updateHandler -> {
+                        if (updateHandler.succeeded() && updateHandler.result().getUpdated() == 1) {
+                          pgClient.endTx(tx, endTx -> {
+                            if (endTx.succeeded()) {
+                              future.complete(definition);
                             } else {
-                              pgClient.rollbackTx(tx, r -> {
-                                logger.error(rollbackMessage, updateHandler.cause());
-                                future.fail(updateHandler.cause());
-                              });
+                              logger.error(rollbackMessage);
+                              future.fail("Error during updating UploadDefinition with id: " + uploadDefinitionId);
                             }
                           });
-                        } catch (Exception e) {
+                        } else {
                           pgClient.rollbackTx(tx, r -> {
-                            logger.error(rollbackMessage, e);
-                            future.fail(e);
+                            logger.error(rollbackMessage, updateHandler.cause());
+                            future.fail(updateHandler.cause());
                           });
                         }
-                      } else {
-                        pgClient.rollbackTx(tx, r -> {
-                          logger.error(rollbackMessage, onMutate.cause());
-                          future.fail(onMutate.cause());
-                        });
-                      }
+                      });
+                    } catch (Exception e) {
+                      pgClient.rollbackTx(tx, r -> {
+                        logger.error(rollbackMessage, e);
+                        future.fail(e);
+                      });
+                    }
+                  } else {
+                    pgClient.rollbackTx(tx, r -> {
+                      logger.error(rollbackMessage, onMutate.cause());
+                      future.fail(onMutate.cause());
                     });
-                } catch (Exception e) {
-                  pgClient.rollbackTx(tx, r -> {
-                    logger.error(rollbackMessage, e);
-                    future.fail(e);
-                  });
-                }
-              }
-            });
+                  }
+                });
+            } catch (Exception e) {
+              pgClient.rollbackTx(tx, r -> {
+                logger.error(rollbackMessage, e);
+                future.fail(e);
+              });
+            }
           }
         });
       } catch (Exception e) {

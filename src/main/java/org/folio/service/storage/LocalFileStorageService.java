@@ -47,7 +47,6 @@ public class LocalFileStorageService extends AbstractFileStorageService {
                   StandardCopyOption.REPLACE_EXISTING);
                 IOUtils.closeQuietly(data);
                 fileDefinition.setSourcePath(path + "/" + fileDefinition.getName());
-                fileDefinition.setStatus(FileDefinition.Status.UPLOADED);
                 b.complete(bytes);
               } catch (Exception e) {
                 logger.error("Error during save file source data to the local system's storage. FileId: {}", fileId, e);

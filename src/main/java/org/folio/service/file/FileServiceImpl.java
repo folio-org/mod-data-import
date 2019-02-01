@@ -11,6 +11,7 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 
+import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
 import java.util.Date;
 import java.util.List;
@@ -53,7 +54,7 @@ public class FileServiceImpl implements FileService {
       } else {
         String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
         logger.error(errorMessage);
-        future.fail(errorMessage);
+        future.fail(new NotFoundException(errorMessage));
       }
       return future;
     }).compose(uploadDef -> {
@@ -69,12 +70,17 @@ public class FileServiceImpl implements FileService {
                 uploadDefinitionService.updateBlocking(uploadDefinitionId, definition -> {
                   Future<UploadDefinition> updatingFuture = Future.future();
                   definition.setFileDefinitions(replaceFile(definition.getFileDefinitions(),
-                    onFileSave.result().withUploadedDate(new Date())));
+                    onFileSave.result().withUploadedDate(new Date()).withStatus(FileDefinition.Status.UPLOADED)));
                   definition.setStatus(definition.getFileDefinitions()
                     .stream()
                     .allMatch(fileDef -> fileDef.getStatus().equals(FileDefinition.Status.UPLOADED))
                     ? UploadDefinition.Status.LOADED
                     : UploadDefinition.Status.IN_PROGRESS);
+                  definition.setStatus(definition.getFileDefinitions()
+                    .stream()
+                    .allMatch(fileDef -> fileDef.getStatus().equals(FileDefinition.Status.ERROR))
+                    ? UploadDefinition.Status.ERROR
+                    : definition.getStatus());
                   uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
                     .setHandler(booleanAsyncResult -> {
                       if (booleanAsyncResult.succeeded()) {
@@ -98,7 +104,7 @@ public class FileServiceImpl implements FileService {
       } else {
         String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
         logger.error(errorMessage);
-        future.fail(errorMessage);
+        future.fail(new NotFoundException(errorMessage));
       }
       return future;
     });

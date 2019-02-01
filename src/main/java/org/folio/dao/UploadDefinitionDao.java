@@ -52,9 +52,9 @@ public interface UploadDefinitionDao {
    *
    * @param tx {@link SQLConnection} transaction's connection
    * @param uploadDefinition {@link UploadDefinition} to update
-   * @return future with true is succeeded
+   * @return future with updated {@link UploadDefinition}
    */
-  Future<Boolean> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition);
+  Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition);
 
   /**
    * Updates {@link UploadDefinition} in database with row blocking

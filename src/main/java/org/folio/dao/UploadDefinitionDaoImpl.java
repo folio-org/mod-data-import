@@ -6,6 +6,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
@@ -51,76 +52,40 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator) {
     Future<UploadDefinition> future = Future.future();
     String rollbackMessage = "Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId;
-    pgClient.startTx(tx -> {
-      try {
-        StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ")
-          .append(schema)
-          .append(".")
-          .append(UPLOAD_DEFINITION_TABLE)
-          .append(" WHERE _id ='")
-          .append(uploadDefinitionId).append("' LIMIT 1 FOR UPDATE;");
-        pgClient.select(tx, selectUploadDefinitionQuery.toString(), uploadDefResult -> {
-          if (uploadDefResult.failed()
-            || uploadDefResult.result() == null
-            || uploadDefResult.result().getNumRows() < 1) {
-            pgClient.rollbackTx(tx, r -> {
-              logger.error(rollbackMessage);
-              future.fail(new NotFoundException(rollbackMessage));
-            });
-          } else {
-            try {
-              UploadDefinition definition = new JsonObject(uploadDefResult.result().getRows().get(0).getString("jsonb"))
-                .mapTo(UploadDefinition.class);
-              mutator.mutate(definition)
-                .setHandler(onMutate -> {
-                  if (onMutate.succeeded()) {
-                    try {
-                      CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + definition.getId());
-                      pgClient.update(tx, UPLOAD_DEFINITION_TABLE, onMutate.result(), filter, true, updateHandler -> {
-                        if (updateHandler.succeeded() && updateHandler.result().getUpdated() == 1) {
-                          pgClient.endTx(tx, endTx -> {
-                            if (endTx.succeeded()) {
-                              future.complete(definition);
-                            } else {
-                              logger.error(rollbackMessage);
-                              future.fail("Error during updating UploadDefinition with id: " + uploadDefinitionId);
-                            }
-                          });
-                        } else {
-                          pgClient.rollbackTx(tx, r -> {
-                            logger.error(rollbackMessage, updateHandler.cause());
-                            future.fail(updateHandler.cause());
-                          });
-                        }
-                      });
-                    } catch (Exception e) {
-                      pgClient.rollbackTx(tx, r -> {
-                        logger.error(rollbackMessage, e);
-                        future.fail(e);
-                      });
-                    }
-                  } else {
-                    pgClient.rollbackTx(tx, r -> {
-                      logger.error(rollbackMessage, onMutate.cause());
-                      future.fail(onMutate.cause());
-                    });
-                  }
-                });
-            } catch (Exception e) {
-              pgClient.rollbackTx(tx, r -> {
-                logger.error(rollbackMessage, e);
-                future.fail(e);
-              });
-            }
-          }
-        });
-      } catch (Exception e) {
-        pgClient.rollbackTx(tx, r -> {
-          logger.error(rollbackMessage, e);
-          future.fail(e);
-        });
+    Future<SQLConnection> tx = Future.future();
+    Future.succeededFuture()
+      .compose(v -> {
+        pgClient.startTx(tx.completer());
+        return tx;
+      }).compose(v -> {
+      Future<ResultSet> selectFuture = Future.future(); //NOSONAR
+      StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ")
+        .append(schema)
+        .append(".")
+        .append(UPLOAD_DEFINITION_TABLE)
+        .append(" WHERE _id ='")
+        .append(uploadDefinitionId).append("' LIMIT 1 FOR UPDATE;");
+      pgClient.select(tx, selectUploadDefinitionQuery.toString(), selectFuture);
+      return selectFuture;
+    }).compose(resultSet -> {
+      if (resultSet.getNumRows() != 1) {
+        throw new NotFoundException("Upload Definition was not found. ID: " + uploadDefinitionId);
       }
-    });
+      UploadDefinition definition = new JsonObject(resultSet.getRows().get(0).getString("jsonb"))
+        .mapTo(UploadDefinition.class);
+      return mutator.mutate(definition);
+    }).compose(mutatedObject -> updateUploadDefinition(tx, mutatedObject))
+      .setHandler(onUpdate -> {
+        if (onUpdate.succeeded()) {
+          pgClient.endTx(tx, endTx ->
+            future.complete(onUpdate.result()));
+        } else {
+          pgClient.rollbackTx(tx, r -> {
+            logger.error(rollbackMessage, onUpdate.cause());
+            future.fail(onUpdate.cause());
+          });
+        }
+      });
     return future;
   }
 
@@ -182,7 +147,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   @Override
-  public Future<Boolean> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition) {
+  public Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition) {
     Future<UpdateResult> future = Future.future();
     try {
       Criteria idCrit = new Criteria();
@@ -195,7 +160,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       logger.error("Error during updating UploadDefinition by ID", e);
       future.fail(e);
     }
-    return future.map(updateResult -> updateResult.getUpdated() == 1);
+    return future.map(uploadDefinition);
   }
 
   @Override

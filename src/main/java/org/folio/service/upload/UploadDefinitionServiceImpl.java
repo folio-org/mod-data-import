@@ -96,17 +96,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<UploadDefinition> updateUploadDefinition(UploadDefinition uploadDefinition) {
-    return getUploadDefinitionById(uploadDefinition.getId())
-      .compose(optionalUploadDefinition -> optionalUploadDefinition
-        .map(t -> uploadDefinitionDao.updateUploadDefinition(uploadDefinition)
-          .map(uploadDefinition))
-        .orElse(Future.failedFuture(new NotFoundException(
-          String.format("UploadDefinition with id '%s' not found", uploadDefinition.getId()))))
-      );
-  }
-
-  @Override
   public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator) {
     return uploadDefinitionDao.updateBlocking(uploadDefinitionId, mutator);
   }
@@ -134,14 +123,12 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
   @Override
   public Future<UploadDefinition> addFileDefinitionToUpload(FileDefinition fileDefinition) {
-    return getUploadDefinitionById(fileDefinition.getUploadDefinitionId())
-      .compose(optionalUploadDefinition -> optionalUploadDefinition
-        .map(uploadDefinition -> uploadDefinitionDao.updateUploadDefinition(uploadDefinition
-          .withFileDefinitions(addNewFileDefinition(uploadDefinition.getFileDefinitions(), fileDefinition)))
-          .map(uploadDefinition))
-        .orElse(Future.failedFuture(new NotFoundException(
-          String.format("UploadDefinition with id '%s' not found", fileDefinition.getUploadDefinitionId()))))
-      );
+    return uploadDefinitionDao.updateBlocking(fileDefinition.getUploadDefinitionId(), uploadDef -> {
+      Future<UploadDefinition> uploadDefFuture = Future.future();
+      uploadDef.withFileDefinitions(addNewFileDefinition(uploadDef.getFileDefinitions(), fileDefinition));
+      uploadDefFuture.complete(uploadDef);
+      return uploadDefFuture;
+    });
   }
 
   @Override

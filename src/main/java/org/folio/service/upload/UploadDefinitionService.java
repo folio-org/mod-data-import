@@ -46,14 +46,6 @@ public interface UploadDefinitionService {
   Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, OkapiConnectionParams params);
 
   /**
-   * Updates UploadDefinition with given id
-   *
-   * @param uploadDefinition UploadDefinition to update
-   * @return future with true is succeeded
-   */
-  Future<UploadDefinition> updateUploadDefinition(UploadDefinition uploadDefinition);
-
-  /**
    * Updates {@link UploadDefinition} in database with row blocking
    *
    * @param uploadDefinitionId - id of {@link UploadDefinition}
@@ -99,7 +91,8 @@ public interface UploadDefinitionService {
 
   /**
    * Validate new UploadDefinition before saving it
-   * @param definition - object with new upload definition
+   *
+   * @param definition         - object with new upload definition
    * @param asyncResultHandler - request's result handler
    * @return - is Upload Definition is valid
    */

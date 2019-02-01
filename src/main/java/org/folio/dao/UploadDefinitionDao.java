@@ -40,17 +40,9 @@ public interface UploadDefinitionDao {
   Future<String> addUploadDefinition(UploadDefinition uploadDefinition);
 
   /**
-   * Updates {@link UploadDefinition} in database
-   *
-   * @param uploadDefinition {@link UploadDefinition} to update
-   * @return future with true is succeeded
-   */
-  Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition);
-
-  /**
    * Updates {@link UploadDefinition} in database in transaction
    *
-   * @param tx {@link SQLConnection} transaction's connection
+   * @param tx               {@link SQLConnection} transaction's connection
    * @param uploadDefinition {@link UploadDefinition} to update
    * @return future with updated {@link UploadDefinition}
    */

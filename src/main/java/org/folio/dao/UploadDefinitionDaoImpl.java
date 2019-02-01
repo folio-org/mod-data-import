@@ -131,22 +131,6 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   @Override
-  public Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition) {
-    Future<UpdateResult> future = Future.future();
-    try {
-      Criteria idCrit = new Criteria();
-      idCrit.addField(UPLOAD_DEFINITION_ID_FIELD);
-      idCrit.setOperation("=");
-      idCrit.setValue(uploadDefinition.getId());
-      pgClient.update(UPLOAD_DEFINITION_TABLE, uploadDefinition, new Criterion(idCrit), true, future.completer());
-    } catch (Exception e) {
-      logger.error("Error during updating UploadDefinition by ID", e);
-      future.fail(e);
-    }
-    return future.map(updateResult -> updateResult.getUpdated() == 1);
-  }
-
-  @Override
   public Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition) {
     Future<UpdateResult> future = Future.future();
     try {

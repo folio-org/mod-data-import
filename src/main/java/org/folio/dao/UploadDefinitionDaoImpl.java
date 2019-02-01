@@ -51,15 +51,15 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator) {
     Future<UploadDefinition> future = Future.future();
-    String rollbackMessage = "Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId;
-    Future<SQLConnection> tx = Future.future();
+    String rollbackMessage = "Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId; //NOSONAR
+    Future<SQLConnection> tx = Future.future(); //NOSONAR
     Future.succeededFuture()
       .compose(v -> {
         pgClient.startTx(tx.completer());
         return tx;
       }).compose(v -> {
       Future<ResultSet> selectFuture = Future.future(); //NOSONAR
-      StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ")
+      StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ") //NOSONAR
         .append(schema)
         .append(".")
         .append(UPLOAD_DEFINITION_TABLE)

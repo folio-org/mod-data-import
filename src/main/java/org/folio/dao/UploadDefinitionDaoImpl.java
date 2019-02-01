@@ -71,7 +71,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       if (resultSet.getNumRows() != 1) {
         throw new NotFoundException("Upload Definition was not found. ID: " + uploadDefinitionId);
       }
-      UploadDefinition definition = new JsonObject(resultSet.getRows().get(0).getString("jsonb"))
+      UploadDefinition definition = new JsonObject(resultSet.getRows().get(0).getString("jsonb")) //NOSONAR
         .mapTo(UploadDefinition.class);
       return mutator.mutate(definition);
     }).compose(mutatedObject -> updateUploadDefinition(tx, mutatedObject))

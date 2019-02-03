@@ -43,6 +43,19 @@ public class FileServiceImpl implements FileService {
       .findFirst();
   }
 
+  private void setUploadDefinitionStatusAfterFileUpload(UploadDefinition definition) {
+    definition.setStatus(definition.getFileDefinitions()
+      .stream()
+      .allMatch(fileDef -> fileDef.getStatus().equals(FileDefinition.Status.UPLOADED))
+      ? UploadDefinition.Status.LOADED
+      : UploadDefinition.Status.IN_PROGRESS);
+    definition.setStatus(definition.getFileDefinitions()
+      .stream()
+      .allMatch(fileDef -> fileDef.getStatus().equals(FileDefinition.Status.ERROR))
+      ? UploadDefinition.Status.ERROR
+      : definition.getStatus());
+  }
+
   @Override
   public Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data, OkapiConnectionParams params) {
     return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef -> {
@@ -71,16 +84,7 @@ public class FileServiceImpl implements FileService {
                   Future<UploadDefinition> updatingFuture = Future.future();
                   definition.setFileDefinitions(replaceFile(definition.getFileDefinitions(),
                     onFileSave.result().withUploadedDate(new Date()).withStatus(FileDefinition.Status.UPLOADED)));
-                  definition.setStatus(definition.getFileDefinitions()
-                    .stream()
-                    .allMatch(fileDef -> fileDef.getStatus().equals(FileDefinition.Status.UPLOADED))
-                    ? UploadDefinition.Status.LOADED
-                    : UploadDefinition.Status.IN_PROGRESS);
-                  definition.setStatus(definition.getFileDefinitions()
-                    .stream()
-                    .allMatch(fileDef -> fileDef.getStatus().equals(FileDefinition.Status.ERROR))
-                    ? UploadDefinition.Status.ERROR
-                    : definition.getStatus());
+                  setUploadDefinitionStatusAfterFileUpload(definition);
                   uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
                     .setHandler(booleanAsyncResult -> {
                       if (booleanAsyncResult.succeeded()) {

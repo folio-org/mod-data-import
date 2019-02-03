@@ -1,6 +1,8 @@
 package org.folio.dao;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import io.vertx.ext.sql.SQLConnection;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
@@ -38,12 +40,13 @@ public interface UploadDefinitionDao {
   Future<String> addUploadDefinition(UploadDefinition uploadDefinition);
 
   /**
-   * Updates {@link UploadDefinition} in database
+   * Updates {@link UploadDefinition} in database in transaction
    *
+   * @param tx               {@link SQLConnection} transaction's connection
    * @param uploadDefinition {@link UploadDefinition} to update
-   * @return future with true is succeeded
+   * @return future with updated {@link UploadDefinition}
    */
-  Future<Boolean> updateUploadDefinition(UploadDefinition uploadDefinition);
+  Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition);
 
   /**
    * Updates {@link UploadDefinition} in database with row blocking

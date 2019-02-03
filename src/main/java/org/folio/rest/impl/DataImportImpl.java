@@ -89,7 +89,9 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         entity.setId(definitionId);
-        uploadDefinitionService.updateUploadDefinition(entity)
+        uploadDefinitionService.updateBlocking(definitionId, uploadDef ->
+          // just update UploadDefinition without FileDefinition changes
+          Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())))
           .map(PutDataImportUploadDefinitionByDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

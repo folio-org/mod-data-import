@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-data-import</artifactId>
-  <version>1.1.1-SNAPSHOT</version>
+  <version>1.2.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -14,7 +14,7 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>23.3.1</raml-module-builder.version>
+    <raml-module-builder.version>23.5.0</raml-module-builder.version>
     <vertx.version>3.5.4</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>3.1.1</rest-assured.version>

@@ -21,6 +21,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.drools.core.util.StringUtils;
 import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -260,7 +261,8 @@ public class RestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .body("metaJobExecutionId", Matchers.notNullValue())
       .body("id", Matchers.notNullValue())
-      .body("status", Matchers.is("NEW"));
+      .body("status", Matchers.is("NEW"))
+      .body("fileDefinitions[0].status", Matchers.is("NEW"));
   }
 
   @Test
@@ -310,11 +312,12 @@ public class RestVerticleTest {
       .when()
       .get(DEFINITION_PATH + "/" + id)
       .then()
+      .log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("metaJobExecutionId", Matchers.notNullValue())
       .body("id", Matchers.notNullValue())
       .body("status", Matchers.is("NEW"))
-      .log().all();
+      .body("fileDefinitions[0].status", Matchers.is("NEW"));
   }
 
   @Test
@@ -393,6 +396,7 @@ public class RestVerticleTest {
       .log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("status", Matchers.is("LOADED"))
+      .body("fileDefinitions[0].status", Matchers.is("UPLOADED"))
       .body("fileDefinitions.uploadedDate", Matchers.notNullValue());
   }
 

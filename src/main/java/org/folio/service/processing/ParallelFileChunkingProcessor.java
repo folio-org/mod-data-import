@@ -36,8 +36,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.folio.dataimport.util.RestUtil.validateAsyncResult;
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
-import static org.folio.rest.jaxrs.model.StatusDto.Status.IMPORT_FINISHED;
-import static org.folio.rest.jaxrs.model.StatusDto.Status.IMPORT_IN_PROGRESS;
 
 /**
  * Processing files in parallel threads, one thread per one file.
@@ -85,10 +83,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
             LOGGER.error("Can not update profile for jobs. Cause: {}", updatedProfileAsyncResult.cause());
           } else {
             for (FileDefinition fileDefinition : fileDefinitions) {
-              this.executor.executeBlocking(blockingFuture -> uploadDefinitionService
-                  .updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_IN_PROGRESS), params)
-                  .compose(ar -> processFile(fileDefinition, jobProfile, fileStorageService, params))
-                  .compose(ar -> uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(IMPORT_FINISHED), params))
+              this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
                   .setHandler(ar -> {
                     if (ar.failed()) {
                       LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());

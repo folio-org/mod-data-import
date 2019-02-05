@@ -4,7 +4,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import org.folio.dao.UploadDefinitionDaoImpl;
-import org.folio.dataImport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.StatusDto;

@@ -1,7 +1,7 @@
 package org.folio.service.storage;
 
 import io.vertx.core.Future;
-import org.folio.dataImport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 
 import java.io.File;

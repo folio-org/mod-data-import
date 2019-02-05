@@ -1,7 +1,7 @@
 package org.folio.service.file;
 
 import io.vertx.core.Future;
-import org.folio.dataImport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
 import java.io.InputStream;

@@ -21,7 +21,8 @@ public interface FileProcessor {
   }
 
   /**
-   * Performs processing files related to given request
+   * Performs processing files related to given request,
+   * sets JobExecution status to ERROR in case file processing failed
    *
    * @param request request for processing
    * @param params  parameters necessary for connection to the OKAPI

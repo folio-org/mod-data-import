@@ -14,7 +14,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.drools.core.util.StringUtils;
-import org.folio.dataImport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
@@ -34,9 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.folio.dataImport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.dataImport.util.RestUtil.OKAPI_TOKEN_HEADER;
-import static org.folio.dataImport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 

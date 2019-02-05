@@ -13,8 +13,8 @@ import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.FileSystemUtils;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
-import org.folio.dataImport.util.OkapiConnectionParams;
-import org.folio.dataImport.util.RestUtil;
+import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -48,7 +48,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
-import static org.folio.dataImport.util.RestUtil.validateAsyncResult;
+import static org.folio.dataimport.util.RestUtil.validateAsyncResult;
 
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 

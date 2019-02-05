@@ -4,8 +4,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.folio.dataImport.util.ConfigurationUtil;
-import org.folio.dataImport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConfigurationUtil;
+import org.folio.dataimport.util.OkapiConnectionParams;
 
 import java.util.Arrays;
 import java.util.List;

@@ -13,8 +13,6 @@ import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.Criteria.Limit;
-import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
@@ -22,6 +20,9 @@ import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import javax.ws.rs.NotFoundException;
 import java.util.Optional;
+
+import static org.folio.dataimport.util.DaoUtil.constructCriteria;
+import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
@@ -94,7 +95,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     Future<Results<UploadDefinition>> future = Future.future();
     try {
       String[] fieldList = {"*"};
-      CQLWrapper cql = getCQL(query, limit, offset);
+      CQLWrapper cql = getCQLWrapper(UPLOAD_DEFINITION_TABLE, query, limit, offset);
       pgClient.get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       logger.error("Error during getting UploadDefinitions from view", e);
@@ -109,10 +110,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   public Future<Optional<UploadDefinition>> getUploadDefinitionById(String id) {
     Future<Results<UploadDefinition>> future = Future.future();
     try {
-      Criteria idCrit = new Criteria();
-      idCrit.addField(UPLOAD_DEFINITION_ID_FIELD);
-      idCrit.setOperation("=");
-      idCrit.setValue(id);
+      Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id);
       pgClient.get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), true, future.completer());
     } catch (Exception e) {
       logger.error("Error during get UploadDefinition by ID from view", e);
@@ -134,10 +132,6 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   public Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition) {
     Future<UpdateResult> future = Future.future();
     try {
-      Criteria idCrit = new Criteria();
-      idCrit.addField(UPLOAD_DEFINITION_ID_FIELD);
-      idCrit.setOperation("=");
-      idCrit.setValue(uploadDefinition.getId());
       CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + uploadDefinition.getId());
       pgClient.update(tx, UPLOAD_DEFINITION_TABLE, uploadDefinition, filter, true, future.completer());
     } catch (Exception e) {
@@ -154,19 +148,4 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     return future.map(updateResult -> updateResult.getUpdated() == 1);
   }
 
-  /**
-   * Build CQL from request URL query
-   *
-   * @param query - query from URL
-   * @param limit - limit of records for pagination
-   * @return - CQL wrapper for building postgres request to database
-   * @throws org.z3950.zing.cql.cql2pgjson.FieldException field exception
-   */
-  private CQLWrapper getCQL(String query, int limit, int offset)
-    throws org.z3950.zing.cql.cql2pgjson.FieldException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb");
-    return new CQLWrapper(cql2pgJson, query)
-      .setLimit(new Limit(limit))
-      .setOffset(new Offset(offset));
-  }
 }

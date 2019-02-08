@@ -8,29 +8,30 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 
 import javax.ws.rs.NotFoundException;
-import java.io.InputStream;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public class FileServiceImpl implements FileService {
+public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleService {
 
-  private static final Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileUploadLifecycleServiceImpl.class);
 
   private Vertx vertx;
   private UploadDefinitionService uploadDefinitionService;
   private String tenantId;
+  private FileStorageService fileStorage;
 
-  public FileServiceImpl(UploadDefinitionService uploadDefinitionService) {
+  public FileUploadLifecycleServiceImpl(UploadDefinitionService uploadDefinitionService) {
     this.uploadDefinitionService = uploadDefinitionService;
   }
 
-  public FileServiceImpl(Vertx vertx, String tenantId, UploadDefinitionService uploadDefinitionService) {
+  public FileUploadLifecycleServiceImpl(Vertx vertx, String tenantId, UploadDefinitionService uploadDefinitionService) {
     this.vertx = vertx;
     this.tenantId = tenantId;
     this.uploadDefinitionService = uploadDefinitionService;
@@ -57,7 +58,7 @@ public class FileServiceImpl implements FileService {
   }
 
   @Override
-  public Future<UploadDefinition> uploadFile(String fileId, String uploadDefinitionId, InputStream data, OkapiConnectionParams params) {
+  public Future<UploadDefinition> beforeFileSave(String fileId, String uploadDefinitionId, OkapiConnectionParams params) {
     return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef -> {
       Future<UploadDefinition> future = Future.future();
       Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDef, fileId);
@@ -70,48 +71,45 @@ public class FileServiceImpl implements FileService {
         future.fail(new NotFoundException(errorMessage));
       }
       return future;
-    }).compose(uploadDef -> {
-      Future<UploadDefinition> future = Future.future();
-      Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDef, fileId);
-      if (optionalFileDefinition.isPresent()) {
-        FileDefinition fileDefinition = optionalFileDefinition.get();
-        FileStorageServiceBuilder
-          .build(vertx, tenantId, params)
-          .map(service -> service.saveFile(data, fileDefinition, params)
-            .setHandler(onFileSave -> {
-              if (onFileSave.succeeded()) {
-                uploadDefinitionService.updateBlocking(uploadDefinitionId, definition -> {
-                  Future<UploadDefinition> updatingFuture = Future.future();
-                  definition.setFileDefinitions(replaceFile(definition.getFileDefinitions(),
-                    onFileSave.result().withUploadedDate(new Date()).withStatus(FileDefinition.Status.UPLOADED)));
-                  setUploadDefinitionStatusAfterFileUpload(definition);
-                  uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
-                    .setHandler(booleanAsyncResult -> {
-                      if (booleanAsyncResult.succeeded()) {
-                        updatingFuture.complete(definition);
-                        future.complete(definition);
-                      } else {
-                        String statusUpdateErrorMessage = "Error updating status for JobExecution with id " + fileDefinition.getJobExecutionId();
-                        logger.error(statusUpdateErrorMessage);
-                        updatingFuture.fail(statusUpdateErrorMessage);
-                        future.fail(statusUpdateErrorMessage);
-                      }
-                    });
-                  return updatingFuture;
-                });
-              } else {
-                String fileSaveErrorMessage = "Error during file save";
-                logger.error(fileSaveErrorMessage);
-                future.fail(fileSaveErrorMessage);
-              }
-            }));
-      } else {
-        String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
-        logger.error(errorMessage);
-        future.fail(new NotFoundException(errorMessage));
-      }
-      return future;
     });
+  }
+
+  @Override
+  public Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, OkapiConnectionParams params) {
+    Future<UploadDefinition> future = Future.future();
+    uploadDefinitionService.updateBlocking(fileDefinition.getUploadDefinitionId(), definition -> {
+      Future<UploadDefinition> updatingFuture = Future.future();
+      definition.setFileDefinitions(replaceFile(definition.getFileDefinitions(),
+        fileDefinition.withUploadedDate(new Date()).withStatus(FileDefinition.Status.UPLOADED)));
+      setUploadDefinitionStatusAfterFileUpload(definition);
+      uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
+        .setHandler(booleanAsyncResult -> {
+          if (booleanAsyncResult.succeeded()) {
+            updatingFuture.complete(definition);
+            future.complete(definition);
+          } else {
+            String statusUpdateErrorMessage = "Error updating status for JobExecution with id " + fileDefinition.getJobExecutionId();
+            logger.error(statusUpdateErrorMessage);
+            updatingFuture.fail(statusUpdateErrorMessage);
+            future.fail(statusUpdateErrorMessage);
+          }
+        });
+      return updatingFuture;
+    });
+    return future;
+  }
+
+  @Override
+  public Future<FileDefinition> saveFileChunk(String fileId, UploadDefinition uploadDefinition, byte[] data, OkapiConnectionParams params) {
+    Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDefinition, fileId);
+    if (optionalFileDefinition.isPresent()) {
+      FileDefinition fileDefinition = optionalFileDefinition.get();
+      return getStorage(params).compose(service -> service.saveFile(data, fileDefinition, params));
+    } else {
+      String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
+      logger.error(errorMessage);
+      return Future.failedFuture(new NotFoundException(errorMessage));
+    }
   }
 
   @Override
@@ -164,5 +162,10 @@ public class FileServiceImpl implements FileService {
     }
     list.add(fileDefinition);
     return list;
+  }
+
+  private Future<FileStorageService> getStorage(OkapiConnectionParams params) {
+    return fileStorage != null ? Future.succeededFuture(fileStorage) : FileStorageServiceBuilder
+      .build(vertx, tenantId, params);
   }
 }

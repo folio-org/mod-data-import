@@ -280,7 +280,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
             return getChildrenJobExecutions(jobExecution.getId(), params)
               .map(JobExecutionCollection::getJobExecutions);
           } else {
-            return Future.succeededFuture(Arrays.asList(jobExecution));
+            return Future.succeededFuture(Collections.singletonList(jobExecution));
           }
         });
     } else {

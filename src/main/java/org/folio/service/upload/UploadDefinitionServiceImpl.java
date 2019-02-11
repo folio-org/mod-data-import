@@ -152,8 +152,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Boolean checkNewUploadDefinition(UploadDefinition definition, Handler<AsyncResult<Response>> asyncResultHandler) {
     Set<Error> errorsList = new HashSet<>(definition.getFileDefinitions().size());
-    boolean isValid = validateFreeSpace(definition.getFileDefinitions(), errorsList)
-      && validateHeapSpace(definition.getFileDefinitions(), errorsList);
+    boolean isValid = validateFreeSpace(definition.getFileDefinitions(), errorsList);
     if (!isValid) {
       asyncResultHandler.handle(Future.succeededFuture(DataImport.PostDataImportUploadDefinitionResponse
         .respond422WithApplicationJson(new Errors()
@@ -175,19 +174,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         }
       } catch (IOException e) {
         throw new InternalServerErrorException("Error during check file's size");
-      }
-    }
-    return valid;
-  }
-
-  private boolean validateHeapSpace(List<FileDefinition> fileDefinitions, Collection<Error> errors) {
-    boolean valid = true;
-    for (FileDefinition fileDefinition : fileDefinitions) {
-      if (fileDefinition.getSize() != null && (Runtime.getRuntime().maxMemory() / 1024) - fileDefinition.getSize() <= 0) {
-        valid = false;
-        errors.add(new Error()
-          .withMessage(FILE_UPLOAD_ERROR_MESSAGE)
-          .withCode(fileDefinition.getName()));
       }
     }
     return valid;
@@ -247,9 +233,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     list.add(def
       .withCreateDate(new Date())
       .withStatus(FileDefinition.Status.NEW)
-      .withId(UUID.randomUUID().toString())
-      //NEED replace with rest call
-      .withJobExecutionId(UUID.randomUUID().toString()));
+      .withId(UUID.randomUUID().toString()));
     return list;
   }
 

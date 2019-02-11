@@ -36,7 +36,7 @@ public class DataImportImpl implements DataImport {
   private UploadDefinitionService uploadDefinitionService;
   private FileUploadLifecycleService fileService;
   private FileProcessor fileProcessor;
-  private Future<UploadDefinition> futureforUplaod;
+  private Future<UploadDefinition> fileUploadStateFuture;
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
@@ -199,15 +199,15 @@ public class DataImportImpl implements DataImport {
       try {
         byte[] data = IOUtils.toByteArray(entity);
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-        if (futureforUplaod == null) {
-          futureforUplaod = fileService.beforeFileSave(fileId, uploadDefinitionId, params);
+        if (fileUploadStateFuture == null) {
+          fileUploadStateFuture = fileService.beforeFileSave(fileId, uploadDefinitionId, params);
         }
-        futureforUplaod = futureforUplaod.compose(def ->
+        fileUploadStateFuture = fileUploadStateFuture.compose(def ->
           fileService.saveFileChunk(fileId, def, data, params)
             .compose(fileDefinition -> data.length == 0 ?
               fileService.afterFileSave(fileDefinition, params)
               : Future.succeededFuture(def)));
-        futureforUplaod.map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
+        fileUploadStateFuture.map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);

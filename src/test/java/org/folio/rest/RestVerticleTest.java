@@ -28,6 +28,7 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.hamcrest.Matchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -247,6 +248,11 @@ public class RestVerticleTest {
         .willReturn(WireMock.ok().withBody(childrenJobExecutions.toString())));
     } catch (UnsupportedEncodingException ignored) {
     }
+  }
+
+  @After
+  public void cleanUpAfterTest() throws IOException {
+    FileUtils.deleteDirectory(new File("./storage"));
   }
 
   @Test

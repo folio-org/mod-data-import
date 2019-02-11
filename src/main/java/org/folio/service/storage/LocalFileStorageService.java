@@ -51,16 +51,16 @@ public class LocalFileStorageService extends AbstractFileStorageService {
             },
             r -> {
               if (r.failed()) {
-                logger.error("Error during calculating path for file save. FileId: {}", fileId);
+                logger.error("Error during calculating path for file save. FileId: {}", fileId, r.cause());
                 future.fail(r.cause());
               } else {
-                logger.info("File part was saved to the storage.");
+                logger.info("File part was saved to the storage. FileId: {}", fileId);
                 future.complete(fileDefinition);
               }
             });
         } else {
-          logger.error("Error during calculating path for file save. FileId: {}", fileId);
-          future.fail(new BadRequestException());
+          logger.error("Error during calculating path for file save. FileId: {}", fileId, pathReply.cause());
+          future.fail(new BadRequestException(pathReply.cause()));
         }
       });
     return future;

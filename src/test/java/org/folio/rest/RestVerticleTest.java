@@ -21,7 +21,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.drools.core.util.StringUtils;
 import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -29,6 +28,7 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.hamcrest.Matchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -47,6 +47,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
 public class RestVerticleTest {
@@ -249,6 +250,11 @@ public class RestVerticleTest {
     }
   }
 
+  @After
+  public void cleanUpAfterTest() throws IOException {
+    FileUtils.deleteDirectory(new File("./storage"));
+  }
+
   @Test
   public void uploadDefinitionCreate() {
     RestAssured.given()
@@ -387,7 +393,7 @@ public class RestVerticleTest {
 
     ClassLoader classLoader = getClass().getClassLoader();
     File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
-    RestAssured.given()
+    String object2 = RestAssured.given()
       .spec(specUpload)
       .when()
       .body(FileUtils.openInputStream(file))
@@ -397,7 +403,15 @@ public class RestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("status", Matchers.is("LOADED"))
       .body("fileDefinitions[0].status", Matchers.is("UPLOADED"))
-      .body("fileDefinitions.uploadedDate", Matchers.notNullValue());
+      .body("fileDefinitions.uploadedDate", Matchers.notNullValue())
+      .extract().body().jsonPath().prettify();
+    JsonObject jsonObject2 = new JsonObject(object2);
+    String path = jsonObject2
+      .getJsonArray("fileDefinitions")
+      .getJsonObject(0)
+      .getString("sourcePath");
+    File file2 = new File(path);
+    assertTrue(FileUtils.contentEquals(file, file2));
   }
 
   @Test

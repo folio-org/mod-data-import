@@ -7,7 +7,7 @@ import io.vertx.core.logging.LoggerFactory;
 import org.folio.dataimport.util.ConfigurationUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -38,7 +38,7 @@ public class FileStorageServiceBuilder {
         return;
       }
       String serviceCode = result.result();
-      List<FileStorageService> availableServices = Arrays.asList(new LocalFileStorageService(vertx, tenantId));
+      List<FileStorageService> availableServices = Collections.singletonList(new LocalFileStorageService(vertx, tenantId));
       future.complete(availableServices
         .stream()
         .filter(service -> service.getServiceName().equals(serviceCode))

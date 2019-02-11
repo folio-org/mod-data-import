@@ -5,7 +5,6 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 
 import java.io.File;
-import java.io.InputStream;
 
 /**
  * File storage service. For each implementation should implement this service
@@ -26,7 +25,7 @@ public interface FileStorageService {
   /**
    * Saves File to the storage and return its path
    */
-  Future<FileDefinition> saveFile(InputStream data, FileDefinition fileDefinition, OkapiConnectionParams params);
+  Future<FileDefinition> saveFile(byte[] data, FileDefinition fileDefinition, OkapiConnectionParams params);
 
   /**
    * Deletes File from the storage and returns true if succeeded

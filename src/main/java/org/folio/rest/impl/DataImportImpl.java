@@ -8,16 +8,18 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.service.file.FileService;
-import org.folio.service.file.FileServiceImpl;
+import org.folio.service.file.FileUploadLifecycleService;
+import org.folio.service.file.FileUploadLifecycleServiceImpl;
 import org.folio.service.processing.FileProcessor;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
@@ -32,13 +34,14 @@ public class DataImportImpl implements DataImport {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataImportImpl.class);
   private UploadDefinitionService uploadDefinitionService;
-  private FileService fileService;
+  private FileUploadLifecycleService fileService;
   private FileProcessor fileProcessor;
+  private Future<UploadDefinition> fileUploadStateFuture;
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
     this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, calculatedTenantId);
-    this.fileService = new FileServiceImpl(vertx, calculatedTenantId, this.uploadDefinitionService);
+    this.fileService = new FileUploadLifecycleServiceImpl(vertx, calculatedTenantId, this.uploadDefinitionService);
     this.fileProcessor = FileProcessor.createProxy(vertx);
   }
 
@@ -187,15 +190,24 @@ public class DataImportImpl implements DataImport {
     }
   }
 
+  @Stream
   @Override
   public void postDataImportUploadFile(String uploadDefinitionId, String fileId, InputStream entity,
                                        Map<String, String> okapiHeaders,
                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
+        byte[] data = IOUtils.toByteArray(entity);
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-        fileService.uploadFile(fileId, uploadDefinitionId, entity, params)
-          .map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
+        if (fileUploadStateFuture == null) {
+          fileUploadStateFuture = fileService.beforeFileSave(fileId, uploadDefinitionId, params);
+        }
+        fileUploadStateFuture = fileUploadStateFuture.compose(def ->
+          fileService.saveFileChunk(fileId, def, data, params)
+            .compose(fileDefinition -> data.length == 0 ?
+              fileService.afterFileSave(fileDefinition, params)
+              : Future.succeededFuture(def)));
+        fileUploadStateFuture.map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);

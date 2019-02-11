@@ -12,7 +12,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
@@ -200,17 +199,15 @@ public class DataImportImpl implements DataImport {
       try {
         byte[] data = IOUtils.toByteArray(entity);
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-
         if (futureforUplaod == null) {
           futureforUplaod = fileService.beforeFileSave(fileId, uploadDefinitionId, params);
         }
-        futureforUplaod.compose(def ->
+        futureforUplaod = futureforUplaod.compose(def ->
           fileService.saveFileChunk(fileId, def, data, params)
-            .compose(fileDefinition -> okapiHeaders.get(RestVerticle.STREAM_COMPLETE) != null ?
+            .compose(fileDefinition -> data.length == 0 ?
               fileService.afterFileSave(fileDefinition, params)
-              : Future.succeededFuture(def)
-            ))
-          .map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
+              : Future.succeededFuture(def)));
+        futureforUplaod.map(PostDataImportUploadFileResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);

@@ -25,7 +25,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   private Vertx vertx;
   private UploadDefinitionService uploadDefinitionService;
   private String tenantId;
-  private FileStorageService fileStorage;
+  private Future<FileStorageService> fileStorage = Future.succeededFuture();
 
   public FileUploadLifecycleServiceImpl(UploadDefinitionService uploadDefinitionService) {
     this.uploadDefinitionService = uploadDefinitionService;
@@ -165,7 +165,11 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   }
 
   private Future<FileStorageService> getStorage(OkapiConnectionParams params) {
-    return fileStorage != null ? Future.succeededFuture(fileStorage) : FileStorageServiceBuilder
-      .build(vertx, tenantId, params);
+    return fileStorage.compose(fileStorageService -> fileStorageService == null ? FileStorageServiceBuilder
+      .build(vertx, tenantId, params)
+      .compose(h -> {
+        fileStorage = Future.succeededFuture(h);
+        return fileStorage;
+      }) : fileStorage);
   }
 }

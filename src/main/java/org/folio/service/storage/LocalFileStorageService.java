@@ -43,8 +43,8 @@ public class LocalFileStorageService extends AbstractFileStorageService {
                   fs.mkdirsBlocking(path.split(fileDefinition.getName())[0]);
                 }
                 final Path pathToFile = Paths.get(path);
-                Files.write(pathToFile, data, Files.exists(pathToFile) ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
-                fileDefinition.setSourcePath(path + "/" + fileDefinition.getName());
+                Files.write(pathToFile, data, pathToFile.toFile().exists() ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
+                fileDefinition.setSourcePath(path);
                 b.complete();
               } catch (Exception e) {
                 logger.error("Error during save file source data to the local system's storage. FileId: {}", fileId, e);
@@ -83,7 +83,9 @@ public class LocalFileStorageService extends AbstractFileStorageService {
 
   @Override
   protected Future<String> getStoragePath(String code, FileDefinition fileDefinition, OkapiConnectionParams params) {
-    return fileDefinition.getSourcePath() != null ? Future.succeededFuture(fileDefinition.getSourcePath()) : super.getStoragePath(code, fileDefinition, params)
-      .compose(path -> Future.succeededFuture(path + "/" + fileDefinition.getName()));
+    return fileDefinition.getSourcePath() != null ?
+      Future.succeededFuture(fileDefinition.getSourcePath())
+      : super.getStoragePath(code, fileDefinition, params)
+        .compose(path -> Future.succeededFuture(path + "/" + fileDefinition.getName()));
   }
 }

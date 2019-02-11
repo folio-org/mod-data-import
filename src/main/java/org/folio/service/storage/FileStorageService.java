@@ -5,7 +5,6 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 
 import java.io.File;
-import java.io.InputStream;
 
 /**
  * File storage service. For each implementation should implement this service

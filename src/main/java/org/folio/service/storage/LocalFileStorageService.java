@@ -17,8 +17,6 @@ public class LocalFileStorageService extends AbstractFileStorageService {
 
   private static final String FILE_STORAGE_PATH_CODE = "data.import.storage.path";
   private static final Logger logger = LoggerFactory.getLogger(LocalFileStorageService.class);
-  private String storagePath;
-
 
   public LocalFileStorageService(Vertx vertx, String tenantId) {
     super(vertx, tenantId);
@@ -86,6 +84,6 @@ public class LocalFileStorageService extends AbstractFileStorageService {
     return fileDefinition.getSourcePath() != null ?
       Future.succeededFuture(fileDefinition.getSourcePath())
       : super.getStoragePath(code, fileDefinition, params)
-        .compose(path -> Future.succeededFuture(path + "/" + fileDefinition.getName()));
+      .compose(path -> Future.succeededFuture(path + "/" + fileDefinition.getName()));
   }
 }

@@ -26,7 +26,7 @@ import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
-  private static final String UPLOAD_DEFINITION_TABLE = "uploadDefinition";
+  private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
   private static final String UPLOAD_DEFINITION_ID_FIELD = "'id'";
   private final Logger logger = LoggerFactory.getLogger(UploadDefinitionDaoImpl.class);
 

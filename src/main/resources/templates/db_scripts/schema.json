@@ -1,7 +1,7 @@
 {
   "tables": [
     {
-      "tableName": "uploadDefinition",
+      "tableName": "upload_definitions",
       "withMetadata": true,
       "pkColumnName": "_id",
       "generateId": false,
@@ -18,6 +18,45 @@
           "tOps": "ADD"
         }
       ]
+    },
+    {
+      "tableName": "file_extensions",
+      "generateId": false,
+      "fromModuleVersion": "1.0",
+      "withMetadata": true,
+      "pkColumnName": "_id",
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ],
+      "uniqueIndex": [
+        {
+          "fieldName": "extension",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "default_file_extensions",
+      "generateId": false,
+      "fromModuleVersion": "1.0",
+      "withMetadata": true,
+      "pkColumnName": "_id",
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ],
+      "uniqueIndex": [
+        {
+          "fieldName": "extension",
+          "tOps": "ADD"
+        }
+      ],
+      "customSnippetPath": "defaultFileExtensions.sql"
     }
   ]
 }

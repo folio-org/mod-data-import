@@ -53,7 +53,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
   private static final Logger logger = LoggerFactory.getLogger(UploadDefinitionServiceImpl.class);
   private static final String JOB_EXECUTION_CREATE_URL = "/change-manager/jobExecutions";
-  private static final String JOB_EXECUTION_URL = "/change-manager/jobExecution";
+  private static final String JOB_EXECUTION_URL = "/change-manager/jobExecutions";
   private static final String FILE_UPLOAD_ERROR_MESSAGE = "upload.fileSize.invalid";
 
   private Vertx vertx;
@@ -154,7 +154,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Set<Error> errorsList = new HashSet<>(definition.getFileDefinitions().size());
     boolean isValid = validateFreeSpace(definition.getFileDefinitions(), errorsList);
     if (!isValid) {
-      asyncResultHandler.handle(Future.succeededFuture(DataImport.PostDataImportUploadDefinitionResponse
+      asyncResultHandler.handle(Future.succeededFuture(DataImport.PostDataImportUploadDefinitionsResponse
         .respond422WithApplicationJson(new Errors()
           .withErrors(new ArrayList<>(errorsList))
           .withTotalRecords(errorsList.size()))));

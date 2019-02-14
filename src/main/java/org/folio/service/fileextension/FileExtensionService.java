@@ -1,4 +1,4 @@
-package org.folio.service.fileExtension;
+package org.folio.service.fileextension;
 
 import io.vertx.core.Future;
 import io.vertx.ext.sql.UpdateResult;

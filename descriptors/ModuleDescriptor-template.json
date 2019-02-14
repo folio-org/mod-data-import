@@ -22,7 +22,7 @@
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
-            "change-manager.jobexecution.post"
+            "change-manager.jobexecutions.post"
           ]
         },
         {
@@ -64,8 +64,8 @@
             "data-import.uploaddefinitions.delete"
           ],
           "modulePermissions": [
-            "change-manager.jobexecution.get",
-            "change-manager.jobexecution.put"
+            "change-manager.jobexecutions.get",
+            "change-manager.jobexecutions.put"
           ]
         },
         {
@@ -78,8 +78,8 @@
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
-            "change-manager.jobexecution.post",
-            "change-manager.jobexecution.put"
+            "change-manager.jobexecutions.post",
+            "change-manager.jobexecutions.put"
           ]
         },
         {
@@ -92,7 +92,7 @@
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
-            "change-manager.jobexecution.post"
+            "change-manager.jobexecutions.post"
           ]
         },
         {
@@ -105,7 +105,7 @@
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
-            "change-manager.jobexecution.put"
+            "change-manager.jobexecutions.put"
           ]
         },
         {
@@ -117,8 +117,8 @@
             "data-import.uploaddefinitions.files.post"
           ],
           "modulePermissions": [
-            "change-manager.jobexecution.get",
-            "change-manager.jobexecution.put",
+            "change-manager.jobexecutions.get",
+            "change-manager.jobexecutions.put",
             "change-manager.records.post"
           ]
         },

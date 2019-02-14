@@ -47,8 +47,8 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
 public class ParallelFileChunkingProcessor implements FileProcessor {
   private static final int THREAD_POOL_SIZE =
     Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.thread.pool.size", "20"));
-  private static final String JOB_PROFILE_SERVICE_URL = "/change-manager/jobExecution/%s/jobProfile";
-  private static final String JOB_CHILDREN_SERVICE_URL = "/change-manager/jobExecution/%s/children";
+  private static final String JOB_PROFILE_SERVICE_URL = "/change-manager/jobExecutions/%s/jobProfile";
+  private static final String JOB_CHILDREN_SERVICE_URL = "/change-manager/jobExecutions/%s/children";
   private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/records/";
   private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
 

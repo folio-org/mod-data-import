@@ -1,68 +1,35 @@
 package org.folio.rest;
 
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.github.tomakehurst.wiremock.matching.RegexPattern;
-import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import com.jayway.restassured.RestAssured;
-import com.jayway.restassured.builder.RequestSpecBuilder;
-import com.jayway.restassured.http.ContentType;
-import com.jayway.restassured.specification.RequestSpecification;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.drools.core.util.StringUtils;
-import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.NetworkUtils;
 import org.hamcrest.Matchers;
 import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
-public class RestVerticleTest {
+public class UploadDefinitionAPITest extends AbstractRestTest {
 
-  private static final String TENANT = "diku";
-  private static final String DEFINITION_PATH = "/data-import/upload/definition";
-  private static final String FILE_PATH = "/data-import/upload/file";
-  private static final String FILE_DEF_PATH = "/data-import/upload/definition/file";
-  private static final String UPLOAD_DEFINITION_TABLE = "uploadDefinition";
-  private static final String PROCESS_FILE_IMPORT_PATH = "/data-import/processFiles";
-
-  private static Vertx vertx;
-  private static RequestSpecification spec;
-  private static RequestSpecification specUpload;
-  private static int port;
+  private static final String DEFINITION_PATH = "/data-import/uploadDefinitions";
+  private static final String FILE_PATH = "/files";
+  private static final String PROCESS_FILE_IMPORT_PATH = "/processFiles";
 
   private static JsonObject file1 = new JsonObject()
     .put("uiKey", "CornellFOLIOExemplars_Bibs.mrc.md1547160916680")
@@ -99,156 +66,6 @@ public class RestVerticleTest {
   private static JsonObject uploadDef5 = new JsonObject()
     .put("fileDefinitions", new JsonArray().add(file3).add(file4));
 
-  private JsonObject jobExecution = new JsonObject()
-    .put("id", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
-    .put("hrId", "1000")
-    .put("parentJobId", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
-    .put("subordinationType", "PARENT_SINGLE")
-    .put("status", "NEW")
-    .put("uiStatus", "INITIALIZATION")
-    .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
-    .put("jobProfileName", "Marc jobs profile")
-    .put("userId", UUID.randomUUID().toString());
-
-  private JsonObject childrenJobExecutions = new JsonObject()
-    .put("jobExecutions", new JsonArray()
-      .add(jobExecution).add(jobExecution))
-    .put("totalRecords", 2);
-
-  private static JsonObject config = new JsonObject().put("totalRecords", 1)
-    .put("configs", new JsonArray().add(new JsonObject()
-      .put("module", "DATA_IMPORT")
-      .put("code", "data.import.storage.path")
-      .put("value", "./storage")
-    ));
-
-  private static JsonObject config2 = new JsonObject().put("totalRecords", 1)
-    .put("configs", new JsonArray().add(new JsonObject()
-      .put("module", "DATA_IMPORT")
-      .put("code", "data.import.storage.type")
-      .put("value", "LOCAL_STORAGE")
-    ));
-
-  private static JsonObject jobExecutionCreateSingleFile = new JsonObject()
-    .put("parentJobExecutionId", UUID.randomUUID().toString())
-    .put("jobExecutions", new JsonArray()
-      .add(new JsonObject()
-        .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
-        .put("id", UUID.randomUUID().toString())
-      ));
-
-  private static JsonObject jobExecutionCreateMultipleFiles = new JsonObject()
-    .put("parentJobExecutionId", UUID.randomUUID().toString())
-    .put("jobExecutions", new JsonArray()
-      .add(new JsonObject()
-        .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
-        .put("id", UUID.randomUUID().toString()))
-      .add(new JsonObject()
-        .put("sourcePath", "CornellFOLIOExemplars.mrc")
-        .put("id", UUID.randomUUID().toString())));
-
-  private void clearTable(TestContext context) {
-    PostgresClient.getInstance(vertx, TENANT).delete(UPLOAD_DEFINITION_TABLE, new Criterion(), event -> {
-      if (event.failed()) {
-        context.fail(event.cause());
-      }
-    });
-  }
-
-  @Rule
-  public WireMockRule userMockServer = new WireMockRule(
-    WireMockConfiguration.wireMockConfig()
-      .dynamicPort()
-      .notifier(new Slf4jNotifier(true)));
-
-  @BeforeClass
-  public static void setUpClass(final TestContext context) throws Exception {
-    Async async = context.async();
-    PostgresClient.stopEmbeddedPostgres();
-    vertx = Vertx.vertx();
-    port = NetworkUtils.nextFreePort();
-
-    String useExternalDatabase = System.getProperty(
-      "org.folio.data.import.test.database",
-      "embedded");
-
-    switch (useExternalDatabase) {
-      case "environment":
-        System.out.println("Using environment settings");
-        break;
-      case "external":
-        String postgresConfigPath = System.getProperty(
-          "org.folio.data.import.test.config",
-          "/postgres-conf-local.json");
-        PostgresClient.setConfigFilePath(postgresConfigPath);
-        break;
-      case "embedded":
-        PostgresClient.setIsEmbedded(true);
-        PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-        break;
-      default:
-        String message = "No understood database choice made." +
-          "Please set org.folio.data.import.test.database" +
-          "to 'external', 'environment' or 'embedded'";
-        throw new Exception(message);
-    }
-
-    TenantClient tenantClient = new TenantClient("localhost", port, "diku", "dummy.token");
-    DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
-      .setConfig(new JsonObject().put("http.port", port));
-    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
-      try {
-        tenantClient.postTenant(null, res2 ->
-          async.complete()
-        );
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    });
-  }
-
-  @Before
-  public void setUp(TestContext context) {
-    spec = new RequestSpecBuilder()
-      .setContentType(ContentType.JSON)
-      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + userMockServer.port())
-      .addHeader(OKAPI_TENANT_HEADER, TENANT)
-      .addHeader(RestVerticle.OKAPI_USERID_HEADER, UUID.randomUUID().toString())
-      .addHeader("Accept", "text/plain, application/json")
-      .setBaseUri("http://localhost:" + port)
-      .build();
-
-    specUpload = new RequestSpecBuilder()
-      .setContentType("application/octet-stream")
-      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + userMockServer.port())
-      .addHeader(OKAPI_TENANT_HEADER, TENANT)
-      .addHeader(RestVerticle.OKAPI_USERID_HEADER, UUID.randomUUID().toString())
-      .setBaseUri("http://localhost:" + port)
-      .addHeader("Accept", "text/plain, application/json")
-      .build();
-    clearTable(context);
-    try {
-      WireMock.stubFor(WireMock.get("/configurations/entries?query="
-        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")", "UTF-8")
-        + "&offset=0&limit=3&")
-        .willReturn(WireMock.okJson(config.toString())));
-      WireMock.stubFor(WireMock.get("/configurations/entries?query="
-        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", "UTF-8")
-        + "&offset=0&limit=3&")
-        .willReturn(WireMock.okJson(config2.toString())));
-      WireMock.stubFor(WireMock.post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
-        .willReturn(WireMock.created().withBody(jobExecutionCreateSingleFile.toString())));
-      WireMock.stubFor(WireMock.post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 2)]"))
-        .willReturn(WireMock.created().withBody(jobExecutionCreateMultipleFiles.toString())));
-      WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecution/.*"), true))
-        .willReturn(WireMock.ok()));
-      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecution/.*{36}"), true))
-        .willReturn(WireMock.ok().withBody(jobExecution.toString())));
-      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecution/.*{36}/children"), true))
-        .willReturn(WireMock.ok().withBody(childrenJobExecutions.toString())));
-    } catch (UnsupportedEncodingException ignored) {
-    }
-  }
 
   @After
   public void cleanUpAfterTest() throws IOException {
@@ -397,7 +214,7 @@ public class RestVerticleTest {
       .spec(specUpload)
       .when()
       .body(FileUtils.openInputStream(file))
-      .post(FILE_PATH + "?uploadDefinitionId=" + uploadDefId + "&fileId=" + fileId)
+      .post(DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
@@ -422,9 +239,10 @@ public class RestVerticleTest {
       .spec(specUpload)
       .when()
       .body(file)
-      .post(FILE_PATH
-        + "?uploadDefinitionId=" + UUID.randomUUID().toString()
-        + "&fileId=" + UUID.randomUUID().toString())
+      .post(DEFINITION_PATH + "/"
+        + UUID.randomUUID().toString()
+        + FILE_PATH + "/"
+        + UUID.randomUUID().toString())
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_NOT_FOUND);
@@ -445,12 +263,11 @@ public class RestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(FILE_DEF_PATH + "/"
+      .delete(DEFINITION_PATH + "/" + jsonObject.getString("id")
+        + FILE_PATH + "/"
         + jsonObject.getJsonArray("fileDefinitions")
         .getJsonObject(0)
-        .getString("id")
-        + "?uploadDefinitionId=" + jsonObject.getString("id")
-      )
+        .getString("id"))
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
@@ -461,9 +278,10 @@ public class RestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(FILE_DEF_PATH + "/"
+      .delete(DEFINITION_PATH + "/"
         + UUID.randomUUID().toString()
-        + "?uploadDefinitionId=" + UUID.randomUUID().toString()
+        + FILE_PATH + "/"
+        + UUID.randomUUID().toString()
       )
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND)
@@ -532,9 +350,8 @@ public class RestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(FILE_DEF_PATH + "/"
-        + uploadDefinition.getFileDefinitions().get(0).getId()
-        + "?uploadDefinitionId=" + uploadDefinition.getId())
+      .delete(DEFINITION_PATH + "/" + uploadDefinition.getId()
+        + FILE_PATH + "/" + uploadDefinition.getFileDefinitions().get(0).getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
@@ -578,7 +395,7 @@ public class RestVerticleTest {
       .spec(spec)
       .body(JsonObject.mapFrom(processFilesRqDto).encode())
       .when()
-      .post(PROCESS_FILE_IMPORT_PATH)
+      .post(DEFINITION_PATH + "/" + uploadDefinition.getId() + PROCESS_FILE_IMPORT_PATH)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_NO_CONTENT);
@@ -598,7 +415,7 @@ public class RestVerticleTest {
       .spec(spec)
       .body(JsonObject.mapFrom(processFilesRqDto).encode())
       .when()
-      .post(PROCESS_FILE_IMPORT_PATH)
+      .post(DEFINITION_PATH + "/" + processFilesRqDto.getUploadDefinition().getId() + PROCESS_FILE_IMPORT_PATH)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);

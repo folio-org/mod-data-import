@@ -154,7 +154,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Set<Error> errorsList = new HashSet<>(definition.getFileDefinitions().size());
     boolean isValid = validateFreeSpace(definition.getFileDefinitions(), errorsList);
     if (!isValid) {
-      asyncResultHandler.handle(Future.succeededFuture(DataImport.PostDataImportUploadDefinitionResponse
+      asyncResultHandler.handle(Future.succeededFuture(DataImport.PostDataImportUploadDefinitionsResponse
         .respond422WithApplicationJson(new Errors()
           .withErrors(new ArrayList<>(errorsList))
           .withTotalRecords(errorsList.size()))));

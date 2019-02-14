@@ -1,7 +1,7 @@
 #%RAML 1.0
 
 title: Data import
-version: v2.0
+version: v3.0
 protocols: [ HTTP, HTTPS ]
 baseUri: http://localhost
 
@@ -60,7 +60,7 @@ resourceTypes:
         pageable,
         validate
       ]
-    /{definitionId}:
+    /{uploadDefinitionId}:
       displayName: Upload Definition
       description: Get, Delete or Update a specific Upload Definition
       type:

@@ -41,7 +41,9 @@ public class DataImportImpl implements DataImport {
   private static final Logger LOG = LoggerFactory.getLogger(DataImportImpl.class);
 
   private static final String FILE_EXTENSION_DUPLICATE_ERROR_CODE = "fileExtension.duplication.invalid";
+  private static final String FILE_EXTENSION_INVALID_ERROR_CODE = "fileExtension.extension.invalid";
   private static final String FILE_EXTENSION_VALIDATE_ERROR_MESSAGE = "Failed to validate file extension";
+  private static final String FILE_EXTENSION_VALID_REGEXP = "/^\\.(\\w+)$/";
 
   private UploadDefinitionService uploadDefinitionService;
   private FileUploadLifecycleService fileService;
@@ -96,8 +98,8 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void putDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, String lang, UploadDefinition entity,
-                                                           Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-                                                           Context vertxContext) {
+                                                                 Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+                                                                 Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         entity.setId(uploadDefinitionId);
@@ -138,7 +140,7 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void getDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, String lang, Map<String, String> okapiHeaders,
-                                                           Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
@@ -157,8 +159,8 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void postDataImportUploadDefinitionsFilesByUploadDefinitionId(String uploadDefinitionId, FileDefinition entity,
-                                                                 Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-                                                                 Context vertxContext) {
+                                                                       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+                                                                       Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         uploadDefinitionService.addFileDefinitionToUpload(entity)
@@ -175,7 +177,7 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void deleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId(String uploadDefinitionId, String fileId, Map<String, String> okapiHeaders,
-                                                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
       vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId, params)
@@ -197,8 +199,8 @@ public class DataImportImpl implements DataImport {
   @Stream
   @Override
   public void postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId(String uploadDefinitionId, String fileId,
-                                                                          InputStream entity, Map<String, String> okapiHeaders,
-                                                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                                                InputStream entity, Map<String, String> okapiHeaders,
+                                                                                Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         byte[] data = IOUtils.toByteArray(entity);
@@ -224,8 +226,8 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId(String uploadDefinitionId, String jobProfileId,
-                                                                        ProcessFilesRqDto entity, Map<String, String> okapiHeaders,
-                                                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                                              ProcessFilesRqDto entity, Map<String, String> okapiHeaders,
+                                                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         LOG.info("Starting file processing for upload definition {}", uploadDefinitionId);
@@ -401,6 +403,9 @@ public class DataImportImpl implements DataImport {
     Errors errors = new Errors();
     return fileExtensionService.isFileExtensionExistByName(extension).map(exist -> exist
       ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_DUPLICATE_ERROR_CODE))).withTotalRecords(errors.getErrors().size())
-      : errors.withTotalRecords(0));
+      : errors.withTotalRecords(0))
+      .map(errorsList -> errorsList.getTotalRecords() > 0 && !extension.getExtension().matches(FILE_EXTENSION_VALID_REGEXP)
+        ? errorsList
+        : errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_INVALID_ERROR_CODE))).withTotalRecords(errors.getErrors().size()));
   }
 }

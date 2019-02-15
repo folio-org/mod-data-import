@@ -43,7 +43,7 @@ public class DataImportImpl implements DataImport {
   private static final String FILE_EXTENSION_DUPLICATE_ERROR_CODE = "fileExtension.duplication.invalid";
   private static final String FILE_EXTENSION_INVALID_ERROR_CODE = "fileExtension.extension.invalid";
   private static final String FILE_EXTENSION_VALIDATE_ERROR_MESSAGE = "Failed to validate file extension";
-  private static final String FILE_EXTENSION_VALID_REGEXP = "/^\\.(\\w+)$/";
+  private static final String FILE_EXTENSION_VALID_REGEXP = "^\\.(\\w+)$";
 
   private UploadDefinitionService uploadDefinitionService;
   private FileUploadLifecycleService fileService;
@@ -404,8 +404,8 @@ public class DataImportImpl implements DataImport {
     return fileExtensionService.isFileExtensionExistByName(extension).map(exist -> exist
       ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_DUPLICATE_ERROR_CODE))).withTotalRecords(errors.getErrors().size())
       : errors.withTotalRecords(0))
-      .map(errorsList -> errorsList.getTotalRecords() > 0 && !extension.getExtension().matches(FILE_EXTENSION_VALID_REGEXP)
-        ? errorsList
-        : errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_INVALID_ERROR_CODE))).withTotalRecords(errors.getErrors().size()));
+      .map(errorsList -> errorsList.getTotalRecords() == 0 && !extension.getExtension().matches(FILE_EXTENSION_VALID_REGEXP)
+        ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_INVALID_ERROR_CODE))).withTotalRecords(errors.getErrors().size())
+        : errorsList);
   }
 }

@@ -147,7 +147,7 @@
         {
           "methods": ["DELETE"],
           "pathPattern": "/data-import/fileExtensions/{id}",
-          "permissionsRequired": ["metadata-provider.fileExtension.delete"]
+          "permissionsRequired": ["data-import.fileExtension.delete"]
         },
         {
           "methods": ["GET"],

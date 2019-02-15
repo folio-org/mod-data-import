@@ -44,6 +44,10 @@ public class FileExtensionAPITest extends AbstractRestTest {
     .withExtension(".marc")
     .withDataTypes(new ArrayList<>())
     .withImportBlocked(true);
+  private static FileExtension fileExtension_5 = new FileExtension()
+    .withExtension("ma rc")
+    .withDataTypes(new ArrayList<>())
+    .withImportBlocked(true);
 
   @Test
   public void shouldReturnEmptyListOnGetIfNoFileExtensionsExist() {
@@ -292,6 +296,18 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(DataType.values().length))
       .body("dataTypes", hasItems(dataTypesNames));
+  }
+
+  @Test
+  public void shouldReturnErrorOnSavingInvalidExtension() {
+    RestAssured.given()
+      .spec(spec)
+      .body(JsonObject.mapFrom(fileExtension_5).toString())
+      .when()
+      .post(FILE_EXTENSION_PATH)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("fileExtension.extension.invalid"));
   }
 
 }

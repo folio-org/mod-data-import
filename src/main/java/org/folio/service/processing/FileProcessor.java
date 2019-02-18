@@ -10,7 +10,7 @@ import io.vertx.core.json.JsonObject;
 @ProxyGen
 public interface FileProcessor {
 
-  String FILE_PROCESSOR_ADDRESS = "file-processor.queue";
+  String FILE_PROCESSOR_ADDRESS = "file-processor.queue"; //NOSONAR
 
   static FileProcessor create(Vertx vertx) {
     return new ParallelFileChunkingProcessor(vertx);

@@ -435,4 +435,40 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
+
+  @Test
+  public void postFileDefinitionByUploadDefinitionIdCreatedSuccessful() {
+    String responseBody = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all()
+      .extract().body().jsonPath().prettify();
+    JsonObject jsonObject = new JsonObject(responseBody);
+
+    String uploadDefId = jsonObject.getString("id");
+    JsonObject fileDefinition = new JsonObject()
+      .put("id", "88dfac11-1caf-4470-9ad1-d533f6360bdd")
+      .put("uploadDefinitionId", uploadDefId)
+      .put("name", "marc.mrc");
+
+    RestAssured.given()
+      .spec(spec)
+      .body(fileDefinition.encode())
+      .when()
+      .post(DEFINITION_PATH + "/" + fileDefinition.getString("uploadDefinitionId") + FILE_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("metaJobExecutionId", Matchers.notNullValue())
+      .body("id", Matchers.notNullValue())
+      .body("status", Matchers.is("NEW"))
+      .body("fileDefinitions[0].status", Matchers.is("NEW"))
+      .body("fileDefinitions[0].id", Matchers.notNullValue())
+      .body("fileDefinitions[1].status", Matchers.is("NEW"))
+      .body("fileDefinitions[1].id", Matchers.notNullValue());
+  }
 }

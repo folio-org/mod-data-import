@@ -352,12 +352,12 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportFileExtensionsRestoreDefault(Map<String, String> okapiHeaders,
+  public void postDataImportFileExtensionsRestoreDefault(Map<String, String> okapiHeaders,
                                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         fileExtensionService.restoreFileExtensions()
-          .map(defaultCollection -> (Response) GetDataImportFileExtensionsRestoreDefaultResponse
+          .map(defaultCollection -> (Response) PostDataImportFileExtensionsRestoreDefaultResponse
             .respond200WithApplicationJson(defaultCollection))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);

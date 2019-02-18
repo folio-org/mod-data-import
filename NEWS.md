@@ -23,7 +23,7 @@
    | GET    | /data-import/fileExtensions/{id}                                   | Get File Extension by id        |
    | PUT    | /data-import/fileExtensions/{id}                                   | Update File Extension           |
    | DELETE | /data-import/fileExtensions/{id}                                   | Delete File Extension           |
-   | GET    | /data-import/fileExtensions/restore/default                        | Restore default File Extensions |
+   | POST   | /data-import/fileExtensions/restore/default                        | Restore default File Extensions |
    | GET    | /data-import/dataTypes                                             | Get list of DataTypes           |
 
 

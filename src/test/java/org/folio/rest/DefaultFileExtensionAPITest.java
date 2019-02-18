@@ -19,7 +19,7 @@ public class DefaultFileExtensionAPITest extends AbstractRestTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(FILE_EXTENSION_DEFAULT)
+      .post(FILE_EXTENSION_DEFAULT)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)

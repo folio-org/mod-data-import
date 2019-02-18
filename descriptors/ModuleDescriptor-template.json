@@ -150,7 +150,7 @@
           "permissionsRequired": ["data-import.fileExtension.delete"]
         },
         {
-          "methods": ["GET"],
+          "methods": ["POST"],
           "pathPattern": "/data-import/fileExtensions/restore/default",
           "permissionsRequired": ["data-import.fileExtensions.default"]
         },

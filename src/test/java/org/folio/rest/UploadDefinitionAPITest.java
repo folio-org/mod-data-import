@@ -1,27 +1,29 @@
 package org.folio.rest;
 
 import com.jayway.restassured.RestAssured;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.drools.core.util.StringUtils;
+import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
-import static org.hamcrest.core.Is.is;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
@@ -31,41 +33,40 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   private static final String FILE_PATH = "/files";
   private static final String PROCESS_FILE_IMPORT_PATH = "/processFiles";
 
-  private static JsonObject file1 = new JsonObject()
-    .put("uiKey", "CornellFOLIOExemplars_Bibs.mrc.md1547160916680")
-    .put("name", "CornellFOLIOExemplars_Bibs.mrc")
-    .put("size", 209);
+  private static FileDefinition file1 = new FileDefinition()
+    .withUiKey("CornellFOLIOExemplars_Bibs.mrc.md1547160916680")
+    .withName("CornellFOLIOExemplars_Bibs.mrc")
+    .withSize(209);
 
-  private static JsonObject file2 = new JsonObject()
-    .put("uiKey", "CornellFOLIOExemplars.mrc.md1547160916680")
-    .put("name", "CornellFOLIOExemplars.mrc")
-    .put("size", 209);
+  private static FileDefinition file2 = new FileDefinition()
+    .withUiKey("CornellFOLIOExemplars.mrc.md1547160916680")
+    .withName("CornellFOLIOExemplars.mrc")
+    .withSize(209);
 
-  private static JsonObject file3 = new JsonObject()
-    .put("uiKey", "CornellFOLIOExemplars.mrc.md1547160916680")
-    .put("name", "CornellFOLIOExemplars.mrc")
-    .put("size", Integer.MAX_VALUE);
+  private static FileDefinition file3 = new FileDefinition()
+    .withUiKey("CornellFOLIOExemplars.mrc.md1547160916680")
+    .withName("CornellFOLIOExemplars.mrc")
+    .withSize(Integer.MAX_VALUE);
 
-  private static JsonObject file4 = new JsonObject()
-    .put("uiKey", "CornellFOLIOExemplars1.mrc.md1547160916681")
-    .put("name", "CornellFOLIOExemplars1.mrc")
-    .put("size", Integer.MAX_VALUE);
+  private static FileDefinition file4 = new FileDefinition()
+    .withUiKey("CornellFOLIOExemplars1.mrc.md1547160916681")
+    .withName("CornellFOLIOExemplars1.mrc")
+    .withSize(Integer.MAX_VALUE);
 
-  private static JsonObject uploadDef1 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1));
+  private static UploadDefinition uploadDef1 = new UploadDefinition()
+    .withFileDefinitions(Collections.singletonList(file1));
 
-  private static JsonObject uploadDef2 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1));
+  private static UploadDefinition uploadDef2 = new UploadDefinition()
+    .withFileDefinitions(Collections.singletonList(file1));
 
-  private static JsonObject uploadDef3 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1));
+  private static UploadDefinition uploadDef3 = new UploadDefinition()
+    .withFileDefinitions(Collections.singletonList(file1));
 
-  private static JsonObject uploadDef4 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file1).add(file2));
+  private static UploadDefinition uploadDef4 = new UploadDefinition()
+    .withFileDefinitions(Arrays.asList(file1, file2));
 
-  private static JsonObject uploadDef5 = new JsonObject()
-    .put("fileDefinitions", new JsonArray().add(file3).add(file4));
-
+  private static UploadDefinition uploadDef5 = new UploadDefinition()
+    .withFileDefinitions(Arrays.asList(file3, file4));
 
   @After
   public void cleanUpAfterTest() throws IOException {
@@ -76,23 +77,23 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   public void uploadDefinitionCreate() {
     RestAssured.given()
       .spec(spec)
-      .body(uploadDef1.encode())
+      .body(uploadDef1)
       .when()
       .post(DEFINITION_PATH)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("metaJobExecutionId", Matchers.notNullValue())
-      .body("id", Matchers.notNullValue())
-      .body("status", Matchers.is("NEW"))
-      .body("fileDefinitions[0].status", Matchers.is("NEW"));
+      .body("metaJobExecutionId", notNullValue())
+      .body("id", notNullValue())
+      .body("status", is(UploadDefinition.Status.NEW.name()))
+      .body("fileDefinitions[0].status", is(FileDefinition.Status.NEW.name()));
   }
 
   @Test
   public void uploadDefinitionGet() {
     String id = RestAssured.given()
       .spec(spec)
-      .body(uploadDef1.encode())
+      .body(uploadDef1)
       .when()
       .post(DEFINITION_PATH)
       .then()
@@ -104,7 +105,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .get(DEFINITION_PATH + "?query=id==" + id)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", Matchers.is(1))
+      .body("totalRecords", is(1))
       .log().all();
   }
 
@@ -116,7 +117,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .get(DEFINITION_PATH + "?query=id==" + UUID.randomUUID().toString())
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", Matchers.is(0))
+      .body("totalRecords", is(0))
       .log().all();
   }
 
@@ -124,7 +125,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   public void uploadDefinitionGetById() {
     String id = RestAssured.given()
       .spec(spec)
-      .body(uploadDef2.encode())
+      .body(uploadDef2)
       .when()
       .post(DEFINITION_PATH)
       .then()
@@ -137,10 +138,10 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("metaJobExecutionId", Matchers.notNullValue())
-      .body("id", Matchers.notNullValue())
-      .body("status", Matchers.is("NEW"))
-      .body("fileDefinitions[0].status", Matchers.is("NEW"));
+      .body("metaJobExecutionId", notNullValue())
+      .body("id", notNullValue())
+      .body("status", is(UploadDefinition.Status.NEW.name()))
+      .body("fileDefinitions[0].status", is(FileDefinition.Status.NEW.name()));
   }
 
   @Test
@@ -156,33 +157,32 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void uploadDefinitionUpdate() {
-    String object = RestAssured.given()
+    UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
-      .body(uploadDef3.encode())
+      .body(uploadDef3)
       .when()
       .post(DEFINITION_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all()
-      .extract().body().jsonPath().prettify();
-    JsonObject jsonObject = new JsonObject(object);
-    jsonObject.put("status", "LOADED");
+      .extract().body().as(UploadDefinition.class);
+    uploadDefinition.setStatus(UploadDefinition.Status.LOADED);
     RestAssured.given()
       .spec(spec)
-      .body(jsonObject.encode())
+      .body(uploadDefinition)
       .when()
-      .put(DEFINITION_PATH + "/" + jsonObject.getString("id"))
+      .put(DEFINITION_PATH + "/" + uploadDefinition.getId())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .log().all()
-      .body("status", Matchers.is("LOADED"));
+      .body("status", is(UploadDefinition.Status.LOADED.name()));
   }
 
   @Test
   public void uploadDefinitionUpdateNotFound() {
     RestAssured.given()
       .spec(spec)
-      .body(uploadDef3.encode())
+      .body(uploadDef3)
       .when()
       .put(DEFINITION_PATH + "/" + UUID.randomUUID().toString())
       .then()
@@ -192,25 +192,21 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void fileUpload() throws IOException {
-    String object = RestAssured.given()
+    UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
-      .body(uploadDef3.encode())
+      .body(uploadDef3)
       .when()
       .post(DEFINITION_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all()
-      .extract().body().jsonPath().prettify();
-    JsonObject jsonObject = new JsonObject(object);
-    String uploadDefId = jsonObject.getString("id");
-    String fileId = jsonObject
-      .getJsonArray("fileDefinitions")
-      .getJsonObject(0)
-      .getString("id");
+      .extract().body().as(UploadDefinition.class);
+    String uploadDefId = uploadDefinition.getId();
+    String fileId = uploadDefinition.getFileDefinitions().get(0).getId();
 
     ClassLoader classLoader = getClass().getClassLoader();
     File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
-    String object2 = RestAssured.given()
+    UploadDefinition uploadDefinition1 = RestAssured.given()
       .spec(specUpload)
       .when()
       .body(FileUtils.openInputStream(file))
@@ -218,15 +214,11 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("status", Matchers.is("LOADED"))
-      .body("fileDefinitions[0].status", Matchers.is("UPLOADED"))
-      .body("fileDefinitions.uploadedDate", Matchers.notNullValue())
-      .extract().body().jsonPath().prettify();
-    JsonObject jsonObject2 = new JsonObject(object2);
-    String path = jsonObject2
-      .getJsonArray("fileDefinitions")
-      .getJsonObject(0)
-      .getString("sourcePath");
+      .body("status", is(UploadDefinition.Status.LOADED.name()))
+      .body("fileDefinitions[0].status", is(FileDefinition.Status.UPLOADED.name()))
+      .body("fileDefinitions.uploadedDate", notNullValue())
+      .extract().body().as(UploadDefinition.class);
+    String path = uploadDefinition1.getFileDefinitions().get(0).getSourcePath();
     File file2 = new File(path);
     assertTrue(FileUtils.contentEquals(file, file2));
   }
@@ -250,24 +242,21 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void fileDelete() {
-    String object = RestAssured.given()
+    UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
-      .body(uploadDef3.encode())
+      .body(uploadDef3)
       .when()
       .post(DEFINITION_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all()
-      .extract().body().jsonPath().prettify();
-    JsonObject jsonObject = new JsonObject(object);
+      .extract().body().as(UploadDefinition.class);
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(DEFINITION_PATH + "/" + jsonObject.getString("id")
+      .delete(DEFINITION_PATH + "/" + uploadDefinition.getId()
         + FILE_PATH + "/"
-        + jsonObject.getJsonArray("fileDefinitions")
-        .getJsonObject(0)
-        .getString("id"))
+        + uploadDefinition.getFileDefinitions().get(0).getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
@@ -303,7 +292,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   public void uploadDefinitionDeleteSuccessful() {
     String id = RestAssured.given()
       .spec(spec)
-      .body(uploadDef3.encode())
+      .body(uploadDef3)
       .when()
       .post(DEFINITION_PATH)
       .then()
@@ -322,7 +311,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   public void uploadDefinitionMultipleFilesDeleteSuccessful() {
     String id = RestAssured.given()
       .spec(spec)
-      .body(uploadDef4.encode())
+      .body(uploadDef4)
       .when()
       .post(DEFINITION_PATH)
       .then()
@@ -341,7 +330,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   public void uploadDefinitionDiscardedFileDeleteSuccessful() {
     UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
-      .body(uploadDef4.encode())
+      .body(uploadDef4)
       .when()
       .post(DEFINITION_PATH)
       .then()
@@ -368,7 +357,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   public void uploadDefinitionCreateValidationTest() {
     RestAssured.given()
       .spec(spec)
-      .body(uploadDef5.encode())
+      .body(uploadDef5)
       .when()
       .post(DEFINITION_PATH)
       .then()

@@ -244,7 +244,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportFileExtensions(String query, int offset, int limit, Map<String, String> okapiHeaders,
+  public void getDataImportFileExtensions(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,
                                           Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -261,7 +261,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportFileExtensions(FileExtension entity, Map<String, String> okapiHeaders,
+  public void postDataImportFileExtensions(String lang, FileExtension entity, Map<String, String> okapiHeaders,
                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -274,7 +274,7 @@ public class DataImportImpl implements DataImport {
           } else {
             fileExtensionService.addFileExtension(entity, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
               .map((Response) PostDataImportFileExtensionsResponse
-                .respond201WithApplicationJson(entity))
+                .respond201WithApplicationJson(entity, PostDataImportFileExtensionsResponse.headersFor201()))
               .otherwise(ExceptionHelper::mapExceptionToResponse)
               .setHandler(asyncResultHandler);
           }
@@ -287,7 +287,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportFileExtensionsById(String id, Map<String, String> okapiHeaders,
+  public void getDataImportFileExtensionsById(String id, String lang, Map<String, String> okapiHeaders,
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
@@ -306,7 +306,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void putDataImportFileExtensionsById(String id, FileExtension entity, Map<String, String> okapiHeaders,
+  public void putDataImportFileExtensionsById(String id, String lang, FileExtension entity, Map<String, String> okapiHeaders,
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -332,7 +332,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void deleteDataImportFileExtensionsById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void deleteDataImportFileExtensionsById(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         fileExtensionService.deleteFileExtension(id)

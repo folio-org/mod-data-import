@@ -16,7 +16,10 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
+import org.folio.rest.jaxrs.model.JobExecution;
+import org.folio.rest.jaxrs.model.JobExecutionCollection;
+import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -27,8 +30,8 @@ import org.junit.Rule;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
@@ -61,53 +64,46 @@ public abstract class AbstractRestTest {
         .put("personal", new JsonObject().put("firstName", "DIKU").put("lastName", "ADMINISTRATOR"))))
     .put("totalRecords", 1);
 
-  private JsonObject jobExecution = new JsonObject()
-    .put("id", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
-    .put("hrId", "1000")
-    .put("parentJobId", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
-    .put("subordinationType", "PARENT_SINGLE")
-    .put("status", "NEW")
-    .put("uiStatus", "INITIALIZATION")
-    .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
-    .put("jobProfileName", "Marc jobs profile")
-    .put("userId", UUID.randomUUID().toString());
+  private JobExecution jobExecution = new JobExecution()
+    .withId(UUID.randomUUID().toString())
+    .withHrId("1000")
+    .withParentJobId(UUID.randomUUID().toString())
+    .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
+    .withStatus(JobExecution.Status.NEW)
+    .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+    .withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
+    .withJobProfile(new JobProfile().withName("Marc jobs profile"))
+    .withUserId(UUID.randomUUID().toString());
 
-  private JsonObject childrenJobExecutions = new JsonObject()
-    .put("jobExecutions", new JsonArray()
-      .add(jobExecution).add(jobExecution))
-    .put("totalRecords", 2);
+  private JobExecutionCollection childrenJobExecutions = new JobExecutionCollection()
+    .withJobExecutions(Arrays.asList(jobExecution.withId(UUID.randomUUID().toString()).withSubordinationType(JobExecution.SubordinationType.CHILD),
+      jobExecution.withId(UUID.randomUUID().toString()).withSubordinationType(JobExecution.SubordinationType.CHILD)))
+    .withTotalRecords(2);
 
-  private static JsonObject config = new JsonObject().put("totalRecords", 1)
+  private JsonObject config = new JsonObject().put("totalRecords", 1)
     .put("configs", new JsonArray().add(new JsonObject()
       .put("module", "DATA_IMPORT")
       .put("code", "data.import.storage.path")
       .put("value", "./storage")
     ));
 
-  private static JsonObject config2 = new JsonObject().put("totalRecords", 1)
+  private JsonObject config2 = new JsonObject().put("totalRecords", 1)
     .put("configs", new JsonArray().add(new JsonObject()
       .put("module", "DATA_IMPORT")
       .put("code", "data.import.storage.type")
       .put("value", "LOCAL_STORAGE")
     ));
 
-  private static JsonObject jobExecutionCreateSingleFile = new JsonObject()
-    .put("parentJobExecutionId", UUID.randomUUID().toString())
-    .put("jobExecutions", new JsonArray()
-      .add(new JsonObject()
-        .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
-        .put("id", UUID.randomUUID().toString())
-      ));
+  private InitJobExecutionsRsDto jobExecutionCreateSingleFile = new InitJobExecutionsRsDto()
+    .withParentJobExecutionId(UUID.randomUUID().toString())
+    .withJobExecutions(Collections.singletonList(
+      new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
+    ));
 
-  private static JsonObject jobExecutionCreateMultipleFiles = new JsonObject()
-    .put("parentJobExecutionId", UUID.randomUUID().toString())
-    .put("jobExecutions", new JsonArray()
-      .add(new JsonObject()
-        .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc")
-        .put("id", UUID.randomUUID().toString()))
-      .add(new JsonObject()
-        .put("sourcePath", "CornellFOLIOExemplars.mrc")
-        .put("id", UUID.randomUUID().toString())));
+  private InitJobExecutionsRsDto jobExecutionCreateMultipleFiles = new InitJobExecutionsRsDto()
+    .withParentJobExecutionId(UUID.randomUUID().toString())
+    .withJobExecutions(Arrays.asList(new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars_Bibs.mrc"),
+      new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars.mrc")));
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -157,8 +153,7 @@ public abstract class AbstractRestTest {
     final DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put(HTTP_PORT, port));
     vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
       try {
-        TenantAttributes tenantAttributes = null;
-        tenantClient.postTenant(tenantAttributes, res2 -> {
+        tenantClient.postTenant(null, res2 -> {
           async.complete();
         });
       } catch (Exception e) {
@@ -198,12 +193,6 @@ public abstract class AbstractRestTest {
       .setBaseUri("http://localhost:" + port)
       .addHeader("Accept", "text/plain, application/json")
       .build();
-    Map<String, String> okapiHeaders = new HashMap<>();
-    okapiHeaders.put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port());
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID);
-    okapiHeaders.put(RestVerticle.OKAPI_HEADER_TOKEN, TOKEN);
-    okapiHeaders.put(RestVerticle.OKAPI_USERID_HEADER, okapiUserIdHeader);
-
     try {
       WireMock.stubFor(WireMock.get(GET_USER_URL + okapiUserIdHeader)
         .willReturn(WireMock.okJson(userResponse.toString())));
@@ -216,19 +205,17 @@ public abstract class AbstractRestTest {
         + "&offset=0&limit=3&")
         .willReturn(WireMock.okJson(config2.toString())));
       WireMock.stubFor(WireMock.post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
-        .willReturn(WireMock.created().withBody(jobExecutionCreateSingleFile.toString())));
+        .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionCreateSingleFile).toString())));
       WireMock.stubFor(WireMock.post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 2)]"))
-        .willReturn(WireMock.created().withBody(jobExecutionCreateMultipleFiles.toString())));
+        .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionCreateMultipleFiles).toString())));
       WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*"), true))
         .willReturn(WireMock.ok()));
       WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
-        .willReturn(WireMock.ok().withBody(jobExecution.toString())));
+        .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).toString())));
       WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}/children"), true))
-        .willReturn(WireMock.ok().withBody(childrenJobExecutions.toString())));
-
+        .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(childrenJobExecutions).toString())));
     } catch (UnsupportedEncodingException ignored) {
     }
-
   }
 
   private void clearTable(TestContext context) {

@@ -13,6 +13,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -471,4 +472,35 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .body("fileDefinitions[1].status", Matchers.is("NEW"))
       .body("fileDefinitions[1].id", Matchers.notNullValue());
   }
+
+  @Test
+  public void uploadDefinitionDeleteSuccessfulWhenJobExecutionTypeParentMultiple() {
+    JsonObject jobExecution = new JsonObject()
+      .put("id", "5105b55a-b9a3-4f76-9402-a5243ea63c97")
+      .put("parentJobId", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .put("subordinationType", "PARENT_MULTIPLE")
+      .put("status", "NEW")
+      .put("uiStatus", "INITIALIZATION")
+      .put("userId", UUID.randomUUID().toString());
+
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+      .willReturn(WireMock.ok().withBody(jobExecution.toString())));
+
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+  }
 }
+

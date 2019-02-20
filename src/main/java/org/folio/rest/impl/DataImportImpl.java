@@ -1,24 +1,15 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpStatus;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.FileExtension;
-import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
-import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
@@ -30,7 +21,6 @@ import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
 
 import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.util.Collections;
@@ -124,10 +114,8 @@ public class DataImportImpl implements DataImport {
       try {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
         uploadDefinitionService.deleteUploadDefinition(uploadDefinitionId, params)
-          .map(deleted -> deleted ?
-            DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.respond204WithTextPlain(
-              String.format("Upload definition with id '%s' was successfully deleted", uploadDefinitionId)) :
-            buildUploadDefinitionNotFound(uploadDefinitionId))
+          .map(deleted -> (Response) DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.respond204WithTextPlain(
+              String.format("Upload definition with id '%s' was successfully deleted", uploadDefinitionId)))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
@@ -182,11 +170,8 @@ public class DataImportImpl implements DataImport {
     try {
       OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
       vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId, params)
-        .map(deleted -> deleted ?
-          DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204WithTextPlain(
-            String.format("File with id: %s deleted", fileId)) :
-          buildUploadDefinitionNotFound(uploadDefinitionId)
-        )
+        .map(deleted -> (Response) DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204WithTextPlain(
+            String.format("File with id: %s deleted", fileId)))
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .setHandler(asyncResultHandler));
     } catch (Exception e) {
@@ -385,14 +370,6 @@ public class DataImportImpl implements DataImport {
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
-  }
-
-  private Response buildUploadDefinitionNotFound(String definitionId) {
-    return Response
-      .status(HttpStatus.SC_NOT_FOUND)
-      .type(MediaType.TEXT_PLAIN)
-      .entity(String.format("Upload Definition with id '%s' was not found", definitionId))
-      .build();
   }
 
   /**

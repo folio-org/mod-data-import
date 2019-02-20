@@ -38,7 +38,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
           vertx.<Void>executeBlocking(b -> {
               try {
                 if (!fs.existsBlocking(path)) {
-                  fs.mkdirsBlocking(path.split(fileDefinition.getName())[0]);
+                  fs.mkdirsBlocking(path.substring(0, path.indexOf(fileDefinition.getName()) - 1));
                 }
                 final Path pathToFile = Paths.get(path);
                 Files.write(pathToFile, data, pathToFile.toFile().exists() ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);

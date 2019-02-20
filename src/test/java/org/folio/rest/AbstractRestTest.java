@@ -97,12 +97,12 @@ public abstract class AbstractRestTest {
   private InitJobExecutionsRsDto jobExecutionCreateSingleFile = new InitJobExecutionsRsDto()
     .withParentJobExecutionId(UUID.randomUUID().toString())
     .withJobExecutions(Collections.singletonList(
-      new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
+      new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars_Bibs(1).mrc")
     ));
 
   private InitJobExecutionsRsDto jobExecutionCreateMultipleFiles = new InitJobExecutionsRsDto()
     .withParentJobExecutionId(UUID.randomUUID().toString())
-    .withJobExecutions(Arrays.asList(new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars_Bibs.mrc"),
+    .withJobExecutions(Arrays.asList(new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars_Bibs(1).mrc"),
       new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars.mrc")));
 
   @Rule

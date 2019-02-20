@@ -34,8 +34,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   private static final String PROCESS_FILE_IMPORT_PATH = "/processFiles";
 
   private static FileDefinition file1 = new FileDefinition()
-    .withUiKey("CornellFOLIOExemplars_Bibs.mrc.md1547160916680")
-    .withName("CornellFOLIOExemplars_Bibs.mrc")
+    .withUiKey("CornellFOLIOExemplars_Bibs(1).mrc.md1547160916680")
+    .withName("CornellFOLIOExemplars_Bibs(1).mrc")
     .withSize(209);
 
   private static FileDefinition file2 = new FileDefinition()

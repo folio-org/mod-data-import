@@ -16,6 +16,7 @@ types:
   uploadDefinition: !include raml-storage/schemas/mod-data-import/uploadDefinition.json
   definitionCollection: !include raml-storage/schemas/mod-data-import/uploadDefinitionCollection.json
   initJobExecutionsRqDto: !include raml-storage/schemas/dto/initJobExecutionsRqDto.json
+  initJobExecutionsRsDto: !include raml-storage/schemas/dto/initJobExecutionsRsDto.json
   jobExecution: !include raml-storage/schemas/mod-source-record-manager/jobExecution.json
   jobExecutionCollection: !include raml-storage/schemas/mod-source-record-manager/jobExecutionCollection.json
   statusDto: !include raml-storage/schemas/dto/statusDto.json
@@ -180,8 +181,13 @@ resourceTypes:
   /fileExtensions:
     displayName: File Extension
     description: API for managing file extensions
+    type:
+      collection:
+        schemaCollection: fileExtensionCollection
+        schemaItem: fileExtension
+        exampleCollection: !include raml-storage/examples/mod-data-import/fileExtensionCollection.sample
+        exampleItem: !include raml-storage/examples/mod-data-import/fileExtension.sample
     get:
-      description: Get a list of file extensions
       is: [
         searchable: {
           description:
@@ -192,114 +198,30 @@ resourceTypes:
         pageable,
         validate
       ]
-      responses:
-        200:
-          body:
-            application/json:
-              type: fileExtensionCollection
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error"
     post:
-      description: Create new fileExtension
       is: [validate]
-      body:
-        application/json:
-          type: fileExtension
-      responses:
-        201:
-          body:
-            application/json:
-              type: fileExtension
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
-        422:
-          description: "Unprocessable Entity"
-          body:
-            application/json:
-              type: errors
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error"
     /{id}:
-      get:
-        description: Get fileExtension by id
-        responses:
-          200:
-            body:
-              application/json:
-                type: fileExtension
-          404:
-            description: "Not found"
-            body:
-              text/plain:
-                example: "Not found"
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
+      displayName: File Extension
+      description: Get, Delete or Update a specific File Extension
+      type:
+        collection-item:
+          schema: fileExtension
+          exampleItem: !include raml-storage/examples/mod-data-import/fileExtension.sample
       put:
-        description: Update fileExtension
-        body:
-          application/json:
-            type: fileExtension
+        is: [validate]
         responses:
           200:
             body:
               application/json:
                 type: fileExtension
-          400:
-            description: "Bad request"
-            body:
-              text/plain:
-                example: "Bad request"
-          404:
-            description: "Not found"
-            body:
-              text/plain:
-                example: "Not found"
-          422:
-            description: "Unprocessable Entity"
-            body:
-              application/json:
-                type: errors
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
       delete:
-        description: Delete fileExtension by id
         responses:
           204:
             body:
               text/plain: !!null
-          404:
-            description: "Not found"
-            body:
-              text/plain:
-                example: "Not found"
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
     /restore:
       /default:
-        get:
+        post:
           description: Restore fileExtension settings to default
           responses:
             200:

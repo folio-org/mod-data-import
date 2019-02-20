@@ -147,10 +147,10 @@
         {
           "methods": ["DELETE"],
           "pathPattern": "/data-import/fileExtensions/{id}",
-          "permissionsRequired": ["data-import.fileExtension.delete"]
+          "permissionsRequired": ["data-import.fileExtensions.delete"]
         },
         {
-          "methods": ["GET"],
+          "methods": ["POST"],
           "pathPattern": "/data-import/fileExtensions/restore/default",
           "permissionsRequired": ["data-import.fileExtensions.default"]
         },

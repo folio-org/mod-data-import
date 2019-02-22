@@ -4,7 +4,11 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
@@ -13,6 +17,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.processing.FileProcessor;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Test;
@@ -26,6 +31,7 @@ import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
+import static org.folio.dataimport.util.RestUtil.*;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertTrue;
@@ -394,7 +400,43 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void postFilesProcessingSuccessful() {
+  public void postFilesProcessingSuccessful(TestContext context) {
+    // ugly hack to increase coverage for method `process()`
+    Async async = context.async();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withName("CornellFOLIOExemplars_Bibs.mrc")
+      .withSourcePath("src/test/resources/CornellFOLIOExemplars.mrc")
+      .withSize(209);
+
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    UploadDefinition uploadDef = new UploadDefinition();
+    uploadDef.setId(UUID.randomUUID().toString());
+    uploadDef.setMetaJobExecutionId(jobExecutionId);
+    uploadDef.setCreateDate(new Date());
+    uploadDef.setStatus(UploadDefinition.Status.IN_PROGRESS);
+    uploadDef.setFileDefinitions(Arrays.asList(fileDefinition));
+
+    JobProfile jobProf = new JobProfile();
+    jobProf.setId(UUID.randomUUID().toString());
+    jobProf.setName(StringUtils.EMPTY);
+
+    ProcessFilesRqDto processFilesReqDto = new ProcessFilesRqDto()
+      .withUploadDefinition(uploadDef)
+      .withJobProfile(jobProf);
+
+    JsonObject paramsJson = new JsonObject()
+      .put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
+      .put(OKAPI_TENANT_HEADER, "diku")
+      .put(OKAPI_TOKEN_HEADER, "token");
+
+    WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
+      .willReturn(WireMock.ok()));
+
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
+    fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
+
     UploadDefinition uploadDefinition = new UploadDefinition();
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
@@ -415,6 +457,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    async.complete();
   }
 
   @Test
@@ -441,7 +485,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   public void postFileDefinitionByUploadDefinitionIdCreatedSuccessful() {
     String responseBody = RestAssured.given()
       .spec(spec)
-      .body(uploadDef1.encode())
+      .body(uploadDef1)
       .when()
       .post(DEFINITION_PATH)
       .then()
@@ -488,7 +532,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
     String id = RestAssured.given()
       .spec(spec)
-      .body(uploadDef1.encode())
+      .body(uploadDef1)
       .when()
       .post(DEFINITION_PATH)
       .then()
@@ -523,7 +567,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(uploadDef1.encode())
+      .body(uploadDef1)
       .when()
       .post(DEFINITION_PATH)
       .then()

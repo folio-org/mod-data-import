@@ -8,7 +8,6 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 /**
  * File service
  */
-
 public interface FileUploadLifecycleService {
 
   /**

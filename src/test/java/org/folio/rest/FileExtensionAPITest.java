@@ -67,7 +67,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
     for (FileExtension extension : extensionsToPost) {
       RestAssured.given()
         .spec(spec)
-        .body(JsonObject.mapFrom(extension).toString())
+        .body(extension)
         .when()
         .post(FILE_EXTENSION_PATH)
         .then()
@@ -89,7 +89,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
     for (FileExtension extension : extensionsToPost) {
       RestAssured.given()
         .spec(spec)
-        .body(JsonObject.mapFrom(extension).toString())
+        .body(extension)
         .when()
         .post(FILE_EXTENSION_PATH)
         .then()
@@ -112,7 +112,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
     for (FileExtension extension : extensionsToPost) {
       RestAssured.given()
         .spec(spec)
-        .body(JsonObject.mapFrom(extension).toString())
+        .body(extension)
         .when()
         .post(FILE_EXTENSION_PATH)
         .then()
@@ -144,7 +144,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
   public void shouldCreateFileExtensionOnPost() {
     RestAssured.given()
       .spec(spec)
-      .body(JsonObject.mapFrom(fileExtension_2).toString())
+      .body(fileExtension_2)
       .when()
       .post(FILE_EXTENSION_PATH)
       .then()
@@ -169,7 +169,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
   public void shouldReturnNotFoundOnPutWhenFileExtensionDoesNotExist() {
     RestAssured.given()
       .spec(spec)
-      .body(JsonObject.mapFrom(fileExtension_1).toString())
+      .body(fileExtension_1)
       .when()
       .put(FILE_EXTENSION_PATH + "/" + UUID.randomUUID().toString())
       .then()
@@ -180,7 +180,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
   public void shouldUpdateExistingFileExtensionOnPut() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(JsonObject.mapFrom(fileExtension_1).toString())
+      .body(fileExtension_1)
       .when()
       .post(FILE_EXTENSION_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -215,7 +215,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
   public void shouldReturnExistingFileExtensionOnGetById() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(JsonObject.mapFrom(fileExtension_3).toString())
+      .body(fileExtension_3)
       .when()
       .post(FILE_EXTENSION_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -247,7 +247,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
   public void shouldDeleteExistingFileExtensionOnDelete() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(JsonObject.mapFrom(fileExtension_1).toString())
+      .body(fileExtension_1)
       .when()
       .post(FILE_EXTENSION_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -265,7 +265,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
   public void shouldReturnErrorOnSavingDuplicateExtension() {
     RestAssured.given()
       .spec(spec)
-      .body(JsonObject.mapFrom(fileExtension_1).toString())
+      .body(fileExtension_1)
       .when()
       .post(FILE_EXTENSION_PATH)
       .then()
@@ -276,11 +276,12 @@ public class FileExtensionAPITest extends AbstractRestTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(JsonObject.mapFrom(fileExtension_4).toString())
+      .body(fileExtension_4)
       .when()
       .post(FILE_EXTENSION_PATH)
       .then()
-      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("fileExtension.duplication.invalid"));
   }
 
   @Test
@@ -302,7 +303,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
   public void shouldReturnErrorOnSavingInvalidExtension() {
     RestAssured.given()
       .spec(spec)
-      .body(JsonObject.mapFrom(fileExtension_5).toString())
+      .body(fileExtension_5)
       .when()
       .post(FILE_EXTENSION_PATH)
       .then().log().all()

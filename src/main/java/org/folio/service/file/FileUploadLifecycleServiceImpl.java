@@ -84,16 +84,13 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
       setUploadDefinitionStatusAfterFileUpload(definition);
       uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
         .setHandler(booleanAsyncResult -> {
-          if (booleanAsyncResult.succeeded()) {
-            updatingFuture.complete(definition);
-            future.complete(definition);
-          } else {
-            String statusUpdateErrorMessage = "Error updating status for JobExecution with id " + fileDefinition.getJobExecutionId();
-            logger.error(statusUpdateErrorMessage);
-            updatingFuture.fail(statusUpdateErrorMessage);
-            future.fail(statusUpdateErrorMessage);
+          if (booleanAsyncResult.failed()) {
+            logger.error("Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
+              fileDefinition.getJobExecutionId(), fileDefinition.getId(), booleanAsyncResult.cause());
           }
         });
+      updatingFuture.complete(definition);
+      future.complete(definition);
       return updatingFuture;
     });
     return future;
@@ -133,7 +130,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
                   if (updateStatusResult.failed()) {
                     logger.error(
                       "Couldn't update JobExecution status with id {} to DISCARDED after file with id {} was deleted",
-                      fileDefinition.getJobExecutionId(), id);
+                      fileDefinition.getJobExecutionId(), id, updateStatusResult.cause());
                   }
                 });
             } else {

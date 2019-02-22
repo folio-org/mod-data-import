@@ -502,5 +502,33 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
   }
+
+  @Test
+  public void uploadDefinitionCreateBadRequestWhenReceivedJobExecutionWithoutId() {
+    JsonObject childrenJobExecution = new JsonObject()
+      .put("id", "55596e0a-cf65-4a10-9c81-58b2c225b03a")
+      .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc");
+
+    JsonObject jobExecution = new JsonObject()
+      .put("parentJobId", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .put("subordinationType", "PARENT_SINGLE")
+      .put("status", "NEW")
+      .put("uiStatus", "INITIALIZATION")
+      .put("userId", UUID.randomUUID().toString())
+      .put("jobExecutions", new JsonArray()
+        .add(childrenJobExecution));
+
+    WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
+      .willReturn(WireMock.created().withBody(jobExecution.toString())));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1.encode())
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
 }
 

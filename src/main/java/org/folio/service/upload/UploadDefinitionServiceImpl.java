@@ -114,9 +114,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
                       logger.error("Couldn't update JobExecution status to DISCARDED after UploadDefinition {} was deleted", id, throwable);
                       return result;
                     });
-                  Future<Boolean> future = Future.future();
-                  future.complete(result);
-                  return future;
+                  return Future.succeededFuture(result);
                 });
             } else {
               return Future.failedFuture(new BadRequestException(

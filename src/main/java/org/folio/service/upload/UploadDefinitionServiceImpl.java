@@ -108,17 +108,16 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
             if (canDeleteUploadDefinition(jobExecutionList)) {
               return deleteFiles(uploadDefinition.getFileDefinitions(), params)
                 .compose(deleted -> uploadDefinitionDao.deleteUploadDefinition(id))
-                .setHandler(result -> {
-                    if (result.succeeded()) {
-                      updateJobExecutionStatuses(jobExecutionList, new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
-                        .setHandler(statusUpdate -> {
-                          if (statusUpdate.failed()) {
-                            logger.error("Couldn't update JobExecution status to DISCARDED after UploadDefinition {} was deleted", id, statusUpdate.cause());
-                          }
-                        });
-                    }
-                  }
-                );
+                .compose(result -> {
+                  updateJobExecutionStatuses(jobExecutionList, new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
+                    .otherwise(throwable -> {
+                      logger.error("Couldn't update JobExecution status to DISCARDED after UploadDefinition {} was deleted", id, throwable);
+                      return result;
+                    });
+                  Future<Boolean> future = Future.future();
+                  future.complete(result);
+                  return future;
+                });
             } else {
               return Future.failedFuture(new BadRequestException(
                 String.format("Cannot delete uploadDefinition %s - linked files are already being processed", id)));

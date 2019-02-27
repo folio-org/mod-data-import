@@ -5,7 +5,6 @@ import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -14,6 +13,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.drools.core.util.StringUtils;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
+import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -483,7 +484,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void postFileDefinitionByUploadDefinitionIdCreatedSuccessful() {
-    String responseBody = RestAssured.given()
+    String uploadDefId = RestAssured.given()
       .spec(spec)
       .body(uploadDef1)
       .when()
@@ -491,20 +492,18 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all()
-      .extract().body().jsonPath().prettify();
-    JsonObject jsonObject = new JsonObject(responseBody);
+      .extract().body().jsonPath().get("id");
 
-    String uploadDefId = jsonObject.getString("id");
-    JsonObject fileDefinition = new JsonObject()
-      .put("id", "88dfac11-1caf-4470-9ad1-d533f6360bdd")
-      .put("uploadDefinitionId", uploadDefId)
-      .put("name", "marc.mrc");
+    FileDefinition fileDefinition = new FileDefinition()
+      .withId("88dfac11-1caf-4470-9ad1-d533f6360bdd")
+      .withUploadDefinitionId(uploadDefId)
+      .withName("marc.mrc");
 
     RestAssured.given()
       .spec(spec)
-      .body(fileDefinition.encode())
+      .body(JsonObject.mapFrom(fileDefinition).encode())
       .when()
-      .post(DEFINITION_PATH + "/" + fileDefinition.getString("uploadDefinitionId") + FILE_PATH)
+      .post(DEFINITION_PATH + "/" + fileDefinition.getUploadDefinitionId() + FILE_PATH)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_CREATED)
@@ -519,16 +518,16 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void uploadDefinitionDeleteSuccessfulWhenJobExecutionTypeParentMultiple() {
-    JsonObject jobExecution = new JsonObject()
-      .put("id", "5105b55a-b9a3-4f76-9402-a5243ea63c97")
-      .put("parentJobId", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
-      .put("subordinationType", "PARENT_MULTIPLE")
-      .put("status", "NEW")
-      .put("uiStatus", "INITIALIZATION")
-      .put("userId", UUID.randomUUID().toString());
+    JobExecution jobExecution = new JobExecution()
+      .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_MULTIPLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
 
     WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
-      .willReturn(WireMock.ok().withBody(jobExecution.toString())));
+        .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
 
     String id = RestAssured.given()
       .spec(spec)
@@ -549,21 +548,24 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void uploadDefinitionCreateBadRequestWhenReceivedJobExecutionWithoutId() {
-    JsonObject childrenJobExecution = new JsonObject()
-      .put("id", "55596e0a-cf65-4a10-9c81-58b2c225b03a")
-      .put("sourcePath", "CornellFOLIOExemplars_Bibs.mrc");
+    JobExecution childrenJobExecution = new JobExecution()
+      .withId("55596e0a-cf65-4a10-9c81-58b2c225b03a")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSourcePath("CornellFOLIOExemplars_Bibs.mrc");
 
-    JsonObject jobExecution = new JsonObject()
-      .put("parentJobId", "5105b55a-b9a3-4f76-9402-a5243ea63c95")
-      .put("subordinationType", "PARENT_SINGLE")
-      .put("status", "NEW")
-      .put("uiStatus", "INITIALIZATION")
-      .put("userId", UUID.randomUUID().toString())
-      .put("jobExecutions", new JsonArray()
-        .add(childrenJobExecution));
+    JobExecution jobExecution = new JobExecution()
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
+
+    InitJobExecutionsRsDto jobExecutionsRespDto = new InitJobExecutionsRsDto()
+      .withParentJobExecutionId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withJobExecutions(Arrays.asList(jobExecution, childrenJobExecution));
 
     WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
-      .willReturn(WireMock.created().withBody(jobExecution.toString())));
+      .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionsRespDto).encode())));
 
     RestAssured.given()
       .spec(spec)

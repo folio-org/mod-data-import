@@ -1,6 +1,6 @@
 package org.folio.rest;
 
-import com.jayway.restassured.RestAssured;
+import io.restassured.RestAssured;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.junit.Test;

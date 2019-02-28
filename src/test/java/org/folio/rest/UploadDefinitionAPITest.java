@@ -554,6 +554,37 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withSourcePath("CornellFOLIOExemplars_Bibs.mrc");
 
     JobExecution jobExecution = new JobExecution()
+      .withParentJobId("")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
+
+    InitJobExecutionsRsDto jobExecutionsRespDto = new InitJobExecutionsRsDto()
+      .withParentJobExecutionId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withJobExecutions(Arrays.asList(jobExecution, childrenJobExecution));
+
+    WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
+      .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionsRespDto).encode())));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
+
+  @Test
+  public void uploadDefinitionCreateBadRequestWhenReceivedChildrenJobExecutionWithoutId() {
+    JobExecution childrenJobExecution = new JobExecution()
+      .withId("")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSourcePath("CornellFOLIOExemplars_Bibs.mrc");
+
+    JobExecution jobExecution = new JobExecution()
       .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
       .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
       .withStatus(JobExecution.Status.NEW)

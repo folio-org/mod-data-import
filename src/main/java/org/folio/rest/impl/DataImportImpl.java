@@ -355,7 +355,7 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void postDataImportFileExtensionsRestoreDefault(Map<String, String> okapiHeaders,
-                                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         fileExtensionService.restoreFileExtensions()
@@ -402,12 +402,15 @@ public class DataImportImpl implements DataImport {
    * @return - Future {@link Errors} object with list of validation errors
    */
   private Future<Errors> validateFileExtension(FileExtension extension) {
-    Errors errors = new Errors();
-    return fileExtensionService.isFileExtensionExistByName(extension).map(exist -> exist
-      ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_DUPLICATE_ERROR_CODE))).withTotalRecords(errors.getErrors().size())
-      : errors.withTotalRecords(0))
-      .map(errorsList -> errorsList.getTotalRecords() == 0 && !extension.getExtension().matches(FILE_EXTENSION_VALID_REGEXP)
-        ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_INVALID_ERROR_CODE))).withTotalRecords(errors.getErrors().size())
-        : errorsList);
+    Errors errors = new Errors()
+      .withTotalRecords(0);
+    return Future.succeededFuture()
+      .map(v -> !extension.getExtension().matches(FILE_EXTENSION_VALID_REGEXP)
+        ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_INVALID_ERROR_CODE))).withTotalRecords(errors.getErrors().size() + 1)
+        : errors)
+      .compose(errorsReply -> fileExtensionService.isFileExtensionExistByName(extension))
+      .map(exist -> exist && errors.getTotalRecords() == 0
+        ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_DUPLICATE_ERROR_CODE))).withTotalRecords(errors.getErrors().size() + 1)
+        : errors);
   }
 }

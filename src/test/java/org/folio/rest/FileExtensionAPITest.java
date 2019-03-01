@@ -290,7 +290,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .post(FILE_EXTENSION_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("fileExtension.duplication.invalid"));
+      .body("errors[0].message", is("fileExtension.extension.invalid"));
   }
 
   @Test

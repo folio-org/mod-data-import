@@ -140,7 +140,7 @@ public class FileExtensionServiceImpl implements FileExtensionService {
 
   @Override
   public Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension) {
-    StringBuilder query = new StringBuilder("extension=" + fileExtension.getExtension());
+    StringBuilder query = new StringBuilder("extension=" + fileExtension.getExtension().trim());
     if (fileExtension.getId() != null) {
       query.append("&id!=")
         .append(fileExtension.getId());

@@ -282,6 +282,15 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("fileExtension.duplication.invalid"));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(fileExtension_4.withExtension(" " + fileExtension_4.getExtension() + " "))
+      .when()
+      .post(FILE_EXTENSION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("fileExtension.extension.invalid"));
   }
 
   @Test

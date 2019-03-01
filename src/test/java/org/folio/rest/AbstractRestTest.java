@@ -42,8 +42,7 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
  * Abstract test for the REST API testing needs.
  */
 public abstract class AbstractRestTest {
-
-  private static final String JOB_EXECUTIONS_TABLE_NAME = "job_executions";
+  
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
   private static final String TOKEN = "token";

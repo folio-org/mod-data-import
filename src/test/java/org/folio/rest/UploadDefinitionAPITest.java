@@ -32,6 +32,7 @@ import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static org.folio.dataimport.util.RestUtil.*;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -319,7 +320,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void uploadDefinitionDeleteBadRequestSuccessfulWhenFailedUpdateJobExecutionStatus() {
+  public void uploadDefinitionDeleteBadRequestWhenFailedUpdateJobExecutionStatus() {
     String id = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -338,6 +339,39 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .delete(DEFINITION_PATH + "/" + id)
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionDeleteBadRequestWhenRelatedJobExecutionsHaveBeingProcessed() {
+    JobExecution jobExecution = new JobExecution()
+      .withId(UUID.randomUUID().toString())
+      .withHrId("1000")
+      .withParentJobId(UUID.randomUUID().toString())
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
+      .withStatus(JobExecution.Status.PARSING_FINISHED)
+      .withUiStatus(JobExecution.UiStatus.RUNNING_COMPLETE)
+      .withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
+      .withJobProfile(new JobProfile().withName("Marc jobs profile"))
+      .withUserId(UUID.randomUUID().toString());
+
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).toString())));
+
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
       .log().all();
   }
 
@@ -606,6 +640,54 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
+
+  @Test
+  public void uploadDefinitionCreateServerErrorWhenFailedJobExecutionsCreation () {
+    WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
+      .withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
+      .willReturn(WireMock.serverError()));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  public void uploadDefinitionDeleteServerErrorWhenFailedGettingChildrenJobExecutions() {
+    JobExecution jobExecution = new JobExecution()
+      .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_MULTIPLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
+
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}/children"), true))
+      .willReturn(WireMock.serverError()));
+
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
+      .log().all();
   }
 }
 

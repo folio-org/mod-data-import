@@ -4,15 +4,22 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.drools.core.util.StringUtils;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
+import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.processing.FileProcessor;
+import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,6 +32,10 @@ import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertTrue;
@@ -311,7 +322,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void uploadDefinitionDeleteBadRequestSuccessfulWhenFailedUpdateJobExecutionStatus() {
+  public void uploadDefinitionDeleteBadRequestWhenFailedUpdateJobExecutionStatus() {
     String id = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -330,6 +341,39 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .delete(DEFINITION_PATH + "/" + id)
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionDeleteBadRequestWhenRelatedJobExecutionsHaveBeingProcessed() {
+    JobExecution jobExecution = new JobExecution()
+      .withId(UUID.randomUUID().toString())
+      .withHrId("1000")
+      .withParentJobId(UUID.randomUUID().toString())
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
+      .withStatus(JobExecution.Status.PARSING_FINISHED)
+      .withUiStatus(JobExecution.UiStatus.RUNNING_COMPLETE)
+      .withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
+      .withJobProfile(new JobProfile().withName("Marc jobs profile"))
+      .withUserId(UUID.randomUUID().toString());
+
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).toString())));
+
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
       .log().all();
   }
 
@@ -393,7 +437,43 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void postFilesProcessingSuccessful() {
+  public void postFilesProcessingSuccessful(TestContext context) {
+    // ugly hack to increase coverage for method `process()`
+    Async async = context.async();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withName("CornellFOLIOExemplars_Bibs.mrc")
+      .withSourcePath("src/test/resources/CornellFOLIOExemplars.mrc")
+      .withSize(209);
+
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    UploadDefinition uploadDef = new UploadDefinition();
+    uploadDef.setId(UUID.randomUUID().toString());
+    uploadDef.setMetaJobExecutionId(jobExecutionId);
+    uploadDef.setCreateDate(new Date());
+    uploadDef.setStatus(UploadDefinition.Status.IN_PROGRESS);
+    uploadDef.setFileDefinitions(Arrays.asList(fileDefinition));
+
+    JobProfile jobProf = new JobProfile();
+    jobProf.setId(UUID.randomUUID().toString());
+    jobProf.setName(StringUtils.EMPTY);
+
+    ProcessFilesRqDto processFilesReqDto = new ProcessFilesRqDto()
+      .withUploadDefinition(uploadDef)
+      .withJobProfile(jobProf);
+
+    JsonObject paramsJson = new JsonObject()
+      .put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
+      .put(OKAPI_TENANT_HEADER, TENANT_ID)
+      .put(OKAPI_TOKEN_HEADER, TOKEN);
+
+    WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
+      .willReturn(WireMock.ok()));
+
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
+    fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
+
     UploadDefinition uploadDefinition = new UploadDefinition();
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
@@ -414,6 +494,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    async.complete();
   }
 
   @Test
@@ -435,4 +517,179 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
+
+  @Test
+  public void postFileDefinitionByUploadDefinitionIdCreatedSuccessful() {
+    String uploadDefId = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all()
+      .extract().body().jsonPath().get("id");
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withId("88dfac11-1caf-4470-9ad1-d533f6360bdd")
+      .withUploadDefinitionId(uploadDefId)
+      .withName("marc.mrc");
+
+    RestAssured.given()
+      .spec(spec)
+      .body(JsonObject.mapFrom(fileDefinition).encode())
+      .when()
+      .post(DEFINITION_PATH + "/" + fileDefinition.getUploadDefinitionId() + FILE_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("metaJobExecutionId", Matchers.notNullValue())
+      .body("id", Matchers.notNullValue())
+      .body("status", Matchers.is("NEW"))
+      .body("fileDefinitions[0].status", Matchers.is("NEW"))
+      .body("fileDefinitions[0].id", Matchers.notNullValue())
+      .body("fileDefinitions[1].status", Matchers.is("NEW"))
+      .body("fileDefinitions[1].id", Matchers.notNullValue());
+  }
+
+  @Test
+  public void uploadDefinitionDeleteSuccessfulWhenJobExecutionTypeParentMultiple() {
+    JobExecution jobExecution = new JobExecution()
+      .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_MULTIPLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
+
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+        .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
+
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionCreateBadRequestWhenReceivedJobExecutionWithoutId() {
+    JobExecution childrenJobExecution = new JobExecution()
+      .withId("55596e0a-cf65-4a10-9c81-58b2c225b03a")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSourcePath("CornellFOLIOExemplars_Bibs.mrc");
+
+    JobExecution jobExecution = new JobExecution()
+      .withParentJobId("")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
+
+    InitJobExecutionsRsDto jobExecutionsRespDto = new InitJobExecutionsRsDto()
+      .withParentJobExecutionId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withJobExecutions(Arrays.asList(jobExecution, childrenJobExecution));
+
+    WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
+      .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionsRespDto).encode())));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
+
+  @Test
+  public void uploadDefinitionCreateBadRequestWhenReceivedChildrenJobExecutionWithoutId() {
+    JobExecution childrenJobExecution = new JobExecution()
+      .withId("")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSourcePath("CornellFOLIOExemplars_Bibs.mrc");
+
+    JobExecution jobExecution = new JobExecution()
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
+
+    InitJobExecutionsRsDto jobExecutionsRespDto = new InitJobExecutionsRsDto()
+      .withParentJobExecutionId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withJobExecutions(Arrays.asList(jobExecution, childrenJobExecution));
+
+    WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
+      .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionsRespDto).encode())));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
+
+  @Test
+  public void uploadDefinitionCreateServerErrorWhenFailedJobExecutionsCreation () {
+    WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
+      .withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
+      .willReturn(WireMock.serverError()));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  public void uploadDefinitionDeleteServerErrorWhenFailedGettingChildrenJobExecutions() {
+    JobExecution jobExecution = new JobExecution()
+      .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_MULTIPLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
+
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}/children"), true))
+      .willReturn(WireMock.serverError()));
+
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
+      .log().all();
+  }
 }
+

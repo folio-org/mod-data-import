@@ -42,16 +42,15 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
  * Abstract test for the REST API testing needs.
  */
 public abstract class AbstractRestTest {
-
-  private static final String JOB_EXECUTIONS_TABLE_NAME = "job_executions";
+  
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
-  private static final String TOKEN = "token";
   private static final String HTTP_PORT = "http.port";
   private static int port;
   private static String useExternalDatabase;
   private static Vertx vertx;
-  private static final String TENANT_ID = "diku";
+  protected static final String TENANT_ID = "diku";
+  protected static final String TOKEN = "token";
   protected static RequestSpecification spec;
   protected static RequestSpecification specUpload;
 
@@ -219,13 +218,11 @@ public abstract class AbstractRestTest {
   }
 
   private void clearTable(TestContext context) {
-    PostgresClient.getInstance(vertx, TENANT_ID).delete(JOB_EXECUTIONS_TABLE_NAME, new Criterion(), event1 -> {
-      PostgresClient.getInstance(vertx, TENANT_ID).delete(FILE_EXTENSIONS_TABLE, new Criterion(), event2 -> {
-        PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), event3 -> {
-          if (event2.failed()) {
-            context.fail(event2.cause());
-          }
-        });
+    PostgresClient.getInstance(vertx, TENANT_ID).delete(FILE_EXTENSIONS_TABLE, new Criterion(), event1 -> {
+      PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), event2 -> {
+        if (event1.failed()) {
+          context.fail(event1.cause());
+        }
       });
     });
   }

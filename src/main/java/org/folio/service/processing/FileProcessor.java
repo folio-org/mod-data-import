@@ -8,7 +8,7 @@ import io.vertx.core.json.JsonObject;
  * Processing files associated with given request.
  */
 @ProxyGen
-public interface FileProcessor {
+public interface FileProcessor { //NOSONAR
 
   String FILE_PROCESSOR_ADDRESS = "file-processor.queue"; //NOSONAR
 

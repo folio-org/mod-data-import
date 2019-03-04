@@ -45,12 +45,12 @@ public abstract class AbstractRestTest {
   
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
-  private static final String TOKEN = "token";
   private static final String HTTP_PORT = "http.port";
   private static int port;
   private static String useExternalDatabase;
   private static Vertx vertx;
-  private static final String TENANT_ID = "diku";
+  protected static final String TENANT_ID = "diku";
+  protected static final String TOKEN = "token";
   protected static RequestSpecification spec;
   protected static RequestSpecification specUpload;
 

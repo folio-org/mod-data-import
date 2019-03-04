@@ -463,8 +463,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
     JsonObject paramsJson = new JsonObject()
       .put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
-      .put(OKAPI_TENANT_HEADER, "diku")
-      .put(OKAPI_TOKEN_HEADER, "token");
+      .put(OKAPI_TENANT_HEADER, TENANT_ID)
+      .put(OKAPI_TOKEN_HEADER, TOKEN);
 
     WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
       .willReturn(WireMock.ok()));

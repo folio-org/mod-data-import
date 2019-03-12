@@ -1,16 +1,14 @@
 package org.folio.service.upload;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
+import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
-import javax.ws.rs.core.Response;
 import java.util.Optional;
 
 /**
@@ -92,10 +90,10 @@ public interface UploadDefinitionService {
   /**
    * Validate new UploadDefinition before saving it
    *
-   * @param definition         - object with new upload definition
-   * @param asyncResultHandler - request's result handler
-   * @return - is Upload Definition is valid
+   * @param definition - object with new upload definition
+   * @param -          request's result handler
+   * @return - {@link Errors} object with errors. Valid UploadDefinition if errors count is zero
    */
-  Boolean checkNewUploadDefinition(UploadDefinition definition, Handler<AsyncResult<Response>> asyncResultHandler);
+  Future<Errors> checkNewUploadDefinition(UploadDefinition definition);
 
 }

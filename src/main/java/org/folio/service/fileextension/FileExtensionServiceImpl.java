@@ -44,6 +44,11 @@ public class FileExtensionServiceImpl implements FileExtensionService {
   }
 
   @Override
+  public Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension) {
+    return fileExtensionDao.getFileExtensionByExtenstion(extension);
+  }
+
+  @Override
   public Future<FileExtension> addFileExtension(FileExtension fileExtension, OkapiConnectionParams params) {
     fileExtension.setId(UUID.randomUUID().toString());
     fileExtension.setDataTypes(sortDataTypes(fileExtension.getDataTypes()));

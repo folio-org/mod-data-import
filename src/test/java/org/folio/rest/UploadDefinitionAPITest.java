@@ -21,7 +21,6 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.processing.FileProcessor;
 import org.hamcrest.Matchers;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -103,20 +102,6 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   @After
   public void cleanUpAfterTest() throws IOException {
     FileUtils.deleteDirectory(new File("./storage"));
-  }
-
-  @Before
-  public void before(TestContext context) {
-    Async async = context.async();
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .post(FILE_EXTENSION_DEFAULT)
-      .then()
-      .log().all()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(16));
-    async.complete();
   }
 
   @Test
@@ -726,6 +711,15 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void uploadDefinitionCreateValidateFileExtension() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .post(FILE_EXTENSION_DEFAULT)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(16));
+
     RestAssured.given()
       .spec(spec)
       .body(uploadDef6)

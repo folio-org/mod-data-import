@@ -217,7 +217,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
       if (fileDefinition.getSize() != null) {
         totalFilesSize += fileDefinition.getSize();
-        if (freeSpace - fileDefinition.getSize() <= 0 && freeSpace - totalFilesSize <= 0) {
+        if (freeSpace - fileDefinition.getSize() <= 0 || freeSpace - totalFilesSize <= 0) {
           errors.getErrors().add(new Error()
             .withMessage(FILE_UPLOAD_ERROR_MESSAGE)
             .withCode(fileDefinition.getName()));

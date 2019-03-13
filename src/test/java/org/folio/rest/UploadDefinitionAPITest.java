@@ -48,7 +48,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   private static final String DEFINITION_PATH = "/data-import/uploadDefinitions";
   private static final String FILE_PATH = "/files";
   private static final String PROCESS_FILE_IMPORT_PATH = "/processFiles";
-  private String uploadDefId;
+  private String uploadDefIdForTest1;
+  private String uploadDefIdForTest2;
 
   private static FileDefinition file1 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars_Bibs(1).mrc.md1547160916680")
@@ -108,7 +109,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Before
   public void before() {
-    uploadDefId = RestAssured.given()
+    uploadDefIdForTest1 = RestAssured.given()
       .spec(spec)
       .body(uploadDef1)
       .when()
@@ -117,6 +118,15 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_CREATED)
       .log().all()
       .extract().body().jsonPath().get("id");
+
+    uploadDefIdForTest2 = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef2)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
   }
 
   @Test
@@ -169,18 +179,10 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void uploadDefinitionGetById() {
-    String id = RestAssured.given()
-      .spec(spec)
-      .body(uploadDef2)
-      .when()
-      .post(DEFINITION_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .log().all().extract().body().jsonPath().get("id");
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(DEFINITION_PATH + "/" + id)
+      .get(DEFINITION_PATH + "/" + uploadDefIdForTest2)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
@@ -554,7 +556,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   public void postFileDefinitionByUploadDefinitionIdCreatedSuccessful() {
     FileDefinition fileDefinition = new FileDefinition()
       .withId("88dfac11-1caf-4470-9ad1-d533f6360bdd")
-      .withUploadDefinitionId(uploadDefId)
+      .withUploadDefinitionId(uploadDefIdForTest1)
       .withName("marc.mrc");
 
     RestAssured.given()

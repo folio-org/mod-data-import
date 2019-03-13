@@ -41,6 +41,7 @@ public class DataImportImpl implements DataImport {
   private static final String FILE_EXTENSION_DUPLICATE_ERROR_CODE = "fileExtension.duplication.invalid";
   private static final String FILE_EXTENSION_INVALID_ERROR_CODE = "fileExtension.extension.invalid";
   private static final String FILE_EXTENSION_VALIDATE_ERROR_MESSAGE = "Failed to validate file extension";
+  private static final String UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE = "Failed to validate Upload Definition";
   private static final String FILE_EXTENSION_VALID_REGEXP = "^\\.(\\w+)$";
 
   private UploadDefinitionService uploadDefinitionService;
@@ -62,14 +63,21 @@ public class DataImportImpl implements DataImport {
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        if (uploadDefinitionService.checkNewUploadDefinition(entity, asyncResultHandler)) {
-          OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-          uploadDefinitionService.addUploadDefinition(entity, params)
-            .map((Response) PostDataImportUploadDefinitionsResponse
-              .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionsResponse.headersFor201()))
-            .otherwise(ExceptionHelper::mapExceptionToResponse)
-            .setHandler(asyncResultHandler);
-        }
+        uploadDefinitionService.checkNewUploadDefinition(entity).setHandler(errors -> {
+          if (errors.failed()) {
+            LOG.error(UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE, errors.cause());
+            asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
+          } else if (errors.result().getTotalRecords() > 0) {
+            asyncResultHandler.handle(Future.succeededFuture(PostDataImportUploadDefinitionsResponse.respond422WithApplicationJson(errors.result())));
+          } else {
+            OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+            uploadDefinitionService.addUploadDefinition(entity, params)
+              .map((Response) PostDataImportUploadDefinitionsResponse
+                .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionsResponse.headersFor201()))
+              .otherwise(ExceptionHelper::mapExceptionToResponse)
+              .setHandler(asyncResultHandler);
+          }
+        });
       } catch (Exception e) {
         asyncResultHandler.handle(Future.succeededFuture(
           ExceptionHelper.mapExceptionToResponse(e)));
@@ -123,7 +131,7 @@ public class DataImportImpl implements DataImport {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
         uploadDefinitionService.deleteUploadDefinition(uploadDefinitionId, params)
           .map(deleted -> (Response) DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.respond204WithTextPlain(
-              String.format("Upload definition with id '%s' was successfully deleted", uploadDefinitionId)))
+            String.format("Upload definition with id '%s' was successfully deleted", uploadDefinitionId)))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
@@ -179,7 +187,7 @@ public class DataImportImpl implements DataImport {
       OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
       vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId, params)
         .map(deleted -> (Response) DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204WithTextPlain(
-            String.format("File with id: %s deleted", fileId)))
+          String.format("File with id: %s deleted", fileId)))
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .setHandler(asyncResultHandler));
     } catch (Exception e) {

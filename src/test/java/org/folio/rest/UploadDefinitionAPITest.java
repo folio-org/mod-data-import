@@ -36,6 +36,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.rest.DefaultFileExtensionAPITest.FILE_EXTENSION_DEFAULT;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertTrue;
@@ -67,6 +68,16 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     .withName("CornellFOLIOExemplars1.mrc")
     .withSize(Integer.MAX_VALUE);
 
+  private static FileDefinition file5 = new FileDefinition()
+    .withUiKey("CornellFOLIOExemplars.gif.md1547160916680")
+    .withName("CornellFOLIOExemplars.gif")
+    .withSize(209);
+
+  private static FileDefinition file6 = new FileDefinition()
+    .withUiKey("CornellFOLIOExemplars.jpg.md1547160916680")
+    .withName("CornellFOLIOExemplars.jpg")
+    .withSize(209);
+
   private static UploadDefinition uploadDef1 = new UploadDefinition()
     .withFileDefinitions(Collections.singletonList(file1));
 
@@ -81,6 +92,12 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   private static UploadDefinition uploadDef5 = new UploadDefinition()
     .withFileDefinitions(Arrays.asList(file3, file4));
+
+  private static UploadDefinition uploadDef6 = new UploadDefinition()
+    .withFileDefinitions(Collections.singletonList(file5));
+
+  private static UploadDefinition uploadDef7 = new UploadDefinition()
+    .withFileDefinitions(Arrays.asList(file5, file6));
 
   @After
   public void cleanUpAfterTest() throws IOException {
@@ -563,7 +580,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withUserId(UUID.randomUUID().toString());
 
     WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
-        .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
+      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
 
     String id = RestAssured.given()
       .spec(spec)
@@ -645,7 +662,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void uploadDefinitionCreateServerErrorWhenFailedJobExecutionsCreation () {
+  public void uploadDefinitionCreateServerErrorWhenFailedJobExecutionsCreation() {
     WireMock.stubFor(WireMock.post("/change-manager/jobExecutions")
       .withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
       .willReturn(WireMock.serverError()));
@@ -690,6 +707,40 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
       .log().all();
+  }
+
+  @Test
+  public void uploadDefinitionCreateValidateFileExtension() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .post(FILE_EXTENSION_DEFAULT)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(16));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(uploadDef6)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("validation.uploadDefinition.fileExtension.blocked"))
+      .body("errors[0].code", is(uploadDef6.getFileDefinitions().get(0).getName()))
+      .body("total_records", is(1));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(uploadDef7)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("total_records", is(2));
   }
 }
 

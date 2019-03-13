@@ -34,6 +34,14 @@ public interface FileExtensionService {
   Future<Optional<FileExtension>> getFileExtensionById(String id);
 
   /**
+   * Searches for {@link FileExtension} by its extension
+   *
+   * @param extension File Extension
+   * @return future with optional {@link FileExtension}
+   */
+  Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension);
+
+  /**
    * Saves {@link FileExtension}
    *
    * @param fileExtension FileExtension to save

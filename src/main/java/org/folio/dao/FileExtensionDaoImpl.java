@@ -28,6 +28,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   private static final String DEFAULT_FILE_EXTENSIONS_TABLE = "default_file_extensions";
   private static final String ID_FIELD = "'id'";
+  private static final String EXTENSION_FIELD = "'extension'";
 
   private PostgresClient pgClient;
   private String tenantId;
@@ -69,17 +70,26 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<Optional<FileExtension>> getFileExtensionById(String id) {
+    return getFileExtensionByField(ID_FIELD, id);
+  }
+
+  private Future<Optional<FileExtension>> getFileExtensionByField(String fieldName, String fieldValue) {
     Future<Results<FileExtension>> future = Future.future();
     try {
-      Criteria idCrit = constructCriteria(ID_FIELD, id);
-      pgClient.get(FILE_EXTENSIONS_TABLE, FileExtension.class, new Criterion(idCrit), true, false, future.completer());
+      Criteria crit = constructCriteria(fieldName, fieldValue);
+      pgClient.get(FILE_EXTENSIONS_TABLE, FileExtension.class, new Criterion(crit), true, false, future.completer());
     } catch (Exception e) {
-      LOGGER.error("Error querying FileExtensions by id", e);
+      LOGGER.error("Error querying FileExtensions by {}", fieldName, e);
       future.fail(e);
     }
     return future
       .map(Results::getResults)
       .map(fileExtensions -> fileExtensions.isEmpty() ? Optional.empty() : Optional.of(fileExtensions.get(0)));
+  }
+
+  @Override
+  public Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension) {
+    return getFileExtensionByField(EXTENSION_FIELD, extension);
   }
 
   @Override

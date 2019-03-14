@@ -227,7 +227,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId(String uploadDefinitionId, String jobProfileId,
+  public void postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId(String uploadDefinitionId,
                                                                               ProcessFilesRqDto entity, Map<String, String> okapiHeaders,
                                                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {

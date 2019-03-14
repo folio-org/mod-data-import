@@ -16,6 +16,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.processing.FileProcessor;
@@ -388,7 +389,10 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withStatus(JobExecution.Status.PARSING_FINISHED)
       .withUiStatus(JobExecution.UiStatus.RUNNING_COMPLETE)
       .withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
-      .withJobProfile(new JobProfile().withName("Marc jobs profile"))
+      .withJobProfileInfo(new JobProfileInfo()
+        .withName("Marc jobs profile")
+        .withId(UUID.randomUUID().toString())
+        .withDataType(JobProfileInfo.DataType.MARC))
       .withUserId(UUID.randomUUID().toString());
 
     WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
@@ -487,15 +491,16 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     uploadDef.setMetaJobExecutionId(jobExecutionId);
     uploadDef.setCreateDate(new Date());
     uploadDef.setStatus(UploadDefinition.Status.IN_PROGRESS);
-    uploadDef.setFileDefinitions(Arrays.asList(fileDefinition));
+    uploadDef.setFileDefinitions(Collections.singletonList(fileDefinition));
 
-    JobProfile jobProf = new JobProfile();
+    JobProfileInfo jobProf = new JobProfileInfo();
     jobProf.setId(UUID.randomUUID().toString());
     jobProf.setName(StringUtils.EMPTY);
+    jobProf.setDataType(JobProfileInfo.DataType.MARC);
 
     ProcessFilesRqDto processFilesReqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDef)
-      .withJobProfile(jobProf);
+      .withJobProfileInfo(jobProf);
 
     JsonObject paramsJson = new JsonObject()
       .put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
@@ -513,12 +518,13 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
     uploadDefinition.setCreateDate(new Date());
     uploadDefinition.setStatus(UploadDefinition.Status.IN_PROGRESS);
-    JobProfile jobProfile = new JobProfile();
+    JobProfileInfo jobProfile = new JobProfileInfo();
     jobProfile.setId(UUID.randomUUID().toString());
     jobProfile.setName(StringUtils.EMPTY);
+    jobProfile.setDataType(JobProfileInfo.DataType.MARC);
     ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDefinition)
-      .withJobProfile(jobProfile);
+      .withJobProfileInfo(jobProfile);
 
     RestAssured.given()
       .spec(spec)
@@ -537,10 +543,12 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     UploadDefinition uploadDefinition = new UploadDefinition()
       .withId(UUID.randomUUID().toString())
       .withStatus(UploadDefinition.Status.IN_PROGRESS);
-    JobProfile jobProfile = new JobProfile().withId(UUID.randomUUID().toString());
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC);
     ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDefinition)
-      .withJobProfile(jobProfile);
+      .withJobProfileInfo(jobProfile);
 
     RestAssured.given()
       .spec(spec)

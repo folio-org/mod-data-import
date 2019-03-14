@@ -16,7 +16,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.drools.core.util.StringUtils;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.service.storage.FileStorageService;
 import org.junit.Assert;
@@ -87,7 +87,10 @@ public class ParallelFileChunkingProcessorUnitTest {
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)
       .withJobExecutionId(jobExecutionId);
-    JobProfile jobProfile = new JobProfile();
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
@@ -134,7 +137,10 @@ public class ParallelFileChunkingProcessorUnitTest {
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)
       .withJobExecutionId(jobExecutionId);
-    JobProfile jobProfile = new JobProfile();
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);

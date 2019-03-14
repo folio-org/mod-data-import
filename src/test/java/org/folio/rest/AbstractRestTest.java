@@ -19,7 +19,7 @@ import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionCollection;
-import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -42,7 +42,7 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
  * Abstract test for the REST API testing needs.
  */
 public abstract class AbstractRestTest {
-  
+
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
   private static final String HTTP_PORT = "http.port";
@@ -71,7 +71,10 @@ public abstract class AbstractRestTest {
     .withStatus(JobExecution.Status.NEW)
     .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
     .withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
-    .withJobProfile(new JobProfile().withName("Marc jobs profile"))
+    .withJobProfileInfo(new JobProfileInfo()
+      .withName("Marc jobs profile")
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withId(UUID.randomUUID().toString()))
     .withUserId(UUID.randomUUID().toString());
 
   private JobExecutionCollection childrenJobExecutions = new JobExecutionCollection()

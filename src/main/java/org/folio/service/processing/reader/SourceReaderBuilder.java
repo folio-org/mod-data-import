@@ -1,7 +1,7 @@
 package org.folio.service.processing.reader;
 
 
-import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 
 import java.io.File;
 
@@ -18,8 +18,14 @@ public class SourceReaderBuilder {
   private SourceReaderBuilder() {
   }
 
-  public static SourceReader build(File file, JobProfile jobProfile) { // NOSONAR
-    // find proper SourceReader by profile file type
-    return new MarcSourceReader(file, CHUNK_SIZE);
+  public static SourceReader build(File file, JobProfileInfo jobProfile) {
+    switch (jobProfile.getDataType()) {
+      case MARC: {
+        return new MarcSourceReader(file, CHUNK_SIZE);
+      }
+      default: {
+        throw new UnsupportedOperationException("Another file format doesn't supports yet");
+      }
+    }
   }
 }

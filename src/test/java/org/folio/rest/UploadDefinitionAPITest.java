@@ -21,6 +21,7 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.processing.FileProcessor;
 import org.hamcrest.Matchers;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -47,6 +48,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   private static final String DEFINITION_PATH = "/data-import/uploadDefinitions";
   private static final String FILE_PATH = "/files";
   private static final String PROCESS_FILE_IMPORT_PATH = "/processFiles";
+  private String uploadDefIdForTest1;
+  private String uploadDefIdForTest2;
 
   private static FileDefinition file1 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars_Bibs(1).mrc.md1547160916680")
@@ -104,6 +107,28 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     FileUtils.deleteDirectory(new File("./storage"));
   }
 
+  @Before
+  public void before() {
+    uploadDefIdForTest1 = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all()
+      .extract().body().jsonPath().get("id");
+
+    uploadDefIdForTest2 = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef2)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+  }
+
   @Test
   public void uploadDefinitionCreate() {
     RestAssured.given()
@@ -154,18 +179,10 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void uploadDefinitionGetById() {
-    String id = RestAssured.given()
-      .spec(spec)
-      .body(uploadDef2)
-      .when()
-      .post(DEFINITION_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .log().all().extract().body().jsonPath().get("id");
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(DEFINITION_PATH + "/" + id)
+      .get(DEFINITION_PATH + "/" + uploadDefIdForTest2)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
@@ -537,19 +554,9 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void postFileDefinitionByUploadDefinitionIdCreatedSuccessful() {
-    String uploadDefId = RestAssured.given()
-      .spec(spec)
-      .body(uploadDef1)
-      .when()
-      .post(DEFINITION_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .log().all()
-      .extract().body().jsonPath().get("id");
-
     FileDefinition fileDefinition = new FileDefinition()
       .withId("88dfac11-1caf-4470-9ad1-d533f6360bdd")
-      .withUploadDefinitionId(uploadDefId)
+      .withUploadDefinitionId(uploadDefIdForTest1)
       .withName("marc.mrc");
 
     RestAssured.given()

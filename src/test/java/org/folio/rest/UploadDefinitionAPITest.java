@@ -15,7 +15,6 @@ import org.drools.core.util.StringUtils;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;

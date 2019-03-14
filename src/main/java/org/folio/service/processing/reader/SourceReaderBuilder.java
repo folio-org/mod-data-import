@@ -19,13 +19,9 @@ public class SourceReaderBuilder {
   }
 
   public static SourceReader build(File file, JobProfileInfo jobProfile) {
-    switch (jobProfile.getDataType()) {
-      case MARC: {
-        return new MarcSourceReader(file, CHUNK_SIZE);
-      }
-      default: {
-        throw new UnsupportedOperationException("Another file format doesn't supports yet");
-      }
+    if (jobProfile.getDataType().equals(JobProfileInfo.DataType.MARC)) {
+      return new MarcSourceReader(file, CHUNK_SIZE);
     }
+    throw new UnsupportedOperationException("Another file format doesn't supports yet");
   }
 }

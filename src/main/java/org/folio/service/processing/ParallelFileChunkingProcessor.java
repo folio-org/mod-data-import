@@ -4,17 +4,17 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.web.handler.impl.HttpStatusException;
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dataimport.util.RestUtil;
+import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionCollection;
-import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.folio.dataimport.util.RestUtil.validateAsyncResult;
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
 
@@ -48,9 +47,6 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
 public class ParallelFileChunkingProcessor implements FileProcessor {
   private static final int THREAD_POOL_SIZE =
     Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.thread.pool.size", "20"));
-  private static final String JOB_PROFILE_SERVICE_URL = "/change-manager/jobExecutions/%s/jobProfile";
-  private static final String JOB_CHILDREN_SERVICE_URL = "/change-manager/jobExecutions/%s/children";
-  private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/records/";
   private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
 
   private Vertx vertx;
@@ -182,17 +178,23 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    */
   private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, AtomicBoolean canSendNextChunk, OkapiConnectionParams params) {
     Future<Void> future = Future.future();
-    RestUtil.doRequest(params, RAW_RECORDS_SERVICE_URL + jobExecutionId, HttpMethod.POST, chunk)
-      .setHandler(responseResult -> {
-        if (validateAsyncResult(responseResult, future)) {
-          LOGGER.info("Chunk of records with size {} successfully posted for job {}", chunk.getRecords().size(), jobExecutionId);
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    try {
+      client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, chunk, response -> {
+        if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
+          LOGGER.info("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getRecords().size(), jobExecutionId);
           future.complete();
         } else {
           canSendNextChunk.set(false);
-          String errorMessage = "Can not post raw records for job " + jobExecutionId + ". Cause: " + responseResult.cause();
-          LOGGER.error(errorMessage);
+          LOGGER.error("Error posting chunk of raw records for JobExecution with id {}", jobExecutionId, response.statusMessage());
+          future.fail(new HttpStatusException(response.statusCode(), "Error posting chunk of raw records"));
         }
       });
+    } catch (Exception e) {
+      canSendNextChunk.set(false);
+      LOGGER.error("Couldn't post chunk of raw records for JobExecution with id {}", jobExecutionId, e);
+      future.fail(e);
+    }
     return future;
   }
 
@@ -204,28 +206,38 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params             parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobsProfile(String metaJobExecutionId, JobProfileInfo jobProfile, OkapiConnectionParams
-    params) {
+  private Future<Void> updateJobsProfile(String metaJobExecutionId, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Future<Void> future = Future.future();
-    RestUtil.doRequest(params, String.format(JOB_CHILDREN_SERVICE_URL, metaJobExecutionId), HttpMethod.GET, null).setHandler(childrenJobsAr -> {
-      if (validateAsyncResult(childrenJobsAr, future)) {
-        List<JobExecution> childJobs = childrenJobsAr.result().getJson().mapTo(JobExecutionCollection.class).getJobExecutions();
-        // remove id generating when UI will receive proper job profile with id
-        jobProfile.withId(UUID.randomUUID().toString());
-        List<Future> updateJobProfileFutures = new ArrayList<>(childJobs.size());
-        for (JobExecution job : childJobs) {
-          updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    try {
+      client.getChangeManagerJobExecutionsChildrenById(metaJobExecutionId, Integer.MAX_VALUE, null, 0, response -> {
+        if (response.statusCode() != HttpStatus.HTTP_OK.toInt()) {
+          LOGGER.error("Error getting children JobExecutions for parent with id {}", metaJobExecutionId, response.statusMessage());
+          future.fail(new HttpStatusException(response.statusCode(), "Error getting children JobExecutions"));
+        } else {
+          response.bodyHandler(buffer -> {
+            List<JobExecution> childJobs = buffer.toJsonObject().mapTo(JobExecutionCollection.class).getJobExecutions();
+            // remove id generating when UI will receive proper job profile with id
+            jobProfile.withId(UUID.randomUUID().toString());
+            List<Future> updateJobProfileFutures = new ArrayList<>(childJobs.size());
+            for (JobExecution job : childJobs) {
+              updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
+            }
+            CompositeFuture.all(updateJobProfileFutures).setHandler(updatedJobsProfileAr -> {
+              if (updatedJobsProfileAr.failed()) {
+                future.fail(updatedJobsProfileAr.cause());
+              } else {
+                LOGGER.info("All the child jobs have been updated by job profile, parent job {}", metaJobExecutionId);
+                future.complete();
+              }
+            });
+          });
         }
-        CompositeFuture.all(updateJobProfileFutures).setHandler(updatedJobsProfileAr -> {
-          if (updatedJobsProfileAr.failed()) {
-            future.fail(updatedJobsProfileAr.cause());
-          } else {
-            LOGGER.info("All the child jobs have been updated by job profile, parent job {}", metaJobExecutionId);
-            future.complete();
-          }
-        });
-      }
-    });
+      });
+    } catch (Exception e) {
+      LOGGER.error("Couldn't get children JobExecutions for parent with id {}", metaJobExecutionId, e);
+      future.fail(e);
+    }
     return future;
   }
 
@@ -239,15 +251,21 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    */
   private Future<Void> updateJobProfile(String jobId, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Future<Void> future = Future.future();
-    RestUtil.doRequest(params, String.format(JOB_PROFILE_SERVICE_URL, jobId), HttpMethod.PUT, jobProfile).setHandler(ar -> {
-      if (ar.failed()) {
-        LOGGER.error("Can not update job profile for job {}", jobId);
-        future.fail(ar.cause());
-      } else {
-        LOGGER.info("Job profile for job {} successfully updated.", jobId);
-        future.complete();
-      }
-    });
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    try {
+      client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
+        if (response.statusCode() != HttpStatus.HTTP_OK.toInt()) {
+          LOGGER.error("Error updating job profile for JobExecution {}", jobId);
+          future.fail(new HttpStatusException(response.statusCode(), "Error updating JobExecution"));
+        } else {
+          LOGGER.info("Job profile for job {} successfully updated.", jobId);
+          future.complete();
+        }
+      });
+    } catch (Exception e) {
+      LOGGER.error("Couldn't update jobProfile for JobExecution with id {}", jobId, e);
+      future.fail(e);
+    }
     return future;
   }
 }

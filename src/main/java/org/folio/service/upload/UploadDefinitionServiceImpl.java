@@ -3,15 +3,16 @@ package org.folio.service.upload;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.web.handler.impl.HttpStatusException;
+import org.folio.HttpStatus;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dataimport.util.RestUtil;
+import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -44,14 +45,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static org.folio.dataimport.util.RestUtil.validateAsyncResult;
-
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
   private static final Logger logger = LoggerFactory.getLogger(UploadDefinitionServiceImpl.class);
-  private static final String JOB_EXECUTION_CREATE_URL = "/change-manager/jobExecutions";
-  private static final String JOB_EXECUTION_URL = "/change-manager/jobExecutions";
   private static final String FILE_UPLOAD_ERROR_MESSAGE = "upload.fileSize.invalid";
   private static final String UPLOAD_FILE_EXTENSION_BLOCKED_ERROR_MESSAGE = "validation.uploadDefinition.fileExtension.blocked";
 
@@ -140,12 +136,20 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, OkapiConnectionParams params) {
     Future<Boolean> future = Future.future();
-    RestUtil.doRequest(params, JOB_EXECUTION_URL + "/" + jobExecutionId + "/status", HttpMethod.PUT, status)
-      .setHandler(updateResult -> {
-        if (validateAsyncResult(updateResult, future)) {
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    try {
+      client.putChangeManagerJobExecutionsStatusById(jobExecutionId, status,  response -> {
+        if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
           future.complete(true);
+        } else {
+          logger.error("Error updating status of JobExecution with id {}", jobExecutionId, response.statusMessage());
+          future.fail(new HttpStatusException(response.statusCode(), "Error updating status of JobExecution"));
         }
       });
+    } catch (Exception e) {
+      logger.error("Couldn't update status of JobExecution with id {}", jobExecutionId, e);
+      future.fail(e);
+    }
     return future;
   }
 
@@ -240,19 +244,15 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .withUserId(Objects.nonNull(metadata) ? metadata.getCreatedByUserId() : null);
 
     Future<UploadDefinition> future = Future.future();
-
-    RestUtil.doRequest(params, JOB_EXECUTION_CREATE_URL, HttpMethod.POST, initJobExecutionsRqDto)
-      .setHandler(responseResult -> {
-        try {
-          int responseCode = responseResult.result().getCode();
-          if (responseResult.failed()) {
-            logger.error("Error during request new jobExecution. Response code: {}", responseCode, responseResult.cause());
-            future.fail(responseResult.cause());
-          } else if (responseCode != CREATED.getStatusCode()) {
-            JsonObject response = responseResult.result().getJson();
-            future.fail(new IllegalArgumentException(Objects.nonNull(response) ? response.encode() : "HTTP Response: " + responseCode));
-          } else {
-            JsonObject responseBody = responseResult.result().getJson();
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    try {
+      client.postChangeManagerJobExecutions(initJobExecutionsRqDto, response -> {
+        if (response.statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
+          logger.error("Error creating new JobExecution for UploadDefinition with id {}", definition.getId(), response.statusMessage());
+          future.fail(new HttpStatusException(response.statusCode(), "Error creating new JobExecution"));
+        } else {
+          response.bodyHandler(buffer -> {
+            JsonObject responseBody = buffer.toJsonObject();
             JsonArray jobExecutions = responseBody.getJsonArray("jobExecutions");
             for (int i = 0; i < jobExecutions.size(); i++) {
               JsonObject jobExecution = jobExecutions.getJsonObject(i);
@@ -266,12 +266,13 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
             }
             definition.setMetaJobExecutionId(responseBody.getString("parentJobExecutionId"));
             future.complete(definition);
-          }
-        } catch (Exception e) {
-          logger.error("Error during creating jobExecutions for files", e);
-          future.fail(e);
+          });
         }
       });
+    } catch (Exception e) {
+      logger.error("Couldn't create JobExecution for UploadDefinition with id {}", definition.getId(), e);
+      future.fail(e);
+    }
     return future;
   }
 
@@ -322,32 +323,41 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
   private Future<JobExecutionCollection> getChildrenJobExecutions(String jobExecutionParentId, OkapiConnectionParams params) {
     Future<JobExecutionCollection> future = Future.future();
-    String url = JOB_EXECUTION_URL + "/" + jobExecutionParentId + "/children";
-    RestUtil.doRequest(params, url, HttpMethod.GET, null).setHandler(getResult -> {
-      if (validateAsyncResult(getResult, future)) {
-        JobExecutionCollection jobExecutionCollection = getResult.result().getJson().mapTo(JobExecutionCollection.class);
-        future.complete(jobExecutionCollection);
-      } else {
-        String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
-        logger.error(errorMessage);
-        future.fail(errorMessage);
-      }
-    });
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    try {
+      client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, null, 0, response -> {
+        if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
+          response.bodyHandler(buffer -> future.complete(buffer.toJsonObject().mapTo(JobExecutionCollection.class)));
+        } else {
+          String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
+          logger.error(errorMessage);
+          future.fail(errorMessage);
+        }
+      });
+    } catch (Exception e) {
+      logger.error("Couldn't get children JobExecutions for parent with id {}", jobExecutionParentId, e);
+      future.fail(e);
+    }
     return future;
   }
 
   private Future<JobExecution> getJobExecutionById(String jobExecutionId, OkapiConnectionParams params) {
     Future<JobExecution> future = Future.future();
-    String url = JOB_EXECUTION_URL + "/" + jobExecutionId;
-    RestUtil.doRequest(params, url, HttpMethod.GET, null).setHandler(getResult -> {
-      if (validateAsyncResult(getResult, future)) {
-        JobExecution jobExecution = getResult.result().getJson().mapTo(JobExecution.class);
-        future.complete(jobExecution);
-      } else {
-        String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
-        future.fail(errorMessage);
-      }
-    });
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    try {
+      client.getChangeManagerJobExecutionsById(jobExecutionId, null, response -> {
+        if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
+          response.bodyHandler(buffer -> future.complete(buffer.toJsonObject().mapTo(JobExecution.class)));
+        } else {
+          String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
+          logger.error(errorMessage);
+          future.fail(errorMessage);
+        }
+      });
+    } catch (Exception e) {
+      logger.error("Couldn't get JobExecutions by id {}", jobExecutionId, e);
+      future.fail(e);
+    }
     return future;
   }
 

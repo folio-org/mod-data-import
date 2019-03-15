@@ -49,7 +49,7 @@ public class ParallelFileChunkingProcessorUnitTest {
   private static final String TENANT = "diku";
   private static final String TOKEN = "token";
 
-  private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/records/";
+  private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/jobExecutions/%s/records";
   private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
   private static final int RECORDS_NUMBER = 62;
   private static final int CHUNKS_NUMBER = 2;
@@ -81,8 +81,8 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(RAW_RECORDS_SERVICE_URL + jobExecutionId)
-      .willReturn(WireMock.ok()));
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+      .willReturn(WireMock.noContent()));
 
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)
@@ -131,7 +131,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(RAW_RECORDS_SERVICE_URL + jobExecutionId)
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
       .willReturn(WireMock.serverError()));
 
     FileDefinition fileDefinition = new FileDefinition()

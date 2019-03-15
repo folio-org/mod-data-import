@@ -8,6 +8,7 @@ import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.DataType;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -48,6 +49,18 @@ public class FileExtensionAPITest extends AbstractRestTest {
     .withExtension("ma rc")
     .withDataTypes(new ArrayList<>())
     .withImportBlocked(true);
+  private FileExtension fileExtensionForTest1;
+
+  @Before
+  public void before(){
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(fileExtension_1)
+      .when()
+      .post(FILE_EXTENSION_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    fileExtensionForTest1 = createResponse.body().as(FileExtension.class);
+  }
 
   @Test
   public void shouldReturnEmptyListOnGetIfNoFileExtensionsExist() {
@@ -245,18 +258,10 @@ public class FileExtensionAPITest extends AbstractRestTest {
 
   @Test
   public void shouldDeleteExistingFileExtensionOnDelete() {
-    Response createResponse = RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_1)
-      .when()
-      .post(FILE_EXTENSION_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    FileExtension fileExtension = createResponse.body().as(FileExtension.class);
-
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
+      .delete(FILE_EXTENSION_PATH + "/" + fileExtensionForTest1.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
   }

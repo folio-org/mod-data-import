@@ -50,6 +50,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   private static final String PROCESS_FILE_IMPORT_PATH = "/processFiles";
   private String uploadDefIdForTest1;
   private String uploadDefIdForTest2;
+  private String uploadDefIdForTest3;
 
   private static FileDefinition file1 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars_Bibs(1).mrc.md1547160916680")
@@ -122,6 +123,26 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     uploadDefIdForTest2 = RestAssured.given()
       .spec(spec)
       .body(uploadDef2)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+
+    JobExecution jobExecution = new JobExecution()
+      .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_MULTIPLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
+
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
+
+    uploadDefIdForTest3 = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
       .when()
       .post(DEFINITION_PATH)
       .then()
@@ -585,29 +606,10 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void uploadDefinitionDeleteSuccessfulWhenJobExecutionTypeParentMultiple() {
-    JobExecution jobExecution = new JobExecution()
-      .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
-      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
-      .withSubordinationType(JobExecution.SubordinationType.PARENT_MULTIPLE)
-      .withStatus(JobExecution.Status.NEW)
-      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
-      .withUserId(UUID.randomUUID().toString());
-
-    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
-      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
-
-    String id = RestAssured.given()
-      .spec(spec)
-      .body(uploadDef1)
-      .when()
-      .post(DEFINITION_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .log().all().extract().body().jsonPath().get("id");
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(DEFINITION_PATH + "/" + id)
+      .delete(DEFINITION_PATH + "/" + uploadDefIdForTest3)
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();

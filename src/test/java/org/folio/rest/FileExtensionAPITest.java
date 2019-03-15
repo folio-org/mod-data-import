@@ -3,6 +3,8 @@ package org.folio.rest;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.DataType;
@@ -244,7 +246,8 @@ public class FileExtensionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void shouldDeleteExistingFileExtensionOnDelete() {
+  public void shouldDeleteExistingFileExtensionOnDelete(TestContext testContext) {
+    Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(fileExtension_1)
@@ -252,7 +255,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .post(FILE_EXTENSION_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
     FileExtension fileExtension = createResponse.body().as(FileExtension.class);
-
+    async.complete();
     RestAssured.given()
       .spec(spec)
       .when()

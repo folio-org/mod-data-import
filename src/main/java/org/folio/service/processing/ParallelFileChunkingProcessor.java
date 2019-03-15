@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionCollection;
 import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.StatusDto;
@@ -68,7 +69,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   public void process(JsonObject jsonRequest, JsonObject jsonParams) {
     ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
     UploadDefinition uploadDefinition = request.getUploadDefinition();
-    JobProfile jobProfile = request.getJobProfile();
+    JobProfileInfo jobProfile = request.getJobProfileInfo();
     OkapiConnectionParams params = new OkapiConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
     String tenantId = params.getTenantId();
     UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, tenantId);
@@ -114,7 +115,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @return Future
    */
   protected Future<Void> processFile(FileDefinition fileDefinition,
-                                     JobProfile jobProfile,
+                                     JobProfileInfo jobProfile,
                                      FileStorageService fileStorageService,
                                      OkapiConnectionParams params) {
     Future<Void> resultFuture = Future.future();
@@ -203,7 +204,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params             parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobsProfile(String metaJobExecutionId, JobProfile jobProfile, OkapiConnectionParams
+  private Future<Void> updateJobsProfile(String metaJobExecutionId, JobProfileInfo jobProfile, OkapiConnectionParams
     params) {
     Future<Void> future = Future.future();
     RestUtil.doRequest(params, String.format(JOB_CHILDREN_SERVICE_URL, metaJobExecutionId), HttpMethod.GET, null).setHandler(childrenJobsAr -> {
@@ -236,7 +237,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params     parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobProfile(String jobId, JobProfile jobProfile, OkapiConnectionParams params) {
+  private Future<Void> updateJobProfile(String jobId, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Future<Void> future = Future.future();
     RestUtil.doRequest(params, String.format(JOB_PROFILE_SERVICE_URL, jobId), HttpMethod.PUT, jobProfile).setHandler(ar -> {
       if (ar.failed()) {

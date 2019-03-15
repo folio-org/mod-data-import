@@ -22,7 +22,7 @@ types:
   statusDto: !include raml-storage/schemas/dto/statusDto.json
   processFilesRqDto: !include raml-storage/schemas/dto/processFilesRqDto.json
   rawRecordsDto: !include raml-storage/schemas/dto/rawRecordsDto.json
-  jobProfile: !include raml-storage/schemas/mod-source-record-manager/jobProfile.json
+  jobProfile: !include raml-storage/schemas/common/profileInfo.json
   fileExtension: !include raml-storage/schemas/mod-data-import/fileExtension.json
   fileExtensionCollection: !include raml-storage/schemas/mod-data-import/fileExtensionCollection.json
   dataTypeCollection: !include raml-storage/schemas/mod-data-import/dataTypeCollection.json
@@ -152,8 +152,6 @@ resourceTypes:
         description: File processing API
         post:
           description: Starts the file processing
-          queryParameters:
-            jobProfileId:
           is: [validate]
           body:
             application/json:

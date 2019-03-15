@@ -15,7 +15,7 @@ import org.drools.core.util.StringUtils;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.processing.FileProcessor;
@@ -50,6 +50,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   private static final String PROCESS_FILE_IMPORT_PATH = "/processFiles";
   private String uploadDefIdForTest1;
   private String uploadDefIdForTest2;
+  private String uploadDefIdForTest3;
 
   private static FileDefinition file1 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars_Bibs(1).mrc.md1547160916680")
@@ -122,6 +123,26 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     uploadDefIdForTest2 = RestAssured.given()
       .spec(spec)
       .body(uploadDef2)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+
+    JobExecution jobExecution = new JobExecution()
+      .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
+      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_MULTIPLE)
+      .withStatus(JobExecution.Status.NEW)
+      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+      .withUserId(UUID.randomUUID().toString());
+
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
+
+    uploadDefIdForTest3 = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
       .when()
       .post(DEFINITION_PATH)
       .then()
@@ -388,7 +409,10 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withStatus(JobExecution.Status.PARSING_FINISHED)
       .withUiStatus(JobExecution.UiStatus.RUNNING_COMPLETE)
       .withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
-      .withJobProfile(new JobProfile().withName("Marc jobs profile"))
+      .withJobProfileInfo(new JobProfileInfo()
+        .withName("Marc jobs profile")
+        .withId(UUID.randomUUID().toString())
+        .withDataType(JobProfileInfo.DataType.MARC))
       .withUserId(UUID.randomUUID().toString());
 
     WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
@@ -487,15 +511,16 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     uploadDef.setMetaJobExecutionId(jobExecutionId);
     uploadDef.setCreateDate(new Date());
     uploadDef.setStatus(UploadDefinition.Status.IN_PROGRESS);
-    uploadDef.setFileDefinitions(Arrays.asList(fileDefinition));
+    uploadDef.setFileDefinitions(Collections.singletonList(fileDefinition));
 
-    JobProfile jobProf = new JobProfile();
+    JobProfileInfo jobProf = new JobProfileInfo();
     jobProf.setId(UUID.randomUUID().toString());
     jobProf.setName(StringUtils.EMPTY);
+    jobProf.setDataType(JobProfileInfo.DataType.MARC);
 
     ProcessFilesRqDto processFilesReqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDef)
-      .withJobProfile(jobProf);
+      .withJobProfileInfo(jobProf);
 
     JsonObject paramsJson = new JsonObject()
       .put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
@@ -513,12 +538,13 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
     uploadDefinition.setCreateDate(new Date());
     uploadDefinition.setStatus(UploadDefinition.Status.IN_PROGRESS);
-    JobProfile jobProfile = new JobProfile();
+    JobProfileInfo jobProfile = new JobProfileInfo();
     jobProfile.setId(UUID.randomUUID().toString());
     jobProfile.setName(StringUtils.EMPTY);
+    jobProfile.setDataType(JobProfileInfo.DataType.MARC);
     ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDefinition)
-      .withJobProfile(jobProfile);
+      .withJobProfileInfo(jobProfile);
 
     RestAssured.given()
       .spec(spec)
@@ -537,10 +563,12 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     UploadDefinition uploadDefinition = new UploadDefinition()
       .withId(UUID.randomUUID().toString())
       .withStatus(UploadDefinition.Status.IN_PROGRESS);
-    JobProfile jobProfile = new JobProfile().withId(UUID.randomUUID().toString());
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC);
     ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDefinition)
-      .withJobProfile(jobProfile);
+      .withJobProfileInfo(jobProfile);
 
     RestAssured.given()
       .spec(spec)
@@ -578,29 +606,10 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void uploadDefinitionDeleteSuccessfulWhenJobExecutionTypeParentMultiple() {
-    JobExecution jobExecution = new JobExecution()
-      .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
-      .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
-      .withSubordinationType(JobExecution.SubordinationType.PARENT_MULTIPLE)
-      .withStatus(JobExecution.Status.NEW)
-      .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
-      .withUserId(UUID.randomUUID().toString());
-
-    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
-      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
-
-    String id = RestAssured.given()
-      .spec(spec)
-      .body(uploadDef1)
-      .when()
-      .post(DEFINITION_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .log().all().extract().body().jsonPath().get("id");
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(DEFINITION_PATH + "/" + id)
+      .delete(DEFINITION_PATH + "/" + uploadDefIdForTest3)
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();

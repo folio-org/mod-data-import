@@ -19,7 +19,9 @@ public class SourceReaderBuilder {
   }
 
   public static SourceReader build(File file, JobProfileInfo jobProfile) {
-    if (jobProfile.getDataType().equals(JobProfileInfo.DataType.MARC)) {
+    if (jobProfile != null
+      && jobProfile.getDataType() != null
+      && jobProfile.getDataType().equals(JobProfileInfo.DataType.MARC)) {
       return new MarcSourceReader(file, CHUNK_SIZE);
     }
     throw new UnsupportedOperationException("Another file format doesn't supports yet");

@@ -109,7 +109,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Before
-  public void before() {
+  public void before(TestContext context) {
+    Async async = context.async();
     uploadDefIdForTest1 = RestAssured.given()
       .spec(spec)
       .body(uploadDef1)
@@ -119,6 +120,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_CREATED)
       .log().all()
       .extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
 
     uploadDefIdForTest2 = RestAssured.given()
       .spec(spec)
@@ -128,6 +131,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
 
     JobExecution jobExecution = new JobExecution()
       .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
@@ -148,6 +153,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
   }
 
   @Test

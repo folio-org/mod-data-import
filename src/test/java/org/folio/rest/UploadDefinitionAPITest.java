@@ -310,7 +310,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void fileDelete() {
+  public void fileDelete(TestContext context) {
+    Async async = context.async();
     UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -320,6 +321,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_CREATED)
       .log().all()
       .extract().body().as(UploadDefinition.class);
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -329,6 +332,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
+    async.complete();
   }
 
   @Test

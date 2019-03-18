@@ -694,7 +694,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void uploadDefinitionDeleteServerErrorWhenFailedGettingChildrenJobExecutions() {
+  public void uploadDefinitionDeleteServerErrorWhenFailedGettingChildrenJobExecutions(TestContext context) {
     JobExecution jobExecution = new JobExecution()
       .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
       .withParentJobId("5105b55a-b9a3-4f76-9402-a5243ea63c95")
@@ -708,6 +708,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}/children"), true))
       .willReturn(WireMock.serverError()));
 
+    Async async = context.async();
     String id = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -716,6 +717,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -723,6 +726,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
       .log().all();
+    async.complete();
   }
 
   @Test

@@ -50,6 +50,14 @@ public class FileExtensionAPITest extends AbstractRestTest {
     .withExtension("ma rc")
     .withDataTypes(new ArrayList<>())
     .withImportBlocked(true);
+  private static FileExtension fileExtension_6 = new FileExtension()
+    .withExtension(".varc")
+    .withDataTypes(new ArrayList<>())
+    .withImportBlocked(false);
+  private static FileExtension fileExtension_7 = new FileExtension()
+    .withExtension(".zarc")
+    .withDataTypes(new ArrayList<>())
+    .withImportBlocked(false);
 
   @Test
   public void shouldReturnEmptyListOnGetIfNoFileExtensionsExist() {
@@ -262,6 +270,38 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .delete(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+  }
+
+  @Test
+  public void shouldValidateOnUpdateAndChangeNameOnExisting(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(fileExtension_6)
+      .when()
+      .post(FILE_EXTENSION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+    Async async2 = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(fileExtension_7)
+      .when()
+      .post(FILE_EXTENSION_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    FileExtension fileExtension = createResponse.body().as(FileExtension.class);
+    async2.complete();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(fileExtension.withExtension(fileExtension_6.getExtension()))
+      .when()
+      .put(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("fileExtension.duplication.invalid"));
   }
 
   @Test

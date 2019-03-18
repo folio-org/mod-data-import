@@ -51,6 +51,7 @@ public class ParallelFileChunkingProcessorUnitTest {
 
   private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/jobExecutions/%s/records";
   private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
+  private static final String SOURCE_PATH_2 = "src/test/resources/CornellFOLIOExemplars2.mrc";
   private static final int RECORDS_NUMBER = 62;
   private static final int CHUNKS_NUMBER = 2;
 
@@ -145,6 +146,74 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
+    future.setHandler(ar -> {
+      Assert.assertTrue(ar.failed());
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      Assert.assertTrue(!requests.isEmpty());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReadAndStopSendingChunksOnServerError2(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+
+    String jobExecutionId = UUID.randomUUID().toString();
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL + "error", jobExecutionId))
+      .willReturn(WireMock.serverError()));
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
+    future.setHandler(ar -> {
+      Assert.assertTrue(ar.failed());
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      Assert.assertTrue(!requests.isEmpty());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReadAndError(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+
+    String jobExecutionId = UUID.randomUUID().toString();
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+      .willReturn(WireMock.serverError()));
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_2));
 
     /* when */
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);

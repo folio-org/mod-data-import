@@ -166,8 +166,8 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL + "error", jobExecutionId))
-      .willReturn(WireMock.serverError()));
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+      .willReturn(WireMock.notFound()));
 
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)

@@ -24,6 +24,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mod-configuration-client.version>4.0.3</mod-configuration-client.version>
     <sonar.exclusions>**/ParallelFileChunkingProcessor.java</sonar.exclusions>
+    <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
   </properties>
 
   <dependencies>

@@ -130,11 +130,9 @@ public class ParallelFileChunkingProcessorUnitTest {
     /* given */
     Async async = context.async();
     String stubSourcePath = StringUtils.EMPTY;
-
     String jobExecutionId = UUID.randomUUID().toString();
     WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
       .willReturn(WireMock.serverError()));
-
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)
       .withJobExecutionId(jobExecutionId);
@@ -143,13 +141,10 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
-
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
-
     /* when */
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
-
     /* then */
     future.setHandler(ar -> {
       Assert.assertTrue(ar.failed());
@@ -158,6 +153,80 @@ public class ParallelFileChunkingProcessorUnitTest {
       async.complete();
     });
   }
+
+  @Test
+  public void shouldErrorOnNull(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+    String jobExecutionId = UUID.randomUUID().toString();
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+      .willReturn(WireMock.serverError()));
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, null, null, null);
+    /* then */
+    future.setHandler(ar -> {
+      Assert.assertTrue(ar.failed());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldErrorOnNull2(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+    String jobExecutionId = UUID.randomUUID().toString();
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+      .willReturn(WireMock.serverError()));
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, null);
+    /* then */
+    future.setHandler(ar -> {
+      Assert.assertTrue(ar.failed());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldErrorOnNull3(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+    String jobExecutionId = UUID.randomUUID().toString();
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+      .willReturn(WireMock.serverError()));
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, null, null);
+
+    /* then */
+    future.setHandler(ar -> {
+      Assert.assertTrue(ar.failed());
+      async.complete();
+    });
+  }
+
 
   @Test
   public void shouldReadAndStopSendingChunksOnServerError2(TestContext context) {

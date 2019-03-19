@@ -573,10 +573,80 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
     WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
       .willReturn(WireMock.ok()));
+    async.complete();
+    async = context.async();
 
     FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
     fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
+    async.complete();
+    async = context.async();
+    UploadDefinition uploadDefinition = new UploadDefinition();
+    uploadDefinition.setId(UUID.randomUUID().toString());
+    uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
+    uploadDefinition.setCreateDate(new Date());
+    uploadDefinition.setStatus(UploadDefinition.Status.IN_PROGRESS);
+    JobProfileInfo jobProfile = new JobProfileInfo();
+    jobProfile.setId(UUID.randomUUID().toString());
+    jobProfile.setName(StringUtils.EMPTY);
+    jobProfile.setDataType(JobProfileInfo.DataType.MARC);
+    ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
+      .withUploadDefinition(uploadDefinition)
+      .withJobProfileInfo(jobProfile);
 
+    RestAssured.given()
+      .spec(spec)
+      .body(JsonObject.mapFrom(processFilesRqDto).encode())
+      .when()
+      .post(DEFINITION_PATH + "/" + uploadDefinition.getId() + PROCESS_FILE_IMPORT_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    async.complete();
+  }
+
+  @Test
+  public void postFilesProcessingUnsuccessful(TestContext context) {
+    // ugly hack to increase coverage for method `process()`
+    Async async = context.async();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withName("CornellFOLIOExemplars_Bibs.mrc")
+      .withSourcePath("src/test/resources/CornellFOLIOExemplars.mrc")
+      .withSize(209);
+
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    UploadDefinition uploadDef = new UploadDefinition();
+    uploadDef.setId(UUID.randomUUID().toString());
+    uploadDef.setMetaJobExecutionId(jobExecutionId);
+    uploadDef.setCreateDate(new Date());
+    uploadDef.setStatus(UploadDefinition.Status.IN_PROGRESS);
+    uploadDef.setFileDefinitions(Collections.singletonList(fileDefinition));
+
+    JobProfileInfo jobProf = new JobProfileInfo();
+    jobProf.setId(UUID.randomUUID().toString());
+    jobProf.setName(StringUtils.EMPTY);
+    jobProf.setDataType(JobProfileInfo.DataType.MARC);
+
+    ProcessFilesRqDto processFilesReqDto = new ProcessFilesRqDto()
+      .withUploadDefinition(uploadDef)
+      .withJobProfileInfo(jobProf);
+
+    JsonObject paramsJson = new JsonObject()
+      .put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
+      .put(OKAPI_TENANT_HEADER, TENANT_ID)
+      .put(OKAPI_TOKEN_HEADER, TOKEN);
+
+    WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
+      .willReturn(WireMock.serverError()));
+    async.complete();
+    async = context.async();
+
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
+    fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
+    async.complete();
+    async = context.async();
     UploadDefinition uploadDefinition = new UploadDefinition();
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());

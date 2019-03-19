@@ -31,7 +31,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;

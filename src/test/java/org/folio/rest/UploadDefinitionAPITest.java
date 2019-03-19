@@ -310,6 +310,45 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
+  public void fileUpload2(TestContext context) throws IOException {
+    Async async = context.async();
+    UploadDefinition uploadDefinition = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all()
+      .extract().body().as(UploadDefinition.class);
+    String uploadDefId = uploadDefinition.getId();
+    String fileId = uploadDefinition.getFileDefinitions().get(0).getId();
+    String id = uploadDefinition.getFileDefinitions().get(0).getJobExecutionId();
+    async.complete();
+    WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + id + "/status"), true))
+      .willReturn(WireMock.notFound()));
+    async = context.async();
+    ClassLoader classLoader = getClass().getClassLoader();
+    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
+    UploadDefinition uploadDefinition1 = RestAssured.given()
+      .spec(specUpload)
+      .when()
+      .body(FileUtils.openInputStream(file))
+      .post(DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("status", is(UploadDefinition.Status.LOADED.name()))
+      .body("fileDefinitions[0].status", is(FileDefinition.Status.UPLOADED.name()))
+      .body("fileDefinitions.uploadedDate", notNullValue())
+      .extract().body().as(UploadDefinition.class);
+    String path = uploadDefinition1.getFileDefinitions().get(0).getSourcePath();
+    File file2 = new File(path);
+    assertTrue(FileUtils.contentEquals(file, file2));
+    async.complete();
+  }
+
+  @Test
   public void fileUploadNotFound() {
     ClassLoader classLoader = getClass().getClassLoader();
     File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
@@ -395,6 +434,35 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .spec(spec)
       .when()
       .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+    async.complete();
+  }
+
+  @Test
+  public void uploadDefinitionDeleteSuccessfulWithoutStatus(TestContext context) {
+    Async async = context.async();
+    UploadDefinition def = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().as(UploadDefinition.class);
+    async.complete();
+    String jobId = def.getFileDefinitions().get(0).getJobExecutionId();
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + jobId + "?"), true))
+      .willReturn(WireMock.badRequest()));
+    WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + jobId + "status"), true))
+      .willReturn(WireMock.badRequest()));
+
+    async = context.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + def.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();

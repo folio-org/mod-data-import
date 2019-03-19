@@ -52,6 +52,7 @@ public class ParallelFileChunkingProcessorUnitTest {
   private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/jobExecutions/%s/records";
   private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
   private static final String SOURCE_PATH_2 = "src/test/resources/CornellFOLIOExemplars2.mrc";
+
   private static final int RECORDS_NUMBER = 62;
   private static final int CHUNKS_NUMBER = 2;
 

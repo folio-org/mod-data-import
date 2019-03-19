@@ -138,7 +138,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Future<Boolean> future = Future.future();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
-      client.putChangeManagerJobExecutionsStatusById(jobExecutionId, status,  response -> {
+      client.putChangeManagerJobExecutionsStatusById(jobExecutionId, status, response -> {
         if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
           future.complete(true);
         } else {
@@ -147,7 +147,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         }
       });
     } catch (Exception e) {
-      logger.error("Couldn't update status of JobExecution with id {}", jobExecutionId, e);
       future.fail(e);
     }
     return future;
@@ -270,7 +269,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         }
       });
     } catch (Exception e) {
-      logger.error("Couldn't create JobExecution for UploadDefinition with id {}", definition.getId(), e);
       future.fail(e);
     }
     return future;
@@ -335,7 +333,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         }
       });
     } catch (Exception e) {
-      logger.error("Couldn't get children JobExecutions for parent with id {}", jobExecutionParentId, e);
       future.fail(e);
     }
     return future;
@@ -355,7 +352,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         }
       });
     } catch (Exception e) {
-      logger.error("Couldn't get JobExecutions by id {}", jobExecutionId, e);
       future.fail(e);
     }
     return future;

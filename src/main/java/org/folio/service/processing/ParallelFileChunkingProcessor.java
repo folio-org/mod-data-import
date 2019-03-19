@@ -217,8 +217,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         } else {
           response.bodyHandler(buffer -> {
             List<JobExecution> childJobs = buffer.toJsonObject().mapTo(JobExecutionCollection.class).getJobExecutions();
-            // remove id generating when UI will receive proper job profile with id
-            jobProfile.withId(UUID.randomUUID().toString());
             List<Future> updateJobProfileFutures = new ArrayList<>(childJobs.size());
             for (JobExecution job : childJobs) {
               updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));

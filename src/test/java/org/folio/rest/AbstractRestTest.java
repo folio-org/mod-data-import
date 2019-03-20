@@ -221,11 +221,13 @@ public abstract class AbstractRestTest {
   }
 
   private void clearTable(TestContext context) {
+    Async async = context.async();
     PostgresClient.getInstance(vertx, TENANT_ID).delete(FILE_EXTENSIONS_TABLE, new Criterion(), event1 -> {
       PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), event2 -> {
         if (event1.failed()) {
           context.fail(event1.cause());
         }
+        async.complete();
       });
     });
   }

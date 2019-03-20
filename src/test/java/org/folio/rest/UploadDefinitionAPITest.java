@@ -779,6 +779,43 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
+  public void postFilesProcessingSuccessful2(TestContext context) {
+    Async async = context.async();
+
+    UploadDefinition uploadDefinition = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_CREATED).extract().body().as(UploadDefinition.class);
+
+    JobProfileInfo jobProfile = new JobProfileInfo();
+    jobProfile.setId(UUID.randomUUID().toString());
+    jobProfile.setName(StringUtils.EMPTY);
+    jobProfile.setDataType(JobProfileInfo.DataType.MARC);
+
+    ProcessFilesRqDto request = new ProcessFilesRqDto()
+      .withUploadDefinition(uploadDefinition)
+      .withJobProfileInfo(jobProfile);
+
+    WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
+      .willReturn(WireMock.ok()));
+    async.complete();
+
+    async = context.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(JsonObject.mapFrom(request).encode())
+      .when()
+      .post(DEFINITION_PATH + "/" + uploadDefinition.getId() + PROCESS_FILE_IMPORT_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+  }
+
+  @Test
   public void postFilesProcessingWithUnprocessableEntity() {
     UploadDefinition uploadDefinition = new UploadDefinition()
       .withId(UUID.randomUUID().toString())

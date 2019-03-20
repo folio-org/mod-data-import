@@ -162,11 +162,12 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   }
 
   private Future<FileStorageService> getStorage(OkapiConnectionParams params) {
-    return fileStorage.compose(fileStorageService -> fileStorageService == null ? FileStorageServiceBuilder
-      .build(vertx, tenantId, params)
+    return fileStorage.compose(fileStorageService -> fileStorageService == null
+      ? FileStorageServiceBuilder.build(vertx, tenantId, params)
       .compose(h -> {
         fileStorage = Future.succeededFuture(h);
         return fileStorage;
-      }) : fileStorage);
+      })
+      : fileStorage);
   }
 }

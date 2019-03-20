@@ -1,4 +1,4 @@
-## 2019-02-14 v1.2.0-SNAPSHOT
+## 2019-03-20 v1.2.0
 * Created service for file chunking
 * Implemented MARC file reader for local files
 * Added CRUD for FileExtension entity

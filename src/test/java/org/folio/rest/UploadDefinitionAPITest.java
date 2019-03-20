@@ -109,7 +109,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Before
-  public void before() {
+  public void before(TestContext context) {
+    Async async = context.async();
     uploadDefIdForTest1 = RestAssured.given()
       .spec(spec)
       .body(uploadDef1)
@@ -119,6 +120,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_CREATED)
       .log().all()
       .extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
 
     uploadDefIdForTest2 = RestAssured.given()
       .spec(spec)
@@ -128,6 +131,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
 
     JobExecution jobExecution = new JobExecution()
       .withId("5105b55a-b9a3-4f76-9402-a5243ea63c97")
@@ -148,6 +153,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
   }
 
   @Test
@@ -167,7 +173,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void uploadDefinitionGet() {
+  public void uploadDefinitionGet(TestContext context) {
+    Async async = context.async();
     String id = RestAssured.given()
       .spec(spec)
       .body(uploadDef1)
@@ -176,6 +183,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -184,6 +193,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
       .log().all();
+    async.complete();
   }
 
   @Test
@@ -225,7 +235,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void uploadDefinitionUpdate() {
+  public void uploadDefinitionUpdate(TestContext context) {
+    Async async = context.async();
     UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -236,6 +247,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .extract().body().as(UploadDefinition.class);
     uploadDefinition.setStatus(UploadDefinition.Status.LOADED);
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .body(uploadDefinition)
@@ -245,6 +258,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_OK)
       .log().all()
       .body("status", is(UploadDefinition.Status.LOADED.name()));
+    async.complete();
   }
 
   @Test
@@ -260,7 +274,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void fileUpload() throws IOException {
+  public void fileUpload(TestContext context) throws IOException {
+    Async async = context.async();
     UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -272,7 +287,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .extract().body().as(UploadDefinition.class);
     String uploadDefId = uploadDefinition.getId();
     String fileId = uploadDefinition.getFileDefinitions().get(0).getId();
-
+    async.complete();
+    async = context.async();
     ClassLoader classLoader = getClass().getClassLoader();
     File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
     UploadDefinition uploadDefinition1 = RestAssured.given()
@@ -290,6 +306,46 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     String path = uploadDefinition1.getFileDefinitions().get(0).getSourcePath();
     File file2 = new File(path);
     assertTrue(FileUtils.contentEquals(file, file2));
+    async.complete();
+  }
+
+  @Test
+  public void fileUpload2(TestContext context) throws IOException {
+    Async async = context.async();
+    UploadDefinition uploadDefinition = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all()
+      .extract().body().as(UploadDefinition.class);
+    String uploadDefId = uploadDefinition.getId();
+    String fileId = uploadDefinition.getFileDefinitions().get(0).getId();
+    String id = uploadDefinition.getFileDefinitions().get(0).getJobExecutionId();
+    async.complete();
+    WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + id + "/status"), true))
+      .willReturn(WireMock.notFound()));
+    async = context.async();
+    ClassLoader classLoader = getClass().getClassLoader();
+    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
+    UploadDefinition uploadDefinition1 = RestAssured.given()
+      .spec(specUpload)
+      .when()
+      .body(FileUtils.openInputStream(file))
+      .post(DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("status", is(UploadDefinition.Status.LOADED.name()))
+      .body("fileDefinitions[0].status", is(FileDefinition.Status.UPLOADED.name()))
+      .body("fileDefinitions.uploadedDate", notNullValue())
+      .extract().body().as(UploadDefinition.class);
+    String path = uploadDefinition1.getFileDefinitions().get(0).getSourcePath();
+    File file2 = new File(path);
+    assertTrue(FileUtils.contentEquals(file, file2));
+    async.complete();
   }
 
   @Test
@@ -310,7 +366,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void fileDelete() {
+  public void fileDelete(TestContext context) {
+    Async async = context.async();
     UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -320,6 +377,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_CREATED)
       .log().all()
       .extract().body().as(UploadDefinition.class);
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -329,6 +388,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
+    async.complete();
   }
 
   @Test
@@ -358,7 +418,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void uploadDefinitionDeleteSuccessful() {
+  public void uploadDefinitionDeleteSuccessful(TestContext context) {
+    Async async = context.async();
     String id = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -367,6 +428,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -374,10 +437,41 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
+    async.complete();
   }
 
   @Test
-  public void uploadDefinitionDeleteBadRequestWhenFailedUpdateJobExecutionStatus() {
+  public void uploadDefinitionDeleteSuccessfulWithoutStatus(TestContext context) {
+    Async async = context.async();
+    UploadDefinition def = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().as(UploadDefinition.class);
+    async.complete();
+    String jobId = def.getFileDefinitions().get(0).getJobExecutionId();
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + jobId + "?"), true))
+      .willReturn(WireMock.badRequest()));
+    WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + jobId + "status"), true))
+      .willReturn(WireMock.badRequest()));
+
+    async = context.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + def.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+      .log().all();
+    async.complete();
+  }
+
+  @Test
+  public void uploadDefinitionDeleteBadRequestWhenFailedUpdateJobExecutionStatus(TestContext context) {
+    Async async = context.async();
     String id = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -386,6 +480,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
 
     WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*/status"), true))
       .willReturn(WireMock.badRequest()));
@@ -397,10 +493,12 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
+    async.complete();
   }
 
   @Test
-  public void uploadDefinitionDeleteBadRequestWhenRelatedJobExecutionsHaveBeingProcessed() {
+  public void uploadDefinitionDeleteBadRequestWhenRelatedJobExecutionsHaveBeingProcessed(TestContext context) {
+    Async async = context.async();
     JobExecution jobExecution = new JobExecution()
       .withId(UUID.randomUUID().toString())
       .withHrId("1000")
@@ -414,7 +512,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
         .withId(UUID.randomUUID().toString())
         .withDataType(JobProfileInfo.DataType.MARC))
       .withUserId(UUID.randomUUID().toString());
-
+    async.complete();
+    async = context.async();
     WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
       .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).toString())));
 
@@ -426,6 +525,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -433,10 +534,12 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST)
       .log().all();
+    async.complete();
   }
 
   @Test
-  public void uploadDefinitionMultipleFilesDeleteSuccessful() {
+  public void uploadDefinitionMultipleFilesDeleteSuccessful(TestContext context) {
+    Async async = context.async();
     String id = RestAssured.given()
       .spec(spec)
       .body(uploadDef4)
@@ -445,6 +548,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -452,10 +557,12 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
+    async.complete();
   }
 
   @Test
-  public void uploadDefinitionDiscardedFileDeleteSuccessful() {
+  public void uploadDefinitionDiscardedFileDeleteSuccessful(TestContext context) {
+    Async async = context.async();
     UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
       .body(uploadDef4)
@@ -464,6 +571,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().as(UploadDefinition.class);
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -472,6 +581,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -479,6 +590,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
+    async.complete();
   }
 
   @Test
@@ -529,10 +641,80 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
     WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
       .willReturn(WireMock.ok()));
+    async.complete();
+    async = context.async();
 
     FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
     fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
+    async.complete();
+    async = context.async();
+    UploadDefinition uploadDefinition = new UploadDefinition();
+    uploadDefinition.setId(UUID.randomUUID().toString());
+    uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
+    uploadDefinition.setCreateDate(new Date());
+    uploadDefinition.setStatus(UploadDefinition.Status.IN_PROGRESS);
+    JobProfileInfo jobProfile = new JobProfileInfo();
+    jobProfile.setId(UUID.randomUUID().toString());
+    jobProfile.setName(StringUtils.EMPTY);
+    jobProfile.setDataType(JobProfileInfo.DataType.MARC);
+    ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
+      .withUploadDefinition(uploadDefinition)
+      .withJobProfileInfo(jobProfile);
 
+    RestAssured.given()
+      .spec(spec)
+      .body(JsonObject.mapFrom(processFilesRqDto).encode())
+      .when()
+      .post(DEFINITION_PATH + "/" + uploadDefinition.getId() + PROCESS_FILE_IMPORT_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    async.complete();
+  }
+
+  @Test
+  public void postFilesProcessingUnsuccessful(TestContext context) {
+    // ugly hack to increase coverage for method `process()`
+    Async async = context.async();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withName("CornellFOLIOExemplars_Bibs.mrc")
+      .withSourcePath("src/test/resources/CornellFOLIOExemplars.mrc")
+      .withSize(209);
+
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    UploadDefinition uploadDef = new UploadDefinition();
+    uploadDef.setId(UUID.randomUUID().toString());
+    uploadDef.setMetaJobExecutionId(jobExecutionId);
+    uploadDef.setCreateDate(new Date());
+    uploadDef.setStatus(UploadDefinition.Status.IN_PROGRESS);
+    uploadDef.setFileDefinitions(Collections.singletonList(fileDefinition));
+
+    JobProfileInfo jobProf = new JobProfileInfo();
+    jobProf.setId(UUID.randomUUID().toString());
+    jobProf.setName(StringUtils.EMPTY);
+    jobProf.setDataType(JobProfileInfo.DataType.MARC);
+
+    ProcessFilesRqDto processFilesReqDto = new ProcessFilesRqDto()
+      .withUploadDefinition(uploadDef)
+      .withJobProfileInfo(jobProf);
+
+    JsonObject paramsJson = new JsonObject()
+      .put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
+      .put(OKAPI_TENANT_HEADER, TENANT_ID)
+      .put(OKAPI_TOKEN_HEADER, TOKEN);
+
+    WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
+      .willReturn(WireMock.serverError()));
+    async.complete();
+    async = context.async();
+
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
+    fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
+    async.complete();
+    async = context.async();
     UploadDefinition uploadDefinition = new UploadDefinition();
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
@@ -730,7 +912,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void uploadDefinitionCreateValidateFileExtension() {
+  public void uploadDefinitionCreateValidateFileExtension(TestContext context) {
+    Async async = context.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -739,7 +922,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(16));
-
+    async.complete();
+    async = context.async();
     RestAssured.given()
       .spec(spec)
       .body(uploadDef6)
@@ -751,6 +935,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .body("errors[0].message", is("validation.uploadDefinition.fileExtension.blocked"))
       .body("errors[0].code", is(uploadDef6.getFileDefinitions().get(0).getName()))
       .body("total_records", is(1));
+    async.complete();
+    async = context.async();
 
     RestAssured.given()
       .spec(spec)
@@ -761,6 +947,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("total_records", is(2));
+    async.complete();
   }
 }
 

@@ -6,6 +6,7 @@
 * Optimized file upload functionality
 * Used shared data-import-utils
 * Renamed endpoints
+* Added Spring DI support
 
    | METHOD |             URL                                                    | DESCRIPTION                     |
    |--------|--------------------------------------------------------------------|---------------------------------|

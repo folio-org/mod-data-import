@@ -64,6 +64,12 @@
       <artifactId>marc4j</artifactId>
       <version>${marc4j.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>folio-di-support</artifactId>
+      <version>1.0.0</version>
+      <type>jar</type>
+    </dependency>
 
     <!-- test dependencies -->
     <dependency>

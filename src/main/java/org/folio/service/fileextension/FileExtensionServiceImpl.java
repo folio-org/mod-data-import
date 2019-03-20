@@ -16,6 +16,8 @@ import org.folio.rest.jaxrs.model.DataTypeCollection;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.UserInfo;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import javax.ws.rs.NotFoundException;
 import java.util.Arrays;
@@ -24,28 +26,40 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Service
 public class FileExtensionServiceImpl implements FileExtensionService {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileExtensionServiceImpl.class);
   private static final String GET_USER_URL = "/users?query=id==";
+
+  @Autowired
   private FileExtensionDao fileExtensionDao;
 
-  public FileExtensionServiceImpl(Vertx vertx, String tenantId) {
-    this.fileExtensionDao = new FileExtensionDaoImpl(vertx, tenantId);
+  public FileExtensionServiceImpl() {
+  }
+
+  /**
+   * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
+   * will be rewritten with DI support.
+   *
+   * @param vertx
+   */
+  public FileExtensionServiceImpl(Vertx vertx) {
+    this.fileExtensionDao = new FileExtensionDaoImpl(vertx);
   }
 
   @Override
-  public Future<FileExtensionCollection> getFileExtensions(String query, int offset, int limit) {
-    return fileExtensionDao.getFileExtensions(query, offset, limit);
+  public Future<FileExtensionCollection> getFileExtensions(String query, int offset, int limit, String tenantId) {
+    return fileExtensionDao.getFileExtensions(query, offset, limit, tenantId);
   }
 
   @Override
-  public Future<Optional<FileExtension>> getFileExtensionById(String id) {
-    return fileExtensionDao.getFileExtensionById(id);
+  public Future<Optional<FileExtension>> getFileExtensionById(String id, String tenantId) {
+    return fileExtensionDao.getFileExtensionById(id, tenantId);
   }
 
   @Override
-  public Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension) {
-    return fileExtensionDao.getFileExtensionByExtenstion(extension);
+  public Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension, String tenantId) {
+    return fileExtensionDao.getFileExtensionByExtenstion(extension, tenantId);
   }
 
   @Override
@@ -55,34 +69,34 @@ public class FileExtensionServiceImpl implements FileExtensionService {
     String userId = fileExtension.getMetadata().getUpdatedByUserId();
     return lookupUser(userId, params).compose(userInfo -> {
       fileExtension.setUserInfo(userInfo);
-      return fileExtensionDao.addFileExtension(fileExtension).map(fileExtension);
+      return fileExtensionDao.addFileExtension(fileExtension, params.getTenantId()).map(fileExtension);
     });
   }
 
   @Override
   public Future<FileExtension> updateFileExtension(FileExtension fileExtension, OkapiConnectionParams params) {
     String userId = fileExtension.getMetadata().getUpdatedByUserId();
-    return getFileExtensionById(fileExtension.getId())
+    return getFileExtensionById(fileExtension.getId(), params.getTenantId())
       .compose(optionalFileExtension -> optionalFileExtension.map(fileExt -> lookupUser(userId, params).compose(userInfo -> {
           fileExtension.setUserInfo(userInfo);
-          return fileExtensionDao.updateFileExtension(fileExtension.withDataTypes(sortDataTypes(fileExtension.getDataTypes())));
+          return fileExtensionDao.updateFileExtension(fileExtension.withDataTypes(sortDataTypes(fileExtension.getDataTypes())), params.getTenantId());
         })
       ).orElse(Future.failedFuture(new NotFoundException(String.format("FileExtension with id '%s' was not found", fileExtension.getId())))));
   }
 
   @Override
-  public Future<Boolean> deleteFileExtension(String id) {
-    return fileExtensionDao.deleteFileExtension(id);
+  public Future<Boolean> deleteFileExtension(String id, String tenantId) {
+    return fileExtensionDao.deleteFileExtension(id, tenantId);
   }
 
   @Override
-  public Future<FileExtensionCollection> restoreFileExtensions() {
-    return fileExtensionDao.restoreFileExtensions();
+  public Future<FileExtensionCollection> restoreFileExtensions(String tenantId) {
+    return fileExtensionDao.restoreFileExtensions(tenantId);
   }
 
   @Override
-  public Future<UpdateResult> copyExtensionsFromDefault() {
-    return fileExtensionDao.copyExtensionsFromDefault();
+  public Future<UpdateResult> copyExtensionsFromDefault(String tenantId) {
+    return fileExtensionDao.copyExtensionsFromDefault(tenantId);
   }
 
   private List<DataType> sortDataTypes(List<DataType> list) {
@@ -144,13 +158,13 @@ public class FileExtensionServiceImpl implements FileExtensionService {
   }
 
   @Override
-  public Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension) {
+  public Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension, String tenantId) {
     StringBuilder query = new StringBuilder("extension=" + fileExtension.getExtension().trim());
     if (fileExtension.getId() != null) {
       query.append(" AND id=\"\" NOT id=")
         .append(fileExtension.getId());
     }
-    return fileExtensionDao.getFileExtensions(query.toString(), 0, 1)
+    return fileExtensionDao.getFileExtensions(query.toString(), 0, 1, tenantId)
       .compose(collection -> Future.succeededFuture(collection.getTotalRecords() != 0));
   }
 }

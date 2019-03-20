@@ -1,7 +1,6 @@
 package org.folio.service.file;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -11,6 +10,8 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import javax.ws.rs.NotFoundException;
 import java.util.Date;
@@ -18,24 +19,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+@Service
 public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleService {
 
   private static final Logger logger = LoggerFactory.getLogger(FileUploadLifecycleServiceImpl.class);
 
-  private Vertx vertx;
+  @Autowired
   private UploadDefinitionService uploadDefinitionService;
-  private String tenantId;
+
   private Future<FileStorageService> fileStorage = Future.succeededFuture();
-
-  public FileUploadLifecycleServiceImpl(UploadDefinitionService uploadDefinitionService) {
-    this.uploadDefinitionService = uploadDefinitionService;
-  }
-
-  public FileUploadLifecycleServiceImpl(Vertx vertx, String tenantId, UploadDefinitionService uploadDefinitionService) {
-    this.vertx = vertx;
-    this.tenantId = tenantId;
-    this.uploadDefinitionService = uploadDefinitionService;
-  }
 
   private Optional<FileDefinition> findFileDefinition(UploadDefinition uploadDefinition, String fileId) {
     return uploadDefinition.getFileDefinitions()
@@ -71,7 +63,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
         future.fail(new NotFoundException(errorMessage));
       }
       return future;
-    });
+    }, params.getTenantId());
   }
 
   @Override
@@ -92,7 +84,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
       updatingFuture.complete(definition);
       future.complete(definition);
       return updatingFuture;
-    });
+    }, params.getTenantId());
     return future;
   }
 
@@ -143,7 +135,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
         future.fail(errorMessage);
       }
       return future;
-    }).map(Objects::nonNull);
+    }, params.getTenantId()).map(Objects::nonNull);
   }
 
   private List<FileDefinition> replaceFile(List<FileDefinition> list, FileDefinition fileDefinition) {
@@ -162,8 +154,8 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   }
 
   private Future<FileStorageService> getStorage(OkapiConnectionParams params) {
-    return fileStorage.compose(fileStorageService -> fileStorageService == null
-      ? FileStorageServiceBuilder.build(vertx, tenantId, params)
+    return fileStorage.compose(fileStorageService -> fileStorageService == null ? FileStorageServiceBuilder
+      .build(params.getVertx(), params.getTenantId(), params)
       .compose(h -> {
         fileStorage = Future.succeededFuture(h);
         return fileStorage;

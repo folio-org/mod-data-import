@@ -6,6 +6,8 @@
 * Optimized file upload functionality
 * Used shared data-import-utils
 * Renamed endpoints
+* Fixed creating FileProcessor instance used in ProxyGen service
+* Fixed updating JobProfile for jobs during the file processing
 
    | METHOD |             URL                                                    | DESCRIPTION                     |
    |--------|--------------------------------------------------------------------|---------------------------------|

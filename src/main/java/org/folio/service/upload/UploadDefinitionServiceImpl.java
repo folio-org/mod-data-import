@@ -303,7 +303,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return future;
   }
 
-  private Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
+  @Override
+  public Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
     if (!uploadDefinition.getFileDefinitions().isEmpty()) {
       return getJobExecutionById(uploadDefinition.getMetaJobExecutionId(), params)
         .compose(jobExecution -> {

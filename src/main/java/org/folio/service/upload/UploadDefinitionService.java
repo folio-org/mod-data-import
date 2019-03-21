@@ -6,9 +6,11 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -91,9 +93,16 @@ public interface UploadDefinitionService {
    * Validate new UploadDefinition before saving it
    *
    * @param definition - object with new upload definition
-   * @param -          request's result handler
    * @return - {@link Errors} object with errors. Valid UploadDefinition if errors count is zero
    */
   Future<Errors> checkNewUploadDefinition(UploadDefinition definition);
 
+  /**
+   * Returns job executions by given upload definition
+   *
+   * @param uploadDefinition given upload definition, which jobs the method returns
+   * @param params OKAPI connection parameters
+   * @return future with list of job executions
+   */
+  Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params);
 }

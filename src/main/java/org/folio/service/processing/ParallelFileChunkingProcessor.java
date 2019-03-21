@@ -101,10 +101,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params                  parameters necessary for connection to the OKAPI
    */
   private void processFileDefinitions(List<FileDefinition> fileDefinitions,
-                                     JobProfileInfo jobProfile,
-                                     UploadDefinitionService uploadDefinitionService,
-                                     FileStorageService fileStorageService,
-                                     OkapiConnectionParams params) {
+                                      JobProfileInfo jobProfile,
+                                      UploadDefinitionService uploadDefinitionService,
+                                      FileStorageService fileStorageService,
+                                      OkapiConnectionParams params) {
     for (FileDefinition fileDefinition : fileDefinitions) {
       this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
           .setHandler(ar -> {

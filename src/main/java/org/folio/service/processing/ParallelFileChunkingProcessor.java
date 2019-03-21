@@ -60,7 +60,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   }
 
   @Override
-  public void process(JsonObject jsonRequest, JsonObject jsonParams) {
+  public void process(JsonObject jsonRequest, JsonObject jsonParams) { // NOSONAR
     ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
     UploadDefinition uploadDefinition = request.getUploadDefinition();
     JobProfileInfo jobProfile = request.getJobProfileInfo();

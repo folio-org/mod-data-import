@@ -5,8 +5,10 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.serviceproxy.ServiceBinder;
 import org.folio.config.ApplicationConfig;
 import org.folio.rest.resource.interfaces.InitAPI;
+import org.folio.service.processing.FileProcessor;
 import org.folio.spring.SpringContextUtil;
 
 public class InitAPIImpl implements InitAPI {
@@ -20,10 +22,17 @@ public class InitAPIImpl implements InitAPI {
       },
       result -> {
         if (result.succeeded()) {
+          initFileProcessor(vertx);
           handler.handle(Future.succeededFuture(true));
         } else {
           handler.handle(Future.failedFuture(result.cause()));
         }
       });
+  }
+
+  private void initFileProcessor(Vertx vertx) {
+    new ServiceBinder(vertx)
+      .setAddress(FileProcessor.FILE_PROCESSOR_ADDRESS)
+      .register(FileProcessor.class, FileProcessor.create(vertx));
   }
 }

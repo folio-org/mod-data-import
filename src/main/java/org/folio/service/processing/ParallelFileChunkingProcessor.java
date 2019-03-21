@@ -14,7 +14,6 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.JobExecutionCollection;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
@@ -74,26 +73,32 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       } else {
         FileStorageService fileStorageService = fileStorageServiceAr.result();
         List<FileDefinition> fileDefinitions = uploadDefinition.getFileDefinitions();
-        updateJobsProfile(uploadDefinition.getMetaJobExecutionId(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
-          if (updatedProfileAsyncResult.failed()) {
-            LOGGER.error("Can not update profile for jobs. Cause: {}", updatedProfileAsyncResult.cause());
+        uploadDefinitionService.getJobExecutions(uploadDefinition, params).setHandler(jobsAr -> {
+          if (jobsAr.failed()) {
+            LOGGER.error("Can not get job executions, parent job id:" + uploadDefinition.getMetaJobExecutionId(), jobsAr.cause());
           } else {
-            for (FileDefinition fileDefinition : fileDefinitions) {
-              this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
-                  .setHandler(ar -> {
-                    if (ar.failed()) {
-                      LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-                      uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
-                      blockingFuture.fail(ar.cause());
-                    } else {
-                      LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
-                      blockingFuture.complete();
-                    }
-                  }),
-                false,
-                null
-              );
-            }
+            updateJobsProfile(jobsAr.result(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
+              if (updatedProfileAsyncResult.failed()) {
+                LOGGER.error("Can not update profile for jobs. Cause: {}", updatedProfileAsyncResult.cause());
+              } else {
+                for (FileDefinition fileDefinition : fileDefinitions) {
+                  this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
+                      .setHandler(ar -> {
+                        if (ar.failed()) {
+                          LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
+                          uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
+                          blockingFuture.fail(ar.cause());
+                        } else {
+                          LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+                          blockingFuture.complete();
+                        }
+                      }),
+                    false,
+                    null
+                  );
+                }
+              }
+            });
           }
         });
       }
@@ -191,7 +196,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       });
     } catch (Exception e) {
       canSendNextChunk.set(false);
-      LOGGER.error("Couldn't post chunk of raw records for JobExecution with id {}", jobExecutionId, e);
+      LOGGER.error("Can not post chunk of raw records for JobExecution with id {}", jobExecutionId, e);
       future.fail(e);
     }
     return future;
@@ -200,41 +205,25 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   /**
    * Updates JobExecutions with given JobProfile value
    *
-   * @param metaJobExecutionId parent JobExecution id
-   * @param jobProfile         JobProfile entity
-   * @param params             parameters necessary for connection to the OKAPI
+   * @param jobs       jobs to update
+   * @param jobProfile JobProfile entity
+   * @param params     parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobsProfile(String metaJobExecutionId, JobProfileInfo jobProfile, OkapiConnectionParams params) {
+  private Future<Void> updateJobsProfile(List<JobExecution> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Future<Void> future = Future.future();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
-    try {
-      client.getChangeManagerJobExecutionsChildrenById(metaJobExecutionId, Integer.MAX_VALUE, null, 0, response -> {
-        if (response.statusCode() != HttpStatus.HTTP_OK.toInt()) {
-          LOGGER.error("Error getting children JobExecutions for parent with id {}", metaJobExecutionId, response.statusMessage());
-          future.fail(new HttpStatusException(response.statusCode(), "Error getting children JobExecutions"));
-        } else {
-          response.bodyHandler(buffer -> {
-            List<JobExecution> childJobs = buffer.toJsonObject().mapTo(JobExecutionCollection.class).getJobExecutions();
-            List<Future> updateJobProfileFutures = new ArrayList<>(childJobs.size());
-            for (JobExecution job : childJobs) {
-              updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
-            }
-            CompositeFuture.all(updateJobProfileFutures).setHandler(updatedJobsProfileAr -> {
-              if (updatedJobsProfileAr.failed()) {
-                future.fail(updatedJobsProfileAr.cause());
-              } else {
-                LOGGER.info("All the child jobs have been updated by job profile, parent job {}", metaJobExecutionId);
-                future.complete();
-              }
-            });
-          });
-        }
-      });
-    } catch (Exception e) {
-      LOGGER.error("Couldn't get children JobExecutions for parent with id {}", metaJobExecutionId, e);
-      future.fail(e);
+    List<Future> updateJobProfileFutures = new ArrayList<>(jobs.size());
+    for (JobExecution job : jobs) {
+      updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
     }
+    CompositeFuture.all(updateJobProfileFutures).setHandler(updatedJobsProfileAr -> {
+      if (updatedJobsProfileAr.failed()) {
+        future.fail(updatedJobsProfileAr.cause());
+      } else {
+        LOGGER.info("All the child jobs have been updated by job profile, parent job {}", jobs.get(0).getParentJobId());
+        future.complete();
+      }
+    });
     return future;
   }
 

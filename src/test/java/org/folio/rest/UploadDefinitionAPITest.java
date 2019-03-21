@@ -762,8 +762,15 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withUploadDefinition(uploadDefinition)
       .withJobProfileInfo(jobProfile);
 
+    JobExecution jobExecution = new JobExecution()
+      .withId(UUID.randomUUID().toString())
+      .withParentJobId(UUID.randomUUID().toString())
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE);
+
     WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
       .willReturn(WireMock.ok()));
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*"), true))
+      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
     async.complete();
 
     async = context.async();

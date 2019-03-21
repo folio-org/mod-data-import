@@ -73,54 +73,30 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       } else {
         FileStorageService fileStorageService = fileStorageServiceAr.result();
         List<FileDefinition> fileDefinitions = uploadDefinition.getFileDefinitions();
-        uploadDefinitionService.getJobExecutions(uploadDefinition, params).setHandler(jobExecutionsAr -> {
-          if (jobExecutionsAr.failed()) {
-            LOGGER.error("Can not retrieve job executions. Cause: {}", jobExecutionsAr.cause());
+        updateJobsProfile(uploadDefinitionService, uploadDefinition, jobProfile, params).setHandler(updatedProfileAsyncResult -> {
+          if (updatedProfileAsyncResult.failed()) {
+            LOGGER.error("Can not update profile for jobs. Cause: {}", updatedProfileAsyncResult.cause());
           } else {
-            updateJobsProfile(jobExecutionsAr.result(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
-              if (updatedProfileAsyncResult.failed()) {
-                LOGGER.error("Can not update profile for jobs. Cause: {}", updatedProfileAsyncResult.cause());
-              } else {
-                processFileDefinitions(fileDefinitions, jobProfile, uploadDefinitionService, fileStorageService, params);
-              }
-            });
+            for (FileDefinition fileDefinition : fileDefinitions) {
+              this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
+                  .setHandler(ar -> {
+                    if (ar.failed()) {
+                      LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
+                      uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
+                      blockingFuture.fail(ar.cause());
+                    } else {
+                      LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+                      blockingFuture.complete();
+                    }
+                  }),
+                false,
+                null
+              );
+            }
           }
         });
       }
     });
-  }
-
-  /**
-   * Performs file definition processing, runs each file processing in parallel threads.
-   * If an error occurred then sets ERROR status to job linked to the target file processing.
-   *
-   * @param fileDefinitions         list of file definitions
-   * @param jobProfile              job profile for the file processing
-   * @param uploadDefinitionService service to update job status
-   * @param fileStorageService      service to obtain file
-   * @param params                  parameters necessary for connection to the OKAPI
-   */
-  private void processFileDefinitions(List<FileDefinition> fileDefinitions,
-                                      JobProfileInfo jobProfile,
-                                      UploadDefinitionService uploadDefinitionService,
-                                      FileStorageService fileStorageService,
-                                      OkapiConnectionParams params) {
-    for (FileDefinition fileDefinition : fileDefinitions) {
-      this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
-          .setHandler(ar -> {
-            if (ar.failed()) {
-              LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-              uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
-              blockingFuture.fail(ar.cause());
-            } else {
-              LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
-              blockingFuture.complete();
-            }
-          }),
-        false,
-        null
-      );
-    }
   }
 
   /**
@@ -223,23 +199,34 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   /**
    * Updates JobExecutions with given JobProfile value
    *
-   * @param jobExecutions list of jobs
-   * @param jobProfile    job profile
-   * @param params        parameters necessary for connection to the OKAPI
+   * @param uploadDefinitionService uploadDefinitionService helps to retrieve jobs
+   * @param uploadDefinition        upload definition entity with jobs to update by job profile
+   * @param jobProfile              job profile
+   * @param params                  parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobsProfile(List<JobExecution> jobExecutions, JobProfileInfo jobProfile, OkapiConnectionParams params) {
+  private Future<Void> updateJobsProfile(UploadDefinitionService uploadDefinitionService,
+                                         UploadDefinition uploadDefinition,
+                                         JobProfileInfo jobProfile,
+                                         OkapiConnectionParams params) {
     Future<Void> future = Future.future();
-    List<Future> updateJobProfileFutures = new ArrayList<>(jobExecutions.size());
-    for (JobExecution job : jobExecutions) {
-      updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
-    }
-    CompositeFuture.all(updateJobProfileFutures).setHandler(updatedJobsProfileAr -> {
-      if (updatedJobsProfileAr.failed()) {
-        future.fail(updatedJobsProfileAr.cause());
+    uploadDefinitionService.getJobExecutions(uploadDefinition, params).setHandler(jobsAr -> {
+      if (jobsAr.failed()) {
+        LOGGER.error("Can not obtain job executions by parent job id :" + uploadDefinition.getMetaJobExecutionId(), jobsAr.cause());
       } else {
-        LOGGER.info("All the jobs have been updated by job profile, parent job {}", jobExecutions.get(0).getParentJobId());
-        future.complete();
+        List<JobExecution> childJobs = jobsAr.result();
+        List<Future> updateJobProfileFutures = new ArrayList<>(childJobs.size());
+        for (JobExecution job : childJobs) {
+          updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
+        }
+        CompositeFuture.all(updateJobProfileFutures).setHandler(updatedJobsProfileAr -> {
+          if (updatedJobsProfileAr.failed()) {
+            future.fail(updatedJobsProfileAr.cause());
+          } else {
+            LOGGER.info("All the child jobs have been updated by job profile, parent job id {}", uploadDefinition.getMetaJobExecutionId());
+            future.complete();
+          }
+        });
       }
     });
     return future;

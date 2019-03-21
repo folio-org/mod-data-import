@@ -60,7 +60,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   }
 
   @Override
-  public void process(JsonObject jsonRequest, JsonObject jsonParams) { // NOSONAR
+  public void process(JsonObject jsonRequest, JsonObject jsonParams) {
     ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
     UploadDefinition uploadDefinition = request.getUploadDefinition();
     JobProfileInfo jobProfile = request.getJobProfileInfo();
@@ -81,28 +81,46 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               if (updatedProfileAsyncResult.failed()) {
                 LOGGER.error("Can not update profile for jobs. Cause: {}", updatedProfileAsyncResult.cause());
               } else {
-                for (FileDefinition fileDefinition : fileDefinitions) {
-                  this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
-                      .setHandler(ar -> {
-                        if (ar.failed()) {
-                          LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-                          uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
-                          blockingFuture.fail(ar.cause());
-                        } else {
-                          LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
-                          blockingFuture.complete();
-                        }
-                      }),
-                    false,
-                    null
-                  );
-                }
+                processFileDefinitions(fileDefinitions, jobProfile, uploadDefinitionService, fileStorageService, params);
               }
             });
           }
         });
       }
     });
+  }
+
+  /**
+   * Performs file definition processing, runs each file processing in parallel threads.
+   * If an error occurred then sets ERROR status to job linked to the target file processing.
+   *
+   * @param fileDefinitions         list of file definitions
+   * @param jobProfile              job profile for the file processing
+   * @param uploadDefinitionService service to update job status
+   * @param fileStorageService      service to obtain file
+   * @param params                  parameters necessary for connection to the OKAPI
+   */
+  private void processFileDefinitions(List<FileDefinition> fileDefinitions,
+                                     JobProfileInfo jobProfile,
+                                     UploadDefinitionService uploadDefinitionService,
+                                     FileStorageService fileStorageService,
+                                     OkapiConnectionParams params) {
+    for (FileDefinition fileDefinition : fileDefinitions) {
+      this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
+          .setHandler(ar -> {
+            if (ar.failed()) {
+              LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
+              uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
+              blockingFuture.fail(ar.cause());
+            } else {
+              LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+              blockingFuture.complete();
+            }
+          }),
+        false,
+        null
+      );
+    }
   }
 
   /**

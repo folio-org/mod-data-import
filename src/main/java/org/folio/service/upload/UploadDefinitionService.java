@@ -102,7 +102,7 @@ public interface UploadDefinitionService {
    *
    * @param uploadDefinition given upload definition, which jobs the method returns
    * @param params OKAPI connection parameters
-   * @return
+   * @return future with list of job executions
    */
   Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params);
 }

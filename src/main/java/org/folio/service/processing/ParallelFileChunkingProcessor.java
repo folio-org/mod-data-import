@@ -42,7 +42,7 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
  * After the target file gets split into records, ParallelFileChunkingProcessor sends records to the mod-source-record-manager
  * for further processing.
  */
-public class ParallelFileChunkingProcessor implements FileProcessor {
+public class ParallelFileChunkingProcessor implements FileProcessor { // NOSONAR
   private static final int THREAD_POOL_SIZE =
     Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.thread.pool.size", "20"));
   private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
@@ -60,7 +60,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   }
 
   @Override
-  public void process(JsonObject jsonRequest, JsonObject jsonParams) {
+  public void process(JsonObject jsonRequest, JsonObject jsonParams) { // NOSONAR
     ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
     UploadDefinition uploadDefinition = request.getUploadDefinition();
     JobProfileInfo jobProfile = request.getJobProfileInfo();
@@ -73,33 +73,30 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       } else {
         FileStorageService fileStorageService = fileStorageServiceAr.result();
         List<FileDefinition> fileDefinitions = uploadDefinition.getFileDefinitions();
-        uploadDefinitionService.getJobExecutions(uploadDefinition, params).setHandler(jobsAr -> {
-          if (jobsAr.failed()) {
-            LOGGER.error("Can not get job executions, parent job id:" + uploadDefinition.getMetaJobExecutionId(), jobsAr.cause());
-          } else {
-            updateJobsProfile(jobsAr.result(), jobProfile, params).setHandler(updatedProfileAsyncResult -> {
-              if (updatedProfileAsyncResult.failed()) {
-                LOGGER.error("Can not update profile for jobs. Cause: {}", updatedProfileAsyncResult.cause());
-              } else {
-                for (FileDefinition fileDefinition : fileDefinitions) {
-                  this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
-                      .setHandler(ar -> {
-                        if (ar.failed()) {
-                          LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-                          uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
-                          blockingFuture.fail(ar.cause());
-                        } else {
-                          LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
-                          blockingFuture.complete();
-                        }
-                      }),
-                    false,
-                    null
-                  );
-                }
+        uploadDefinitionService.getJobExecutions(uploadDefinition, params).compose(jobs -> {
+          updateJobsProfile(jobs, jobProfile, params).setHandler(updatedProfileAsyncResult -> {
+            if (updatedProfileAsyncResult.failed()) {
+              LOGGER.error("Can not update profile for jobs. Cause: {}", updatedProfileAsyncResult.cause());
+            } else {
+              for (FileDefinition fileDefinition : fileDefinitions) {
+                this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
+                    .setHandler(ar -> {
+                      if (ar.failed()) {
+                        LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
+                        uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
+                        blockingFuture.fail(ar.cause());
+                      } else {
+                        LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+                        blockingFuture.complete();
+                      }
+                    }),
+                  false,
+                  null
+                );
               }
-            });
-          }
+            }
+          });
+          return Future.succeededFuture();
         });
       }
     });

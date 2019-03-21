@@ -93,15 +93,15 @@ public interface UploadDefinitionService {
    * Validate new UploadDefinition before saving it
    *
    * @param definition - object with new upload definition
-   * @param -          request's result handler
    * @return - {@link Errors} object with errors. Valid UploadDefinition if errors count is zero
    */
   Future<Errors> checkNewUploadDefinition(UploadDefinition definition);
 
   /**
+   * Returns job executions by given upload definition
    *
-   * @param uploadDefinition
-   * @param params
+   * @param uploadDefinition given upload definition, which jobs the method returns
+   * @param params OKAPI connection parameters
    * @return
    */
   Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params);

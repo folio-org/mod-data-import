@@ -21,12 +21,11 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
-import org.folio.service.file.FileUploadLifecycleServiceImpl;
 import org.folio.service.fileextension.FileExtensionService;
-import org.folio.service.fileextension.FileExtensionServiceImpl;
 import org.folio.service.processing.FileProcessor;
 import org.folio.service.upload.UploadDefinitionService;
-import org.folio.service.upload.UploadDefinitionServiceImpl;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
@@ -44,18 +43,21 @@ public class DataImportImpl implements DataImport {
   private static final String UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE = "Failed to validate Upload Definition";
   private static final String FILE_EXTENSION_VALID_REGEXP = "^\\.(\\w+)$";
 
+  @Autowired
   private UploadDefinitionService uploadDefinitionService;
+  @Autowired
   private FileUploadLifecycleService fileService;
-  private FileProcessor fileProcessor;
-  private Future<UploadDefinition> fileUploadStateFuture;
+  @Autowired
   private FileExtensionService fileExtensionService;
 
+  private FileProcessor fileProcessor;
+  private Future<UploadDefinition> fileUploadStateFuture;
+  private String tenantId;
+
   public DataImportImpl(Vertx vertx, String tenantId) {
-    String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
-    this.uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, calculatedTenantId);
-    this.fileService = new FileUploadLifecycleServiceImpl(vertx, calculatedTenantId, this.uploadDefinitionService);
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
+    this.tenantId = TenantTool.calculateTenantId(tenantId);
     this.fileProcessor = FileProcessor.createProxy(vertx);
-    this.fileExtensionService = new FileExtensionServiceImpl(vertx, calculatedTenantId);
   }
 
   @Override
@@ -63,7 +65,7 @@ public class DataImportImpl implements DataImport {
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        uploadDefinitionService.checkNewUploadDefinition(entity).setHandler(errors -> {
+        uploadDefinitionService.checkNewUploadDefinition(entity, tenantId).setHandler(errors -> {
           if (errors.failed()) {
             LOG.error(UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE, errors.cause());
             asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
@@ -90,7 +92,7 @@ public class DataImportImpl implements DataImport {
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        uploadDefinitionService.getUploadDefinitions(query, offset, limit)
+        uploadDefinitionService.getUploadDefinitions(query, offset, limit, tenantId)
           .map(GetDataImportUploadDefinitionsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -111,7 +113,7 @@ public class DataImportImpl implements DataImport {
         entity.setId(uploadDefinitionId);
         uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef ->
           // just update UploadDefinition without FileDefinition changes
-          Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())))
+          Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
           .map(PutDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -148,7 +150,7 @@ public class DataImportImpl implements DataImport {
                                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId)
+        uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId, tenantId)
           .map(optionalDefinition -> optionalDefinition.orElseThrow(() ->
             new NotFoundException(String.format("Upload Definition with id '%s' not found", uploadDefinitionId))))
           .map(GetDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
@@ -168,7 +170,7 @@ public class DataImportImpl implements DataImport {
                                                                        Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        uploadDefinitionService.addFileDefinitionToUpload(entity)
+        uploadDefinitionService.addFileDefinitionToUpload(entity, tenantId)
           .map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdResponse::respond201WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -250,7 +252,7 @@ public class DataImportImpl implements DataImport {
                                           Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        fileExtensionService.getFileExtensions(query, offset, limit)
+        fileExtensionService.getFileExtensions(query, offset, limit, tenantId)
           .map(GetDataImportFileExtensionsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -293,7 +295,7 @@ public class DataImportImpl implements DataImport {
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        fileExtensionService.getFileExtensionById(id)
+        fileExtensionService.getFileExtensionById(id, tenantId)
           .map(optionalFileExtension -> optionalFileExtension.orElseThrow(() ->
             new NotFoundException(String.format("FileExtension with id '%s' was not found", id))))
           .map(GetDataImportFileExtensionsByIdResponse::respond200WithApplicationJson)
@@ -338,7 +340,7 @@ public class DataImportImpl implements DataImport {
                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        fileExtensionService.deleteFileExtension(id)
+        fileExtensionService.deleteFileExtension(id, tenantId)
           .map(deleted -> deleted ?
             DeleteDataImportFileExtensionsByIdResponse.respond204WithTextPlain(
               String.format("FileExtension with id '%s' was successfully deleted", id)) :
@@ -359,7 +361,7 @@ public class DataImportImpl implements DataImport {
                                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        fileExtensionService.restoreFileExtensions()
+        fileExtensionService.restoreFileExtensions(tenantId)
           .map(defaultCollection -> (Response) PostDataImportFileExtensionsRestoreDefaultResponse
             .respond200WithApplicationJson(defaultCollection))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -401,7 +403,7 @@ public class DataImportImpl implements DataImport {
       .map(v -> !extension.getExtension().matches(FILE_EXTENSION_VALID_REGEXP)
         ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_INVALID_ERROR_CODE))).withTotalRecords(errors.getErrors().size() + 1)
         : errors)
-      .compose(errorsReply -> fileExtensionService.isFileExtensionExistByName(extension))
+      .compose(errorsReply -> fileExtensionService.isFileExtensionExistByName(extension, tenantId))
       .map(exist -> exist && errors.getTotalRecords() == 0
         ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_DUPLICATE_ERROR_CODE))).withTotalRecords(errors.getErrors().size() + 1)
         : errors);

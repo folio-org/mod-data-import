@@ -66,7 +66,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     JobProfileInfo jobProfile = request.getJobProfileInfo();
     OkapiConnectionParams params = new OkapiConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
     String tenantId = params.getTenantId();
-    UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx, tenantId);
+    UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
     FileStorageServiceBuilder.build(this.vertx, tenantId, params).setHandler(fileStorageServiceAr -> {
       if (fileStorageServiceAr.failed()) {
         LOGGER.error("Can not build file storage service. Cause: {}", fileStorageServiceAr.cause());

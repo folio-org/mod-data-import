@@ -25,17 +25,19 @@ public interface UploadDefinitionService {
    * @param query  CQL query
    * @param offset offset
    * @param limit  limit
+   * @param tenantId tenant id
    * @return future with list of UploadDefinitions
    */
-  Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit);
+  Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit, String tenantId);
 
   /**
    * Searches for UploadDefinition by id
    *
    * @param id UploadDefinition id
+   * @param tenantId tenant id
    * @return future with optional UploadDefinition
    */
-  Future<Optional<UploadDefinition>> getUploadDefinitionById(String id);
+  Future<Optional<UploadDefinition>> getUploadDefinitionById(String id, String tenantId);
 
   /**
    * Saves UploadDefinition with generated id
@@ -50,9 +52,10 @@ public interface UploadDefinitionService {
    *
    * @param uploadDefinitionId - id of {@link UploadDefinition}
    * @param mutator            - callback for change {@link UploadDefinition} before save
+   * @param tenantId tenant id
    * @return - future with updated {@link UploadDefinition}
    */
-  Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator);
+  Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator, String tenantId);
 
   /**
    * Deletes UploadDefinition by id
@@ -66,9 +69,10 @@ public interface UploadDefinitionService {
    * Add File Definition into Upload Definition
    *
    * @param fileDefinition - new file definition to add
+   * @param tenantId tenant id
    * @return future with updated UploadDefinition
    */
-  Future<UploadDefinition> addFileDefinitionToUpload(FileDefinition fileDefinition);
+  Future<UploadDefinition> addFileDefinitionToUpload(FileDefinition fileDefinition, String tenantId);
 
   /**
    * Updates JobExecution status
@@ -93,9 +97,10 @@ public interface UploadDefinitionService {
    * Validate new UploadDefinition before saving it
    *
    * @param definition - object with new upload definition
+   * @param tenantId tenant id
    * @return - {@link Errors} object with errors. Valid UploadDefinition if errors count is zero
    */
-  Future<Errors> checkNewUploadDefinition(UploadDefinition definition);
+  Future<Errors> checkNewUploadDefinition(UploadDefinition definition, String tenantId);
 
   /**
    * Returns job executions by given upload definition

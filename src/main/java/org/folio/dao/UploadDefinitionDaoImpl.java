@@ -9,6 +9,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
+import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.Criteria.Criteria;
@@ -16,6 +17,8 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import javax.ws.rs.NotFoundException;
@@ -24,18 +27,27 @@ import java.util.Optional;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
+@Repository
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
   private static final String UPLOAD_DEFINITION_ID_FIELD = "'id'";
   private final Logger logger = LoggerFactory.getLogger(UploadDefinitionDaoImpl.class);
 
-  private PostgresClient pgClient;
-  private String schema;
+  @Autowired
+  private PostgresClientFactory pgClientFactory;
 
-  public UploadDefinitionDaoImpl(Vertx vertx, String tenantId) {
-    pgClient = PostgresClient.getInstance(vertx, tenantId);
-    this.schema = PostgresClient.convertToPsqlStandard(tenantId);
+  public UploadDefinitionDaoImpl() {
+  }
+
+  /**
+   * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
+   * will be rewritten with DI support.
+   *
+   * @param vertx
+   */
+  public UploadDefinitionDaoImpl(Vertx vertx) {
+    pgClientFactory = new PostgresClientFactory(vertx);
   }
 
   /**
@@ -50,23 +62,23 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     Future<UploadDefinition> mutate(UploadDefinition definition);
   }
 
-  public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator) {
+  public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator, String tenantId) {
     Future<UploadDefinition> future = Future.future();
     String rollbackMessage = "Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId; //NOSONAR
     Future<SQLConnection> tx = Future.future(); //NOSONAR
     Future.succeededFuture()
       .compose(v -> {
-        pgClient.startTx(tx.completer());
+        pgClientFactory.createInstance(tenantId).startTx(tx.completer());
         return tx;
       }).compose(v -> {
       Future<ResultSet> selectFuture = Future.future(); //NOSONAR
       StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ") //NOSONAR
-        .append(schema)
+        .append(PostgresClient.convertToPsqlStandard(tenantId))
         .append(".")
         .append(UPLOAD_DEFINITION_TABLE)
         .append(" WHERE _id ='")
         .append(uploadDefinitionId).append("' LIMIT 1 FOR UPDATE;");
-      pgClient.select(tx, selectUploadDefinitionQuery.toString(), selectFuture);
+      pgClientFactory.createInstance(tenantId).select(tx, selectUploadDefinitionQuery.toString(), selectFuture);
       return selectFuture;
     }).compose(resultSet -> {
       if (resultSet.getNumRows() != 1) {
@@ -75,13 +87,13 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       UploadDefinition definition = new JsonObject(resultSet.getRows().get(0).getString("jsonb")) //NOSONAR
         .mapTo(UploadDefinition.class);
       return mutator.mutate(definition);
-    }).compose(mutatedObject -> updateUploadDefinition(tx, mutatedObject))
+    }).compose(mutatedObject -> updateUploadDefinition(tx, mutatedObject, tenantId))
       .setHandler(onUpdate -> {
         if (onUpdate.succeeded()) {
-          pgClient.endTx(tx, endTx ->
+          pgClientFactory.createInstance(tenantId).endTx(tx, endTx ->
             future.complete(onUpdate.result()));
         } else {
-          pgClient.rollbackTx(tx, r -> {
+          pgClientFactory.createInstance(tenantId).rollbackTx(tx, r -> {
             logger.error(rollbackMessage, onUpdate.cause());
             future.fail(onUpdate.cause());
           });
@@ -91,12 +103,12 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   @Override
-  public Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit) {
+  public Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit, String tenantId) {
     Future<Results<UploadDefinition>> future = Future.future();
     try {
       String[] fieldList = {"*"};
       CQLWrapper cql = getCQLWrapper(UPLOAD_DEFINITION_TABLE, query, limit, offset);
-      pgClient.get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, cql, true, false, future.completer());
+      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       logger.error("Error during getting UploadDefinitions from view", e);
       future.fail(e);
@@ -107,11 +119,11 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   @Override
-  public Future<Optional<UploadDefinition>> getUploadDefinitionById(String id) {
+  public Future<Optional<UploadDefinition>> getUploadDefinitionById(String id, String tenantId) {
     Future<Results<UploadDefinition>> future = Future.future();
     try {
       Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id);
-      pgClient.get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), true, future.completer());
+      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), true, future.completer());
     } catch (Exception e) {
       logger.error("Error during get UploadDefinition by ID from view", e);
       future.fail(e);
@@ -122,18 +134,18 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   @Override
-  public Future<String> addUploadDefinition(UploadDefinition uploadDefinition) {
+  public Future<String> addUploadDefinition(UploadDefinition uploadDefinition, String tenantId) {
     Future<String> future = Future.future();
-    pgClient.save(UPLOAD_DEFINITION_TABLE, uploadDefinition.getId(), uploadDefinition, future.completer());
+    pgClientFactory.createInstance(tenantId).save(UPLOAD_DEFINITION_TABLE, uploadDefinition.getId(), uploadDefinition, future.completer());
     return future;
   }
 
   @Override
-  public Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition) {
+  public Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition, String tenantId) {
     Future<UpdateResult> future = Future.future();
     try {
       CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + uploadDefinition.getId());
-      pgClient.update(tx, UPLOAD_DEFINITION_TABLE, uploadDefinition, filter, true, future.completer());
+      pgClientFactory.createInstance(tenantId).update(tx, UPLOAD_DEFINITION_TABLE, uploadDefinition, filter, true, future.completer());
     } catch (Exception e) {
       logger.error("Error during updating UploadDefinition by ID", e);
       future.fail(e);
@@ -142,9 +154,9 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   @Override
-  public Future<Boolean> deleteUploadDefinition(String id) {
+  public Future<Boolean> deleteUploadDefinition(String id, String tenantId) {
     Future<UpdateResult> future = Future.future();
-    pgClient.delete(UPLOAD_DEFINITION_TABLE, id, future.completer());
+    pgClientFactory.createInstance(tenantId).delete(UPLOAD_DEFINITION_TABLE, id, future.completer());
     return future.map(updateResult -> updateResult.getUpdated() == 1);
   }
 

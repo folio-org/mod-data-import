@@ -6,18 +6,33 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.serviceproxy.ServiceBinder;
+import org.folio.config.ApplicationConfig;
 import org.folio.rest.resource.interfaces.InitAPI;
 import org.folio.service.processing.FileProcessor;
+import org.folio.spring.SpringContextUtil;
 
-/**
- * Performs components registration before the verticle is deployed.
- */
-public class InitFileProcessorAPI implements InitAPI {
+public class InitAPIImpl implements InitAPI {
+
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> handler) {
+    vertx.executeBlocking(
+      future -> {
+        SpringContextUtil.init(vertx, context, ApplicationConfig.class);
+        future.complete();
+      },
+      result -> {
+        if (result.succeeded()) {
+          initFileProcessor(vertx);
+          handler.handle(Future.succeededFuture(true));
+        } else {
+          handler.handle(Future.failedFuture(result.cause()));
+        }
+      });
+  }
+
+  private void initFileProcessor(Vertx vertx) {
     new ServiceBinder(vertx)
       .setAddress(FileProcessor.FILE_PROCESSOR_ADDRESS)
       .register(FileProcessor.class, FileProcessor.create(vertx));
-    handler.handle(Future.succeededFuture(true));
   }
 }

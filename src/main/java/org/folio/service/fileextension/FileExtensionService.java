@@ -21,25 +21,28 @@ public interface FileExtensionService {
    * @param query  query from URL
    * @param offset starting index in a list of results
    * @param limit  limit of records for pagination
+   * @param tenantId tenant id
    * @return future with {@link FileExtensionCollection}
    */
-  Future<FileExtensionCollection> getFileExtensions(String query, int offset, int limit);
+  Future<FileExtensionCollection> getFileExtensions(String query, int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link FileExtension} by id
    *
    * @param id FileExtension id
+   * @param tenantId tenant id
    * @return future with optional {@link FileExtension}
    */
-  Future<Optional<FileExtension>> getFileExtensionById(String id);
+  Future<Optional<FileExtension>> getFileExtensionById(String id, String tenantId);
 
   /**
    * Searches for {@link FileExtension} by its extension
    *
    * @param extension File Extension
+   * @param tenantId tenant id
    * @return future with optional {@link FileExtension}
    */
-  Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension);
+  Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension, String tenantId);
 
   /**
    * Saves {@link FileExtension}
@@ -63,23 +66,26 @@ public interface FileExtensionService {
    * Deletes {@link FileExtension} by id
    *
    * @param id FileExtension id
+   * @param tenantId tenant id
    * @return future with true if succeeded
    */
-  Future<Boolean> deleteFileExtension(String id);
+  Future<Boolean> deleteFileExtension(String id, String tenantId);
 
   /**
    * Restore default values for {@link FileExtension}
    *
    * @return future with {@link FileExtensionCollection} that contains default values
+   * @param tenantId tenant id
    */
-  Future<FileExtensionCollection> restoreFileExtensions();
+  Future<FileExtensionCollection> restoreFileExtensions(String tenantId);
 
   /**
    * Copy values from default_file_extensions into the file_extensions table
    *
    * @return - Update Result of coping execution
+   * @param tenantId tenant id
    */
-  Future<UpdateResult> copyExtensionsFromDefault();
+  Future<UpdateResult> copyExtensionsFromDefault(String tenantId);
 
   /**
    * Returns {@link DataType}
@@ -90,8 +96,9 @@ public interface FileExtensionService {
 
   /**
    * @param fileExtension - {@link FileExtension} object
+   * @param tenantId tenant id
    * @return - is file extension exist in database
    */
-  Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension);
+  Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension, String tenantId);
 
 }

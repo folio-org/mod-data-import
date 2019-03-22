@@ -14,11 +14,13 @@ A user can delete or add another one file from uploading session.
 Upload Definition entity describes an upload process and contains a list of file definitions.
 Each file upload session process starts from creating UploadDefinition.
 
+
 | Field | Description |
 | ------ | ------ |
 | id | UUID for an UploadDefinition entity |
 | metaJobExecutionId | UUID of JobExecution process for all linked files. Specific for data-import application. |
 | status | Show the current state of the upload process. Can be one of: "NEW", "IN_PROGRESS", "LOADED", "COMPLETED" |
+| createDate | Date and time when the upload definition was created |
 | fileDefinitions | Array of the FileDefinition entities. Each FileDefinition describes particular state of the file |
 | metadata | Standard field with metainformation about entity |
 
@@ -29,12 +31,15 @@ File Definition entity describes an upload process of particular file and store 
 | Field | Description |
 | ------ | ------ |
 | id | UUID for an FileDefinition entity |
-| name | Name of the file with its extension. This  field is required. |
-| uploadDefinitionId | UUID of UploadDefinition related to this file |
-| loaded | Boolean value that shows that a particular file already loaded and saved into the storage |
-| jobExecutionId | UUID of the file's JobExecution process. Specific for data-import application. |
 | sourcePath | The path to the file location in the storage. Readonly |
+| name | Name of the file with its extension. This  field is required. |
+| status | Show the current state of the upload file. Can be one of: "NEW", "UPLOADING", "UPLOADED", "ERROR" |
+| jobExecutionId | UUID of the file's JobExecution process. Specific for data-import application. |
+| uploadDefinitionId | UUID of UploadDefinition related to this file |
 | createDate | Date and time when the file definition was created |
+| uploadedDate | Date and time when the file was uploaded |
+| size | Size of the file in Kbyte |
+| uiKey | Unique key for the file definition on user interface before entity saved |
 
 ## File Upload API
 
@@ -42,13 +47,14 @@ For all necessary file upload lifecycle operations mod-data-import provides foll
 
 | Method | URL | ContentType |Description |
 | ------ |------ | ------ |------ |
-| **POST** | /data-import/upload/definition | application/json | Create new UploadDefinition |
-| **GET** | /data-import/upload/definition | | Get list of UploadDefinitions by query |
-| **GET** | /data-import/upload/definition/**{uploadDefinitionId}** | | Get single definition by UUID |
-| **PUT** | /data-import/upload/definition/**{uploadDefinitionId}** | application/json | Update definition by UUID |
-| **POST** | /data-import/upload/definition/file | application/json | Add new FileDefinition to UploadDefinition |
-| **DELETE** | /data-import/upload/definition/file/**{fileDefinitionId}**?uploadDefinitionId=**{uploadDefinitionId}**  | | Delete FileDefinition from UploadDefinition by UUID |
-| **POST** | /data-import/upload/file?uploadDefinitionId=**{uploadDefinitionId}**&fileId=**{fileDefinitionId}**  | application/octet-stream | Upload file data to backend storage. Need to set query params: uploadDefinitionId and fileDefinitionId |
+| **POST** | /data-import/uploadDefinitions | application/json | Create new UploadDefinition |
+| **GET** | /data-import/uploadDefinitions | | Get list of UploadDefinitions by query |
+| **GET** | /data-import/uploadDefinitions/**{uploadDefinitionId}** | | Get single definition by UUID |
+| **PUT** | /data-import/uploadDefinitions/**{uploadDefinitionId}** | application/json | Update definition by UUID |
+| **DELETE** | /data-import/uploadDefinitions/**{uploadDefinitionId}** | | Delete UploadDefinition by UUID |
+| **POST** | /data-import/uploadDefinitions/**{uploadDefinitionId}**/files | application/json | Add new FileDefinition to UploadDefinition |
+| **DELETE** | /data-import/uploadDefinitions/**{uploadDefinitionId}**/files/**{fileId}** | | Delete FileDefinition from UploadDefinition by UUID |
+| **POST** | /data-import/uploadDefinitions/**{uploadDefinitionId}**/files/**{fileId}** | application/octet-stream | Upload file data to backend storage |
 
 ## File Upload Workflow
 
@@ -60,8 +66,10 @@ Send POST request with list of file names for creating new UploadDefinition.
 ```
 curl -w '\n' -X POST -D -   \
    -H "Content-type: application/json"   \
+   -H "x-okapi-tenant: diku"  \
+   -H "x-okapi-token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6IjVlMWZkMGViLTY0YmYtNWQ0YS1iNmVkLWJiMDg4OTAwOGJiYyIsImNhY2hlX2tleSI6IjVmY2VkODQzLTZlMGItNDgxOC1iZDcwLWU3N2M2ZjQyZWQyNyIsImlhdCI6MTU1MzE4MjUxMSwidGVuYW50IjoiZGlrdSJ9.7te4Y5PYRUmLZHuq1HjkF-HMLwdzTJ2oba613whOlgc" \
    -d @uploadDefinitionRequest.json \
-   http://localhost:9130/data-import/upload/definition
+   http://localhost:9130/data-import/uploadDefinitions
 ```
 
 ##### uploadDefinitionRequest.json
@@ -82,27 +90,34 @@ curl -w '\n' -X POST -D -   \
 ##### Response with UploadDefinition
 
 ```
-{  
-   "id":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "metaJobExecutionId":"99dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "status":"NEW",
-   "fileDefinitions":[  
-      {  
-         "id":"88dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"66dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":false,
-         "name":"marc.mrc"
-      },
-      {  
-         "id":"77dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"55dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":false,
-         "name":"marc2.mrc"
-      }
-   ]
+{
+  "id" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+  "metaJobExecutionId" : "4044bf4d-fb53-4b01-81e9-fafff1024dde",
+  "status" : "NEW",
+  "createDate" : "2019-03-21T15:36:49.583+0000",
+  "fileDefinitions" : [ {
+    "id" : "776c7413-7ad9-467b-a686-775a434d2505",
+    "name" : "marc.mrc",
+    "status" : "NEW",
+    "jobExecutionId" : "81f69f1d-e429-490c-a4c4-4eda2eb31791",
+    "uploadDefinitionId" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+    "createDate" : "2019-03-21T15:36:49.583+0000"
+  }, {
+    "id" : "8076b8ea-b04f-46b7-b793-0347d994c2be",
+    "name" : "marc2.mrc",
+    "status" : "NEW",
+    "jobExecutionId" : "c242e303-2649-4131-af60-d272130ff466",
+    "uploadDefinitionId" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+    "createDate" : "2019-03-21T15:36:49.583+0000"
+  } ],
+  "metadata" : {
+    "createdDate" : "2019-03-21T15:36:49.582+0000",
+    "createdByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc",
+    "updatedDate" : "2019-03-21T15:36:49.582+0000",
+    "updatedByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc"
+  }
 }
+
 ```
 
 ### Upload file body to the backend
@@ -112,8 +127,10 @@ For each file send a request with file's data. Content-type: application/octet-s
 ```
 curl -w '\n' -X POST -D -   \
    -H "Content-type: application/octet-stream"   \
+   -H "x-okapi-tenant: diku"  \
+   -H "x-okapi-token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6IjVlMWZkMGViLTY0YmYtNWQ0YS1iNmVkLWJiMDg4OTAwOGJiYyIsImNhY2hlX2tleSI6IjVmY2VkODQzLTZlMGItNDgxOC1iZDcwLWU3N2M2ZjQyZWQyNyIsImlhdCI6MTU1MzE4MjUxMSwidGVuYW50IjoiZGlrdSJ9.7te4Y5PYRUmLZHuq1HjkF-HMLwdzTJ2oba613whOlgc" \
    -d @marc.mrc \
-   http://localhost:9130/data-import/upload/file?uploadDefinitionId=67dfac11-1caf-4470-9ad1-d533f6360bdd&fileId=88dfac11-1caf-4470-9ad1-d533f6360bdd
+   http://localhost:9130/data-import/uploadDefinitions/71a43ec9-d923-4c44-8405-979af23b7cc9/files/776c7413-7ad9-467b-a686-775a434d2505   
 ```
 
 ##### Response with changed UploadDefinition
@@ -121,26 +138,34 @@ curl -w '\n' -X POST -D -   \
 If the first file is loaded, UploadDefinition change status to "IN_PROGRESS" and "loaded" field of particular FileDefinition will be changed on "true" value.
 
 ```
-{  
-   "id":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "metaJobExecutionId":"99dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "status":"IN_PROGRESS",
-   "fileDefinitions":[  
-      {  
-         "id":"88dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"66dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":true,
-         "name":"marc.mrc"
-      },
-      {  
-         "id":"77dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"55dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":false,
-         "name":"marc2.mrc"
-      }
-   ]
+{
+  "id" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+  "metaJobExecutionId" : "4044bf4d-fb53-4b01-81e9-fafff1024dde",
+  "status" : "IN_PROGRESS",
+  "createDate" : "2019-03-21T15:36:49.583+0000",
+  "fileDefinitions" : [ {
+    "id" : "8076b8ea-b04f-46b7-b793-0347d994c2be",
+    "name" : "marc2.mrc",
+    "status" : "NEW",
+    "jobExecutionId" : "c242e303-2649-4131-af60-d272130ff466",
+    "uploadDefinitionId" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+    "createDate" : "2019-03-21T15:36:49.583+0000"
+  }, {
+    "id" : "776c7413-7ad9-467b-a686-775a434d2505",
+    "sourcePath" : "./storage/upload/71a43ec9-d923-4c44-8405-979af23b7cc9/776c7413-7ad9-467b-a686-775a434d2505/marc.mrc",
+    "name" : "marc.mrc",
+    "status" : "UPLOADED",
+    "jobExecutionId" : "81f69f1d-e429-490c-a4c4-4eda2eb31791",
+    "uploadDefinitionId" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+    "createDate" : "2019-03-21T15:36:49.583+0000",
+    "uploadedDate" : "2019-03-21T15:43:44.333+0000"
+  } ],
+  "metadata" : {
+    "createdDate" : "2019-03-21T15:36:49.582+0000",
+    "createdByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc",
+    "updatedDate" : "2019-03-21T15:36:49.582+0000",
+    "updatedByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc"
+  }
 }
 ```
 
@@ -149,35 +174,48 @@ If the first file is loaded, UploadDefinition change status to "IN_PROGRESS" and
 ```
 curl -w '\n' -X POST -D -   \
    -H "Content-type: application/octet-stream"   \
+   -H "x-okapi-tenant: diku"  \
+   -H "x-okapi-token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6IjVlMWZkMGViLTY0YmYtNWQ0YS1iNmVkLWJiMDg4OTAwOGJiYyIsImNhY2hlX2tleSI6IjVmY2VkODQzLTZlMGItNDgxOC1iZDcwLWU3N2M2ZjQyZWQyNyIsImlhdCI6MTU1MzE4MjUxMSwidGVuYW50IjoiZGlrdSJ9.7te4Y5PYRUmLZHuq1HjkF-HMLwdzTJ2oba613whOlgc" \
    -d @marc2.mrc \
-   http://localhost:9130/data-import/upload/file?uploadDefinitionId=67dfac11-1caf-4470-9ad1-d533f6360bdd&fileId=77dfac11-1caf-4470-9ad1-d533f6360bdd
+   http://localhost:9130/data-import/uploadDefinitions/71a43ec9-d923-4c44-8405-979af23b7cc9/files/8076b8ea-b04f-46b7-b793-0347d994c2be
 ```
 
 ##### Response with changed UploadDefinition
 
 As far as last file will be loaded, UploadDefinition change status to "LOADED"
 ```
-{  
-   "id":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "metaJobExecutionId":"99dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "status":"LOADED",
-   "fileDefinitions":[  
-      {  
-         "id":"88dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"66dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":true,
-         "name":"marc.mrc"
-      },
-      {  
-         "id":"77dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"55dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":true,
-         "name":"marc2.mrc"
-      }
-   ]
+{
+  "id" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+  "metaJobExecutionId" : "4044bf4d-fb53-4b01-81e9-fafff1024dde",
+  "status" : "LOADED",
+  "createDate" : "2019-03-21T15:36:49.583+0000",
+  "fileDefinitions" : [ {
+    "id" : "776c7413-7ad9-467b-a686-775a434d2505",
+    "sourcePath" : "./storage/upload/71a43ec9-d923-4c44-8405-979af23b7cc9/776c7413-7ad9-467b-a686-775a434d2505/marc.mrc",
+    "name" : "marc.mrc",
+    "status" : "UPLOADED",
+    "jobExecutionId" : "81f69f1d-e429-490c-a4c4-4eda2eb31791",
+    "uploadDefinitionId" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+    "createDate" : "2019-03-21T15:36:49.583+0000",
+    "uploadedDate" : "2019-03-21T15:43:44.333+0000"
+  }, {
+    "id" : "8076b8ea-b04f-46b7-b793-0347d994c2be",
+    "sourcePath" : "./storage/upload/71a43ec9-d923-4c44-8405-979af23b7cc9/8076b8ea-b04f-46b7-b793-0347d994c2be/marc2.mrc",
+    "name" : "marc2.mrc",
+    "status" : "UPLOADED",
+    "jobExecutionId" : "c242e303-2649-4131-af60-d272130ff466",
+    "uploadDefinitionId" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+    "createDate" : "2019-03-21T15:36:49.583+0000",
+    "uploadedDate" : "2019-03-21T15:49:26.538+0000"
+  } ],
+  "metadata" : {
+    "createdDate" : "2019-03-21T15:36:49.582+0000",
+    "createdByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc",
+    "updatedDate" : "2019-03-21T15:36:49.582+0000",
+    "updatedByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc"
+  }
 }
+
 ```
 
 ### Delete FileDefinition
@@ -185,27 +223,37 @@ As far as last file will be loaded, UploadDefinition change status to "LOADED"
 ##### Request for deleting second file
 
 ```
-curl -X DELETE -D - -w '\n' http://localhost:9130/data-import/upload/definition/file/77dfac11-1caf-4470-9ad1-d533f6360bdd?uploadDefinitionId=67dfac11-1caf-4470-9ad1-d533f6360bdd
+curl -X DELETE -D - -w '\n' \
+  -H "x-okapi-tenant: diku"  \
+  -H "x-okapi-token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6IjVlMWZkMGViLTY0YmYtNWQ0YS1iNmVkLWJiMDg4OTAwOGJiYyIsImNhY2hlX2tleSI6IjVmY2VkODQzLTZlMGItNDgxOC1iZDcwLWU3N2M2ZjQyZWQyNyIsImlhdCI6MTU1MzE4MjUxMSwidGVuYW50IjoiZGlrdSJ9.7te4Y5PYRUmLZHuq1HjkF-HMLwdzTJ2oba613whOlgc" \
+  http://localhost:9130/data-import/uploadDefinitions/71a43ec9-d923-4c44-8405-979af23b7cc9/files/8076b8ea-b04f-46b7-b793-0347d994c2be        
 ```
 
 ##### Response for deleting second file will be 204
 
 UploadDefinition entity will be changed to following state
-
 ```
-{  
-   "id":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "metaJobExecutionId":"99dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "status":"LOADED",
-   "fileDefinitions":[  
-      {  
-         "id":"88dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"66dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":true,
-         "name":"marc.mrc"
-      }
-   ]
+{
+  "id" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+  "metaJobExecutionId" : "4044bf4d-fb53-4b01-81e9-fafff1024dde",
+  "status" : "LOADED",
+  "createDate" : "2019-03-21T15:36:49.583+0000",
+  "fileDefinitions" : [ {
+    "id" : "776c7413-7ad9-467b-a686-775a434d2505",
+    "sourcePath" : "./storage/upload/71a43ec9-d923-4c44-8405-979af23b7cc9/776c7413-7ad9-467b-a686-775a434d2505/marc.mrc",
+    "name" : "marc.mrc",
+    "status" : "UPLOADED",
+    "jobExecutionId" : "81f69f1d-e429-490c-a4c4-4eda2eb31791",
+    "uploadDefinitionId" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+    "createDate" : "2019-03-21T15:36:49.583+0000",
+    "uploadedDate" : "2019-03-21T15:43:44.333+0000"
+  } ],
+  "metadata" : {
+    "createdDate" : "2019-03-21T15:36:49.582+0000",
+    "createdByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc",
+    "updatedDate" : "2019-03-21T15:36:49.582+0000",
+    "updatedByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc"
+  }
 }
 ```
 
@@ -216,8 +264,10 @@ UploadDefinition entity will be changed to following state
 ```
 curl -w '\n' -X POST -D -   \
    -H "Content-type: application/json"   \
+   -H "x-okapi-tenant: diku"  \
+   -H "x-okapi-token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6IjVlMWZkMGViLTY0YmYtNWQ0YS1iNmVkLWJiMDg4OTAwOGJiYyIsImNhY2hlX2tleSI6IjVmY2VkODQzLTZlMGItNDgxOC1iZDcwLWU3N2M2ZjQyZWQyNyIsImlhdCI6MTU1MzE4MjUxMSwidGVuYW50IjoiZGlrdSJ9.7te4Y5PYRUmLZHuq1HjkF-HMLwdzTJ2oba613whOlgc" \
    -d @fileDefinition.json \
-   http://localhost:9130/data-import/upload/definition/file
+   http://localhost:9130/data-import/uploadDefinitions/71a43ec9-d923-4c44-8405-979af23b7cc9/files   
 ```
 
 Body of new fileDefinition should has uploadDefinitionId and file name.
@@ -225,39 +275,89 @@ Body of new fileDefinition should has uploadDefinitionId and file name.
 ```
 {  
    "name":"marc3.mrc",
-   "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd"
+   "uploadDefinitionId":"71a43ec9-d923-4c44-8405-979af23b7cc9"
 }
 ```
 
 ##### Response with added FileDefinition
 
 ```
+{
+  "id" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+  "metaJobExecutionId" : "4044bf4d-fb53-4b01-81e9-fafff1024dde",
+  "status" : "LOADED",
+  "createDate" : "2019-03-21T15:36:49.583+0000",
+  "fileDefinitions" : [ {
+    "id" : "776c7413-7ad9-467b-a686-775a434d2505",
+    "sourcePath" : "./storage/upload/71a43ec9-d923-4c44-8405-979af23b7cc9/776c7413-7ad9-467b-a686-775a434d2505/marc.mrc",
+    "name" : "marc.mrc",
+    "status" : "UPLOADED",
+    "jobExecutionId" : "81f69f1d-e429-490c-a4c4-4eda2eb31791",
+    "uploadDefinitionId" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+    "createDate" : "2019-03-21T15:36:49.583+0000",
+    "uploadedDate" : "2019-03-21T15:43:44.333+0000"
+  }, {
+    "id" : "3e98acdf-fae3-4e4f-a5c6-ce5c7aa11fa7",
+    "name" : "marc3.mrc",
+    "status" : "NEW",
+    "uploadDefinitionId" : "71a43ec9-d923-4c44-8405-979af23b7cc9",
+    "createDate" : "2019-03-21T16:30:47.652+0000"
+  } ],
+  "metadata" : {
+    "createdDate" : "2019-03-21T15:36:49.582+0000",
+    "createdByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc",
+    "updatedDate" : "2019-03-21T15:36:49.582+0000",
+    "updatedByUserId" : "5e1fd0eb-64bf-5d4a-b6ed-bb0889008bbc"
+  }
+}
+```
+
+## Necessary steps for file upload
+
+### Authentication
+
+```
+curl -w '\n' -X POST -D -   \
+   -H "Content-type: application/json"   \
+   -H "x-okapi-tenant: diku"  \
+   -d '{"username":"diku_admin","password":"admin"}'  \
+   http://localhost:9130/bl-users/login
+```
+
+##### Response with necessary x-okapi-token header
+```
+x-okapi-token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6IjVlMWZkMGViLTY0YmYtNWQ0YS1iNmVkLWJiMDg4OTAwOGJiYyIsImNhY2hlX2tleSI6IjFmZGNiMzVhLTkwNjEtNGY1Yy1iN2JjLTA1YjI3NzJkZDI1ZSIsImlhdCI6MTU1MzE4NzEzOSwidGVuYW50IjoiZGlrdSJ9.8g9ZGkFkRaM3FbklzlMI1oL4iOH4pF6jvMSRXG5WiQk
+```
+
+### Create UploadDefinition
+```
+curl -w '\n' -X POST -D -   \
+   -H "Content-type: application/json"   \
+   -H "x-okapi-tenant: diku"  \
+   -H "x-okapi-token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6IjVlMWZkMGViLTY0YmYtNWQ0YS1iNmVkLWJiMDg4OTAwOGJiYyIsImNhY2hlX2tleSI6IjVmY2VkODQzLTZlMGItNDgxOC1iZDcwLWU3N2M2ZjQyZWQyNyIsImlhdCI6MTU1MzE4MjUxMSwidGVuYW50IjoiZGlrdSJ9.7te4Y5PYRUmLZHuq1HjkF-HMLwdzTJ2oba613whOlgc" \
+   -d @uploadDefinitionRequest.json \
+   http://localhost:9130/data-import/uploadDefinitions
+```
+
+##### uploadDefinitionRequest.json
+
+```
 {  
-   "id":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "metaJobExecutionId":"99dfac11-1caf-4470-9ad1-d533f6360bdd",
-   "status":"IN_PROGRESS",
    "fileDefinitions":[  
       {  
-         "id":"88dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"66dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":true,
          "name":"marc.mrc"
-      },
-      {  
-         "id":"77dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"55dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":true,
-         "name":"marc2.mrc"
-      },
-      {  
-         "id":"33dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "jobExecutionId":"22dfac11-1caf-4470-9ad1-d533f6360bdd",
-         "loaded":false,
-         "name":"marc3.mrc"
-      }
+      }      
    ]
 }
+```
+
+### Upload file to the backend
+
+```
+curl -w '\n' -X POST -D -   \
+   -H "Content-type: application/octet-stream"   \
+   -H "x-okapi-tenant: diku"  \
+   -H "x-okapi-token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6IjVlMWZkMGViLTY0YmYtNWQ0YS1iNmVkLWJiMDg4OTAwOGJiYyIsImNhY2hlX2tleSI6IjVmY2VkODQzLTZlMGItNDgxOC1iZDcwLWU3N2M2ZjQyZWQyNyIsImlhdCI6MTU1MzE4MjUxMSwidGVuYW50IjoiZGlrdSJ9.7te4Y5PYRUmLZHuq1HjkF-HMLwdzTJ2oba613whOlgc" \
+   -d @marc.mrc \
+   http://localhost:9130/data-import/uploadDefinitions/71a43ec9-d923-4c44-8405-979af23b7cc9/files/776c7413-7ad9-467b-a686-775a434d2505   
 ```

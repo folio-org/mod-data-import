@@ -1,3 +1,7 @@
+## 2019-03-25 v1.2.1
+* Fixed creating FileProcessor instance used in ProxyGen service
+* Fixed updating JobProfile for jobs during the file processing
+
 ## 2019-03-20 v1.2.0
 * Created service for file chunking
 * Implemented MARC file reader for local files
@@ -6,8 +10,6 @@
 * Optimized file upload functionality
 * Used shared data-import-utils
 * Renamed endpoints
-* Fixed creating FileProcessor instance used in ProxyGen service
-* Fixed updating JobProfile for jobs during the file processing
 
    | METHOD |             URL                                                    | DESCRIPTION                     |
    |--------|--------------------------------------------------------------------|---------------------------------|

@@ -9,9 +9,11 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
+import org.apache.commons.lang3.time.TimeZones;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.model.UploadDefinition.Status;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -22,7 +24,10 @@ import org.springframework.stereotype.Repository;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import javax.ws.rs.NotFoundException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Optional;
+import java.util.TimeZone;
 
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
@@ -32,7 +37,9 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
   private static final String UPLOAD_DEFINITION_ID_FIELD = "'id'";
+
   private final Logger logger = LoggerFactory.getLogger(UploadDefinitionDaoImpl.class);
+  private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -160,4 +167,25 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     return future.map(updateResult -> updateResult.getUpdated() == 1);
   }
 
+  @Override
+  public Future<DefinitionCollection> getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(Status status, Date lastUpdateDate, int offset, int limit, String tenantId) {
+    Future<Results<UploadDefinition>> future = Future.future();
+    try {
+      String[] fieldList = {"*"};
+      String queryFilter = getFilterByStatus(tenantId, status, lastUpdateDate);
+      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, queryFilter, true, false, future.completer());
+    } catch (Exception e) {
+      logger.error("Error during getting UploadDefinitions by status and date", e);
+      future.fail(e);
+    }
+    return future.map(uploadDefinitionResults -> new DefinitionCollection()
+      .withUploadDefinitions(uploadDefinitionResults.getResults())
+      .withTotalRecords(uploadDefinitionResults.getResultInfo().getTotalRecords()));
+  }
+
+  private String getFilterByStatus(String tenantId, Status status, Date date) {
+    String queryFilterTemplate = "WHERE %s.jsonb ->> 'status' = '%s' OR TO_TIMESTAMP(%s.jsonb -> 'metadata' ->> 'updatedDate', 'YYYY-MM-DD HH24:MI:SS') <= '%s'";
+    dateFormatter.setTimeZone(TimeZone.getTimeZone(TimeZones.GMT_ID));
+    return String.format(queryFilterTemplate, UPLOAD_DEFINITION_TABLE, status.toString(), UPLOAD_DEFINITION_TABLE, dateFormatter.format(date));
+  }
 }

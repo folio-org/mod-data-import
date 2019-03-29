@@ -5,11 +5,18 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import org.folio.dataimport.util.ConfigurationUtil;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.service.cleanup.StorageCleanupService;
+import org.folio.service.cleanup.StorageCleanupServiceImpl;
 import org.folio.service.fileextension.FileExtensionService;
+import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -20,8 +27,16 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 
 public class ModTenantAPI extends TenantAPI {
 
+  private static final String DELAY_TIME_BETWEEN_CLEANUP_CODE = "data.import.cleanup.delay.time";
+  private static final long DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS = 3600_000;
+
+  private static final Logger logger = LoggerFactory.getLogger(ModTenantAPI.class);
+
   @Autowired
   private FileExtensionService fileExtensionService;
+
+  @Autowired
+  private StorageCleanupService storageCleanupService;
 
   public ModTenantAPI() { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -34,6 +49,11 @@ public class ModTenantAPI extends TenantAPI {
       if (ar.failed()) {
         handlers.handle(ar);
       } else {
+
+        StorageCleanupServiceImpl storageCleanupService = new StorageCleanupServiceImpl();
+        OkapiConnectionParams params = new OkapiConnectionParams(headers, context.owner());
+        storageCleanupService.cleanStorage(params);
+        initStorageCleanupService(headers, context);
          setupDefaultFileExtensions(headers)
           .setHandler(event -> handlers.handle(ar));
       }
@@ -60,6 +80,27 @@ public class ModTenantAPI extends TenantAPI {
       future.complete(true);
     }
     return future;
+  }
+
+  private void initStorageCleanupService(Map<String, String> headers, Context context) {
+    Vertx vertx = context.owner();
+    OkapiConnectionParams params = new OkapiConnectionParams(headers, vertx);
+
+    ConfigurationUtil.getPropertyByCode(DELAY_TIME_BETWEEN_CLEANUP_CODE, params)
+      .map(Long::parseLong)
+      .otherwise(DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS)
+      .setHandler(delayTimeAr -> {
+        vertx.setPeriodic(delayTimeAr.result(), e -> {
+          vertx.<Void>executeBlocking(b -> storageCleanupService.cleanStorage(params),
+            cleanupAr -> {
+              if (cleanupAr.failed()) {
+                logger.error("Error during cleaning file storage.", cleanupAr.cause());
+              } else {
+                logger.info("File storage was successfully cleaned of unused files");
+              }
+            });
+        });
+      });
   }
 
 }

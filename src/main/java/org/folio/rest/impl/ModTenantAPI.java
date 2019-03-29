@@ -14,9 +14,7 @@ import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.cleanup.StorageCleanupService;
-import org.folio.service.cleanup.StorageCleanupServiceImpl;
 import org.folio.service.fileextension.FileExtensionService;
-import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -49,12 +47,8 @@ public class ModTenantAPI extends TenantAPI {
       if (ar.failed()) {
         handlers.handle(ar);
       } else {
-
-        StorageCleanupServiceImpl storageCleanupService = new StorageCleanupServiceImpl();
-        OkapiConnectionParams params = new OkapiConnectionParams(headers, context.owner());
-        storageCleanupService.cleanStorage(params);
         initStorageCleanupService(headers, context);
-         setupDefaultFileExtensions(headers)
+        setupDefaultFileExtensions(headers)
           .setHandler(event -> handlers.handle(ar));
       }
     }, context);

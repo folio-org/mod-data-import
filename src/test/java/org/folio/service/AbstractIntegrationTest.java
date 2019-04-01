@@ -33,7 +33,6 @@ public abstract class AbstractIntegrationTest {
   protected static final String HTTP_PORT = "http.port";
   protected static final String TOKEN = "token";
   protected static final String TENANT_ID = "diku";
-  private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
 
   protected static Vertx vertx = Vertx.vertx();
 
@@ -83,15 +82,7 @@ public abstract class AbstractIntegrationTest {
       .willReturn(WireMock.serverError()));
   }
 
-  private void clearTable(TestContext context) {
-    Async async = context.async();
-    PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), event -> {
-      if (event.failed()) {
-        context.fail(event.cause());
-      }
-      async.complete();
-    });
-  }
+  protected abstract void clearTable(TestContext context);
 
   @AfterClass
   public static void tearDownClass(final TestContext context) {

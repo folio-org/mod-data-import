@@ -12,6 +12,8 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.service.AbstractIntegrationTest;
 import org.folio.service.config.ApplicationTestConfig;
 import org.folio.spring.SpringContextUtil;
@@ -36,6 +38,7 @@ import static org.folio.rest.jaxrs.model.UploadDefinition.Status.LOADED;
 
 public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
 
+  private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
   private static final String STORAGE_PATH = "./storage";
   private static final long ONE_HOUR_MILLIS = 3600000;
 
@@ -85,6 +88,17 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
 
     Files.createDirectory(Paths.get(testFile.getParent()));
     Files.createFile(Paths.get(testFile.getPath()));
+  }
+
+  @Override
+  protected void clearTable(TestContext context) {
+    Async async = context.async();
+    PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), event -> {
+      if (event.failed()) {
+        context.fail(event.cause());
+      }
+      async.complete();
+    });
   }
 
   @After

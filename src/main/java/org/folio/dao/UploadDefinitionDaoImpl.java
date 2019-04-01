@@ -172,7 +172,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     Future<Results<UploadDefinition>> future = Future.future();
     try {
       String[] fieldList = {"*"};
-      String queryFilter = getFilterByStatus(tenantId, status, lastUpdateDate);
+      String queryFilter = getFilterByStatus(status, lastUpdateDate);
       pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, queryFilter, true, false, future.completer());
     } catch (Exception e) {
       logger.error("Error during getting UploadDefinitions by status and date", e);
@@ -183,7 +183,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       .withTotalRecords(uploadDefinitionResults.getResultInfo().getTotalRecords()));
   }
 
-  private String getFilterByStatus(String tenantId, Status status, Date date) {
+  private String getFilterByStatus(Status status, Date date) {
     String queryFilterTemplate = "WHERE %s.jsonb ->> 'status' = '%s' OR TO_TIMESTAMP(%s.jsonb -> 'metadata' ->> 'updatedDate', 'YYYY-MM-DD HH24:MI:SS') <= '%s'";
     dateFormatter.setTimeZone(TimeZone.getTimeZone(TimeZones.GMT_ID));
     return String.format(queryFilterTemplate, UPLOAD_DEFINITION_TABLE, status.toString(), UPLOAD_DEFINITION_TABLE, dateFormatter.format(date));

@@ -19,13 +19,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 
 @Service
 public class StorageCleanupServiceImpl implements StorageCleanupService {
 
   private static final String TIME_WITHOUT_UPLOAD_DEFINITION_CHANGES_CODE = "data.import.cleanup.time";
-  private static final long TIME_WITHOUT_CHANGES_DEFAULT_VALUE_MILLIS = 3600000;
+  private static final long TIME_WITHOUT_CHANGES_DEFAULT_VALUE_MILLIS =
+    Long.parseLong(MODULE_SPECIFIC_ARGS.getOrDefault(TIME_WITHOUT_UPLOAD_DEFINITION_CHANGES_CODE, "3600000"));
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCleanupServiceImpl.class);
 
   @Autowired

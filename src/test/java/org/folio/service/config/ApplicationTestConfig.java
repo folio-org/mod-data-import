@@ -1,4 +1,4 @@
-package org.folio.service.cleanup.config;
+package org.folio.service.config;
 
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;

@@ -37,14 +37,17 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
   private static final String UPLOAD_DEFINITION_ID_FIELD = "'id'";
+  public static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss";
 
   private final Logger logger = LoggerFactory.getLogger(UploadDefinitionDaoImpl.class);
-  private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+  private SimpleDateFormat dateFormatter;
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
 
   public UploadDefinitionDaoImpl() {
+    dateFormatter = new SimpleDateFormat(DATE_FORMAT_PATTERN);
+    dateFormatter.setTimeZone(TimeZone.getTimeZone(TimeZones.GMT_ID));
   }
 
   /**
@@ -54,6 +57,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
    * @param vertx
    */
   public UploadDefinitionDaoImpl(Vertx vertx) {
+    super();
     pgClientFactory = new PostgresClientFactory(vertx);
   }
 
@@ -185,7 +189,6 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private String getFilterByStatus(Status status, Date date) {
     String queryFilterTemplate = "WHERE %s.jsonb ->> 'status' = '%s' OR TO_TIMESTAMP(%s.jsonb -> 'metadata' ->> 'updatedDate', 'YYYY-MM-DD HH24:MI:SS') <= '%s'";
-    dateFormatter.setTimeZone(TimeZone.getTimeZone(TimeZones.GMT_ID));
     return String.format(queryFilterTemplate, UPLOAD_DEFINITION_TABLE, status.toString(), UPLOAD_DEFINITION_TABLE, dateFormatter.format(date));
   }
 }

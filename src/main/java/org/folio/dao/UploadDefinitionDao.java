@@ -6,6 +6,7 @@ import io.vertx.ext.sql.SQLConnection;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
+import java.util.Date;
 import java.util.Optional;
 
 /**
@@ -70,4 +71,16 @@ public interface UploadDefinitionDao {
    * @return future with true is succeeded
    */
   Future<Boolean> deleteUploadDefinition(String id, String tenantId);
+
+  /**
+   * Searches for {@link UploadDefinition} by status or with updatedDate greater then {@code lastUpdateDate}
+   *
+   * @param status uploadDefinition status
+   * @param lastUpdateDate time of last uploadDefinition changes
+   * @param offset offset
+   * @param limit limit
+   * @param tenantId tenant id
+   * @return future with list of {@link DefinitionCollection}
+   */
+  Future<DefinitionCollection> getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(UploadDefinition.Status status, Date lastUpdateDate, int offset, int limit, String tenantId);
 }

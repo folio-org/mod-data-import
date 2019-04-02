@@ -9,5 +9,6 @@ import org.springframework.context.annotation.Configuration;
   "org.folio.dao",
   "org.folio.service.file",
   "org.folio.service.fileextension",
-  "org.folio.service.upload"})
+  "org.folio.service.upload",
+  "org.folio.service.cleanup"})
 public class ApplicationConfig {}

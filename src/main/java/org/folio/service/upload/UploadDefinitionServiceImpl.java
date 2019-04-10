@@ -372,8 +372,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .stream()
         .filter(fileDefinition -> fileDefinition.getId().equals(fileDefinitionId))
         .findFirst()
-        .map(fileDefinition -> fileDefinition.withStatus(status))
-        .orElseThrow(() -> new NotFoundException(String.format("FileDefinition with id '%s' was not found", fileDefinitionId)));
+        .orElseThrow(() -> new NotFoundException(String.format("FileDefinition with id '%s' was not found", fileDefinitionId)))
+        .withStatus(status);
       return Future.succeededFuture(uploadDefinition);
     }, tenantId);
   }

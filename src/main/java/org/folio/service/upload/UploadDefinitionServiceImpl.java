@@ -365,6 +365,20 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return future;
   }
 
+  @Override
+  public Future<UploadDefinition> updateFileDefinition(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId) {
+    return uploadDefinitionDao.updateBlocking(uploadDefinitionId, uploadDefinition -> {
+      uploadDefinition.getFileDefinitions()
+        .stream()
+        .filter(fileDefinition -> fileDefinition.getId().equals(fileDefinitionId))
+        .findFirst()
+        .map(fileDefinition -> fileDefinition.withStatus(status))
+        .orElseThrow(() -> new NotFoundException(String.format("FileDefinition with id '%s' was not found", fileDefinitionId)));
+      return Future.succeededFuture(uploadDefinition);
+    }, tenantId);
+  }
+
+
   private boolean canDeleteUploadDefinition(List<JobExecution> jobExecutions) {
     return jobExecutions.stream().filter(jobExecution ->
       JobExecution.Status.NEW.equals(jobExecution.getStatus()) ||

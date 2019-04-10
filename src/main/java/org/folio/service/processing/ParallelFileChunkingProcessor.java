@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
+import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 
 /**
  * Processing files in parallel threads, one thread per one file.
@@ -75,6 +76,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         List<FileDefinition> fileDefinitions = uploadDefinition.getFileDefinitions();
         uploadDefinitionService.getJobExecutions(uploadDefinition, params).compose(jobs -> {
           updateJobsProfile(jobs, jobProfile, params).compose(voidAr -> {
+            ArrayList<Future> processFilesFutures = new ArrayList<>();
             for (FileDefinition fileDefinition : fileDefinitions) {
               this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
                   .setHandler(ar -> {
@@ -88,7 +90,15 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                     }
                   }),
                 false,
-                null
+                blockingAr -> {
+                  processFilesFutures.add(blockingAr.succeeded() ? Future.succeededFuture() : Future.failedFuture(blockingAr.cause()));
+                  // updating uploadDefinition status only when last file has been processed
+                  if (processFilesFutures.size() == fileDefinitions.size()) {
+                    CompositeFuture.all(processFilesFutures)
+                    .map(e -> uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition -> Future.succeededFuture(uploadDefinition.withStatus(COMPLETED)), tenantId))
+                    .otherwise(uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition -> Future.succeededFuture(uploadDefinition.withStatus(UploadDefinition.Status.ERROR)), tenantId));
+                  }
+                }
               );
             }
             return Future.succeededFuture();

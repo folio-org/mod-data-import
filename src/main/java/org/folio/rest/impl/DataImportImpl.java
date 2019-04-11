@@ -33,6 +33,9 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.Map;
 
+import static org.folio.rest.RestVerticle.STREAM_ABORT;
+import static org.folio.rest.jaxrs.model.FileDefinition.Status.ERROR;
+
 public class DataImportImpl implements DataImport {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataImportImpl.class);
@@ -205,10 +208,11 @@ public class DataImportImpl implements DataImport {
   public void postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId(String uploadDefinitionId, String fileId,
                                                                                 InputStream entity, Map<String, String> okapiHeaders,
                                                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(c -> {
-      try {
+    try {
+      Future<Response> responseFuture;
+      OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+      if (okapiHeaders.get(STREAM_ABORT) == null) {
         byte[] data = IOUtils.toByteArray(entity);
-        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
         if (fileUploadStateFuture == null) {
           fileUploadStateFuture = fileService.beforeFileSave(fileId, uploadDefinitionId, params);
         }
@@ -217,15 +221,19 @@ public class DataImportImpl implements DataImport {
             .compose(fileDefinition -> data.length == 0 ?
               fileService.afterFileSave(fileDefinition, params)
               : Future.succeededFuture(def)));
-        fileUploadStateFuture.map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond200WithApplicationJson)
-          .map(Response.class::cast)
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
-      } catch (Exception e) {
-        asyncResultHandler.handle(Future.succeededFuture(
-          ExceptionHelper.mapExceptionToResponse(e)));
+        responseFuture = fileUploadStateFuture.map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond200WithApplicationJson);
+      } else {
+        responseFuture = uploadDefinitionService.updateFileDefinition(uploadDefinitionId, fileId, ERROR, tenantId)
+          .map(String.format("Upload stream for file with id '%s' has been interrupted", fileId))
+          .map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond400WithTextPlain);
       }
-    });
+      responseFuture.map(Response.class::cast)
+        .otherwise(ExceptionHelper::mapExceptionToResponse)
+        .setHandler(asyncResultHandler);
+    } catch (Exception e) {
+      asyncResultHandler.handle(Future.succeededFuture(
+        ExceptionHelper.mapExceptionToResponse(e)));
+    }
   }
 
   @Override

@@ -110,4 +110,15 @@ public interface UploadDefinitionService {
    * @return future with list of job executions
    */
   Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params);
+
+  /**
+   * Updates {@link FileDefinition} status by specified FileDefinition id
+   *
+   * @param uploadDefinitionId  UploadDefinition id
+   * @param fileDefinitionId    FileDefinition id
+   * @param status              FileDefinition status
+   * @param tenantId            tenant id
+   * @return - future with {@link UploadDefinition} which contains updated {@link FileDefinition}
+   */
+  Future<UploadDefinition> updateFileDefinition(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId);
 }

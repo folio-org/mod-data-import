@@ -4,6 +4,7 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
+import io.restassured.response.ValidatableResponse;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -42,6 +43,7 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.DefaultFileExtensionAPITest.FILE_EXTENSION_DEFAULT;
+import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.NEW;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -851,6 +853,22 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .statusCode(HttpStatus.SC_NO_CONTENT);
     async.complete();
+
+    Async async1 = context.async();
+    Vertx.vertx().setTimer(100, event -> {
+      ValidatableResponse response = RestAssured.given()
+        .spec(spec)
+        .when()
+        .get(DEFINITION_PATH + "/" + uploadDefinition.getId())
+        .then()
+        .log().all();
+      response
+        .statusCode(HttpStatus.SC_OK)
+        .body("metaJobExecutionId", notNullValue())
+        .body("id", notNullValue())
+        .body("status", is(COMPLETED.name()));
+      async1.complete();
+    });
   }
 
   @Test

@@ -47,6 +47,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.folio.rest.jaxrs.model.FileDefinition.Status.ERROR;
+
 @Service
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
@@ -378,6 +380,16 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     }, tenantId);
   }
 
+  @Override
+  public Future<Boolean> updateUploadDefinitionStatusToError(UploadDefinition uploadDefinition, String tenantId) {
+    return uploadDefinition.getFileDefinitions()
+      .stream()
+      .allMatch(fileDefinition -> fileDefinition.getStatus().equals(ERROR))
+        ? uploadDefinitionDao.updateBlocking(uploadDefinition.getId(), definition ->
+          Future.succeededFuture(definition.withStatus(UploadDefinition.Status.ERROR)), tenantId)
+          .map(true)
+        : Future.succeededFuture(false);
+  }
 
   private boolean canDeleteUploadDefinition(List<JobExecution> jobExecutions) {
     return jobExecutions.stream().filter(jobExecution ->

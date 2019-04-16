@@ -93,7 +93,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               );
             }
             return Future.succeededFuture();
-          }).setHandler(event -> uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition -> Future.succeededFuture(definition.withStatus(COMPLETED)), tenantId));
+          }).setHandler(event -> uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition ->
+            Future.succeededFuture(definition.withStatus(COMPLETED)), tenantId));
           return Future.succeededFuture();
         });
       }

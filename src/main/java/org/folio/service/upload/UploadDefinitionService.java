@@ -123,11 +123,12 @@ public interface UploadDefinitionService {
   Future<UploadDefinition> updateFileDefinition(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId);
 
   /**
-   * Updates UploadDefinition status to ERROR only if all linked fileDefinitions have status ERROR
+   * Updates UploadDefinition status to specified status only if all linked fileDefinitions have status ERROR
    *
    * @param uploadDefinition JobExecution id
+   * @param status           UploadDefinition status
    * @param tenantId         tenant id
    * @return future with true if status was updated, otherwise false
    */
-  Future<Boolean> updateUploadDefinitionStatusToError(UploadDefinition uploadDefinition, String tenantId);
+  Future<Boolean> updateUploadDefinitionStatusIfAllFilesUploadingFailed(UploadDefinition uploadDefinition, UploadDefinition.Status status, String tenantId);
 }

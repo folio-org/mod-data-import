@@ -381,7 +381,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<Boolean> updateUploadDefinitionStatusToError(UploadDefinition uploadDefinition, String tenantId) {
+  public Future<Boolean> updateUploadDefinitionStatusIfAllFilesUploadingFailed(UploadDefinition uploadDefinition, UploadDefinition.Status status, String tenantId) {
     return uploadDefinition.getFileDefinitions()
       .stream()
       .allMatch(fileDefinition -> fileDefinition.getStatus().equals(ERROR))

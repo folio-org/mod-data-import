@@ -224,7 +224,7 @@ public class DataImportImpl implements DataImport {
         responseFuture = fileUploadStateFuture.map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond200WithApplicationJson);
       } else {
         responseFuture = uploadDefinitionService.updateFileDefinition(uploadDefinitionId, fileId, ERROR, tenantId)
-          .compose(uploadDefinition -> uploadDefinitionService.updateUploadDefinitionStatusToError(uploadDefinition, tenantId))
+          .compose(uploadDefinition -> uploadDefinitionService.updateUploadDefinitionStatusIfAllFilesUploadingFailed(uploadDefinition, UploadDefinition.Status.ERROR, tenantId))
           .map(String.format("Upload stream for file with id '%s' has been interrupted", fileId))
           .map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond400WithTextPlain);
       }

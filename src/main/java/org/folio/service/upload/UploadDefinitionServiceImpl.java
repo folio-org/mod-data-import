@@ -47,8 +47,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.folio.rest.jaxrs.model.FileDefinition.Status.ERROR;
-
 @Service
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
@@ -368,7 +366,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<UploadDefinition> updateFileDefinition(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId) {
+  public Future<UploadDefinition> updateFileDefinitionStatus(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId) {
     return uploadDefinitionDao.updateBlocking(uploadDefinitionId, uploadDefinition -> {
       uploadDefinition.getFileDefinitions()
         .stream()
@@ -384,17 +382,17 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   public Future<Boolean> updateUploadDefinitionStatusIfAllFilesUploadingFailed(UploadDefinition uploadDefinition, UploadDefinition.Status status, String tenantId) {
     Future<Boolean> result = Future.succeededFuture(false);
 
-    if(areAllDefinitionsFailed(uploadDefinition)) {
+//    if(areAllDefinitionsFailed(uploadDefinition)) {
         result = uploadDefinitionDao
           .updateBlocking(uploadDefinition.getId(), definition -> Future.succeededFuture(definition.withStatus(UploadDefinition.Status.ERROR)), tenantId)
           .map(true);
-      }
+//      }
     return result;
   }
 
-  private boolean areAllDefinitionsFailed(UploadDefinition uploadDefinition) {
-    return uploadDefinition.getFileDefinitions().stream()
-      .allMatch(fileDefinition -> fileDefinition.getStatus().equals(ERROR));
+  public Future<UploadDefinition> updateUploadDefinitionStatus(String uploadDefinitionId, UploadDefinition.Status status, String tenantId) {
+    return uploadDefinitionDao
+      .updateBlocking(uploadDefinitionId, definition -> Future.succeededFuture(definition.withStatus(status)), tenantId);
   }
 
   private boolean canDeleteUploadDefinition(List<JobExecution> jobExecutions) {

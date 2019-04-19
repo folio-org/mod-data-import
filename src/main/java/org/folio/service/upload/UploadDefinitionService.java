@@ -120,15 +120,15 @@ public interface UploadDefinitionService {
    * @param tenantId            tenant id
    * @return - future with {@link UploadDefinition} which contains updated {@link FileDefinition}
    */
-  Future<UploadDefinition> updateFileDefinition(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId);
+  Future<UploadDefinition> updateFileDefinitionStatus(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId);
 
   /**
-   * Updates UploadDefinition status to specified status only if all linked fileDefinitions have status ERROR
+   * Updates UploadDefinition status
    *
-   * @param uploadDefinition JobExecution id
-   * @param status           UploadDefinition status
-   * @param tenantId         tenant id
-   * @return future with true if status was updated, otherwise false
+   * @param uploadDefinitionId UploadDefinition id
+   * @param status             UploadDefinition status
+   * @param tenantId           tenant id
+   * @return - future with updated {@link UploadDefinition}
    */
-  Future<Boolean> updateUploadDefinitionStatusIfAllFilesUploadingFailed(UploadDefinition uploadDefinition, UploadDefinition.Status status, String tenantId);
+  Future<UploadDefinition> updateUploadDefinitionStatus(String uploadDefinitionId, UploadDefinition.Status status, String tenantId);
 }

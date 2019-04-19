@@ -223,8 +223,11 @@ public class DataImportImpl implements DataImport {
               : Future.succeededFuture(def)));
         responseFuture = fileUploadStateFuture.map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond200WithApplicationJson);
       } else {
-        responseFuture = uploadDefinitionService.updateFileDefinition(uploadDefinitionId, fileId, ERROR, tenantId)
-          .compose(uploadDefinition -> uploadDefinitionService.updateUploadDefinitionStatusIfAllFilesUploadingFailed(uploadDefinition, UploadDefinition.Status.ERROR, tenantId))
+        responseFuture = uploadDefinitionService.updateFileDefinitionStatus(uploadDefinitionId, fileId, ERROR, tenantId)
+          .map(this::areAllFileDefinitionsFailed)
+          .compose(filesFailed -> filesFailed
+            ? uploadDefinitionService.updateUploadDefinitionStatus(uploadDefinitionId, UploadDefinition.Status.ERROR, tenantId)
+            : Future.succeededFuture())
           .map(String.format("Upload stream for file with id '%s' has been interrupted", fileId))
           .map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond400WithTextPlain);
       }
@@ -235,6 +238,11 @@ public class DataImportImpl implements DataImport {
       asyncResultHandler.handle(Future.succeededFuture(
         ExceptionHelper.mapExceptionToResponse(e)));
     }
+  }
+
+  private boolean areAllFileDefinitionsFailed(UploadDefinition uploadDefinition) {
+    return uploadDefinition.getFileDefinitions().stream()
+      .allMatch(fileDefinition -> fileDefinition.getStatus().equals(ERROR));
   }
 
   @Override

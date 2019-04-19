@@ -366,7 +366,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<UploadDefinition> updateFileDefinition(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId) {
+  public Future<UploadDefinition> updateFileDefinitionStatus(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId) {
     return uploadDefinitionDao.updateBlocking(uploadDefinitionId, uploadDefinition -> {
       uploadDefinition.getFileDefinitions()
         .stream()
@@ -378,6 +378,11 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     }, tenantId);
   }
 
+  @Override
+  public Future<UploadDefinition> updateUploadDefinitionStatus(String uploadDefinitionId, UploadDefinition.Status status, String tenantId) {
+    return uploadDefinitionDao
+      .updateBlocking(uploadDefinitionId, definition -> Future.succeededFuture(definition.withStatus(status)), tenantId);
+  }
 
   private boolean canDeleteUploadDefinition(List<JobExecution> jobExecutions) {
     return jobExecutions.stream().filter(jobExecution ->

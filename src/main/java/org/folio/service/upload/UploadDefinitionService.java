@@ -120,5 +120,15 @@ public interface UploadDefinitionService {
    * @param tenantId            tenant id
    * @return - future with {@link UploadDefinition} which contains updated {@link FileDefinition}
    */
-  Future<UploadDefinition> updateFileDefinition(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId);
+  Future<UploadDefinition> updateFileDefinitionStatus(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId);
+
+  /**
+   * Updates UploadDefinition status
+   *
+   * @param uploadDefinitionId UploadDefinition id
+   * @param status             UploadDefinition status
+   * @param tenantId           tenant id
+   * @return - future with updated {@link UploadDefinition}
+   */
+  Future<UploadDefinition> updateUploadDefinitionStatus(String uploadDefinitionId, UploadDefinition.Status status, String tenantId);
 }

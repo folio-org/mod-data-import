@@ -76,7 +76,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         List<FileDefinition> fileDefinitions = uploadDefinition.getFileDefinitions();
         uploadDefinitionService.getJobExecutions(uploadDefinition, params).compose(jobs -> {
           updateJobsProfile(jobs, jobProfile, params).compose(voidAr -> {
-            ArrayList<Future> processFilesFutures = new ArrayList<>();
             for (FileDefinition fileDefinition : fileDefinitions) {
               this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
                   .setHandler(ar -> {
@@ -90,19 +89,12 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                     }
                   }),
                 false,
-                blockingAr -> {
-                  processFilesFutures.add(blockingAr.succeeded() ? Future.succeededFuture() : Future.failedFuture(blockingAr.cause()));
-                  // updating uploadDefinition status only when last file has been processed
-                  if (processFilesFutures.size() == fileDefinitions.size()) {
-                    CompositeFuture.all(processFilesFutures)
-                    .map(e -> uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition -> Future.succeededFuture(uploadDefinition.withStatus(COMPLETED)), tenantId))
-                    .otherwise(uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition -> Future.succeededFuture(uploadDefinition.withStatus(UploadDefinition.Status.ERROR)), tenantId));
-                  }
-                }
+                null
               );
             }
             return Future.succeededFuture();
-          });
+          }).setHandler(event -> uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition ->
+            Future.succeededFuture(definition.withStatus(COMPLETED)), tenantId));
           return Future.succeededFuture();
         });
       }

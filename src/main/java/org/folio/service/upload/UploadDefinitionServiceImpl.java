@@ -379,17 +379,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<Boolean> updateUploadDefinitionStatusIfAllFilesUploadingFailed(UploadDefinition uploadDefinition, UploadDefinition.Status status, String tenantId) {
-    Future<Boolean> result = Future.succeededFuture(false);
-
-//    if(areAllDefinitionsFailed(uploadDefinition)) {
-        result = uploadDefinitionDao
-          .updateBlocking(uploadDefinition.getId(), definition -> Future.succeededFuture(definition.withStatus(UploadDefinition.Status.ERROR)), tenantId)
-          .map(true);
-//      }
-    return result;
-  }
-
   public Future<UploadDefinition> updateUploadDefinitionStatus(String uploadDefinitionId, UploadDefinition.Status status, String tenantId) {
     return uploadDefinitionDao
       .updateBlocking(uploadDefinitionId, definition -> Future.succeededFuture(definition.withStatus(status)), tenantId);

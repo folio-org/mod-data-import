@@ -151,6 +151,20 @@ public class FileExtensionAPITest extends AbstractRestTest {
   }
 
   @Test
+  public void shouldReturnBadRequestOnPostWhenInvalidFieldPassedInBody() {
+    JsonObject fileExtension = JsonObject.mapFrom(fileExtension_1)
+      .put("invalidField", "value");
+
+    RestAssured.given()
+      .spec(spec)
+      .body(fileExtension.encode())
+      .when()
+      .post(FILE_EXTENSION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @Test
   public void shouldCreateFileExtensionOnPost() {
     RestAssured.given()
       .spec(spec)
@@ -169,6 +183,20 @@ public class FileExtensionAPITest extends AbstractRestTest {
     RestAssured.given()
       .spec(spec)
       .body(new JsonObject().toString())
+      .when()
+      .put(FILE_EXTENSION_PATH + "/" + UUID.randomUUID().toString())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnPutWhenInvalidFieldPassedInBody() {
+    JsonObject invalidFileExtension = JsonObject.mapFrom(fileExtension_1)
+      .put("invalidField", "value");
+
+    RestAssured.given()
+      .spec(spec)
+      .body(invalidFileExtension.encode())
       .when()
       .put(FILE_EXTENSION_PATH + "/" + UUID.randomUUID().toString())
       .then()

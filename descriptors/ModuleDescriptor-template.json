@@ -5,6 +5,10 @@
     {
       "id": "source-record-manager",
       "version": "2.0"
+    },
+    {
+      "id": "users",
+      "version": "15.0"
     }
   ],
   "provides": [

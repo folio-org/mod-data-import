@@ -14,6 +14,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 
+/**
+ * Implementation reads source records in json format from the local file system in fixed-size buffer.
+ * <code>next</code> method returns buffer content once the buffer is full or the target file has come to the end.
+ */
 public class MarcJsonReader implements SourceReader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MarcJsonReader.class);
@@ -55,11 +59,11 @@ public class MarcJsonReader implements SourceReader {
   @Override
   public boolean hasNext() {
     try {
-      boolean value = reader.hasNext();
-      if(!value) {
+      boolean hasNext = reader.hasNext();
+      if(!hasNext) {
         reader.close();
       }
-      return value;
+      return hasNext;
     } catch (IOException e) {
       LOGGER.error("Error checking for the next record", e);
       throw new RecordsReaderException(e);

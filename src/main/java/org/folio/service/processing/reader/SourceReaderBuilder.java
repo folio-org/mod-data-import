@@ -23,10 +23,10 @@ public class SourceReaderBuilder {
       && jobProfile.getDataType() != null
       && jobProfile.getDataType().equals(JobProfileInfo.DataType.MARC)) {
       String name = file.getName();
-      if (JSON_EXTENSION.equals(name.substring(name.indexOf('.')))) {
+      if (JSON_EXTENSION.equals(name.substring(name.lastIndexOf('.')))) {
         return new MarcJsonReader(file, CHUNK_SIZE);
       }
-      return new MarcSourceReader(file, CHUNK_SIZE);
+      return new MarcRawReader(file, CHUNK_SIZE);
     }
     throw new UnsupportedOperationException("Unsupported file format");
   }

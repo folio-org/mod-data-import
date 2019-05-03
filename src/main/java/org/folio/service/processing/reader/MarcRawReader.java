@@ -17,13 +17,13 @@ import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
  * Implementation reads source records from the local file system in fixed-size buffer.
  * <code>next</code> method returns buffer content once the buffer is full or the target file has come to the end.
  */
-public class MarcSourceReader implements SourceReader {
-  private static final Logger LOGGER = LoggerFactory.getLogger(MarcSourceReader.class);
+public class MarcRawReader implements SourceReader {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MarcRawReader.class);
   private static final Charset CHARSET = Charset.forName(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.record.charset", "UTF8"));
   private RawRecordReader reader;
   private int chunkSize;
 
-  public MarcSourceReader(File file, int chunkSize) {
+  public MarcRawReader(File file, int chunkSize) {
     this.chunkSize = chunkSize;
     try {
       this.reader = new RawRecordReader(FileUtils.openInputStream(file));

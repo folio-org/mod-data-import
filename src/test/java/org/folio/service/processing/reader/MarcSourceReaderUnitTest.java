@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Testing MarcSourceReader
+ * Testing MarcRawReader
  */
 @RunWith(MockitoJUnitRunner.class)
 public class MarcSourceReaderUnitTest {
@@ -22,7 +22,7 @@ public class MarcSourceReaderUnitTest {
   public void shouldReturnAllRecords() {
     // given
     int chunkSize = 100;
-    SourceReader reader = new MarcSourceReader(new File(SOURCE_PATH), chunkSize);
+    SourceReader reader = new MarcRawReader(new File(SOURCE_PATH), chunkSize);
     List<String> actualRecords = new ArrayList<>();
     // when
     while (reader.hasNext()) {
@@ -37,7 +37,7 @@ public class MarcSourceReaderUnitTest {
     // given
     int expectedChunksNumber = 2;
     int chunkSize = 31;
-    SourceReader reader = new MarcSourceReader(new File(SOURCE_PATH), chunkSize);
+    SourceReader reader = new MarcRawReader(new File(SOURCE_PATH), chunkSize);
     List<String> actualRecords = new ArrayList<>();
     int actualChunkNumber = 0;
     // when
@@ -55,7 +55,7 @@ public class MarcSourceReaderUnitTest {
     // given
     int expectedChunksNumber = 5;
     int chunkSize = 13;
-    SourceReader reader = new MarcSourceReader(new File(SOURCE_PATH), chunkSize);
+    SourceReader reader = new MarcRawReader(new File(SOURCE_PATH), chunkSize);
     List<String> actualRecords = new ArrayList<>();
     int actualChunkNumber = 0;
     // when

@@ -1,6 +1,5 @@
 package org.folio.service.processing.reader;
 
-
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 
 import java.io.File;
@@ -14,6 +13,7 @@ public class SourceReaderBuilder {
 
   private static final int CHUNK_SIZE =
     Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.chunk.size", "50"));
+  private static final String JSON_EXTENSION = ".json";
 
   private SourceReaderBuilder() {
   }
@@ -22,8 +22,12 @@ public class SourceReaderBuilder {
     if (jobProfile != null
       && jobProfile.getDataType() != null
       && jobProfile.getDataType().equals(JobProfileInfo.DataType.MARC)) {
-      return new MarcSourceReader(file, CHUNK_SIZE);
+      String name = file.getName();
+      if (JSON_EXTENSION.equals(name.substring(name.lastIndexOf('.')))) {
+        return new MarcJsonReader(file, CHUNK_SIZE);
+      }
+      return new MarcRawReader(file, CHUNK_SIZE);
     }
-    throw new UnsupportedOperationException("Another file format doesn't supports yet");
+    throw new UnsupportedOperationException("Unsupported file format");
   }
 }

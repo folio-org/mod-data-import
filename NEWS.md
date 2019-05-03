@@ -1,5 +1,11 @@
-## 2019-03-21 v1.3.0-SNAPSHOT
+## 2019-05-02 v1.3.0-SNAPSHOT
 * Added Spring DI support
+* Added dependency on users interface
+* Added support for incoming json files containing MARC records
+
+## 2019-03-25 v1.2.1
+* Fixed creating FileProcessor instance used in ProxyGen service
+* Fixed updating JobProfile for jobs during the file processing
 
 ## 2019-03-20 v1.2.0
 * Created service for file chunking

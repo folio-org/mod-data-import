@@ -1,0 +1,412 @@
+{
+  "leader": "00648cam a2200193 a 4500",
+  "fields": [
+    {
+      "001": "FOLIOstorage"
+    },
+    {
+      "008": "960521s1972\\\\\\\\se\\\\\\\\\\\\\\\\\\\\\\\\\\\\0\\\\\\swe\\\\"
+    },
+    {
+      "041": {
+        "ind1": "1",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "a": "swe"
+          }
+        ]
+      }
+    },
+    {
+      "096": {
+        "ind1": "\\",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "y": "Z"
+          },
+          {
+            "b": "TAp Chalmers tekniska högskola. Inst. för byggnadsstatik. Skrift. 1972:4"
+          },
+          {
+            "s": "g"
+          }
+        ]
+      }
+    },
+    {
+      "100": {
+        "ind1": "1",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "a": "Sahlin, Sven"
+          }
+        ]
+      }
+    },
+    {
+      "245": {
+        "ind1": "0",
+        "ind2": "0",
+        "subfields": [
+          {
+            "a": "Pålslagning"
+          }
+        ]
+      }
+    },
+    {
+      "260": {
+        "ind1": "\\",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "c": "1972"
+          }
+        ]
+      }
+    },
+    {
+      "300": {
+        "ind1": "\\",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "a": "19 bl."
+          }
+        ]
+      }
+    },
+    {
+      "440": {
+        "ind1": "\\",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "a": "Skrift, Chalmers tekniska högskola, Institutionen för byggnadsstatik"
+          },
+          {
+            "x": "9903909802 ;"
+          },
+          {
+            "v": "72:4"
+          }
+        ]
+      }
+    },
+    {
+      "907": {
+        "ind1": "\\",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "a": ".b11154585"
+          },
+          {
+            "b": "hbib "
+          },
+          {
+            "c": "s"
+          }
+        ]
+      }
+    },
+    {
+      "902": {
+        "ind1": "\\",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "a": "190206"
+          }
+        ]
+      }
+    },
+    {
+      "998": {
+        "ind1": "\\",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "b": "0"
+          },
+          {
+            "c": "990511"
+          },
+          {
+            "d": "m"
+          },
+          {
+            "e": "b  "
+          },
+          {
+            "f": "s"
+          },
+          {
+            "g": "0"
+          }
+        ]
+      }
+    },
+    {
+      "909": {
+        "ind1": "0",
+        "ind2": "0",
+        "subfields": [
+          {
+            "a": "m"
+          },
+          {
+            "c": "a"
+          },
+          {
+            "d": "b"
+          }
+        ]
+      }
+    },
+    {
+      "945": {
+        "ind1": "\\",
+        "ind2": "\\",
+        "subfields": [
+          {
+            "l": "hbib3"
+          },
+          {
+            "a": "TAp Chalmers tekniska högskola.Inst. för byggnadsstatik. Skrift 72:4"
+          }
+        ]
+      }
+    }
+  ]
+},
+{
+"leader": "00721cam a2200229 a 4500",
+"fields": [
+{
+"001": "FOLIOstorage"
+},
+{
+"008": "980203s1997\\\\\\\\se\\\\\\\\\\\\\\\\\\\\\\\\\\\\0\\\\\\swe\\\\"
+},
+{
+"020": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"a": "992-508699-x"
+}
+]
+}
+},
+{
+"041": {
+"ind1": "1",
+"ind2": "\\",
+"subfields": [
+{
+"a": "swe"
+}
+]
+}
+},
+{
+"096": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"y": "Zl"
+},
+{
+"b": "tj IVF-skrift. 97825"
+},
+{
+"s": "g"
+}
+]
+}
+},
+{
+"096": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"y": "Z"
+},
+{
+"b": "TJp Institutet för verkstadsteknisk forskning. IVF-skrift. 97825"
+},
+{
+"s": "g"
+}
+]
+}
+},
+{
+"100": {
+"ind1": "1",
+"ind2": "\\",
+"subfields": [
+{
+"a": "Karlsson, Heléne"
+}
+]
+}
+},
+{
+"245": {
+"ind1": "0",
+"ind2": "0",
+"subfields": [
+{
+"a": "Lim på rulle :"
+},
+{
+"b": "att använda lim i fast form"
+}
+]
+}
+},
+{
+"260": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"c": "1997"
+}
+]
+}
+},
+{
+"300": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"a": "24 s."
+}
+]
+}
+},
+{
+"440": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"a": "IVF-skrift"
+},
+{
+"x": "03490653 ;"
+},
+{
+"v": "97825"
+}
+]
+}
+},
+{
+"500": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"a": "ISRN, IVF-S-97/825-SE"
+}
+]
+}
+},
+{
+"907": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"a": ".b1119683x"
+},
+{
+"b": "hbib "
+},
+{
+"c": "s"
+}
+]
+}
+},
+{
+"902": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"a": "190206"
+}
+]
+}
+},
+{
+"998": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"b": "2"
+},
+{
+"c": "990511"
+},
+{
+"d": "m"
+},
+{
+"e": "b  "
+},
+{
+"f": "s"
+},
+{
+"g": "0"
+}
+]
+}
+},
+{
+"909": {
+"ind1": "0",
+"ind2": "0",
+"subfields": [
+{
+"a": "m"
+},
+{
+"c": "a"
+},
+{
+"d": "b"
+}
+]
+}
+},
+{
+"945": {
+"ind1": "\\",
+"ind2": "\\",
+"subfields": [
+{
+"l": "hbib4"
+},
+{
+"a": "TJp Institutet för verkstadsteknisk forskning. IVF-skrift. 97825"
+}
+]
+}
+}
+]
+},

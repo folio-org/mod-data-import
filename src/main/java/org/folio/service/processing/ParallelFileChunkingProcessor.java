@@ -160,7 +160,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       });
     } catch (Exception e) {
       String errorMessage = String.format("Can not process file: %s. Cause: %s", fileDefinition.getSourcePath(), e.getMessage());
-      LOGGER.error(errorMessage);
+      LOGGER.error(errorMessage, e);
       resultFuture.fail(errorMessage);
     }
     return resultFuture;

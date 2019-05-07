@@ -195,6 +195,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, chunk, response -> {
+        coordinator.acceptUnlock();
         if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
           LOGGER.info("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getRecords().size(), jobExecutionId);
           future.complete();
@@ -205,11 +206,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         }
       });
     } catch (Exception e) {
+      coordinator.acceptUnlock();
       canSendNextChunk.set(false);
       LOGGER.error("Can not post chunk of raw records for JobExecution with id {}", jobExecutionId, e);
       future.fail(e);
-    } finally {
-      coordinator.acceptUnlock();
     }
     return future;
   }

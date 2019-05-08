@@ -1,5 +1,8 @@
 package org.folio.service.processing.coordinator;
 
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -10,7 +13,7 @@ import java.util.concurrent.BlockingQueue;
  * in the queue. It gives a throughput control.
  */
 public class QueuedBlockingCoordinator implements BlockingCoordinator {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(QueuedBlockingCoordinator.class);
   private static final Object QUEUE_ITEM = new Object();
   private BlockingQueue<Object> blockingQueue = null;
 
@@ -22,7 +25,8 @@ public class QueuedBlockingCoordinator implements BlockingCoordinator {
     try {
       blockingQueue.put(QUEUE_ITEM);
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      Thread.currentThread().interrupt();
+      LOGGER.error("Failed to accept lock. The thread " + Thread.currentThread().getName() + " is interrupted. Cause:" + e.getCause());
     }
   }
 
@@ -32,7 +36,8 @@ public class QueuedBlockingCoordinator implements BlockingCoordinator {
         blockingQueue.take();
       }
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      Thread.currentThread().interrupt();
+      LOGGER.error("Failed to accept unlock. The thread " + Thread.currentThread().getName() + " is interrupted. Cause:" + e.getCause());
     }
   }
 }

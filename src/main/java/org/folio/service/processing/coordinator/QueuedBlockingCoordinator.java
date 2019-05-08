@@ -26,7 +26,7 @@ public class QueuedBlockingCoordinator implements BlockingCoordinator {
       blockingQueue.put(QUEUE_ITEM);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.error("Failed to accept lock. The current thread " + Thread.currentThread().getName() + " is interrupted. Cause:" + e.getCause());
+      LOGGER.info("Failed to accept lock. The current thread " + Thread.currentThread().getName() + " is interrupted. Cause:" + e.getCause());
     }
   }
 
@@ -37,7 +37,7 @@ public class QueuedBlockingCoordinator implements BlockingCoordinator {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.error("Failed to accept unlock. The current thread " + Thread.currentThread().getName() + " is interrupted. Cause:" + e.getCause());
+      LOGGER.info("Failed to accept unlock. The current thread " + Thread.currentThread().getName() + " is interrupted. Cause:" + e.getCause());
     }
   }
 }

@@ -7,7 +7,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 /**
- * Implementation of the BlockingCoordinator based on bounded blocking queue.
+ * Implementation of the BlockingCoordinator based on bounded blocking queue {@link ArrayBlockingQueue}
  * Using bounded queue is a way to design concurrent programs because when we insert an element
  * to an already full queue, that operations need to wait until consumers catch up and make some space available
  * in the queue. It gives a throughput control.

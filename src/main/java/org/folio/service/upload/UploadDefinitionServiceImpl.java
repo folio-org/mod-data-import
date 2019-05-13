@@ -247,7 +247,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
           .stream()
           .map(fd -> new File().withName(fd.getName()))
           .collect(Collectors.toList()))
-        .withUserId(Objects.nonNull(metadata) ? metadata.getCreatedByUserId() : null);
+        .withUserId(Objects.nonNull(metadata) ? metadata.getCreatedByUserId() : null)
+        .withSourceType(InitJobExecutionsRqDto.SourceType.FILES);
 
     Future<UploadDefinition> future = Future.future();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());

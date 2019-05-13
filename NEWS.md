@@ -1,4 +1,4 @@
-## 2019-05-02 v1.3.0-SNAPSHOT
+## 2019-05-12 v1.3.0
 * Added Spring DI support
 * Added dependency on users interface
 * Added support for incoming json files containing MARC records

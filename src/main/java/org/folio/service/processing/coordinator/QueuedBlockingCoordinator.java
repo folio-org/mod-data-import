@@ -21,6 +21,7 @@ public class QueuedBlockingCoordinator implements BlockingCoordinator {
     blockingQueue = new ArrayBlockingQueue<>(capacity, true);
   }
 
+  @Override
   public void acceptLock() {
     try {
       blockingQueue.put(QUEUE_ITEM);
@@ -30,6 +31,7 @@ public class QueuedBlockingCoordinator implements BlockingCoordinator {
     }
   }
 
+  @Override
   public void acceptUnlock() {
     try {
       if (!blockingQueue.isEmpty()) {

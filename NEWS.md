@@ -1,3 +1,6 @@
+## 2019-05-14 v1.4.0-SNAPSHOT
+* Added support for incoming xml files containing MARC records
+
 ## 2019-05-12 v1.3.0
 * Added Spring DI support
 * Added dependency on users interface

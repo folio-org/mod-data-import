@@ -19,8 +19,8 @@ public class QueuedBlockingCoordinator implements BlockingCoordinator {
   private static final Object QUEUE_ITEM = new Object();
   private BlockingQueue<Object> blockingQueue = null;
 
-  public QueuedBlockingCoordinator(int capacity) {
-    blockingQueue = new ArrayBlockingQueue<>(capacity, true);
+  public QueuedBlockingCoordinator(int limit) {
+    blockingQueue = new ArrayBlockingQueue<>(limit, true);
   }
 
   @Override

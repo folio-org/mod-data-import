@@ -8,11 +8,10 @@ import java.util.concurrent.BlockingQueue;
 
 /**
  * Implementation of the BlockingCoordinator based on bounded blocking queue {@link ArrayBlockingQueue}:
- * the producing thread will keep producing new objects and insert them into the queue,
- * until the queue reaches some upper bound on what it can contain.
- * If the blocking queue reaches its upper limit, the producing thread is blocked while trying to insert the new object.
- * It remains blocked until a consuming thread takes an object out of the queue.
- * It gives us throughput control.
+ * the producing thread will keep {@link #acceptLock()} until the queue reaches some upper bound on what it can contain.
+ * If the blocking queue reaches its upper capacity value,
+ * the producing thread gets blocked while trying to insert the new object.
+ * It remains blocked until a consuming thread takes an object out of the queue calling {@link #acceptUnlock()}.
  */
 public class QueuedBlockingCoordinator implements BlockingCoordinator {
   private static final Logger LOGGER = LoggerFactory.getLogger(QueuedBlockingCoordinator.class);

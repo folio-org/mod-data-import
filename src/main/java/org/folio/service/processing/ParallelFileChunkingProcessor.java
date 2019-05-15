@@ -19,6 +19,8 @@ import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.processing.coordinator.BlockingCoordinator;
+import org.folio.service.processing.coordinator.QueuedBlockingCoordinator;
 import org.folio.service.processing.reader.SourceReader;
 import org.folio.service.processing.reader.SourceReaderBuilder;
 import org.folio.service.storage.FileStorageService;
@@ -44,9 +46,11 @@ import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
  * for further processing.
  */
 public class ParallelFileChunkingProcessor implements FileProcessor {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
   private static final int THREAD_POOL_SIZE =
     Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.thread.pool.size", "20"));
-  private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
+  private static final int BLOCKING_COORDINATOR_CAPACITY =
+    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.blocking.coordinator.capacity", "10"));
 
   private Vertx vertx;
   /* WorkerExecutor provides separate worker pool for code execution */
@@ -116,6 +120,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                                      OkapiConnectionParams params) {
     Future<Void> resultFuture = Future.future();
     MutableInt recordsCounter = new MutableInt(0);
+    BlockingCoordinator coordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_CAPACITY);
     try {
       File file = fileStorageService.getFile(fileDefinition.getSourcePath());
       SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
@@ -128,10 +133,11 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       List<Future> chunkSentFutures = new ArrayList<>();
       while (reader.hasNext()) {
         if (canSendNextChunk.get()) {
+          coordinator.acceptLock();
           List<String> records = reader.next();
           recordsCounter.add(records.size());
           RawRecordsDto chunk = new RawRecordsDto().withRecords(records).withCounter(recordsCounter.getValue()).withLast(false);
-          chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, params));
+          chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params));
         } else {
           String errorMessage = "Can not send next chunk of file " + fileDefinition.getSourcePath();
           LOGGER.error(errorMessage);
@@ -146,7 +152,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         } else {
           // Sending the last chunk
           RawRecordsDto chunk = new RawRecordsDto().withCounter(recordsCounter.getValue()).withLast(true);
-          postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, params).setHandler(r -> {
+          postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params).setHandler(r -> {
             if (r.failed()) {
               String errorMessage = "File processing stopped. Can not send the last chunk of the file " + fileDefinition.getSourcePath();
               LOGGER.error(errorMessage);
@@ -173,14 +179,21 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param chunk            chunk of records
    * @param canSendNextChunk flag the identifies has the last record been successfully sent and can the other handlers
    *                         send raw records (chunks)
+   * @param coordinator      blocking coordinator
    * @param params           parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, AtomicBoolean canSendNextChunk, OkapiConnectionParams params) {
+  private Future<Void> postRawRecords(
+    String jobExecutionId,
+    RawRecordsDto chunk,
+    AtomicBoolean canSendNextChunk,
+    BlockingCoordinator coordinator,
+    OkapiConnectionParams params) {
     Future<Void> future = Future.future();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, chunk, response -> {
+        coordinator.acceptUnlock();
         if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
           LOGGER.info("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getRecords().size(), jobExecutionId);
           future.complete();
@@ -191,6 +204,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         }
       });
     } catch (Exception e) {
+      coordinator.acceptUnlock();
       canSendNextChunk.set(false);
       LOGGER.error("Can not post chunk of raw records for JobExecution with id {}", jobExecutionId, e);
       future.fail(e);

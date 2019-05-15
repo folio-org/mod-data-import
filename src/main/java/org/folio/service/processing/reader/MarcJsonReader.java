@@ -1,5 +1,10 @@
 package org.folio.service.processing.reader;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.List;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -9,11 +14,6 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.FileUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.List;
-
 /**
  * Implementation reads source records in json format from the local file system in fixed-size buffer.
  * <code>next</code> method returns buffer content once the buffer is full or the target file has come to the end.
@@ -21,6 +21,7 @@ import java.util.List;
 public class MarcJsonReader implements SourceReader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MarcJsonReader.class);
+  public static final String JSON_EXTENSION = "json";
   private JsonReader reader;
   private int chunkSize;
 
@@ -60,7 +61,7 @@ public class MarcJsonReader implements SourceReader {
   public boolean hasNext() {
     try {
       boolean hasNext = reader.hasNext();
-      if(!hasNext) {
+      if (!hasNext) {
         reader.close();
       }
       return hasNext;

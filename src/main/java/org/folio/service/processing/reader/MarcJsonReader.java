@@ -13,6 +13,7 @@ import com.google.gson.stream.JsonToken;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.FileUtils;
+import org.folio.rest.jaxrs.model.RawRecordsDto.ContentType;
 
 /**
  * Implementation reads source records in json format from the local file system in fixed-size buffer.
@@ -69,5 +70,10 @@ public class MarcJsonReader implements SourceReader {
       LOGGER.error("Error checking for the next record", e);
       throw new RecordsReaderException(e);
     }
+  }
+
+  @Override
+  public ContentType getContentType() {
+    return ContentType.MARC_JSON;
   }
 }

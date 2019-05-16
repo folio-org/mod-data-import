@@ -1,17 +1,18 @@
 package org.folio.service.processing.reader;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.io.FileUtils;
-import org.marc4j.util.RawRecord;
-import org.marc4j.util.RawRecordReader;
+import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.List;
 
-import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.io.FileUtils;
+import org.folio.rest.jaxrs.model.RawRecordsDto.ContentType;
+import org.marc4j.util.RawRecord;
+import org.marc4j.util.RawRecordReader;
 
 /**
  * Implementation reads source records from the local file system in fixed-size buffer.
@@ -50,5 +51,10 @@ public class MarcRawReader implements SourceReader {
   @Override
   public boolean hasNext() {
     return this.reader.hasNext();
+  }
+
+  @Override
+  public ContentType getContentType() {
+    return ContentType.MARC_RAW;
   }
 }

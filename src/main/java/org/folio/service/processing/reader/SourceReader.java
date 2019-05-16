@@ -2,6 +2,8 @@ package org.folio.service.processing.reader;
 
 import java.util.List;
 
+import org.folio.rest.jaxrs.model.RawRecordsDto.ContentType;
+
 
 /**
  * The root interface for traversing and partitioning elements of a source records.
@@ -23,4 +25,12 @@ public interface SourceReader {
    * @return {@code true} if the iteration has more elements
    */
   boolean hasNext();
+
+  /**
+   * Describes type of records and format of record representation.
+   *
+   * @return content type.
+   */
+  ContentType getContentType();
+
 }

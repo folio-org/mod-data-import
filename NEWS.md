@@ -1,5 +1,6 @@
-## 2019-05-17 v1.3.1-SNAPSHOT
+## 2019-05-17 v1.3.1
 * Fixed JobExecution status update error
+* Implemented a blocking queue for posting chunks of raw records
 
 ## 2019-05-12 v1.3.0
 * Added Spring DI support

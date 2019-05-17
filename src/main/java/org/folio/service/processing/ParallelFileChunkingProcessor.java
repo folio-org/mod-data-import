@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
+import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 
@@ -81,7 +82,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                   .setHandler(ar -> {
                     if (ar.failed()) {
                       LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-                      uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(ERROR), params);
+                      uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(),
+                        new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params);
                       blockingFuture.fail(ar.cause());
                     } else {
                       LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());

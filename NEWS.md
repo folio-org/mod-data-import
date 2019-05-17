@@ -1,3 +1,6 @@
+## 2019-05-17 v1.3.1-SNAPSHOT
+* Fixed JobExecution status update error
+
 ## 2019-05-12 v1.3.0
 * Added Spring DI support
 * Added dependency on users interface

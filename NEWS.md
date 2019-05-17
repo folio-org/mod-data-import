@@ -3,6 +3,9 @@
 * Added contentType field to the RawRecordsDto that describes type of records (MARC, EDIFACT etc) and format of record 
 representation(JSON, XML, RAW).
 
+## 2019-05-17 v1.3.1
+* Fixed JobExecution status update error
+
 ## 2019-05-12 v1.3.0
 * Added Spring DI support
 * Added dependency on users interface

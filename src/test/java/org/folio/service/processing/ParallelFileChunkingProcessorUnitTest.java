@@ -1,5 +1,22 @@
 package org.folio.service.processing;
 
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.rest.jaxrs.model.RawRecordsDto.ContentType.MARC_JSON;
+import static org.folio.rest.jaxrs.model.RawRecordsDto.ContentType.MARC_RAW;
+import static org.folio.rest.jaxrs.model.RawRecordsDto.ContentType.MARC_XML;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -28,18 +45,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mockito;
 import org.mockito.Spy;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
-
 /**
  * Testing ParallelFileChunkingProcessor
  */
@@ -55,6 +60,7 @@ public class ParallelFileChunkingProcessorUnitTest {
   private static final String SOURCE_PATH_3 = "src/test/resources/ChalmersFOLIOExamples.json";
   private static final String SOURCE_PATH_4 = "src/test/resources/invalidJsonExample.json";
   private static final String SOURCE_PATH_5 = "src/test/resources/UChicago_SampleBibs.xml";
+  private static final String SOURCE_PATH_6 = "src/test/resources/invalidUChicago_SampleBibs.xml";
 
   private static final int RECORDS_NUMBER = 62;
   private static final int CHUNKS_NUMBER = 2;
@@ -109,7 +115,7 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.succeeded());
+      assertTrue(ar.succeeded());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       Assert.assertEquals(expectedRequestsNumber, requests.size());
 
@@ -117,6 +123,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       int actualLastChunkRecordsCounter = 0;
       for (LoggedRequest loggedRequest : requests) {
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
+        assertSame(MARC_RAW,rawRecordsDto.getContentType());
         actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
         if (rawRecordsDto.getLast()) {
           actualLastChunkRecordsCounter = rawRecordsDto.getCounter();
@@ -151,9 +158,9 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.failed());
+      assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
-      Assert.assertTrue(!requests.isEmpty());
+      assertTrue(!requests.isEmpty());
       async.complete();
     });
   }
@@ -175,7 +182,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, null, null, null);
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.failed());
+      assertTrue(ar.failed());
       async.complete();
     });
   }
@@ -201,7 +208,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, null);
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.failed());
+      assertTrue(ar.failed());
       async.complete();
     });
   }
@@ -226,7 +233,7 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.failed());
+      assertTrue(ar.failed());
       async.complete();
     });
   }
@@ -259,9 +266,9 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.failed());
+      assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
-      Assert.assertTrue(!requests.isEmpty());
+      assertTrue(!requests.isEmpty());
       async.complete();
     });
   }
@@ -293,9 +300,9 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.failed());
+      assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
-      Assert.assertTrue(!requests.isEmpty());
+      assertTrue(!requests.isEmpty());
       async.complete();
     });
   }
@@ -326,9 +333,9 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.failed());
+      assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
-      Assert.assertTrue(requests.isEmpty());
+      assertTrue(requests.isEmpty());
       async.complete();
     });
   }
@@ -360,9 +367,9 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.failed());
+      assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
-      Assert.assertTrue(requests.isEmpty());
+      assertTrue(requests.isEmpty());
       async.complete();
     });
   }
@@ -397,7 +404,7 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.succeeded());
+      assertTrue(ar.succeeded());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       Assert.assertEquals(expectedRequestsNumber, requests.size());
 
@@ -405,6 +412,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       int actualLastChunkRecordsCounter = 0;
       for (LoggedRequest loggedRequest : requests) {
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
+        assertSame(MARC_JSON,rawRecordsDto.getContentType());
         actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
         if (rawRecordsDto.getLast()) {
           actualLastChunkRecordsCounter = rawRecordsDto.getCounter();
@@ -444,7 +452,7 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.failed());
+      assertTrue(ar.failed());
       async.complete();
     });
   }
@@ -479,7 +487,7 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     /* then */
     future.setHandler(ar -> {
-      Assert.assertTrue(ar.succeeded());
+      assertTrue(ar.succeeded());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       Assert.assertEquals(expectedRequestsNumber, requests.size());
 
@@ -487,6 +495,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       int actualLastChunkRecordsCounter = 0;
       for (LoggedRequest loggedRequest : requests) {
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
+        assertSame(MARC_XML,rawRecordsDto.getContentType());
         actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
         if (rawRecordsDto.getLast()) {
           actualLastChunkRecordsCounter = rawRecordsDto.getCounter();
@@ -495,6 +504,38 @@ public class ParallelFileChunkingProcessorUnitTest {
       Assert.assertEquals(expectedRequestsNumber, requests.size());
       Assert.assertEquals(RECORDS_NUMBER, actualLastChunkRecordsCounter);
       Assert.assertEquals(RECORDS_NUMBER, actualTotalRecordsNumber);
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReturnErrorOnMalformedXmlFile(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+
+    String jobExecutionId = UUID.randomUUID().toString();
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+      .willReturn(WireMock.noContent()));
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_6));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
+    future.setHandler(ar -> {
+      assertTrue(ar.failed());
       async.complete();
     });
   }

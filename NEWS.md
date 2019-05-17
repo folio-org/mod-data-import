@@ -1,5 +1,7 @@
 ## 2019-05-14 v1.4.0-SNAPSHOT
 * Added support for incoming xml files containing MARC records
+* Added contentType field to the RawRecordsDto that describes type of records (MARC, EDIFACT etc) and format of record 
+representation(JSON, XML, RAW).
 
 ## 2019-05-17 v1.3.1
 * Fixed JobExecution status update error

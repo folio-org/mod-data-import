@@ -1,3 +1,6 @@
+## 2019-06-20 v1.5.0-SNAPSHOT
+* Updated documentation on file processing api.
+
 ## 2019-06-12 v1.4.0
 * Added support for incoming xml files containing MARC records.
 * Added contentType field to the RawRecordsDto that describes type of records (MARC, EDIFACT etc) and format of record 

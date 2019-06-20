@@ -29,16 +29,20 @@ The user has to choose JobProfile on UI and only then start file processing.
 
 | Method | URL | ContentType |Description |
 | ------ |------ | ------ |------ |
-| **POST** | /data-import/processFiles | application/json | Starts the file processing |
+| **POST** | /data-import/uploadDefinitions/{uploadDefinitionId}/processFiles  | application/json | Starts the file processing |
 
 ## File Processing Workflow
 
-To initiate file processing send POST request containing UploadDefinition (with list of files) and JobProfile.
+To initiate file processing send POST request containing UploadDefinition (with list of files) and JobProfile 
+to follow path: /data-import/uploadDefinitions/{uploadDefinitionId}/processFiles.
 ```
 curl -w '\n' -X POST -D - \
    -H "Content-type: application/json" \
+   -H "Accept: text/plain, application/json"   \
+   -H "x-okapi-tenant: diku"  \
+   -H "x-okapi-token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6IjIzYWFmZDRjLTE1NmUtNTc0YS05Yjc1LWNkYTVmZmVlOWI3YyIsImNhY2hlX2tleSI6ImU4MmYwODc0LTI5NGEtNDc2ZS1hOTZhLTAxMDU2YWE1N2EzYSIsImlhdCI6MTU2MTAxNzUxNiwidGVuYW50IjoiZGlrdSJ9.h_IJSUrGJ2hK06St79vGpWPNwzczkBDUk6q4Y7p_9K0" \
    -d @processFilesRqDto.json \
-   http://localhost:9130/data-import/processFiles
+   http://localhost:9130/data-import/uploadDefinitions/562ddb58-65ba-45a1-bf12-bf126fbb960d/processFiles
 ```
 
 ##### processFilesRqDto.json
@@ -46,22 +50,31 @@ curl -w '\n' -X POST -D - \
 ```
 {
   "uploadDefinition": {
-      "id":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-      "metaJobExecutionId":"99dfac11-1caf-4470-9ad1-d533f6360bdd",
-      "status":"IN_PROGRESS",
-      "fileDefinitions": [
-          {
-              "id":"88dfac11-1caf-4470-9ad1-d533f6360bdd",
-              "uploadDefinitionId":"67dfac11-1caf-4470-9ad1-d533f6360bdd",
-              "jobExecutionId":"zx55tgh7-1caf-4470-9ad1-d533f6360bdd",
-              "loaded":true,
-              "name":"marc.mrc"
-          }
-      ]
+    "id": "562ddb58-65ba-45a1-bf12-bf126fbb960d",
+    "metaJobExecutionId": "09493c91-7ebd-4a61-bae4-222efaa6c583",
+    "status": "LOADED",
+    "createDate": "2019-06-20T11:00:25.852+0000",
+    "fileDefinitions": [
+      {
+        "id": "ec33553d-b92a-45a8-8655-a4960129dd6e",
+        "name": "CornellFOLIOExemplars.mrc",
+        "status": "UPLOADED",
+        "jobExecutionId": "09493c91-7ebd-4a61-bae4-222efaa6c583",
+        "uploadDefinitionId": "562ddb58-65ba-45a1-bf12-bf126fbb960d",
+        "createDate": "2019-06-20T11:00:25.852+0000"
+      }
+    ],
+    "metadata": {
+      "createdDate": "2019-06-20T11:00:25.828+0000",
+      "createdByUserId": "23aafd4c-156e-574a-9b75-cda5ffee9b7c",
+      "updatedDate": "2019-06-20T11:00:25.828+0000",
+      "updatedByUserId": "23aafd4c-156e-574a-9b75-cda5ffee9b7c"
+    }
   },
-  "jobProfile": {
-      "id": "zx5thml9-6hnq-45n0-23c0-13n8gbkl7091",
-      "name": "Profile for marc files"
+  "jobProfileInfo": {
+    "id": "c8f98545-898c-4f48-a494-3ab6736a3243",
+    "name": "Default job profile",
+    "dataType": "MARC"
   }
 }
 ```

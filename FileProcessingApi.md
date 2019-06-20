@@ -21,7 +21,7 @@ All fields are required.
 ### JobProfile entity 
 
 JobProfile carries information about profile type that identifies a way how to process target files.
-The user has to choose JobProfile on UI and only then start file processing.
+Currently we do not choose the JobProfile and simply provide a stub one.
 
 ## File Processing API
 

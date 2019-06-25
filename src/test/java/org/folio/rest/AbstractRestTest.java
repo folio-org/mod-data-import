@@ -212,9 +212,9 @@ public abstract class AbstractRestTest {
         .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionCreateMultipleFiles).toString())));
       WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*"), true))
         .willReturn(WireMock.ok()));
-      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
         .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).toString())));
-      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}/children"), true))
+      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))
         .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(childrenJobExecutions).toString())));
     } catch (UnsupportedEncodingException ignored) {
     }

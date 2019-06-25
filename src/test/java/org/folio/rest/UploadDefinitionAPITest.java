@@ -150,7 +150,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
       .withUserId(UUID.randomUUID().toString());
 
-    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
       .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
 
     uploadDefIdForTest3 = RestAssured.given()
@@ -582,7 +582,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withUserId(UUID.randomUUID().toString());
     async.complete();
     async = context.async();
-    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
       .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).toString())));
 
     String id = RestAssured.given()
@@ -1014,9 +1014,9 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
       .withUserId(UUID.randomUUID().toString());
 
-    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}"), true))
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
       .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
-    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*{36}/children"), true))
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))
       .willReturn(WireMock.serverError()));
 
     Async async = context.async();

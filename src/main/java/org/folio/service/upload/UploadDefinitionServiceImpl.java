@@ -348,6 +348,13 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return future;
   }
 
+  /**
+   * Returns instantiated T entity object from a buffer content.
+   *
+   * @param buffer buffer
+   * @param entityType type of entity which will be created
+   * @return instantiated T entity object from a buffer content
+   */
   private <T> Future<T> mapBufferContentToEntity(Buffer buffer, Class<T> entityType) {
     Future<T> future = Future.future();
     try {

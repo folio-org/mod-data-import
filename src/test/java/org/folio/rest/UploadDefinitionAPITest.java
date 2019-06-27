@@ -1041,6 +1041,59 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
+  public void uploadDefinitionDeleteServerErrorWhenFailedGettingJobExecution(TestContext context) {
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
+      .willReturn(WireMock.serverError()));
+
+    Async async = context.async();
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
+      .log().all();
+    async.complete();
+  }
+
+  @Test
+  public void uploadDefinitionDeleteServerErrorWhenFailedMapJobExecutionCollectionFromResponseBody(TestContext context) {
+    JsonObject wrongResponseBody = new JsonObject().put("test", "test");
+    WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))
+      .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(wrongResponseBody).toString())));
+
+    Async async = context.async();
+    String id = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef3)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+    async.complete();
+    async = context.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(DEFINITION_PATH + "/" + id)
+      .then()
+      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
+      .log().all();
+    async.complete();
+  }
+
+  @Test
   public void uploadDefinitionCreateValidateFileExtension(TestContext context) {
     Async async = context.async();
     RestAssured.given()

@@ -3,6 +3,7 @@ package org.folio.service.upload;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -13,6 +14,7 @@ import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.client.ChangeManagerClient;
+import org.folio.rest.impl.util.BufferMapper;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -334,7 +336,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     try {
       client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, null, 0, response -> {
         if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
-          response.bodyHandler(buffer -> future.complete(buffer.toJsonObject().mapTo(JobExecutionCollection.class)));
+          response.bodyHandler(buffer -> future.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecutionCollection.class)));
         } else {
           String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
           logger.error(errorMessage);
@@ -353,7 +355,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     try {
       client.getChangeManagerJobExecutionsById(jobExecutionId, null, response -> {
         if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
-          response.bodyHandler(buffer -> future.complete(buffer.toJsonObject().mapTo(JobExecution.class)));
+          response.bodyHandler(buffer -> future.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecution.class)));
         } else {
           String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
           logger.error(errorMessage);

@@ -116,3 +116,10 @@ Other [modules](https://dev.folio.org/source-code/#server-side).
 See project [MODDATAIMP](https://issues.folio.org/browse/MODDATAIMP) at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker).
 
 Other FOLIO Developer documentation is at [dev.folio.org](https://dev.folio.org/)
+
+## Secret button
+For now, file processing using UI can be initialized by secret button.
+Secret button sends a request to /data-import/uploadDefinitions/{id}/processFile with hardcoded default job profile, 
+which is being created in module converter-storage only if it is deployed in test mode.
+Information about how to run module converter-storage in test mode can be find by reference 
+in [Sample data section] (https://github.com/folio-org/mod-data-import-converter-storage#sample-data)

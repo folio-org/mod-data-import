@@ -1,3 +1,7 @@
+## 2019-07-24 v1.6.0
+* Added total records counter for ChunkProcessing 
+* Updated schemas for support new RawRecords
+
 ## 2019-07-24 v1.5.0
 * Updated README with information about test mode of the module.
 * Updated documentation on file processing api.

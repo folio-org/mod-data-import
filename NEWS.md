@@ -1,4 +1,5 @@
-## 2019-06-20 v1.5.0-SNAPSHOT
+## 2019-07-24 v1.5.0
+* Updated README with information about test mode of the module.
 * Updated documentation on file processing api.
 
 ## 2019-06-12 v1.4.0

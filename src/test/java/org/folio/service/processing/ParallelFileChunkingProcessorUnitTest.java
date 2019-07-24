@@ -1,22 +1,5 @@
 package org.folio.service.processing;
 
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.jaxrs.model.RawRecordsDto.ContentType.MARC_JSON;
-import static org.folio.rest.jaxrs.model.RawRecordsDto.ContentType.MARC_RAW;
-import static org.folio.rest.jaxrs.model.RawRecordsDto.ContentType.MARC_XML;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
-
-import java.io.File;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -44,6 +27,23 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mockito;
 import org.mockito.Spy;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.rest.jaxrs.model.RecordsMetadata.ContentType.MARC_JSON;
+import static org.folio.rest.jaxrs.model.RecordsMetadata.ContentType.MARC_RAW;
+import static org.folio.rest.jaxrs.model.RecordsMetadata.ContentType.MARC_XML;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 /**
  * Testing ParallelFileChunkingProcessor
@@ -123,10 +123,10 @@ public class ParallelFileChunkingProcessorUnitTest {
       int actualLastChunkRecordsCounter = 0;
       for (LoggedRequest loggedRequest : requests) {
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
-        assertSame(MARC_RAW,rawRecordsDto.getContentType());
+        assertSame(MARC_RAW, rawRecordsDto.getRecordsMetadata().getContentType());
         actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
-        if (rawRecordsDto.getLast()) {
-          actualLastChunkRecordsCounter = rawRecordsDto.getCounter();
+        if (rawRecordsDto.getRecordsMetadata().getLast()) {
+          actualLastChunkRecordsCounter = rawRecordsDto.getRecordsMetadata().getCounter();
         }
       }
       Assert.assertEquals(expectedRequestsNumber, requests.size());
@@ -412,10 +412,10 @@ public class ParallelFileChunkingProcessorUnitTest {
       int actualLastChunkRecordsCounter = 0;
       for (LoggedRequest loggedRequest : requests) {
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
-        assertSame(MARC_JSON,rawRecordsDto.getContentType());
+        assertSame(MARC_JSON, rawRecordsDto.getRecordsMetadata().getContentType());
         actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
-        if (rawRecordsDto.getLast()) {
-          actualLastChunkRecordsCounter = rawRecordsDto.getCounter();
+        if (rawRecordsDto.getRecordsMetadata().getLast()) {
+          actualLastChunkRecordsCounter = rawRecordsDto.getRecordsMetadata().getCounter();
         }
       }
       Assert.assertEquals(expectedRequestsNumber, requests.size());
@@ -495,10 +495,10 @@ public class ParallelFileChunkingProcessorUnitTest {
       int actualLastChunkRecordsCounter = 0;
       for (LoggedRequest loggedRequest : requests) {
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
-        assertSame(MARC_XML,rawRecordsDto.getContentType());
+        assertSame(MARC_XML, rawRecordsDto.getRecordsMetadata().getContentType());
         actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
-        if (rawRecordsDto.getLast()) {
-          actualLastChunkRecordsCounter = rawRecordsDto.getCounter();
+        if (rawRecordsDto.getRecordsMetadata().getLast()) {
+          actualLastChunkRecordsCounter = rawRecordsDto.getRecordsMetadata().getCounter();
         }
       }
       Assert.assertEquals(expectedRequestsNumber, requests.size());

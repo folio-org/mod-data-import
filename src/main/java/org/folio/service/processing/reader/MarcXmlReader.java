@@ -1,16 +1,16 @@
 package org.folio.service.processing.reader;
 
-import java.io.File;
-import java.util.Iterator;
-import java.util.List;
-
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
-import org.folio.rest.jaxrs.model.RawRecordsDto.ContentType;
+import org.folio.rest.jaxrs.model.RecordsMetadata;
+
+import java.io.File;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * It reads marc records from an xml file by specified size of chunk.
@@ -52,7 +52,7 @@ public class MarcXmlReader implements SourceReader {
   }
 
   @Override
-  public ContentType getContentType() {
-    return ContentType.MARC_XML;
+  public RecordsMetadata.ContentType getContentType() {
+    return RecordsMetadata.ContentType.MARC_XML;
   }
 }

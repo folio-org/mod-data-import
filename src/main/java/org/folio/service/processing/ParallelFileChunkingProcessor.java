@@ -201,8 +201,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     }
     SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
     while (reader.hasNext()) {
-      reader.next();
-      total++;
+      total += reader.next().size();
     }
     return total;
   }

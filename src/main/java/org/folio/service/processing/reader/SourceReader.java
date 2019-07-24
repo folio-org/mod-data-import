@@ -1,8 +1,8 @@
 package org.folio.service.processing.reader;
 
-import java.util.List;
+import org.folio.rest.jaxrs.model.RecordsMetadata;
 
-import org.folio.rest.jaxrs.model.RawRecordsDto.ContentType;
+import java.util.List;
 
 
 /**
@@ -31,6 +31,6 @@ public interface SourceReader {
    *
    * @return content type.
    */
-  ContentType getContentType();
+  RecordsMetadata.ContentType getContentType();
 
 }

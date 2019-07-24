@@ -1,16 +1,5 @@
 package org.folio.service.processing;
 
-import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
-import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
-import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
-import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -28,6 +17,7 @@ import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
+import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.processing.coordinator.BlockingCoordinator;
@@ -38,6 +28,17 @@ import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
+import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
+import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
+import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 
 /**
  * Processing files in parallel threads, one thread per one file.
@@ -133,6 +134,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       */
       AtomicBoolean canSendNextChunk = new AtomicBoolean(true);
       List<Future> chunkSentFutures = new ArrayList<>();
+      int totalRecords = countTotalRecordsInFile(file, jobProfile);
       while (reader.hasNext()) {
         if (canSendNextChunk.get()) {
           coordinator.acceptLock();
@@ -140,9 +142,11 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
           recordsCounter.add(records.size());
           RawRecordsDto chunk = new RawRecordsDto()
             .withRecords(records)
-            .withContentType(reader.getContentType())
-            .withCounter(recordsCounter.getValue())
-            .withLast(false);
+            .withRecordsMetadata(new RecordsMetadata()
+              .withContentType(reader.getContentType())
+              .withCounter(recordsCounter.getValue())
+              .withLast(false)
+              .withTotal(totalRecords));
           chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params));
         } else {
           String errorMessage = "Can not send next chunk of file " + fileDefinition.getSourcePath();
@@ -158,9 +162,11 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         } else {
           // Sending the last chunk
           RawRecordsDto chunk = new RawRecordsDto()
-            .withContentType(reader.getContentType())
-            .withCounter(recordsCounter.getValue())
-            .withLast(true);
+            .withRecordsMetadata(new RecordsMetadata()
+              .withContentType(reader.getContentType())
+              .withCounter(recordsCounter.getValue())
+              .withLast(true)
+              .withTotal(totalRecords));
           postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params).setHandler(r -> {
             if (r.failed()) {
               String errorMessage = "File processing stopped. Can not send the last chunk of the file " + fileDefinition.getSourcePath();
@@ -182,6 +188,26 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   }
 
   /**
+   * Read file and count total records it is contains
+   *
+   * @param file       - file with records
+   * @param jobProfile - job profile main info
+   * @return total records in file;
+   */
+  private int countTotalRecordsInFile(File file, JobProfileInfo jobProfile) {
+    int total = 0;
+    if (file == null || jobProfile == null) {
+      return total;
+    }
+    SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
+    while (reader.hasNext()) {
+      reader.next();
+      total++;
+    }
+    return total;
+  }
+
+  /**
    * Sends chunk with records to the corresponding consumer
    *
    * @param jobExecutionId   job id
@@ -192,12 +218,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params           parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> postRawRecords(
-    String jobExecutionId,
-    RawRecordsDto chunk,
-    AtomicBoolean canSendNextChunk,
-    BlockingCoordinator coordinator,
-    OkapiConnectionParams params) {
+  private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, AtomicBoolean canSendNextChunk,
+                                      BlockingCoordinator coordinator, OkapiConnectionParams params) {
     Future<Void> future = Future.future();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {

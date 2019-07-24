@@ -1,10 +1,5 @@
 package org.folio.service.processing.reader;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.List;
-
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -13,7 +8,12 @@ import com.google.gson.stream.JsonToken;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.FileUtils;
-import org.folio.rest.jaxrs.model.RawRecordsDto.ContentType;
+import org.folio.rest.jaxrs.model.RecordsMetadata;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.List;
 
 /**
  * Implementation reads source records in json format from the local file system in fixed-size buffer.
@@ -73,7 +73,7 @@ public class MarcJsonReader implements SourceReader {
   }
 
   @Override
-  public ContentType getContentType() {
-    return ContentType.MARC_JSON;
+  public RecordsMetadata.ContentType getContentType() {
+    return RecordsMetadata.ContentType.MARC_JSON;
   }
 }

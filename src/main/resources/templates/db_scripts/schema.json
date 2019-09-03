@@ -2,6 +2,7 @@
   "tables": [
     {
       "tableName": "upload_definitions",
+      "fromModuleVersion": "mod-data-import-1.0.0",
       "withMetadata": true,
       "pkColumnName": "_id",
       "generateId": false,
@@ -22,7 +23,7 @@
     {
       "tableName": "file_extensions",
       "generateId": false,
-      "fromModuleVersion": "1.0",
+      "fromModuleVersion": "mod-data-import-1.2.0",
       "withMetadata": true,
       "pkColumnName": "_id",
       "index": [
@@ -41,7 +42,7 @@
     {
       "tableName": "default_file_extensions",
       "generateId": false,
-      "fromModuleVersion": "1.0",
+      "fromModuleVersion": "mod-data-import-1.2.0",
       "withMetadata": true,
       "pkColumnName": "_id",
       "index": [

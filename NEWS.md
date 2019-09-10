@@ -1,4 +1,4 @@
-## 2019-07-24 v1.6.0-SNAPSHOT
+## 2019-09-10 v1.6.0
 * Added total records counter for ChunkProcessing 
 * Updated schemas for support new RawRecords
 * Filled in "fromModuleVersion" value for each "tables" section in schema.json

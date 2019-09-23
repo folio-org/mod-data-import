@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
+import org.apache.commons.collections4.list.UnmodifiableList;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static io.vertx.core.Future.succeededFuture;
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
@@ -76,39 +78,52 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     OkapiConnectionParams params = new OkapiConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
     String tenantId = params.getTenantId();
     UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
-    FileStorageServiceBuilder.build(this.vertx, tenantId, params).setHandler(fileStorageServiceAr -> {
-      if (fileStorageServiceAr.failed()) {
-        LOGGER.error("Can not build file storage service. Cause: {}", fileStorageServiceAr.cause());
-      } else {
-        FileStorageService fileStorageService = fileStorageServiceAr.result();
-        List<FileDefinition> fileDefinitions = uploadDefinition.getFileDefinitions();
-        uploadDefinitionService.getJobExecutions(uploadDefinition, params).compose(jobs -> {
-          updateJobsProfile(jobs, jobProfile, params).compose(voidAr -> {
-            this.executor.executeBlocking(v -> {
-              BlockingCoordinator blockingCoordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_FILES_NUMBER);
-              for (FileDefinition fileDefinition : fileDefinitions) {
-                blockingCoordinator.acceptLock();
-                this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params).setHandler(ar -> {
-                      if (ar.failed()) {
-                        LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-                        uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(),
-                          new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params);
-                      } else {
-                        LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
-                      }
-                      blockingCoordinator.acceptUnlock();
-                    }),
-                  false, null
-                );
-              }
-            }, null);
-            return Future.succeededFuture();
-          }).setHandler(event -> uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition ->
-            Future.succeededFuture(definition.withStatus(COMPLETED)), tenantId));
-          return Future.succeededFuture();
-        });
+    succeededFuture()
+      .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
+      .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
+      .compose(ar -> FileStorageServiceBuilder.build(this.vertx, tenantId, params))
+      .compose(fileStorageService -> {
+        processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params);
+        uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition -> succeededFuture(definition.withStatus(COMPLETED)), tenantId);
+        return succeededFuture();
+      });
+  }
+
+  /**
+   * Performs processing files from given UploadDefinition
+   *
+   * @param jobProfile              job profile comes from request, needed to build SourceReader
+   * @param uploadDefinitionService upload definition service needed to update job execution status
+   * @param fileStorageService      file storage service needed to read file
+   * @param uploadDefinition        upload definition entity comes from request
+   * @param params                  Okapi connection params
+   */
+  private void processFiles(JobProfileInfo jobProfile,
+                            UploadDefinitionService uploadDefinitionService,
+                            FileStorageService fileStorageService,
+                            UploadDefinition uploadDefinition,
+                            OkapiConnectionParams params) {
+    this.executor.executeBlocking(filesBlockingFuture -> {
+      BlockingCoordinator blockingCoordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_FILES_NUMBER);
+      List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
+      for (FileDefinition fileDefinition : fileDefinitions) {
+        blockingCoordinator.acceptLock();
+        this.executor.executeBlocking(fileBlockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params).setHandler(ar -> {
+            if (ar.failed()) {
+              LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
+              uploadDefinitionService.updateJobExecutionStatus(
+                fileDefinition.getJobExecutionId(),
+                new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
+                params);
+            } else {
+              LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+            }
+            blockingCoordinator.acceptUnlock();
+          }),
+          false, null
+        );
       }
-    });
+    }, null);
   }
 
   /**

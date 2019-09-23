@@ -51,8 +51,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
   private static final int THREAD_POOL_SIZE =
     Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.thread.pool.size", "20"));
-  private static final int BLOCKING_COORDINATOR_CAPACITY =
-    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.blocking.coordinator.capacity", "10"));
+  private static final int BLOCKING_COORDINATOR_FILES_NUMBER =
+    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.blocking.coordinator.parallel.files.number", "1"));
+  private static final int BLOCKING_COORDINATOR_CHUNKS_NUMBER =
+    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.blocking.coordinator.parallel.chunks.number", "10"));
 
   private Vertx vertx;
   /* WorkerExecutor provides separate worker pool for code execution */
@@ -82,23 +84,24 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         List<FileDefinition> fileDefinitions = uploadDefinition.getFileDefinitions();
         uploadDefinitionService.getJobExecutions(uploadDefinition, params).compose(jobs -> {
           updateJobsProfile(jobs, jobProfile, params).compose(voidAr -> {
-            for (FileDefinition fileDefinition : fileDefinitions) {
-              this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params)
-                  .setHandler(ar -> {
-                    if (ar.failed()) {
-                      LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-                      uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(),
-                        new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params);
-                      blockingFuture.fail(ar.cause());
-                    } else {
-                      LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
-                      blockingFuture.complete();
-                    }
-                  }),
-                false,
-                null
-              );
-            }
+            this.executor.executeBlocking(v -> {
+              BlockingCoordinator blockingCoordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_FILES_NUMBER);
+              for (FileDefinition fileDefinition : fileDefinitions) {
+                blockingCoordinator.acceptLock();
+                this.executor.executeBlocking(blockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params).setHandler(ar -> {
+                      if (ar.failed()) {
+                        LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
+                        uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(),
+                          new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params);
+                      } else {
+                        LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+                      }
+                      blockingCoordinator.acceptUnlock();
+                    }),
+                  false, null
+                );
+              }
+            }, null);
             return Future.succeededFuture();
           }).setHandler(event -> uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition ->
             Future.succeededFuture(definition.withStatus(COMPLETED)), tenantId));
@@ -123,7 +126,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                                      OkapiConnectionParams params) {
     Future<Void> resultFuture = Future.future();
     MutableInt recordsCounter = new MutableInt(0);
-    BlockingCoordinator coordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_CAPACITY);
+    BlockingCoordinator coordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_CHUNKS_NUMBER);
     try {
       File file = fileStorageService.getFile(fileDefinition.getSourcePath());
       SourceReader reader = SourceReaderBuilder.build(file, jobProfile);

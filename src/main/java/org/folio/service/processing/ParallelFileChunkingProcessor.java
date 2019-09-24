@@ -40,7 +40,6 @@ import static io.vertx.core.Future.succeededFuture;
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
-import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 
 /**
  * Processing files in parallel threads, one thread per one file.
@@ -76,15 +75,17 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     UploadDefinition uploadDefinition = request.getUploadDefinition();
     JobProfileInfo jobProfile = request.getJobProfileInfo();
     OkapiConnectionParams params = new OkapiConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
-    String tenantId = params.getTenantId();
     UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
     succeededFuture()
       .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
       .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
-      .compose(ar -> FileStorageServiceBuilder.build(this.vertx, tenantId, params))
+      .compose(ar -> FileStorageServiceBuilder.build(this.vertx, params))
       .compose(fileStorageService -> {
         processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params);
-        uploadDefinitionService.updateBlocking(uploadDefinition.getId(), definition -> succeededFuture(definition.withStatus(COMPLETED)), tenantId);
+        uploadDefinitionService.updateBlocking(
+          uploadDefinition.getId(),
+          definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
+          params.getTenantId());
         return succeededFuture();
       });
   }

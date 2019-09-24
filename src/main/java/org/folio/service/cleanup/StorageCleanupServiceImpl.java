@@ -39,7 +39,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
   public Future<Boolean> cleanStorage(OkapiConnectionParams params) {
     Future<Boolean> future = Future.future();
 
-    return FileStorageServiceBuilder.build(vertx, params.getTenantId(), params)
+    return FileStorageServiceBuilder.build(vertx, params)
       .compose(fileStorageService -> getTimeWithoutUploadDefinitionChanges(params)
         .compose(timeWithoutChanges -> {
           Date lastChangesDate = new Date(new Date().getTime() - timeWithoutChanges);

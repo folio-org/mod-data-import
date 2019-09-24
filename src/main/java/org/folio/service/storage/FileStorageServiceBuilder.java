@@ -25,12 +25,12 @@ public class FileStorageServiceBuilder {
    * Build a service object by mod-configuration's values. If there are no properties build a default LocalStorage Service
    *
    * @param vertx    - vertx object
+   * @param tenantId - current tenant id
    * @param params   - Wrapper for Okapi connection params
    * @return - new Service object
    */
-  public static Future<FileStorageService> build(Vertx vertx, OkapiConnectionParams params) {
+  public static Future<FileStorageService> build(Vertx vertx, String tenantId, OkapiConnectionParams params) {
     Future<FileStorageService> future = Future.future();
-    String tenantId = params.getTenantId();
     ConfigurationUtil.getPropertyByCode(SERVICE_STORAGE_PROPERTY_CODE, params).setHandler(result -> {
       if (result.failed() || result.result() == null || result.result().isEmpty()) {
         logger.warn("Request to mod-configuration was failed or property for lookup service is not define. Try to use default Local Storage!");

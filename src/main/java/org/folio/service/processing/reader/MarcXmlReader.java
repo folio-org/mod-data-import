@@ -2,10 +2,12 @@ package org.folio.service.processing.reader;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 
 import java.io.File;
@@ -21,9 +23,11 @@ public class MarcXmlReader implements SourceReader {
   private Document document;
   private int chunkSize;
   private Iterator iterator;
+  private MutableInt recordsCounter;
 
   public MarcXmlReader(File file, int chunkSize) {
     this.chunkSize = chunkSize;
+    recordsCounter = new MutableInt(0);
     try {
       this.document = new SAXReader().read(file);
     } catch (DocumentException e) {
@@ -34,11 +38,11 @@ public class MarcXmlReader implements SourceReader {
   }
 
   @Override
-  public List<String> next() {
+  public List<Record> next() {
     RecordsBuffer buffer = new RecordsBuffer(this.chunkSize);
     while (iterator.hasNext()) {
       Element element = (Element) iterator.next();
-      buffer.add(element.asXML());
+      buffer.add(new Record().withRecord(element.asXML()).withOrder(recordsCounter.getAndIncrement()));
       if (buffer.isFull()) {
         break;
       }

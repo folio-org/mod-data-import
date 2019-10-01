@@ -1,5 +1,7 @@
 package org.folio.service.processing.reader;
 
+import org.folio.rest.jaxrs.model.Record;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,7 +10,7 @@ import java.util.List;
  */
 public class RecordsBuffer {
 
-  private List<String> records;
+  private List<Record> records;
   private int chunkSize;
 
   RecordsBuffer(int chunkSize) {
@@ -16,11 +18,11 @@ public class RecordsBuffer {
     this.records = new ArrayList<>(chunkSize);
   }
 
-  public List<String> getRecords() {
+  public List<Record> getRecords() {
     return this.records;
   }
 
-  public void add(String records) {
+  public void add(Record records) {
     this.records.add(records);
   }
 

@@ -18,6 +18,7 @@ import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -159,7 +160,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       while (reader.hasNext()) {
         if (canSendNextChunk.get()) {
           coordinator.acceptLock();
-          List<String> records = reader.next();
+          List<Record> records = reader.next();
           recordsCounter.add(records.size());
           RawRecordsDto chunk = new RawRecordsDto()
             .withRecords(records)

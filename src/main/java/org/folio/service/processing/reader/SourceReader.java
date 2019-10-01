@@ -1,5 +1,6 @@
 package org.folio.service.processing.reader;
 
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 
 import java.util.List;
@@ -15,7 +16,7 @@ public interface SourceReader {
    *
    * @return the next element in the iteration
    */
-  List<String> next();
+  List<Record> next();
 
   /**
    * Returns {@code true} if the iteration has more elements.

@@ -1,5 +1,6 @@
 package org.folio.service.processing.reader;
 
+import org.folio.rest.jaxrs.model.Record;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -24,7 +25,7 @@ public class MarcSourceReaderUnitTest {
     // given
     int chunkSize = 100;
     SourceReader reader = new MarcRawReader(new File(SOURCE_PATH), chunkSize);
-    List<String> actualRecords = new ArrayList<>();
+    List<Record> actualRecords = new ArrayList<>();
     // when
     while (reader.hasNext()) {
       actualRecords.addAll(reader.next());
@@ -38,7 +39,7 @@ public class MarcSourceReaderUnitTest {
     // given
     int chunkSize = 100;
     SourceReader reader = new MarcRawReader(new File(SOURCE_WITH_WRONG_ENCODING_PATH), chunkSize);
-    List<String> actualRecords = new ArrayList<>();
+    List<Record> actualRecords = new ArrayList<>();
     // when
     while (reader.hasNext()) {
       actualRecords.addAll(reader.next());
@@ -53,7 +54,7 @@ public class MarcSourceReaderUnitTest {
     int expectedChunksNumber = 2;
     int chunkSize = 31;
     SourceReader reader = new MarcRawReader(new File(SOURCE_PATH), chunkSize);
-    List<String> actualRecords = new ArrayList<>();
+    List<Record> actualRecords = new ArrayList<>();
     int actualChunkNumber = 0;
     // when
     while (reader.hasNext()) {
@@ -71,7 +72,7 @@ public class MarcSourceReaderUnitTest {
     int expectedChunksNumber = 5;
     int chunkSize = 13;
     SourceReader reader = new MarcRawReader(new File(SOURCE_PATH), chunkSize);
-    List<String> actualRecords = new ArrayList<>();
+    List<Record> actualRecords = new ArrayList<>();
     int actualChunkNumber = 0;
     // when
     while (reader.hasNext()) {

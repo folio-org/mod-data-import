@@ -40,6 +40,7 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.RecordsMetadata.ContentType.MARC_JSON;
 import static org.folio.rest.jaxrs.model.RecordsMetadata.ContentType.MARC_RAW;
 import static org.folio.rest.jaxrs.model.RecordsMetadata.ContentType.MARC_XML;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -56,7 +57,6 @@ public class ParallelFileChunkingProcessorUnitTest {
 
   private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/jobExecutions/%s/records";
   private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
-  private static final String SOURCE_PATH_2 = "src/test/resources/CornellFOLIOExemplars2.mrc";
   private static final String SOURCE_PATH_3 = "src/test/resources/ChalmersFOLIOExamples.json";
   private static final String SOURCE_PATH_4 = "src/test/resources/invalidJsonExample.json";
   private static final String SOURCE_PATH_5 = "src/test/resources/UChicago_SampleBibs.xml";
@@ -160,7 +160,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     future.setHandler(ar -> {
       assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
-      assertTrue(!requests.isEmpty());
+      assertFalse(requests.isEmpty());
       async.complete();
     });
   }
@@ -268,7 +268,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     future.setHandler(ar -> {
       assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
-      assertTrue(!requests.isEmpty());
+      assertFalse(requests.isEmpty());
       async.complete();
     });
   }
@@ -293,7 +293,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
-    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_2));
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
 
     /* when */
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
@@ -302,7 +302,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     future.setHandler(ar -> {
       assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
-      assertTrue(!requests.isEmpty());
+      assertFalse(requests.isEmpty());
       async.complete();
     });
   }

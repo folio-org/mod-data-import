@@ -16,6 +16,7 @@ import java.util.List;
 public class MarcSourceReaderUnitTest {
 
   private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
+  private static final String SOURCE_WITH_WRONG_ENCODING_PATH = "src/test/resources/61PRINT160129.mrc";
   private static final int EXPECTED_RECORDS_NUMBER = 62;
 
   @Test
@@ -30,6 +31,20 @@ public class MarcSourceReaderUnitTest {
     }
     // then
     Assert.assertEquals(EXPECTED_RECORDS_NUMBER, actualRecords.size());
+  }
+
+  @Test
+  public void shouldReturnAllRecords_2() {
+    // given
+    int chunkSize = 100;
+    SourceReader reader = new MarcRawReader(new File(SOURCE_WITH_WRONG_ENCODING_PATH), chunkSize);
+    List<String> actualRecords = new ArrayList<>();
+    // when
+    while (reader.hasNext()) {
+      actualRecords.addAll(reader.next());
+    }
+    // then
+    Assert.assertEquals(246, actualRecords.size());
   }
 
   @Test

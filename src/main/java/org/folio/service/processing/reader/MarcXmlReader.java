@@ -7,7 +7,7 @@ import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
-import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 
 import java.io.File;
@@ -38,11 +38,11 @@ public class MarcXmlReader implements SourceReader {
   }
 
   @Override
-  public List<Record> next() {
+  public List<InitialRecord> next() {
     RecordsBuffer buffer = new RecordsBuffer(this.chunkSize);
     while (iterator.hasNext()) {
       Element element = (Element) iterator.next();
-      buffer.add(new Record().withRecord(element.asXML()).withOrder(recordsCounter.getAndIncrement()));
+      buffer.add(new InitialRecord().withRecord(element.asXML()).withOrder(recordsCounter.getAndIncrement()));
       if (buffer.isFull()) {
         break;
       }

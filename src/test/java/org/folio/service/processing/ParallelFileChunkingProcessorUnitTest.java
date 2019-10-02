@@ -124,7 +124,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       for (LoggedRequest loggedRequest : requests) {
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
         assertSame(MARC_RAW, rawRecordsDto.getRecordsMetadata().getContentType());
-        actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
+        actualTotalRecordsNumber += rawRecordsDto.getInitialRecords().size();
         if (rawRecordsDto.getRecordsMetadata().getLast()) {
           actualLastChunkRecordsCounter = rawRecordsDto.getRecordsMetadata().getCounter();
         }
@@ -413,7 +413,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       for (LoggedRequest loggedRequest : requests) {
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
         assertSame(MARC_JSON, rawRecordsDto.getRecordsMetadata().getContentType());
-        actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
+        actualTotalRecordsNumber += rawRecordsDto.getInitialRecords().size();
         if (rawRecordsDto.getRecordsMetadata().getLast()) {
           actualLastChunkRecordsCounter = rawRecordsDto.getRecordsMetadata().getCounter();
         }
@@ -496,7 +496,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       for (LoggedRequest loggedRequest : requests) {
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
         assertSame(MARC_XML, rawRecordsDto.getRecordsMetadata().getContentType());
-        actualTotalRecordsNumber += rawRecordsDto.getRecords().size();
+        actualTotalRecordsNumber += rawRecordsDto.getInitialRecords().size();
         if (rawRecordsDto.getRecordsMetadata().getLast()) {
           actualLastChunkRecordsCounter = rawRecordsDto.getRecordsMetadata().getCounter();
         }

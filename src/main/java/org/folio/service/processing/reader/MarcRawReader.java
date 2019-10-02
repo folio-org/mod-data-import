@@ -4,10 +4,11 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
-import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.marc4j.MarcPermissiveStreamReader;
 import org.marc4j.MarcStreamWriter;
+import org.marc4j.marc.Record;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -43,16 +44,16 @@ public class MarcRawReader implements SourceReader {
   }
 
   @Override
-  public List<Record> next() {
+  public List<InitialRecord> next() {
     RecordsBuffer recordsBuffer = new RecordsBuffer(this.chunkSize);
     while (this.reader.hasNext()) {
-      org.marc4j.marc.Record rawRecord = this.reader.next();
+      Record rawRecord = this.reader.next();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       MarcStreamWriter streamWriter = new MarcStreamWriter(bos, CHARSET.name());
       streamWriter.write(rawRecord);
       streamWriter.close();
       try {
-        recordsBuffer.add(new Record().withRecord(bos.toString(CHARSET.name())).withOrder(recordsCounter.getAndIncrement()));
+        recordsBuffer.add(new InitialRecord().withRecord(bos.toString(CHARSET.name())).withOrder(recordsCounter.getAndIncrement()));
       } catch (UnsupportedEncodingException e) {
         logger.error("Error during reading MARC record. Record will be skipped.", e);
       }

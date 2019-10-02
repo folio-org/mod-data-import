@@ -9,7 +9,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
-import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 
 import java.io.File;
@@ -41,7 +41,7 @@ public class MarcJsonReader implements SourceReader {
   }
 
   @Override
-  public List<Record> next() {
+  public List<InitialRecord> next() {
     RecordsBuffer recordsBuffer = new RecordsBuffer(this.chunkSize);
     try {
       Gson gson = new GsonBuilder().create();
@@ -50,7 +50,7 @@ public class MarcJsonReader implements SourceReader {
       }
       while (reader.hasNext()) {
         JsonObject record = gson.fromJson(reader, JsonObject.class);
-        recordsBuffer.add(new Record().withRecord(record.toString()).withOrder(recordsCounter.getAndIncrement()));
+        recordsBuffer.add(new InitialRecord().withRecord(record.toString()).withOrder(recordsCounter.getAndIncrement()));
         if (recordsBuffer.isFull()) {
           return recordsBuffer.getRecords();
         }

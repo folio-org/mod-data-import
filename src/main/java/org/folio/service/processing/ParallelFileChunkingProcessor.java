@@ -14,6 +14,7 @@ import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
@@ -159,10 +160,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       while (reader.hasNext()) {
         if (canSendNextChunk.get()) {
           coordinator.acceptLock();
-          List<String> records = reader.next();
+          List<InitialRecord> records = reader.next();
           recordsCounter.add(records.size());
           RawRecordsDto chunk = new RawRecordsDto()
-            .withRecords(records)
+            .withInitialRecords(records)
             .withRecordsMetadata(new RecordsMetadata()
               .withContentType(reader.getContentType())
               .withCounter(recordsCounter.getValue())
@@ -246,7 +247,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, chunk, response -> {
         coordinator.acceptUnlock();
         if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
-          LOGGER.info("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getRecords().size(), jobExecutionId);
+          LOGGER.info("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getInitialRecords().size(), jobExecutionId);
           future.complete();
         } else {
           canSendNextChunk.set(false);

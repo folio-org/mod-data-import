@@ -3,6 +3,8 @@ package org.folio.service.processing.reader;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.marc4j.MarcPermissiveStreamReader;
 import org.marc4j.MarcStreamWriter;
@@ -27,9 +29,11 @@ public class MarcRawReader implements SourceReader {
   private static final Logger logger = LoggerFactory.getLogger(MarcRawReader.class);
   private MarcPermissiveStreamReader reader;
   private int chunkSize;
+  private MutableInt recordsCounter;
 
   public MarcRawReader(File file, int chunkSize) {
     this.chunkSize = chunkSize;
+    recordsCounter = new MutableInt(0);
     try {
       this.reader = new MarcPermissiveStreamReader(FileUtils.openInputStream(file), true, true);
     } catch (IOException e) {
@@ -40,7 +44,7 @@ public class MarcRawReader implements SourceReader {
   }
 
   @Override
-  public List<String> next() {
+  public List<InitialRecord> next() {
     RecordsBuffer recordsBuffer = new RecordsBuffer(this.chunkSize);
     while (this.reader.hasNext()) {
       Record rawRecord = this.reader.next();
@@ -49,7 +53,7 @@ public class MarcRawReader implements SourceReader {
       streamWriter.write(rawRecord);
       streamWriter.close();
       try {
-        recordsBuffer.add(bos.toString(CHARSET.name()));
+        recordsBuffer.add(new InitialRecord().withRecord(bos.toString(CHARSET.name())).withOrder(recordsCounter.getAndIncrement()));
       } catch (UnsupportedEncodingException e) {
         logger.error("Error during reading MARC record. Record will be skipped.", e);
       }

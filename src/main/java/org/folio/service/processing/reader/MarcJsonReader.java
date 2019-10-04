@@ -8,6 +8,8 @@ import com.google.gson.stream.JsonToken;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 
 import java.io.File;
@@ -25,9 +27,11 @@ public class MarcJsonReader implements SourceReader {
   public static final String JSON_EXTENSION = "json";
   private JsonReader reader;
   private int chunkSize;
+  private MutableInt recordsCounter;
 
   public MarcJsonReader(File file, int chunkSize) {
     this.chunkSize = chunkSize;
+    recordsCounter = new MutableInt(0);
     try {
       this.reader = new JsonReader(new InputStreamReader(FileUtils.openInputStream(file)));
     } catch (IOException e) {
@@ -37,7 +41,7 @@ public class MarcJsonReader implements SourceReader {
   }
 
   @Override
-  public List<String> next() {
+  public List<InitialRecord> next() {
     RecordsBuffer recordsBuffer = new RecordsBuffer(this.chunkSize);
     try {
       Gson gson = new GsonBuilder().create();
@@ -46,7 +50,7 @@ public class MarcJsonReader implements SourceReader {
       }
       while (reader.hasNext()) {
         JsonObject record = gson.fromJson(reader, JsonObject.class);
-        recordsBuffer.add(record.toString());
+        recordsBuffer.add(new InitialRecord().withRecord(record.toString()).withOrder(recordsCounter.getAndIncrement()));
         if (recordsBuffer.isFull()) {
           return recordsBuffer.getRecords();
         }

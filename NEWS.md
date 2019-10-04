@@ -1,8 +1,14 @@
+## 2019-10-04 v1.7.0-SNAPSHOT
+* Fixed encoding issues
+* Added order of the record in importing file 
+
+## 2019-09-25 v1.6.1
+* Added blocking coordination to process files in sequential manner
+
 ## 2019-09-10 v1.6.0
 * Added total records counter for ChunkProcessing 
 * Updated schemas for support new RawRecords
 * Filled in "fromModuleVersion" value for each "tables" section in schema.json
-* Added blocking coordination to process files in sequential manner
 
 ## 2019-07-24 v1.5.0
 * Updated README with information about test mode of the module.

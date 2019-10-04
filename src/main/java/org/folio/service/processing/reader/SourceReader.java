@@ -1,9 +1,9 @@
 package org.folio.service.processing.reader;
 
+import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 
 import java.util.List;
-
 
 /**
  * The root interface for traversing and partitioning elements of a source records.
@@ -15,7 +15,7 @@ public interface SourceReader {
    *
    * @return the next element in the iteration
    */
-  List<String> next();
+  List<InitialRecord> next();
 
   /**
    * Returns {@code true} if the iteration has more elements.

@@ -1,7 +1,9 @@
-## 2019-09-25 v1.6.1
-* Added blocking coordination to process files in sequential manner
+## 2019-10-04 v1.7.0-SNAPSHOT
 * Fixed encoding issues
 * Added order of the record in importing file 
+
+## 2019-09-25 v1.6.1
+* Added blocking coordination to process files in sequential manner
 
 ## 2019-09-10 v1.6.0
 * Added total records counter for ChunkProcessing 

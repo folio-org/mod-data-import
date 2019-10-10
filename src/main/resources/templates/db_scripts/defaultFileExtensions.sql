@@ -1,5 +1,5 @@
 INSERT INTO
-  ${myuniversity}_${mymodule}.default_file_extensions (_id, jsonb)
+  ${myuniversity}_${mymodule}.default_file_extensions (id, jsonb)
 VALUES
   (
     'f375ffe9-b00b-4786-b0a8-cd99f93e5aab',

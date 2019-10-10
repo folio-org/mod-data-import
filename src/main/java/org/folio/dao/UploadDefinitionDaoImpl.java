@@ -10,6 +10,7 @@ import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
 import org.apache.commons.lang3.time.TimeZones;
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -21,7 +22,6 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import javax.ws.rs.NotFoundException;
 import java.text.SimpleDateFormat;
@@ -33,6 +33,7 @@ import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
 @Repository
+@SuppressWarnings("squid:CallToDeprecatedMethod")
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
@@ -87,7 +88,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
         .append(PostgresClient.convertToPsqlStandard(tenantId))
         .append(".")
         .append(UPLOAD_DEFINITION_TABLE)
-        .append(" WHERE _id ='")
+        .append(" WHERE id ='")
         .append(uploadDefinitionId).append("' LIMIT 1 FOR UPDATE;");
       pgClientFactory.createInstance(tenantId).select(tx, selectUploadDefinitionQuery.toString(), selectFuture);
       return selectFuture;

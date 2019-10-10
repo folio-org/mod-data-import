@@ -33,6 +33,7 @@ import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
 @Repository
+@SuppressWarnings("squid:CallToDeprecatedMethod")
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";

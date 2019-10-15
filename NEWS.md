@@ -1,7 +1,6 @@
 ## 2019-10-04 v1.7.0-SNAPSHOT
 * Fixed encoding issues
 * Added order of the record in importing file 
-* Updated raml-module-builder version.
 
 ## 2019-09-25 v1.6.1
 * Added blocking coordination to process files in sequential manner

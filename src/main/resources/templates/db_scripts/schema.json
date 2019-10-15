@@ -4,6 +4,8 @@
       "tableName": "upload_definitions",
       "fromModuleVersion": "mod-data-import-1.0.0",
       "withMetadata": true,
+      "pkColumnName": "_id",
+      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -20,8 +22,10 @@
     },
     {
       "tableName": "file_extensions",
+      "generateId": false,
       "fromModuleVersion": "mod-data-import-1.2.0",
       "withMetadata": true,
+      "pkColumnName": "_id",
       "index": [
         {
           "fieldName": "id",
@@ -37,8 +41,10 @@
     },
     {
       "tableName": "default_file_extensions",
+      "generateId": false,
       "fromModuleVersion": "mod-data-import-1.2.0",
       "withMetadata": true,
+      "pkColumnName": "_id",
       "index": [
         {
           "fieldName": "id",

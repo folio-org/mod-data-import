@@ -135,8 +135,7 @@ public class DataImportImpl implements DataImport {
       try {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
         uploadDefinitionService.deleteUploadDefinition(uploadDefinitionId, params)
-          .map(deleted -> (Response) DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.respond204WithTextPlain(
-            String.format("Upload definition with id '%s' was successfully deleted", uploadDefinitionId)))
+          .map(deleted -> (Response) DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.respond204())
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
@@ -191,8 +190,7 @@ public class DataImportImpl implements DataImport {
     try {
       OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
       vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId, params)
-        .map(deleted -> (Response) DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204WithTextPlain(
-          String.format("File with id: %s deleted", fileId)))
+        .map(deleted -> (Response) DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204())
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .setHandler(asyncResultHandler));
     } catch (Exception e) {
@@ -254,7 +252,7 @@ public class DataImportImpl implements DataImport {
         LOG.info("Starting file processing for upload definition {}", uploadDefinitionId);
         fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders));
         Future.succeededFuture()
-          .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse::respond204WithTextPlain)
+          .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
           .map(Response.class::cast)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
@@ -359,8 +357,7 @@ public class DataImportImpl implements DataImport {
       try {
         fileExtensionService.deleteFileExtension(id, tenantId)
           .map(deleted -> deleted ?
-            DeleteDataImportFileExtensionsByIdResponse.respond204WithTextPlain(
-              String.format("FileExtension with id '%s' was successfully deleted", id)) :
+            DeleteDataImportFileExtensionsByIdResponse.respond204() :
             DeleteDataImportFileExtensionsByIdResponse.respond404WithTextPlain(
               String.format("FileExtension with id '%s' was not found", id)))
           .map(Response.class::cast)

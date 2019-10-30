@@ -78,8 +78,6 @@ resourceTypes:
       delete:
         responses:
           204:
-            body:
-              text/plain: !!null
       /files:
         post:
           is: [validate]
@@ -111,8 +109,6 @@ resourceTypes:
             description: Delete file by id
             responses:
               204:
-                body:
-                  text/plain: !!null
               404:
                 description: "File not found"
                 body:
@@ -158,9 +154,6 @@ resourceTypes:
               type: processFilesRqDto
           responses:
             204:
-              description: "Successful request"
-              body:
-                text/plain: !!null
             400:
               description: "Bad request"
               body:
@@ -215,8 +208,6 @@ resourceTypes:
       delete:
         responses:
           204:
-            body:
-              text/plain: !!null
     /restore:
       /default:
         post:

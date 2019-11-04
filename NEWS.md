@@ -1,4 +1,4 @@
-## 2019-10-04 v1.7.0-SNAPSHOT
+## 2019-11-04 v1.7.0
 * Fixed encoding issues
 * Added order of the record in importing file 
 

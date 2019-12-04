@@ -1,3 +1,7 @@
+## 2019-12-04 v1.8.0
+* Applied new JVM features to manage container memory
+* Fixed security vulnerabilities
+
 ## 2019-11-04 v1.7.0
 * Fixed encoding issues
 * Added order of the record in importing file 

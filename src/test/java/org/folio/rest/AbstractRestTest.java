@@ -65,7 +65,7 @@ public abstract class AbstractRestTest {
 
   private JobExecution jobExecution = new JobExecution()
     .withId(UUID.randomUUID().toString())
-    .withHrId("1000")
+    .withHrId(1000)
     .withParentJobId(UUID.randomUUID().toString())
     .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
     .withStatus(JobExecution.Status.NEW)

@@ -20,8 +20,10 @@ import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionCollection;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
+import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -155,7 +157,9 @@ public abstract class AbstractRestTest {
     final DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put(HTTP_PORT, port));
     vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
       try {
-        tenantClient.postTenant(null, res2 -> {
+        TenantAttributes tenantAttributes = new TenantAttributes();
+        tenantAttributes.setModuleTo(PomReader.INSTANCE.getModuleName());
+        tenantClient.postTenant(tenantAttributes, res2 -> {
           async.complete();
         });
       } catch (Exception e) {

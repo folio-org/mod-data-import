@@ -23,7 +23,7 @@
     <marc4j.version>2.8.3</marc4j.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mod-configuration-client.version>4.0.3</mod-configuration-client.version>
+    <mod-configuration-client.version>5.3.0</mod-configuration-client.version>
     <sonar.exclusions>**/ParallelFileChunkingProcessor.java</sonar.exclusions>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
   </properties>

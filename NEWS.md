@@ -1,3 +1,6 @@
+## 2019-12-27 v1.9.0-SNAPSHOT
+* Updated RMB version to 29.1.5
+
 ## 2019-12-04 v1.8.0
 * Applied new JVM features to manage container memory
 * Fixed security vulnerabilities

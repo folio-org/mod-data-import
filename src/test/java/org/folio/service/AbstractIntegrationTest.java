@@ -13,8 +13,10 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.service.config.ApplicationTestConfig;
 import org.folio.spring.SpringContextUtil;
@@ -62,7 +64,9 @@ public abstract class AbstractIntegrationTest {
     final DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put(HTTP_PORT, port));
     vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
       try {
-        tenantClient.postTenant(null, res2 -> async.complete());
+        TenantAttributes tenantAttributes = new TenantAttributes();
+        tenantAttributes.setModuleTo(PomReader.INSTANCE.getModuleName());
+        tenantClient.postTenant(tenantAttributes, res2 -> async.complete());
       } catch (Exception e) {
         throw new RuntimeException(e);
       }

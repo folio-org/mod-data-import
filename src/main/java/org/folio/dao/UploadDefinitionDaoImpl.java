@@ -21,7 +21,7 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.CQL2PgJSON;
 
 import javax.ws.rs.NotFoundException;
 import java.text.SimpleDateFormat;
@@ -87,7 +87,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
         .append(PostgresClient.convertToPsqlStandard(tenantId))
         .append(".")
         .append(UPLOAD_DEFINITION_TABLE)
-        .append(" WHERE _id ='")
+        .append(" WHERE id ='")
         .append(uploadDefinitionId).append("' LIMIT 1 FOR UPDATE;");
       pgClientFactory.createInstance(tenantId).select(tx, selectUploadDefinitionQuery.toString(), selectFuture);
       return selectFuture;

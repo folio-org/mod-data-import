@@ -71,7 +71,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   }
 
   @Override
-  public void process(JsonObject jsonRequest, JsonObject jsonParams) { //NOSONAR
+  public void process(JsonObject jsonRequest, JsonObject jsonParams, boolean defaultMapping) { //NOSONAR
     succeededFuture().setHandler(v -> {
       ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
       UploadDefinition uploadDefinition = request.getUploadDefinition();
@@ -83,7 +83,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
         .compose(ar -> FileStorageServiceBuilder.build(this.vertx, params.getTenantId(), params))
         .compose(fileStorageService -> {
-          processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params);
+          processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params, defaultMapping);
           uploadDefinitionService.updateBlocking(
             uploadDefinition.getId(),
             definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
@@ -106,13 +106,14 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                             UploadDefinitionService uploadDefinitionService,
                             FileStorageService fileStorageService,
                             UploadDefinition uploadDefinition,
-                            OkapiConnectionParams params) {
+                            OkapiConnectionParams params,
+                            boolean defaultMapping) {
     this.executor.executeBlocking(filesBlockingFuture -> {
       BlockingCoordinator blockingCoordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_FILES_NUMBER);
       List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
       for (FileDefinition fileDefinition : fileDefinitions) {
         blockingCoordinator.acceptLock();
-        this.executor.executeBlocking(fileBlockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params).setHandler(ar -> {
+        this.executor.executeBlocking(fileBlockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params, defaultMapping).setHandler(ar -> {
             if (ar.failed()) {
               LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
               uploadDefinitionService.updateJobExecutionStatus(
@@ -142,7 +143,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   protected Future<Void> processFile(FileDefinition fileDefinition,
                                      JobProfileInfo jobProfile,
                                      FileStorageService fileStorageService,
-                                     OkapiConnectionParams params) {
+                                     OkapiConnectionParams params,
+                                     boolean defaultMapping) {
     Future<Void> resultFuture = Future.future();
     MutableInt recordsCounter = new MutableInt(0);
     BlockingCoordinator coordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_CHUNKS_NUMBER);
@@ -169,7 +171,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               .withCounter(recordsCounter.getValue())
               .withLast(false)
               .withTotal(totalRecords));
-          chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params));
+          chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping));
         } else {
           String errorMessage = "Can not send next chunk of file " + fileDefinition.getSourcePath();
           LOGGER.error(errorMessage);
@@ -189,7 +191,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               .withCounter(recordsCounter.getValue())
               .withLast(true)
               .withTotal(totalRecords));
-          postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params).setHandler(r -> {
+          postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping).setHandler(r -> {
             if (r.failed()) {
               String errorMessage = "File processing stopped. Can not send the last chunk of the file " + fileDefinition.getSourcePath();
               LOGGER.error(errorMessage);
@@ -240,11 +242,11 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @return Future
    */
   private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, AtomicBoolean canSendNextChunk,
-                                      BlockingCoordinator coordinator, OkapiConnectionParams params) {
+                                      BlockingCoordinator coordinator, OkapiConnectionParams params, boolean defaultMapping) {
     Future<Void> future = Future.future();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
-      client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, chunk, response -> {
+      client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, defaultMapping, chunk, response -> {
         coordinator.acceptUnlock();
         if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
           LOGGER.info("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getInitialRecords().size(), jobExecutionId);

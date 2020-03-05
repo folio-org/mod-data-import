@@ -12,12 +12,12 @@ import org.apache.commons.io.IOUtils;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.annotations.Stream;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
@@ -244,13 +244,13 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId(String uploadDefinitionId,
+  public void postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId(String uploadDefinitionId, boolean defaultMapping,
                                                                               ProcessFilesRqDto entity, Map<String, String> okapiHeaders,
                                                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         LOG.info("Starting file processing for upload definition {}", uploadDefinitionId);
-        fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders));
+        fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders), defaultMapping);
         Future.succeededFuture()
           .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
           .map(Response.class::cast)

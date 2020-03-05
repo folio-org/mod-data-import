@@ -149,6 +149,11 @@ resourceTypes:
         post:
           description: Starts the file processing
           is: [validate]
+          queryParameters:
+            defaultMapping:
+              description: Boolean value which defines a mapping
+              type: boolean
+              default: false
           body:
             application/json:
               type: processFilesRqDto

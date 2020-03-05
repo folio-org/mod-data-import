@@ -27,6 +27,6 @@ public interface FileProcessor { //NOSONAR
    * @param request request for processing
    * @param params  parameters necessary for connection to the OKAPI
    */
-  void process(JsonObject request, JsonObject params);
+  void process(JsonObject request, JsonObject params, boolean defaultMapping);
 
 }

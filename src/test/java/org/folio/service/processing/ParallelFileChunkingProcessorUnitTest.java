@@ -55,12 +55,13 @@ public class ParallelFileChunkingProcessorUnitTest {
   private static final String TENANT = "diku";
   private static final String TOKEN = "token";
 
-  private static final String RAW_RECORDS_SERVICE_URL = "/change-manager/jobExecutions/%s/records";
+  private static final String RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM = "/change-manager/jobExecutions/%s/records?defaultMapping=%s&";
   private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
   private static final String SOURCE_PATH_3 = "src/test/resources/ChalmersFOLIOExamples.json";
   private static final String SOURCE_PATH_4 = "src/test/resources/invalidJsonExample.json";
   private static final String SOURCE_PATH_5 = "src/test/resources/UChicago_SampleBibs.xml";
   private static final String SOURCE_PATH_6 = "src/test/resources/invalidUChicago_SampleBibs.xml";
+  private static final String DEFAULT_MAPPING_QUERY_PARAM = "defaultMapping";
 
   private static final int RECORDS_NUMBER = 62;
   private static final int CHUNKS_NUMBER = 2;
@@ -92,7 +93,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId,true))
       .willReturn(WireMock.noContent()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -111,7 +112,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     int expectedRequestsNumber = CHUNKS_NUMBER + 1;
 
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, true);
 
     /* then */
     future.setHandler(ar -> {
@@ -122,6 +123,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       int actualTotalRecordsNumber = 0;
       int actualLastChunkRecordsCounter = 0;
       for (LoggedRequest loggedRequest : requests) {
+        Assert.assertTrue(Boolean.valueOf(loggedRequest.queryParameter(DEFAULT_MAPPING_QUERY_PARAM).values().get(0)));
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
         assertSame(MARC_RAW, rawRecordsDto.getRecordsMetadata().getContentType());
         actualTotalRecordsNumber += rawRecordsDto.getInitialRecords().size();
@@ -142,7 +144,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Async async = context.async();
     String stubSourcePath = StringUtils.EMPTY;
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.serverError()));
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)
@@ -155,7 +157,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
     /* then */
     future.setHandler(ar -> {
       assertTrue(ar.failed());
@@ -171,7 +173,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Async async = context.async();
     String stubSourcePath = StringUtils.EMPTY;
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.serverError()));
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)
@@ -179,7 +181,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, null, null, null);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, null, null, null, false);
     /* then */
     future.setHandler(ar -> {
       assertTrue(ar.failed());
@@ -193,7 +195,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Async async = context.async();
     String stubSourcePath = StringUtils.EMPTY;
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.serverError()));
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)
@@ -205,7 +207,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, null);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, null, false);
     /* then */
     future.setHandler(ar -> {
       assertTrue(ar.failed());
@@ -219,7 +221,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Async async = context.async();
     String stubSourcePath = StringUtils.EMPTY;
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.serverError()));
     FileDefinition fileDefinition = new FileDefinition()
       .withSourcePath(stubSourcePath)
@@ -229,7 +231,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, null, null);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, null, null, false);
 
     /* then */
     future.setHandler(ar -> {
@@ -246,7 +248,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.notFound()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -262,7 +264,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
 
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
     future.setHandler(ar -> {
@@ -280,7 +282,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.serverError()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -296,7 +298,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
 
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
     future.setHandler(ar -> {
@@ -314,7 +316,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(RAW_RECORDS_SERVICE_URL + jobExecutionId)
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.serverError()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -329,7 +331,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
 
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
     future.setHandler(ar -> {
@@ -347,7 +349,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(RAW_RECORDS_SERVICE_URL + jobExecutionId)
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.serverError()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -363,7 +365,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
 
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
     future.setHandler(ar -> {
@@ -381,7 +383,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId,false))
       .willReturn(WireMock.noContent()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -400,7 +402,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     int expectedRequestsNumber = CHUNKS_NUMBER + 1;
 
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
     future.setHandler(ar -> {
@@ -411,6 +413,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       int actualTotalRecordsNumber = 0;
       int actualLastChunkRecordsCounter = 0;
       for (LoggedRequest loggedRequest : requests) {
+        Assert.assertFalse(Boolean.valueOf(loggedRequest.queryParameter(DEFAULT_MAPPING_QUERY_PARAM).values().get(0)));
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
         assertSame(MARC_JSON, rawRecordsDto.getRecordsMetadata().getContentType());
         actualTotalRecordsNumber += rawRecordsDto.getInitialRecords().size();
@@ -432,7 +435,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.noContent()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -448,7 +451,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_4));
 
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
     future.setHandler(ar -> {
@@ -464,7 +467,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.noContent()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -483,7 +486,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     int expectedRequestsNumber = CHUNKS_NUMBER + 1;
 
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
     future.setHandler(ar -> {
@@ -494,6 +497,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       int actualTotalRecordsNumber = 0;
       int actualLastChunkRecordsCounter = 0;
       for (LoggedRequest loggedRequest : requests) {
+        assertTrue(loggedRequest.queryParameter(DEFAULT_MAPPING_QUERY_PARAM).isPresent());
         RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
         assertSame(MARC_XML, rawRecordsDto.getRecordsMetadata().getContentType());
         actualTotalRecordsNumber += rawRecordsDto.getInitialRecords().size();
@@ -515,7 +519,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL, jobExecutionId))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.noContent()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -531,7 +535,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_6));
 
     /* when */
-    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
     future.setHandler(ar -> {

@@ -1,4 +1,4 @@
-## 2019-12-27 v1.9.0-SNAPSHOT
+## 2020-03-13 v1.9.0
 * Updated RMB version to 29.1.5
 * Added defaultMapping query param
 

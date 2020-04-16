@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-data-import</artifactId>
-  <version>1.9.0</version>
+  <version>1.9.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>

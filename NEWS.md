@@ -1,3 +1,6 @@
+## 2020-03-13 v1.9.1-SNAPSHOT
+* [MODDATAIMP-296](https://issues.folio.org/browse/MODDATAIMP-296) Added migration script to support RMB version update
+
 ## 2020-03-13 v1.9.0
 * Updated RMB version to 29.1.5
 * Added defaultMapping query param

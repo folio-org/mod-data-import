@@ -10,12 +10,24 @@
           "fieldName": "id",
           "tOps": "ADD"
         }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
       ]
     },
     {
       "tableName": "file_extensions",
       "fromModuleVersion": "mod-data-import-1.9.0",
       "withMetadata": true,
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ],
       "uniqueIndex": [
         {
           "fieldName": "extension",
@@ -27,6 +39,12 @@
       "tableName": "default_file_extensions",
       "fromModuleVersion": "mod-data-import-1.9.0",
       "withMetadata": true,
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ],
       "uniqueIndex": [
         {
           "fieldName": "extension",
@@ -34,6 +52,13 @@
         }
       ],
       "customSnippetPath": "defaultFileExtensions.sql"
+    }
+  ],
+  "scripts": [
+    {
+      "run": "before",
+      "snippetPath": "upgrade_rmb_25.0-29.1.sql",
+      "fromModuleVersion": "mod-data-import-1.9.1"
     }
   ]
 }

@@ -1,4 +1,4 @@
-## 2020-03-13 v1.9.1-SNAPSHOT
+## 2020-03-23 v1.9.1
 * [MODDATAIMP-296](https://issues.folio.org/browse/MODDATAIMP-296) Added migration script to support RMB version update
 
 ## 2020-03-13 v1.9.0

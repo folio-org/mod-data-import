@@ -1,3 +1,6 @@
+## 2020-05-04 v1.10.0-SNAPSHOT
+* [MODDATAIMP-300](https://issues.folio.org/browse/MODDATAIMP-300) Updated marc4j version to 2.9.1
+
 ## 2020-03-23 v1.9.1
 * [MODDATAIMP-296](https://issues.folio.org/browse/MODDATAIMP-296) Added migration script to support RMB version update
 

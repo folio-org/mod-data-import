@@ -2,9 +2,9 @@ package org.folio.dao;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.ext.sql.SQLConnection;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.persist.SQLConnection;
 
 import java.util.Date;
 import java.util.Optional;
@@ -17,9 +17,9 @@ public interface UploadDefinitionDao {
   /**
    * Searches for {@link UploadDefinition} in database
    *
-   * @param query  CQL query
-   * @param offset offset
-   * @param limit  limit
+   * @param query    CQL query
+   * @param offset   offset
+   * @param limit    limit
    * @param tenantId tenant id
    * @return future with list of {@link UploadDefinition}
    */
@@ -28,7 +28,7 @@ public interface UploadDefinitionDao {
   /**
    * Searches for {@link UploadDefinition} by id
    *
-   * @param id UploadDefinition id
+   * @param id       UploadDefinition id
    * @param tenantId tenant id
    * @return future with optional {@link UploadDefinition}
    */
@@ -38,7 +38,7 @@ public interface UploadDefinitionDao {
    * Saves {@link UploadDefinition} to database
    *
    * @param uploadDefinition {@link UploadDefinition} to save
-   * @param tenantId tenant id
+   * @param tenantId         tenant id
    * @return future with id of saved {@link UploadDefinition}
    */
   Future<String> addUploadDefinition(UploadDefinition uploadDefinition, String tenantId);
@@ -48,7 +48,7 @@ public interface UploadDefinitionDao {
    *
    * @param tx               {@link SQLConnection} transaction's connection
    * @param uploadDefinition {@link UploadDefinition} to update
-   * @param tenantId tenant id
+   * @param tenantId         tenant id
    * @return future with updated {@link UploadDefinition}
    */
   Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition, String tenantId);
@@ -58,7 +58,7 @@ public interface UploadDefinitionDao {
    *
    * @param uploadDefinitionId - id of {@link UploadDefinition}
    * @param mutator            - callback for change {@link UploadDefinition} before save
-   * @param tenantId tenant id
+   * @param tenantId           tenant id
    * @return - future with updated {@link UploadDefinition}
    */
   Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator, String tenantId);
@@ -66,7 +66,7 @@ public interface UploadDefinitionDao {
   /**
    * Deletes {@link UploadDefinition} from database
    *
-   * @param id id of {@link UploadDefinition} to delete
+   * @param id       id of {@link UploadDefinition} to delete
    * @param tenantId tenant id
    * @return future with true is succeeded
    */
@@ -75,11 +75,11 @@ public interface UploadDefinitionDao {
   /**
    * Searches for {@link UploadDefinition} by status or with updatedDate greater then {@code lastUpdateDate}
    *
-   * @param status uploadDefinition status
+   * @param status         uploadDefinition status
    * @param lastUpdateDate time of last uploadDefinition changes
-   * @param offset offset
-   * @param limit limit
-   * @param tenantId tenant id
+   * @param offset         offset
+   * @param limit          limit
+   * @param tenantId       tenant id
    * @return future with list of {@link DefinitionCollection}
    */
   Future<DefinitionCollection> getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(UploadDefinition.Status status, Date lastUpdateDate, int offset, int limit, String tenantId);

@@ -1,6 +1,7 @@
 package org.folio.service.file;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -52,40 +53,40 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   @Override
   public Future<UploadDefinition> beforeFileSave(String fileId, String uploadDefinitionId, OkapiConnectionParams params) {
     return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef -> {
-      Future<UploadDefinition> future = Future.future();
+      Promise<UploadDefinition> promise = Promise.promise();
       Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDef, fileId);
       if (optionalFileDefinition.isPresent()) {
         uploadDef.setFileDefinitions(replaceFile(uploadDef.getFileDefinitions(), optionalFileDefinition.get().withStatus(FileDefinition.Status.UPLOADING)));
-        future.complete(uploadDef);
+        promise.complete(uploadDef);
       } else {
         String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
         logger.error(errorMessage);
-        future.fail(new NotFoundException(errorMessage));
+        promise.fail(new NotFoundException(errorMessage));
       }
-      return future;
+      return promise.future();
     }, params.getTenantId());
   }
 
   @Override
   public Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, OkapiConnectionParams params) {
-    Future<UploadDefinition> future = Future.future();
+    Promise<UploadDefinition> promise = Promise.promise();
     uploadDefinitionService.updateBlocking(fileDefinition.getUploadDefinitionId(), definition -> {
-      Future<UploadDefinition> updatingFuture = Future.future();
+      Promise<UploadDefinition> updatePromise = Promise.promise();
       definition.setFileDefinitions(replaceFile(definition.getFileDefinitions(),
         fileDefinition.withUploadedDate(new Date()).withStatus(FileDefinition.Status.UPLOADED)));
       setUploadDefinitionStatusAfterFileUpload(definition);
       uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
-        .setHandler(booleanAsyncResult -> {
+        .onComplete(booleanAsyncResult -> {
           if (booleanAsyncResult.failed()) {
             logger.error("Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
               fileDefinition.getJobExecutionId(), fileDefinition.getId(), booleanAsyncResult.cause());
           }
         });
-      updatingFuture.complete(definition);
-      future.complete(definition);
-      return updatingFuture;
+      updatePromise.complete(definition);
+      promise.complete(definition);
+      return updatePromise.future();
     }, params.getTenantId());
-    return future;
+    return promise.future();
   }
 
   @Override
@@ -104,7 +105,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   @Override
   public Future<Boolean> deleteFile(String id, String uploadDefinitionId, OkapiConnectionParams params) {
     return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDefinition -> {
-      Future<UploadDefinition> future = Future.future();
+      Promise<UploadDefinition> promise = Promise.promise();
       List<FileDefinition> definitionList = uploadDefinition.getFileDefinitions();
       Optional<FileDefinition> optionalFileDefinition = definitionList
         .stream()
@@ -112,13 +113,13 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
       if (optionalFileDefinition.isPresent()) {
         FileDefinition fileDefinition = optionalFileDefinition.get();
         uploadDefinitionService.deleteFile(fileDefinition, params)
-          .setHandler(deleteFileResult -> {
+          .onComplete(deleteFileResult -> {
             if (deleteFileResult.succeeded()) {
               definitionList.remove(fileDefinition);
               uploadDefinition.setFileDefinitions(definitionList);
-              future.complete(uploadDefinition);
+              promise.complete(uploadDefinition);
               uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
-                .setHandler(updateStatusResult -> {
+                .onComplete(updateStatusResult -> {
                   if (updateStatusResult.failed()) {
                     logger.error(
                       "Couldn't update JobExecution status with id {} to DISCARDED after file with id {} was deleted",
@@ -126,15 +127,15 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
                   }
                 });
             } else {
-              future.fail(deleteFileResult.cause());
+              promise.fail(deleteFileResult.cause());
             }
           });
       } else {
         String errorMessage = String.format("FileDefinition with id %s was not fount", id);
         logger.error(errorMessage);
-        future.fail(errorMessage);
+        promise.fail(errorMessage);
       }
-      return future;
+      return promise.future();
     }, params.getTenantId()).map(Objects::nonNull);
   }
 

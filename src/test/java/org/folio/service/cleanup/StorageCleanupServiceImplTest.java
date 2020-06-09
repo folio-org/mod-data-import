@@ -46,7 +46,7 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
   private static File testFile = new File(STORAGE_PATH + "/" + "marc.mrc");
 
   @Autowired
-  private  UploadDefinitionDao uploadDefinitionDao;
+  private UploadDefinitionDao uploadDefinitionDao;
   @Autowired
   private StorageCleanupService storageCleanupService;
   private OkapiConnectionParams okapiParams;
@@ -114,13 +114,13 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
 
       Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
 
-      future.setHandler(ar -> {
+      future.onComplete(ar -> {
         Assert.assertTrue(ar.succeeded());
         Assert.assertTrue(ar.result());
         Assert.assertFalse(testFile.exists());
         async.complete();
       });
-      return Future.future();
+      return future;
     });
   }
 
@@ -134,13 +134,13 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
 
       Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
 
-      future.setHandler(ar -> {
+      future.onComplete(ar -> {
         Assert.assertTrue(ar.succeeded());
         Assert.assertTrue(ar.result());
         Assert.assertFalse(testFile.exists());
         async.complete();
       });
-      return Future.future();
+      return future;
     });
   }
 
@@ -151,13 +151,13 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
 
       Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
 
-      future.setHandler(ar -> {
+      future.onComplete(ar -> {
         Assert.assertTrue(ar.succeeded());
         Assert.assertFalse(ar.result());
         Assert.assertTrue(testFile.exists());
         async.complete();
       });
-      return Future.future();
+      return future;
     });
   }
 
@@ -170,12 +170,12 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
 
       Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
 
-      future.setHandler(ar -> {
+      future.onComplete(ar -> {
         context.assertTrue(ar.succeeded());
         Assert.assertFalse(ar.result());
         async.complete();
       });
-      return Future.future();
+      return future;
     });
   }
 

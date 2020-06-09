@@ -14,8 +14,8 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>29.1.5</raml-module-builder.version>
-    <vertx.version>3.8.4</vertx.version>
+    <raml-module-builder.version>30.0.2</raml-module-builder.version>
+    <vertx.version>3.9.1</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>3.3.0</rest-assured.version>
     <jackson.version>2.9.10.4</jackson.version>
@@ -154,7 +154,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.5.0</version>
+      <version>1.6.0</version>
       <type>jar</type>
     </dependency>
     <dependency>

@@ -1,12 +1,14 @@
 package org.folio.service.fileextension;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.sql.UpdateResult;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import org.folio.dao.FileExtensionDao;
 import org.folio.dao.FileExtensionDaoImpl;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -95,7 +97,7 @@ public class FileExtensionServiceImpl implements FileExtensionService {
   }
 
   @Override
-  public Future<UpdateResult> copyExtensionsFromDefault(String tenantId) {
+  public Future<RowSet<Row>> copyExtensionsFromDefault(String tenantId) {
     return fileExtensionDao.copyExtensionsFromDefault(tenantId);
   }
 
@@ -115,23 +117,23 @@ public class FileExtensionServiceImpl implements FileExtensionService {
    * @return Future with found UserInfo
    */
   private Future<UserInfo> lookupUser(String userId, OkapiConnectionParams params) {
-    Future<UserInfo> future = Future.future();
+    Promise<UserInfo> promise = Promise.promise();
     RestUtil.doRequest(params, GET_USER_URL + userId, HttpMethod.GET, null)
-      .setHandler(getUserResult -> {
-        if (RestUtil.validateAsyncResult(getUserResult, future)) {
+      .onComplete(getUserResult -> {
+        if (RestUtil.validateAsyncResult(getUserResult, promise)) {
           JsonObject response = getUserResult.result().getJson();
           if (!response.containsKey("totalRecords") || !response.containsKey("users")) {
-            future.fail("Error, missing field(s) 'totalRecords' and/or 'users' in user response object");
+            promise.fail("Error, missing field(s) 'totalRecords' and/or 'users' in user response object");
           } else {
             int recordCount = response.getInteger("totalRecords");
             if (recordCount > 1) {
               String errorMessage = "There are more then one user by requested user id : " + userId;
               LOGGER.error(errorMessage);
-              future.fail(errorMessage);
+              promise.fail(errorMessage);
             } else if (recordCount == 0) {
               String errorMessage = "No user found by user id :" + userId;
               LOGGER.error(errorMessage);
-              future.fail(errorMessage);
+              promise.fail(errorMessage);
             } else {
               JsonObject jsonUser = response.getJsonArray("users").getJsonObject(0);
               JsonObject userPersonalInfo = jsonUser.getJsonObject("personal");
@@ -139,22 +141,22 @@ public class FileExtensionServiceImpl implements FileExtensionService {
                 .withFirstName(userPersonalInfo.getString("firstName"))
                 .withLastName(userPersonalInfo.getString("lastName"))
                 .withUserName(jsonUser.getString("username"));
-              future.complete(userInfo);
+              promise.complete(userInfo);
             }
           }
         }
       });
-    return future;
+    return promise.future();
   }
 
   @Override
   public Future<DataTypeCollection> getDataTypes() {
-    Future<DataTypeCollection> future = Future.future();
+    Promise<DataTypeCollection> promise = Promise.promise();
     DataTypeCollection dataTypeCollection = new DataTypeCollection();
     dataTypeCollection.setDataTypes(Arrays.asList(DataType.values()));
     dataTypeCollection.setTotalRecords(DataType.values().length);
-    future.complete(dataTypeCollection);
-    return future;
+    promise.complete(dataTypeCollection);
+    return promise.future();
   }
 
   @Override

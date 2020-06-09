@@ -1,6 +1,7 @@
 package org.folio.service.storage;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -30,23 +31,23 @@ public class FileStorageServiceBuilder {
    * @return - new Service object
    */
   public static Future<FileStorageService> build(Vertx vertx, String tenantId, OkapiConnectionParams params) {
-    Future<FileStorageService> future = Future.future();
-    ConfigurationUtil.getPropertyByCode(SERVICE_STORAGE_PROPERTY_CODE, params).setHandler(result -> {
+    Promise<FileStorageService> promise = Promise.promise();
+    ConfigurationUtil.getPropertyByCode(SERVICE_STORAGE_PROPERTY_CODE, params).onComplete(result -> {
       if (result.failed() || result.result() == null || result.result().isEmpty()) {
         logger.warn("Request to mod-configuration was failed or property for lookup service is not define. Try to use default Local Storage!");
-        future.complete(new LocalFileStorageService(vertx, tenantId));
+        promise.complete(new LocalFileStorageService(vertx, tenantId));
         return;
       }
       String serviceCode = result.result();
       List<FileStorageService> availableServices = Collections.singletonList(new LocalFileStorageService(vertx, tenantId));
-      future.complete(availableServices
+      promise.complete(availableServices
         .stream()
         .filter(service -> service.getServiceName().equals(serviceCode))
         .findFirst()
         .orElse(new LocalFileStorageService(vertx, tenantId))
       );
     });
-    return future;
+    return promise.future();
   }
 
 }

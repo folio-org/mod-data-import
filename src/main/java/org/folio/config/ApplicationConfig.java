@@ -11,4 +11,5 @@ import org.springframework.context.annotation.Configuration;
   "org.folio.service.fileextension",
   "org.folio.service.upload",
   "org.folio.service.cleanup"})
-public class ApplicationConfig {}
+public class ApplicationConfig {
+}

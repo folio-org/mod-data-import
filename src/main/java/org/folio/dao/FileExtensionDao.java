@@ -1,7 +1,8 @@
 package org.folio.dao;
 
 import io.vertx.core.Future;
-import io.vertx.ext.sql.UpdateResult;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 
@@ -15,9 +16,9 @@ public interface FileExtensionDao {
   /**
    * Searches for {@link FileExtension} in database
    *
-   * @param query  query from URL
-   * @param offset starting index in a list of results
-   * @param limit  limit of records for pagination
+   * @param query    query from URL
+   * @param offset   starting index in a list of results
+   * @param limit    limit of records for pagination
    * @param tenantId tenant id tenant id
    * @return future with {@link FileExtensionCollection}
    */
@@ -26,7 +27,7 @@ public interface FileExtensionDao {
   /**
    * Searches for {@link FileExtension} by id
    *
-   * @param id FileExtension id
+   * @param id       FileExtension id
    * @param tenantId tenant id tenant id
    * @return future with optional {@link FileExtension}
    */
@@ -36,7 +37,7 @@ public interface FileExtensionDao {
    * Searches for {@link FileExtension} by its extension
    *
    * @param extension File Extension
-   * @param tenantId tenant id tenant id
+   * @param tenantId  tenant id tenant id
    * @return future with optional {@link FileExtension}
    */
   Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension, String tenantId);
@@ -52,7 +53,7 @@ public interface FileExtensionDao {
    * Saves {@link FileExtension} to database
    *
    * @param fileExtension FileExtension to save
-   * @param tenantId tenant id tenant id
+   * @param tenantId      tenant id tenant id
    * @return future
    */
   Future<String> addFileExtension(FileExtension fileExtension, String tenantId);
@@ -61,7 +62,7 @@ public interface FileExtensionDao {
    * Updates {@link FileExtension} in database
    *
    * @param fileExtension FileExtension to update
-   * @param tenantId tenant id
+   * @param tenantId      tenant id
    * @return future with {@link FileExtension}
    */
   Future<FileExtension> updateFileExtension(FileExtension fileExtension, String tenantId);
@@ -69,7 +70,7 @@ public interface FileExtensionDao {
   /**
    * Deletes {@link FileExtension} from database
    *
-   * @param id FileExtension id
+   * @param id       FileExtension id
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
@@ -78,16 +79,16 @@ public interface FileExtensionDao {
   /**
    * Restore default values for {@link FileExtension}
    *
-   * @return - future with restored file extensions
    * @param tenantId tenant id
+   * @return - future with restored file extensions
    */
   Future<FileExtensionCollection> restoreFileExtensions(String tenantId);
 
   /**
    * Copy values from default_file_extensions into the file_extensions table
    *
-   * @return - Update Result of coping execution
    * @param tenantId tenant id
+   * @return - RowSet<Row> result of copying execution
    */
-  Future<UpdateResult> copyExtensionsFromDefault(String tenantId);
+  Future<RowSet<Row>> copyExtensionsFromDefault(String tenantId);
 }

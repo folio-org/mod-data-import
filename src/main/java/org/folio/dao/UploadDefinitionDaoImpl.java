@@ -2,14 +2,15 @@ package org.folio.dao;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.sql.ResultSet;
-import io.vertx.ext.sql.SQLConnection;
-import io.vertx.ext.sql.UpdateResult;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.time.TimeZones;
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -17,11 +18,11 @@ import org.folio.rest.jaxrs.model.UploadDefinition.Status;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.SQLConnection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-import org.folio.cql2pgjson.CQL2PgJSON;
 
 import javax.ws.rs.NotFoundException;
 import java.text.SimpleDateFormat;
@@ -33,7 +34,6 @@ import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
 @Repository
-@SuppressWarnings("squid:CallToDeprecatedMethod")
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
@@ -75,115 +75,116 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator, String tenantId) {
-    Future<UploadDefinition> future = Future.future();
-    String rollbackMessage = "Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId; //NOSONAR
-    Future<SQLConnection> tx = Future.future(); //NOSONAR
+    PostgresClient client = pgClientFactory.createInstance(tenantId);
+    Promise<UploadDefinition> promise = Promise.promise();
+    String rollbackMessage = "Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId;
+    Promise<SQLConnection> tx = Promise.promise();
     Future.succeededFuture()
       .compose(v -> {
-        pgClientFactory.createInstance(tenantId).startTx(tx.completer());
-        return tx;
+        client.startTx(tx.future());
+        return tx.future();
       }).compose(v -> {
-      Future<ResultSet> selectFuture = Future.future(); //NOSONAR
-      StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ") //NOSONAR
+      Promise<RowSet<Row>> selectPromise = Promise.promise();
+      StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ")
         .append(PostgresClient.convertToPsqlStandard(tenantId))
         .append(".")
         .append(UPLOAD_DEFINITION_TABLE)
         .append(" WHERE id ='")
         .append(uploadDefinitionId).append("' LIMIT 1 FOR UPDATE;");
-      pgClientFactory.createInstance(tenantId).select(tx, selectUploadDefinitionQuery.toString(), selectFuture);
-      return selectFuture;
+      client.select(tx.future(), selectUploadDefinitionQuery.toString(), selectPromise);
+      return selectPromise.future();
     }).compose(resultSet -> {
-      if (resultSet.getNumRows() != 1) {
+      if (resultSet.rowCount() != 1) {
         throw new NotFoundException("Upload Definition was not found. ID: " + uploadDefinitionId);
       }
-      UploadDefinition definition = new JsonObject(resultSet.getRows().get(0).getString("jsonb")) //NOSONAR
+      UploadDefinition definition = new JsonObject(resultSet.iterator().next().getValue("jsonb").toString())
         .mapTo(UploadDefinition.class);
       return mutator.mutate(definition);
-    }).compose(mutatedObject -> updateUploadDefinition(tx, mutatedObject, tenantId))
-      .setHandler(onUpdate -> {
+    }).compose(mutatedObject -> updateUploadDefinition(tx.future(), mutatedObject, tenantId))
+      .onComplete(onUpdate -> {
         if (onUpdate.succeeded()) {
-          pgClientFactory.createInstance(tenantId).endTx(tx, endTx ->
-            future.complete(onUpdate.result()));
+          client.endTx(tx.future(), endTx ->
+            promise.complete(onUpdate.result()));
         } else {
-          pgClientFactory.createInstance(tenantId).rollbackTx(tx, r -> {
+          client.rollbackTx(tx.future(), r -> {
             logger.error(rollbackMessage, onUpdate.cause());
-            future.fail(onUpdate.cause());
+            promise.fail(onUpdate.cause());
           });
         }
       });
-    return future;
+    return promise.future();
   }
 
   @Override
   public Future<DefinitionCollection> getUploadDefinitions(String query, int offset, int limit, String tenantId) {
-    Future<Results<UploadDefinition>> future = Future.future();
+    Promise<Results<UploadDefinition>> promise = Promise.promise();
     try {
       String[] fieldList = {"*"};
       CQLWrapper cql = getCQLWrapper(UPLOAD_DEFINITION_TABLE, query, limit, offset);
-      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, cql, true, false, future.completer());
+      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, cql, true, false, promise);
     } catch (Exception e) {
       logger.error("Error during getting UploadDefinitions from view", e);
-      future.fail(e);
+      promise.fail(e);
     }
-    return future.map(uploadDefinitionResults -> new DefinitionCollection()
+    return promise.future().map(uploadDefinitionResults -> new DefinitionCollection()
       .withUploadDefinitions(uploadDefinitionResults.getResults())
       .withTotalRecords(uploadDefinitionResults.getResultInfo().getTotalRecords()));
   }
 
   @Override
   public Future<Optional<UploadDefinition>> getUploadDefinitionById(String id, String tenantId) {
-    Future<Results<UploadDefinition>> future = Future.future();
+    Promise<Results<UploadDefinition>> promise = Promise.promise();
     try {
       Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id);
-      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), true, future.completer());
+      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), true, promise);
     } catch (Exception e) {
       logger.error("Error during get UploadDefinition by ID from view", e);
-      future.fail(e);
+      promise.fail(e);
     }
-    return future
+    return promise.future()
       .map(Results::getResults)
       .map(uploadDefinitions -> uploadDefinitions.isEmpty() ? Optional.empty() : Optional.of(uploadDefinitions.get(0)));
   }
 
   @Override
   public Future<String> addUploadDefinition(UploadDefinition uploadDefinition, String tenantId) {
-    Future<String> future = Future.future();
-    pgClientFactory.createInstance(tenantId).save(UPLOAD_DEFINITION_TABLE, uploadDefinition.getId(), uploadDefinition, future.completer());
-    return future;
+    Promise<String> promise = Promise.promise();
+    pgClientFactory.createInstance(tenantId).save(UPLOAD_DEFINITION_TABLE, uploadDefinition.getId(), uploadDefinition, promise);
+    return promise.future();
   }
 
   @Override
   public Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition, String tenantId) {
-    Future<UpdateResult> future = Future.future();
+    Promise<RowSet<Row>> promise = Promise.promise();
     try {
       CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + uploadDefinition.getId());
-      pgClientFactory.createInstance(tenantId).update(tx, UPLOAD_DEFINITION_TABLE, uploadDefinition, filter, true, future.completer());
+      pgClientFactory.createInstance(tenantId).update(tx, UPLOAD_DEFINITION_TABLE, uploadDefinition, filter, true, promise);
     } catch (Exception e) {
       logger.error("Error during updating UploadDefinition by ID", e);
-      future.fail(e);
+      promise.fail(e);
     }
-    return future.map(uploadDefinition);
+    return promise.future().map(uploadDefinition);
   }
 
   @Override
   public Future<Boolean> deleteUploadDefinition(String id, String tenantId) {
-    Future<UpdateResult> future = Future.future();
-    pgClientFactory.createInstance(tenantId).delete(UPLOAD_DEFINITION_TABLE, id, future.completer());
-    return future.map(updateResult -> updateResult.getUpdated() == 1);
+    Promise<RowSet<Row>> promise = Promise.promise();
+    pgClientFactory.createInstance(tenantId).delete(UPLOAD_DEFINITION_TABLE, id, promise);
+    return promise.future().map(updateResult -> updateResult.rowCount() == 1);
   }
 
   @Override
   public Future<DefinitionCollection> getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(Status status, Date lastUpdateDate, int offset, int limit, String tenantId) {
-    Future<Results<UploadDefinition>> future = Future.future();
+    Promise<Results<UploadDefinition>> promise = Promise.promise();
     try {
       String[] fieldList = {"*"};
       String queryFilter = getFilterByStatus(status, lastUpdateDate);
-      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, queryFilter, true, false, future.completer());
+      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, queryFilter, true, false, promise);
     } catch (Exception e) {
       logger.error("Error during getting UploadDefinitions by status and date", e);
-      future.fail(e);
+      promise.fail(e);
     }
-    return future.map(uploadDefinitionResults -> new DefinitionCollection()
+    return promise.future().map(uploadDefinitionResults -> new DefinitionCollection()
       .withUploadDefinitions(uploadDefinitionResults.getResults())
       .withTotalRecords(uploadDefinitionResults.getResultInfo().getTotalRecords()));
   }

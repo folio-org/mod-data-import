@@ -12,12 +12,12 @@ import org.apache.commons.io.IOUtils;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.annotations.Stream;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
@@ -68,7 +68,7 @@ public class DataImportImpl implements DataImport {
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        uploadDefinitionService.checkNewUploadDefinition(entity, tenantId).setHandler(errors -> {
+        uploadDefinitionService.checkNewUploadDefinition(entity, tenantId).onComplete(errors -> {
           if (errors.failed()) {
             LOG.error(UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE, errors.cause());
             asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
@@ -80,12 +80,11 @@ public class DataImportImpl implements DataImport {
               .map((Response) PostDataImportUploadDefinitionsResponse
                 .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionsResponse.headersFor201()))
               .otherwise(ExceptionHelper::mapExceptionToResponse)
-              .setHandler(asyncResultHandler);
+              .onComplete(asyncResultHandler);
           }
         });
       } catch (Exception e) {
-        asyncResultHandler.handle(Future.succeededFuture(
-          ExceptionHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -99,10 +98,9 @@ public class DataImportImpl implements DataImport {
           .map(GetDataImportUploadDefinitionsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        asyncResultHandler.handle(Future.succeededFuture(
-          ExceptionHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -120,10 +118,9 @@ public class DataImportImpl implements DataImport {
           .map(PutDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        asyncResultHandler.handle(Future.succeededFuture(
-          ExceptionHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -137,7 +134,7 @@ public class DataImportImpl implements DataImport {
         uploadDefinitionService.deleteUploadDefinition(uploadDefinitionId, params)
           .map(deleted -> (Response) DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.respond204())
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Error while deleting upload definition", e);
         asyncResultHandler.handle(Future.succeededFuture(
@@ -158,10 +155,9 @@ public class DataImportImpl implements DataImport {
           .map(GetDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        asyncResultHandler.handle(Future.succeededFuture(
-          ExceptionHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -176,10 +172,9 @@ public class DataImportImpl implements DataImport {
           .map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdResponse::respond201WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        asyncResultHandler.handle(Future.succeededFuture(
-          ExceptionHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -192,7 +187,7 @@ public class DataImportImpl implements DataImport {
       vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId, params)
         .map(deleted -> (Response) DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204())
         .otherwise(ExceptionHelper::mapExceptionToResponse)
-        .setHandler(asyncResultHandler));
+        .onComplete(asyncResultHandler));
     } catch (Exception e) {
       LOG.error("Error during file delete", e);
       asyncResultHandler.handle(Future.succeededFuture(
@@ -231,10 +226,9 @@ public class DataImportImpl implements DataImport {
       }
       responseFuture.map(Response.class::cast)
         .otherwise(ExceptionHelper::mapExceptionToResponse)
-        .setHandler(asyncResultHandler);
+        .onComplete(asyncResultHandler);
     } catch (Exception e) {
-      asyncResultHandler.handle(Future.succeededFuture(
-        ExceptionHelper.mapExceptionToResponse(e)));
+      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
     }
   }
 
@@ -254,10 +248,9 @@ public class DataImportImpl implements DataImport {
         Future.succeededFuture()
           .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
           .map(Response.class::cast)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        asyncResultHandler.handle(Future.succeededFuture(
-          ExceptionHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -271,7 +264,7 @@ public class DataImportImpl implements DataImport {
           .map(GetDataImportFileExtensionsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to get all file extensions", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -284,7 +277,7 @@ public class DataImportImpl implements DataImport {
                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        validateFileExtension(entity).setHandler(errors -> {
+        validateFileExtension(entity).onComplete(errors -> {
           if (errors.failed()) {
             LOG.error(FILE_EXTENSION_VALIDATE_ERROR_MESSAGE, errors.cause());
             asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
@@ -295,7 +288,7 @@ public class DataImportImpl implements DataImport {
               .map((Response) PostDataImportFileExtensionsResponse
                 .respond201WithApplicationJson(entity, PostDataImportFileExtensionsResponse.headersFor201()))
               .otherwise(ExceptionHelper::mapExceptionToResponse)
-              .setHandler(asyncResultHandler);
+              .onComplete(asyncResultHandler);
           }
         });
       } catch (Exception e) {
@@ -316,7 +309,7 @@ public class DataImportImpl implements DataImport {
           .map(GetDataImportFileExtensionsByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to get file extension by id", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -329,7 +322,7 @@ public class DataImportImpl implements DataImport {
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        validateFileExtension(entity).setHandler(errors -> {
+        validateFileExtension(entity).onComplete(errors -> {
           entity.setId(id);
           if (errors.failed()) {
             LOG.error(FILE_EXTENSION_VALIDATE_ERROR_MESSAGE, errors.cause());
@@ -340,7 +333,7 @@ public class DataImportImpl implements DataImport {
             fileExtensionService.updateFileExtension(entity, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
               .map(updatedEntity -> (Response) PutDataImportFileExtensionsByIdResponse.respond200WithApplicationJson(updatedEntity))
               .otherwise(ExceptionHelper::mapExceptionToResponse)
-              .setHandler(asyncResultHandler);
+              .onComplete(asyncResultHandler);
           }
         });
       } catch (Exception e) {
@@ -362,7 +355,7 @@ public class DataImportImpl implements DataImport {
               String.format("FileExtension with id '%s' was not found", id)))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to delete file extension", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -379,7 +372,7 @@ public class DataImportImpl implements DataImport {
           .map(defaultCollection -> (Response) PostDataImportFileExtensionsRestoreDefaultResponse
             .respond200WithApplicationJson(defaultCollection))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to restore file extensions", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -396,7 +389,7 @@ public class DataImportImpl implements DataImport {
           .map(GetDataImportDataTypesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to get all data types", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));

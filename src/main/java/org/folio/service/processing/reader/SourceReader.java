@@ -8,7 +8,8 @@ import java.util.List;
 /**
  * The root interface for traversing and partitioning elements of a source records.
  */
-public interface SourceReader {
+public interface
+SourceReader {
 
   /**
    * Returns the next list of source records in the iteration.

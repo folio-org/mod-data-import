@@ -5,7 +5,7 @@ import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
 import io.restassured.response.ValidatableResponse;
-import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
@@ -15,8 +15,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpStatus;
-import org.drools.core.util.StringUtils;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
@@ -373,7 +373,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     async.complete();
 
     Vertx vertx = Vertx.vertx();
-    Future<Object> future = Future.future();
+    Promise<Object> promise = Promise.promise();
     Async async2 = context.async();
     NetClient netClient = vertx.createNetClient();
     netClient.connect(port, "localhost", con -> {
@@ -384,7 +384,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       }
       int falseDataSize = 10;
       NetSocket socket = con.result();
-      socket.write("POST " + DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId  + " HTTP/1.1\r\n");
+      socket.write("POST " + DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId + " HTTP/1.1\r\n");
       socket.write("Content-Type: application/octet-stream\r\n");
       socket.write("Accept: application/json,text/plain\r\n");
       socket.write("x-okapi-tenant: " + TENANT_ID + "\r\n");
@@ -396,12 +396,12 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       vertx.setTimer(100, x -> socket.end());
       socket.endHandler(x -> {
         if (!async2.isCompleted()) {
-          future.complete();
+          promise.complete();
         }
       });
     });
 
-    future.setHandler(ar -> vertx.setTimer(100, e -> {
+    promise.future().onComplete(ar -> vertx.setTimer(100, e -> {
       RestAssured.given()
         .spec(spec)
         .when()

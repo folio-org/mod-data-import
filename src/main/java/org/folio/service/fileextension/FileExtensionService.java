@@ -1,7 +1,8 @@
 package org.folio.service.fileextension;
 
 import io.vertx.core.Future;
-import io.vertx.ext.sql.UpdateResult;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.DataType;
 import org.folio.rest.jaxrs.model.DataTypeCollection;
@@ -18,9 +19,9 @@ public interface FileExtensionService {
   /**
    * Searches for {@link FileExtension}
    *
-   * @param query  query from URL
-   * @param offset starting index in a list of results
-   * @param limit  limit of records for pagination
+   * @param query    query from URL
+   * @param offset   starting index in a list of results
+   * @param limit    limit of records for pagination
    * @param tenantId tenant id
    * @return future with {@link FileExtensionCollection}
    */
@@ -29,7 +30,7 @@ public interface FileExtensionService {
   /**
    * Searches for {@link FileExtension} by id
    *
-   * @param id FileExtension id
+   * @param id       FileExtension id
    * @param tenantId tenant id
    * @return future with optional {@link FileExtension}
    */
@@ -39,7 +40,7 @@ public interface FileExtensionService {
    * Searches for {@link FileExtension} by its extension
    *
    * @param extension File Extension
-   * @param tenantId tenant id
+   * @param tenantId  tenant id
    * @return future with optional {@link FileExtension}
    */
   Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension, String tenantId);
@@ -48,7 +49,7 @@ public interface FileExtensionService {
    * Saves {@link FileExtension}
    *
    * @param fileExtension FileExtension to save
-   * @param params Okapi connection params
+   * @param params        Okapi connection params
    * @return future with {@link FileExtension}
    */
   Future<FileExtension> addFileExtension(FileExtension fileExtension, OkapiConnectionParams params);
@@ -65,7 +66,7 @@ public interface FileExtensionService {
   /**
    * Deletes {@link FileExtension} by id
    *
-   * @param id FileExtension id
+   * @param id       FileExtension id
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
@@ -74,18 +75,18 @@ public interface FileExtensionService {
   /**
    * Restore default values for {@link FileExtension}
    *
-   * @return future with {@link FileExtensionCollection} that contains default values
    * @param tenantId tenant id
+   * @return future with {@link FileExtensionCollection} that contains default values
    */
   Future<FileExtensionCollection> restoreFileExtensions(String tenantId);
 
   /**
    * Copy values from default_file_extensions into the file_extensions table
    *
-   * @return - Update Result of coping execution
    * @param tenantId tenant id
+   * @return - RowSet<Row> result of copying execution
    */
-  Future<UpdateResult> copyExtensionsFromDefault(String tenantId);
+  Future<RowSet<Row>> copyExtensionsFromDefault(String tenantId);
 
   /**
    * Returns {@link DataType}
@@ -96,7 +97,7 @@ public interface FileExtensionService {
 
   /**
    * @param fileExtension - {@link FileExtension} object
-   * @param tenantId tenant id
+   * @param tenantId      tenant id
    * @return - is file extension exist in database
    */
   Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension, String tenantId);

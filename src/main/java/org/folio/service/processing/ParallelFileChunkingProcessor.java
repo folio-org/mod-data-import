@@ -2,6 +2,7 @@ package org.folio.service.processing;
 
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
@@ -72,25 +73,23 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   @Override
   public void process(JsonObject jsonRequest, JsonObject jsonParams, boolean defaultMapping) { //NOSONAR
-    succeededFuture().setHandler(v -> {
-      ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
-      UploadDefinition uploadDefinition = request.getUploadDefinition();
-      JobProfileInfo jobProfile = request.getJobProfileInfo();
-      OkapiConnectionParams params = new OkapiConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
-      UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
-      succeededFuture()
-        .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
-        .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
-        .compose(ar -> FileStorageServiceBuilder.build(this.vertx, params.getTenantId(), params))
-        .compose(fileStorageService -> {
-          processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params, defaultMapping);
-          uploadDefinitionService.updateBlocking(
-            uploadDefinition.getId(),
-            definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
-            params.getTenantId());
-          return succeededFuture();
-        });
-    });
+    ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
+    UploadDefinition uploadDefinition = request.getUploadDefinition();
+    JobProfileInfo jobProfile = request.getJobProfileInfo();
+    OkapiConnectionParams params = new OkapiConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
+    UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
+    succeededFuture()
+      .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
+      .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
+      .compose(ar -> FileStorageServiceBuilder.build(this.vertx, params.getTenantId(), params))
+      .compose(fileStorageService -> {
+        processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params, defaultMapping);
+        uploadDefinitionService.updateBlocking(
+          uploadDefinition.getId(),
+          definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
+          params.getTenantId());
+        return succeededFuture();
+      });
   }
 
   /**
@@ -113,18 +112,19 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
       for (FileDefinition fileDefinition : fileDefinitions) {
         blockingCoordinator.acceptLock();
-        this.executor.executeBlocking(fileBlockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params, defaultMapping).setHandler(ar -> {
-            if (ar.failed()) {
-              LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-              uploadDefinitionService.updateJobExecutionStatus(
-                fileDefinition.getJobExecutionId(),
-                new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
-                params);
-            } else {
-              LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
-            }
-            blockingCoordinator.acceptUnlock();
-          }),
+        this.executor.executeBlocking(fileBlockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params, defaultMapping)
+            .onComplete(ar -> {
+              if (ar.failed()) {
+                LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
+                uploadDefinitionService.updateJobExecutionStatus(
+                  fileDefinition.getJobExecutionId(),
+                  new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
+                  params);
+              } else {
+                LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+              }
+              blockingCoordinator.acceptUnlock();
+            }),
           false, null
         );
       }
@@ -145,7 +145,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                                      FileStorageService fileStorageService,
                                      OkapiConnectionParams params,
                                      boolean defaultMapping) {
-    Future<Void> resultFuture = Future.future();
+    Promise<Void> promise = Promise.promise();
     MutableInt recordsCounter = new MutableInt(0);
     BlockingCoordinator coordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_CHUNKS_NUMBER);
     try {
@@ -178,11 +178,11 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
           return Future.failedFuture(errorMessage);
         }
       }
-      CompositeFuture.all(chunkSentFutures).setHandler(ar -> {
+      CompositeFuture.all(chunkSentFutures).onComplete(ar -> {
         if (ar.failed()) {
           String errorMessage = "File processing stopped. Can not send chunks of the file " + fileDefinition.getSourcePath();
           LOGGER.error(errorMessage);
-          resultFuture.fail(errorMessage);
+          promise.fail(errorMessage);
         } else {
           // Sending the last chunk
           RawRecordsDto chunk = new RawRecordsDto()
@@ -191,24 +191,25 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               .withCounter(recordsCounter.getValue())
               .withLast(true)
               .withTotal(totalRecords));
-          postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping).setHandler(r -> {
-            if (r.failed()) {
-              String errorMessage = "File processing stopped. Can not send the last chunk of the file " + fileDefinition.getSourcePath();
-              LOGGER.error(errorMessage);
-              resultFuture.fail(errorMessage);
-            } else {
-              LOGGER.info("File " + fileDefinition.getSourcePath() + " has been successfully sent.");
-              resultFuture.complete();
-            }
-          });
+          postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping)
+            .onComplete(r -> {
+              if (r.failed()) {
+                String errorMessage = "File processing stopped. Can not send the last chunk of the file " + fileDefinition.getSourcePath();
+                LOGGER.error(errorMessage);
+                promise.fail(errorMessage);
+              } else {
+                LOGGER.info("File " + fileDefinition.getSourcePath() + " has been successfully sent.");
+                promise.complete();
+              }
+            });
         }
       });
     } catch (Exception e) {
       String errorMessage = String.format("Can not process file: %s. Cause: %s", fileDefinition.getSourcePath(), e.getMessage());
       LOGGER.error(errorMessage, e);
-      resultFuture.fail(errorMessage);
+      promise.fail(errorMessage);
     }
-    return resultFuture;
+    return promise.future();
   }
 
   /**
@@ -243,27 +244,27 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    */
   private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, AtomicBoolean canSendNextChunk,
                                       BlockingCoordinator coordinator, OkapiConnectionParams params, boolean defaultMapping) {
-    Future<Void> future = Future.future();
+    Promise<Void> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, defaultMapping, chunk, response -> {
         coordinator.acceptUnlock();
         if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
           LOGGER.info("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getInitialRecords().size(), jobExecutionId);
-          future.complete();
+          promise.complete();
         } else {
           canSendNextChunk.set(false);
           LOGGER.error("Error posting chunk of raw records for JobExecution with id {}", jobExecutionId, response.statusMessage());
-          future.fail(new HttpStatusException(response.statusCode(), "Error posting chunk of raw records"));
+          promise.fail(new HttpStatusException(response.statusCode(), "Error posting chunk of raw records"));
         }
       });
     } catch (Exception e) {
       coordinator.acceptUnlock();
       canSendNextChunk.set(false);
       LOGGER.error("Can not post chunk of raw records for JobExecution with id {}", jobExecutionId, e);
-      future.fail(e);
+      promise.fail(e);
     }
-    return future;
+    return promise.future();
   }
 
   /**
@@ -275,20 +276,20 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @return Future
    */
   private Future<Void> updateJobsProfile(List<JobExecution> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
-    Future<Void> future = Future.future();
+    Promise<Void> promise = Promise.promise();
     List<Future> updateJobProfileFutures = new ArrayList<>(jobs.size());
     for (JobExecution job : jobs) {
       updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
     }
-    CompositeFuture.all(updateJobProfileFutures).setHandler(updatedJobsProfileAr -> {
+    CompositeFuture.all(updateJobProfileFutures).onComplete(updatedJobsProfileAr -> {
       if (updatedJobsProfileAr.failed()) {
-        future.fail(updatedJobsProfileAr.cause());
+        promise.fail(updatedJobsProfileAr.cause());
       } else {
         LOGGER.info("All the child jobs have been updated by job profile, parent job {}", jobs.get(0).getParentJobId());
-        future.complete();
+        promise.complete();
       }
     });
-    return future;
+    return promise.future();
   }
 
   /**
@@ -300,22 +301,22 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @return Future
    */
   private Future<Void> updateJobProfile(String jobId, JobProfileInfo jobProfile, OkapiConnectionParams params) {
-    Future<Void> future = Future.future();
+    Promise<Void> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
         if (response.statusCode() != HttpStatus.HTTP_OK.toInt()) {
           LOGGER.error("Error updating job profile for JobExecution {}", jobId);
-          future.fail(new HttpStatusException(response.statusCode(), "Error updating JobExecution"));
+          promise.fail(new HttpStatusException(response.statusCode(), "Error updating JobExecution"));
         } else {
           LOGGER.info("Job profile for job {} successfully updated.", jobId);
-          future.complete();
+          promise.complete();
         }
       });
     } catch (Exception e) {
       LOGGER.error("Couldn't update jobProfile for JobExecution with id {}", jobId, e);
-      future.fail(e);
+      promise.fail(e);
     }
-    return future;
+    return promise.future();
   }
 }

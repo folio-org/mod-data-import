@@ -1,6 +1,7 @@
 package org.folio.service.storage;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -29,10 +30,10 @@ public class LocalFileStorageService extends AbstractFileStorageService {
 
   @Override
   public Future<FileDefinition> saveFile(byte[] data, FileDefinition fileDefinition, OkapiConnectionParams params) {
-    Future<FileDefinition> future = Future.future();
+    Promise<FileDefinition> promise = Promise.promise();
     String fileId = fileDefinition.getId();
     getStoragePath(FILE_STORAGE_PATH_CODE, fileDefinition, params)
-      .setHandler(pathReply -> {
+      .onComplete(pathReply -> {
         if (pathReply.succeeded()) {
           String path = pathReply.result();
           vertx.<Void>executeBlocking(b -> {
@@ -52,31 +53,31 @@ public class LocalFileStorageService extends AbstractFileStorageService {
             r -> {
               if (r.failed()) {
                 logger.error("Error during calculating path for file save. FileId: {}", fileId, r.cause());
-                future.fail(r.cause());
+                promise.fail(r.cause());
               } else {
                 logger.info("File part was saved to the storage. FileId: {}", fileId);
-                future.complete(fileDefinition);
+                promise.complete(fileDefinition);
               }
             });
         } else {
           logger.error("Error during calculating path for file save. FileId: {}", fileId, pathReply.cause());
-          future.fail(new BadRequestException(pathReply.cause()));
+          promise.fail(new BadRequestException(pathReply.cause()));
         }
       });
-    return future;
+    return promise.future();
   }
 
   @Override
   public Future<Boolean> deleteFile(FileDefinition fileDefinition) {
-    Future<Boolean> future = Future.future();
+    Promise<Boolean> promise = Promise.promise();
     try {
       fs.deleteBlocking(fileDefinition.getSourcePath());
-      future.complete(true);
+      promise.complete(true);
     } catch (Exception e) {
       logger.error("Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
-      future.complete(false);
+      promise.complete(false);
     }
-    return future;
+    return promise.future();
   }
 
   @Override

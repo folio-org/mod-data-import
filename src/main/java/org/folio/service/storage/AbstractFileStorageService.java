@@ -1,6 +1,7 @@
 package org.folio.service.storage;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.FileSystem;
 import org.folio.dataimport.util.ConfigurationUtil;
@@ -27,15 +28,15 @@ public abstract class AbstractFileStorageService implements FileStorageService {
   }
 
   protected Future<String> getStoragePath(String code, FileDefinition fileDefinition, OkapiConnectionParams params) {
-    Future<String> pathFuture = Future.future();
+    Promise<String> promise = Promise.promise();
     String suffix = "/" + fileDefinition.getUploadDefinitionId() + "/" + fileDefinition.getId();
-    ConfigurationUtil.getPropertyByCode(code, params).setHandler(configValue -> {
+    ConfigurationUtil.getPropertyByCode(code, params).onComplete(configValue -> {
       if (configValue.succeeded()) {
-        pathFuture.complete(configValue.result() + suffix);
+        promise.complete(configValue.result() + suffix);
       } else {
-        pathFuture.complete("./storage/upload" + suffix);
+        promise.complete("./storage/upload" + suffix);
       }
     });
-    return pathFuture;
+    return promise.future();
   }
 }

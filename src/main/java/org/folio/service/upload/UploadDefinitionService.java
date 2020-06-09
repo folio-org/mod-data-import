@@ -22,9 +22,9 @@ public interface UploadDefinitionService {
   /**
    * Searches for UploadDefinitions
    *
-   * @param query  CQL query
-   * @param offset offset
-   * @param limit  limit
+   * @param query    CQL query
+   * @param offset   offset
+   * @param limit    limit
    * @param tenantId tenant id
    * @return future with list of UploadDefinitions
    */
@@ -33,7 +33,7 @@ public interface UploadDefinitionService {
   /**
    * Searches for UploadDefinition by id
    *
-   * @param id UploadDefinition id
+   * @param id       UploadDefinition id
    * @param tenantId tenant id
    * @return future with optional UploadDefinition
    */
@@ -52,7 +52,7 @@ public interface UploadDefinitionService {
    *
    * @param uploadDefinitionId - id of {@link UploadDefinition}
    * @param mutator            - callback for change {@link UploadDefinition} before save
-   * @param tenantId tenant id
+   * @param tenantId           tenant id
    * @return - future with updated {@link UploadDefinition}
    */
   Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator, String tenantId);
@@ -69,7 +69,7 @@ public interface UploadDefinitionService {
    * Add File Definition into Upload Definition
    *
    * @param fileDefinition - new file definition to add
-   * @param tenantId tenant id
+   * @param tenantId       tenant id
    * @return future with updated UploadDefinition
    */
   Future<UploadDefinition> addFileDefinitionToUpload(FileDefinition fileDefinition, String tenantId);
@@ -97,7 +97,7 @@ public interface UploadDefinitionService {
    * Validate new UploadDefinition before saving it
    *
    * @param definition - object with new upload definition
-   * @param tenantId tenant id
+   * @param tenantId   tenant id
    * @return - {@link Errors} object with errors. Valid UploadDefinition if errors count is zero
    */
   Future<Errors> checkNewUploadDefinition(UploadDefinition definition, String tenantId);
@@ -106,7 +106,7 @@ public interface UploadDefinitionService {
    * Returns job executions by given upload definition
    *
    * @param uploadDefinition given upload definition, which jobs the method returns
-   * @param params OKAPI connection parameters
+   * @param params           OKAPI connection parameters
    * @return future with list of job executions
    */
   Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params);
@@ -114,10 +114,10 @@ public interface UploadDefinitionService {
   /**
    * Updates {@link FileDefinition} status by specified FileDefinition id
    *
-   * @param uploadDefinitionId  UploadDefinition id
-   * @param fileDefinitionId    FileDefinition id
-   * @param status              FileDefinition status
-   * @param tenantId            tenant id
+   * @param uploadDefinitionId UploadDefinition id
+   * @param fileDefinitionId   FileDefinition id
+   * @param status             FileDefinition status
+   * @param tenantId           tenant id
    * @return - future with {@link UploadDefinition} which contains updated {@link FileDefinition}
    */
   Future<UploadDefinition> updateFileDefinitionStatus(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId);

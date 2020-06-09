@@ -2,8 +2,8 @@ package org.folio.service.upload;
 
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -135,30 +135,30 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Future<UploadDefinition> addFileDefinitionToUpload(FileDefinition fileDefinition, String tenantId) {
     return uploadDefinitionDao.updateBlocking(fileDefinition.getUploadDefinitionId(), uploadDef -> {
-      Future<UploadDefinition> uploadDefFuture = Future.future();
+      Promise<UploadDefinition> promise = Promise.promise();
       uploadDef.withFileDefinitions(addNewFileDefinition(uploadDef.getFileDefinitions(), fileDefinition));
-      uploadDefFuture.complete(uploadDef);
-      return uploadDefFuture;
+      promise.complete(uploadDef);
+      return promise.future();
     }, tenantId);
   }
 
   @Override
   public Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, OkapiConnectionParams params) {
-    Future<Boolean> future = Future.future();
+    Promise<Boolean> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.putChangeManagerJobExecutionsStatusById(jobExecutionId, status, response -> {
         if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
-          future.complete(true);
+          promise.complete(true);
         } else {
           logger.error("Error updating status of JobExecution with id {}", jobExecutionId, response.statusMessage());
-          future.fail(new HttpStatusException(response.statusCode(), "Error updating status of JobExecution"));
+          promise.fail(new HttpStatusException(response.statusCode(), "Error updating status of JobExecution"));
         }
       });
     } catch (Exception e) {
-      future.fail(e);
+      promise.fail(e);
     }
-    return future;
+    return promise.future();
   }
 
   @Override
@@ -252,13 +252,13 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .withUserId(Objects.nonNull(metadata) ? metadata.getCreatedByUserId() : null)
         .withSourceType(InitJobExecutionsRqDto.SourceType.FILES);
 
-    Future<UploadDefinition> future = Future.future();
+    Promise<UploadDefinition> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.postChangeManagerJobExecutions(initJobExecutionsRqDto, response -> {
         if (response.statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
           logger.error("Error creating new JobExecution for UploadDefinition with id {}", definition.getId(), response.statusMessage());
-          future.fail(new HttpStatusException(response.statusCode(), "Error creating new JobExecution"));
+          promise.fail(new HttpStatusException(response.statusCode(), "Error creating new JobExecution"));
         } else {
           response.bodyHandler(buffer -> {
             JsonObject responseBody = buffer.toJsonObject();
@@ -274,14 +274,14 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
                 });
             }
             definition.setMetaJobExecutionId(responseBody.getString("parentJobExecutionId"));
-            future.complete(definition);
+            promise.complete(definition);
           });
         }
       });
     } catch (Exception e) {
-      future.fail(e);
+      promise.fail(e);
     }
-    return future;
+    return promise.future();
   }
 
   private List<FileDefinition> addNewFileDefinition(List<FileDefinition> list, FileDefinition def) {
@@ -296,21 +296,21 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   private Future<UploadDefinition> checkUploadDefinitionBeforeSave(UploadDefinition definition) {
-    Future<UploadDefinition> future = Future.future();
+    Promise<UploadDefinition> promise = Promise.promise();
     if (definition.getMetaJobExecutionId() == null || definition.getMetaJobExecutionId().isEmpty()) {
-      future.fail(new BadRequestException());
+      promise.fail(new BadRequestException());
       logger.error("Cant save Upload Definition without MetaJobExecutionId");
-      return future;
+      return promise.future();
     }
     for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
       if (fileDefinition.getJobExecutionId() == null || fileDefinition.getJobExecutionId().isEmpty()) {
         logger.error("Cant save File Definition without JobExecutionId");
-        future.fail(new BadRequestException());
-        return future;
+        promise.fail(new BadRequestException());
+        return promise.future();
       }
     }
-    future.complete(definition);
-    return future;
+    promise.complete(definition);
+    return promise.future();
   }
 
   @Override
@@ -331,41 +331,41 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   private Future<JobExecutionCollection> getChildrenJobExecutions(String jobExecutionParentId, OkapiConnectionParams params) {
-    Future<JobExecutionCollection> future = Future.future();
+    Promise<JobExecutionCollection> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, null, 0, response -> {
         if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
-          response.bodyHandler(buffer -> future.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecutionCollection.class)));
+          response.bodyHandler(buffer -> promise.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecutionCollection.class)));
         } else {
           String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
           logger.error(errorMessage);
-          future.fail(errorMessage);
+          promise.fail(errorMessage);
         }
       });
     } catch (Exception e) {
-      future.fail(e);
+      promise.fail(e);
     }
-    return future;
+    return promise.future();
   }
 
   private Future<JobExecution> getJobExecutionById(String jobExecutionId, OkapiConnectionParams params) {
-    Future<JobExecution> future = Future.future();
+    Promise<JobExecution> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.getChangeManagerJobExecutionsById(jobExecutionId, null, response -> {
         if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
-          response.bodyHandler(buffer -> future.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecution.class)));
+          response.bodyHandler(buffer -> promise.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecution.class)));
         } else {
           String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
           logger.error(errorMessage);
-          future.fail(errorMessage);
+          promise.fail(errorMessage);
         }
       });
     } catch (Exception e) {
-      future.fail(e);
+      promise.fail(e);
     }
-    return future;
+    return promise.future();
   }
 
   @Override

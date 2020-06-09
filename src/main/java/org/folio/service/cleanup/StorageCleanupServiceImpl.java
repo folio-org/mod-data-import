@@ -2,6 +2,7 @@ package org.folio.service.cleanup;
 
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -37,7 +38,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
 
   @Override
   public Future<Boolean> cleanStorage(OkapiConnectionParams params) {
-    Future<Boolean> future = Future.future();
+    Promise<Boolean> promise = Promise.promise();
 
     return FileStorageServiceBuilder.build(vertx, params.getTenantId(), params)
       .compose(fileStorageService -> getTimeWithoutUploadDefinitionChanges(params)
@@ -57,8 +58,8 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
           } else {
             LOGGER.info("Files have not been removed because files which satisfy search condition does not exist");
           }
-          future.complete(isFilesDeleted);
-          return future;
+          promise.complete(isFilesDeleted);
+          return promise.future();
         })
       );
   }

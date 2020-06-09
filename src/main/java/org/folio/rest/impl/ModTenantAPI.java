@@ -4,6 +4,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -49,7 +50,7 @@ public class ModTenantAPI extends TenantAPI {
       } else {
         initStorageCleanupService(headers, context);
         setupDefaultFileExtensions(headers)
-          .setHandler(event -> handlers.handle(ar));
+          .onComplete(event -> handlers.handle(ar));
       }
     }, context);
   }
@@ -66,14 +67,14 @@ public class ModTenantAPI extends TenantAPI {
   }
 
   private Future<Boolean> createDefExtensionsIfNeeded(FileExtensionCollection collection, FileExtensionService service, String tenantId) {
-    Future<Boolean> future = Future.future();
+    Promise<Boolean> promise = Promise.promise();
     if (collection.getTotalRecords() == 0) {
       return service.copyExtensionsFromDefault(tenantId)
-        .map(r -> r.getUpdated() > 0);
+        .map(r -> r.rowCount() > 0);
     } else {
-      future.complete(true);
+      promise.complete(true);
     }
-    return future;
+    return promise.future();
   }
 
   private void initStorageCleanupService(Map<String, String> headers, Context context) {
@@ -83,7 +84,7 @@ public class ModTenantAPI extends TenantAPI {
     ConfigurationUtil.getPropertyByCode(DELAY_TIME_BETWEEN_CLEANUP_CODE, params)
       .map(Long::parseLong)
       .otherwise(DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS)
-      .setHandler(delayTimeAr -> {
+      .onComplete(delayTimeAr -> {
         vertx.setPeriodic(delayTimeAr.result(), e -> {
           vertx.<Void>executeBlocking(b -> storageCleanupService.cleanStorage(params),
             cleanupAr -> {

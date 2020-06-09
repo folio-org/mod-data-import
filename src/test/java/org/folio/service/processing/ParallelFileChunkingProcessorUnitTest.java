@@ -13,7 +13,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.drools.core.util.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
@@ -93,7 +93,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId,true))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, true))
       .willReturn(WireMock.noContent()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -115,7 +115,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, true);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.succeeded());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       Assert.assertEquals(expectedRequestsNumber, requests.size());
@@ -159,7 +159,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     /* when */
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       assertFalse(requests.isEmpty());
@@ -183,7 +183,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     /* when */
     Future<Void> future = fileProcessor.processFile(fileDefinition, null, null, null, false);
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       async.complete();
     });
@@ -209,7 +209,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     /* when */
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, null, false);
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       async.complete();
     });
@@ -234,7 +234,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, null, null, false);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       async.complete();
     });
@@ -267,7 +267,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       assertFalse(requests.isEmpty());
@@ -301,7 +301,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       assertFalse(requests.isEmpty());
@@ -334,7 +334,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       assertTrue(requests.isEmpty());
@@ -368,7 +368,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       assertTrue(requests.isEmpty());
@@ -383,7 +383,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     String stubSourcePath = StringUtils.EMPTY;
 
     String jobExecutionId = UUID.randomUUID().toString();
-    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId,false))
+    WireMock.stubFor(WireMock.post(String.format(RAW_RECORDS_SERVICE_URL_WITH_QUERY_PARAM, jobExecutionId, false))
       .willReturn(WireMock.noContent()));
 
     FileDefinition fileDefinition = new FileDefinition()
@@ -405,7 +405,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.succeeded());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       Assert.assertEquals(expectedRequestsNumber, requests.size());
@@ -454,7 +454,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       async.complete();
     });
@@ -489,7 +489,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.succeeded());
       List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
       Assert.assertEquals(expectedRequestsNumber, requests.size());
@@ -538,7 +538,7 @@ public class ParallelFileChunkingProcessorUnitTest {
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams, false);
 
     /* then */
-    future.setHandler(ar -> {
+    future.onComplete(ar -> {
       assertTrue(ar.failed());
       async.complete();
     });

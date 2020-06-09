@@ -1,14 +1,14 @@
 package org.folio.service.processing.reader;
 
+import org.apache.commons.io.FilenameUtils;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
+
+import java.io.File;
+
 import static java.util.Optional.ofNullable;
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.service.processing.reader.MarcJsonReader.JSON_EXTENSION;
 import static org.folio.service.processing.reader.MarcXmlReader.XML_EXTENSION;
-
-import java.io.File;
-
-import org.apache.commons.io.FilenameUtils;
-import org.folio.rest.jaxrs.model.JobProfileInfo;
 
 /**
  * Builds source reader depending on job profile type

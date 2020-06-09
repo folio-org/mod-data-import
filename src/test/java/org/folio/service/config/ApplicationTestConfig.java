@@ -8,4 +8,5 @@ import org.springframework.context.annotation.Configuration;
   "org.folio.dao",
   "org.folio.service.cleanup",
   "org.folio.service.storage"})
-public class ApplicationTestConfig {}
+public class ApplicationTestConfig {
+}

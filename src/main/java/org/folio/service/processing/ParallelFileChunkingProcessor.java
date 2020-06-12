@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.vertx.core.Future.succeededFuture;
+import static java.lang.String.format;
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
@@ -115,7 +116,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         this.executor.executeBlocking(fileBlockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params, defaultMapping)
             .onComplete(ar -> {
               if (ar.failed()) {
-                LOGGER.error("Can not process file {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
+                LOGGER.error("File was processed with errors {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
                 uploadDefinitionService.updateJobExecutionStatus(
                   fileDefinition.getJobExecutionId(),
                   new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
@@ -173,39 +174,38 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               .withTotal(totalRecords));
           chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping));
         } else {
-          String errorMessage = "Can not send next chunk of file " + fileDefinition.getSourcePath();
+          String errorMessage = "Can not send next chunk of file. It was skipped " + fileDefinition.getSourcePath();
           LOGGER.error(errorMessage);
-          return Future.failedFuture(errorMessage);
+          chunkSentFutures.add(Future.failedFuture(errorMessage));
         }
       }
       CompositeFuture.all(chunkSentFutures).onComplete(ar -> {
         if (ar.failed()) {
-          String errorMessage = "File processing stopped. Can not send chunks of the file " + fileDefinition.getSourcePath();
-          LOGGER.error(errorMessage);
-          promise.fail(errorMessage);
-        } else {
-          // Sending the last chunk
-          RawRecordsDto chunk = new RawRecordsDto()
-            .withRecordsMetadata(new RecordsMetadata()
-              .withContentType(reader.getContentType())
-              .withCounter(recordsCounter.getValue())
-              .withLast(true)
-              .withTotal(totalRecords));
-          postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping)
-            .onComplete(r -> {
-              if (r.failed()) {
-                String errorMessage = "File processing stopped. Can not send the last chunk of the file " + fileDefinition.getSourcePath();
-                LOGGER.error(errorMessage);
-                promise.fail(errorMessage);
-              } else {
-                LOGGER.info("File " + fileDefinition.getSourcePath() + " has been successfully sent.");
-                promise.complete();
-              }
-            });
+          String errorMessage = "File processing finished with errors. Can not send chunks of the file " + fileDefinition.getSourcePath();
+          LOGGER.error(errorMessage, ar.cause());
         }
+        // Sending the last chunk
+        RawRecordsDto chunk = new RawRecordsDto()
+          .withRecordsMetadata(new RecordsMetadata()
+            .withContentType(reader.getContentType())
+            .withCounter(recordsCounter.getValue())
+            .withLast(true)
+            .withTotal(totalRecords));
+        postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping)
+          .onComplete(r -> {
+            if (r.failed()) {
+              String errorMessage = "File processing stopped. Can not send the last chunk of the file " + fileDefinition.getSourcePath();
+              LOGGER.error(errorMessage);
+              promise.fail(errorMessage);
+            } else {
+              LOGGER.info("File " + fileDefinition.getSourcePath() + " has been successfully sent.");
+              promise.complete();
+            }
+          });
+
       });
     } catch (Exception e) {
-      String errorMessage = String.format("Can not process file: %s. Cause: %s", fileDefinition.getSourcePath(), e.getMessage());
+      String errorMessage = format("Can not process file: %s. Cause: %s", fileDefinition.getSourcePath(), e.getMessage());
       LOGGER.error(errorMessage, e);
       promise.fail(errorMessage);
     }
@@ -254,8 +254,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
           promise.complete();
         } else {
           canSendNextChunk.set(false);
-          LOGGER.error("Error posting chunk of raw records for JobExecution with id {}", jobExecutionId, response.statusMessage());
-          promise.fail(new HttpStatusException(response.statusCode(), "Error posting chunk of raw records"));
+          String errorMessage = format("Error posting chunk of raw records for JobExecution with id %s. Status code %s", jobExecutionId, response.statusMessage());
+          LOGGER.error(errorMessage);
+          promise.fail(new HttpStatusException(response.statusCode(), errorMessage));
         }
       });
     } catch (Exception e) {
@@ -306,7 +307,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     try {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
         if (response.statusCode() != HttpStatus.HTTP_OK.toInt()) {
-          LOGGER.error("Error updating job profile for JobExecution {}", jobId);
+          LOGGER.error("Error updating job profile for JobExecution {}. StatusCode: {}", jobId, response.statusMessage());
           promise.fail(new HttpStatusException(response.statusCode(), "Error updating JobExecution"));
         } else {
           LOGGER.info("Job profile for job {} successfully updated.", jobId);

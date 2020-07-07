@@ -55,7 +55,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
                 logger.error("Error during calculating path for file save. FileId: {}", fileId, r.cause());
                 promise.fail(r.cause());
               } else {
-                logger.info("File part was saved to the storage. FileId: {}", fileId);
+                logger.debug("File part was saved to the storage. FileId: {}", fileId);
                 promise.complete(fileDefinition);
               }
             });

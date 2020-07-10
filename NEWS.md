@@ -1,4 +1,4 @@
-## 2020-07-10 v1.10.1-SNAPSHOT
+## 2020-07-10 v1.10.1
 * [MODDATAIMP-309](https://issues.folio.org/browse/MODDATAIMP-309) Return from file reading when post chunk is unsuccessful
 
 ## 2020-06-12 v1.10.0

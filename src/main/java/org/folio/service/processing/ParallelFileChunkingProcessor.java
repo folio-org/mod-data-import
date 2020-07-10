@@ -174,9 +174,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
               .withTotal(totalRecords));
           chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping));
         } else {
-          String errorMessage = "Can not send next chunk of file. It was skipped " + fileDefinition.getSourcePath();
+          String errorMessage = "Can not send next chunks of file. They were skipped " + fileDefinition.getSourcePath();
           LOGGER.error(errorMessage);
           chunkSentFutures.add(Future.failedFuture(errorMessage));
+          break;
         }
       }
       CompositeFuture.all(chunkSentFutures).onComplete(ar -> {
@@ -250,7 +251,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, defaultMapping, chunk, response -> {
         coordinator.acceptUnlock();
         if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
-          LOGGER.info("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getInitialRecords().size(), jobExecutionId);
+          LOGGER.debug("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getInitialRecords().size(), jobExecutionId);
           promise.complete();
         } else {
           canSendNextChunk.set(false);

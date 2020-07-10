@@ -1,3 +1,6 @@
+## 2020-07-10 v1.10.1-SNAPSHOT
+* [MODDATAIMP-309](https://issues.folio.org/browse/MODDATAIMP-309) Return from file reading when post chunk is unsuccessful
+
 ## 2020-06-12 v1.10.0
 * [MODDATAIMP-300](https://issues.folio.org/browse/MODDATAIMP-300) Updated marc4j version to 2.9.1
 * Updated reference to raml-storage

@@ -163,6 +163,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       while (reader.hasNext()) {
         if (canSendNextChunk.get()) {
           coordinator.acceptLock();
+          if (!canSendNextChunk.get()) {
+            chunkSentFutures.add(Future.failedFuture("canSendNextChunk has already been cleared to false"));
+            break;
+          }
           List<InitialRecord> records = reader.next();
           recordsCounter.add(records.size());
           RawRecordsDto chunk = new RawRecordsDto()
@@ -245,11 +249,17 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    */
   private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, AtomicBoolean canSendNextChunk,
                                       BlockingCoordinator coordinator, OkapiConnectionParams params, boolean defaultMapping) {
+    if (!canSendNextChunk.get()) {
+      return Future.failedFuture("canSendNextChunk has already been cleared to false");
+    }
+
     Promise<Void> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
+
+      LOGGER.debug("About to send next chunk: {}", chunk.getRecordsMetadata().toString());
       client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, defaultMapping, chunk, response -> {
-        coordinator.acceptUnlock();
+        LOGGER.debug("Response received for cunk: {}", chunk.getRecordsMetadata().toString());
         if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
           LOGGER.debug("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getInitialRecords().size(), jobExecutionId);
           promise.complete();
@@ -259,10 +269,11 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
           LOGGER.error(errorMessage);
           promise.fail(new HttpStatusException(response.statusCode(), errorMessage));
         }
+        coordinator.acceptUnlock();
       });
     } catch (Exception e) {
-      coordinator.acceptUnlock();
       canSendNextChunk.set(false);
+      coordinator.acceptUnlock();
       LOGGER.error("Can not post chunk of raw records for JobExecution with id {}", jobExecutionId, e);
       promise.fail(e);
     }

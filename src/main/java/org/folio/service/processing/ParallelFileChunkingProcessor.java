@@ -161,29 +161,35 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       List<Future> chunkSentFutures = new ArrayList<>();
       int totalRecords = countTotalRecordsInFile(file, jobProfile);
       while (reader.hasNext()) {
+        boolean doBreak = false;
         if (canSendNextChunk.get()) {
           coordinator.acceptLock();
           if (!canSendNextChunk.get()) {
             chunkSentFutures.add(Future.failedFuture("canSendNextChunk has already been cleared to false"));
-            break;
+            doBreak = true;
+          } else {
+            List<InitialRecord> records = reader.next();
+            recordsCounter.add(records.size());
+            RawRecordsDto chunk = new RawRecordsDto()
+              .withInitialRecords(records)
+              .withRecordsMetadata(new RecordsMetadata()
+                .withContentType(reader.getContentType())
+                .withCounter(recordsCounter.getValue())
+                .withLast(false)
+                .withTotal(totalRecords));
+            chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping));
           }
-          List<InitialRecord> records = reader.next();
-          recordsCounter.add(records.size());
-          RawRecordsDto chunk = new RawRecordsDto()
-            .withInitialRecords(records)
-            .withRecordsMetadata(new RecordsMetadata()
-              .withContentType(reader.getContentType())
-              .withCounter(recordsCounter.getValue())
-              .withLast(false)
-              .withTotal(totalRecords));
-          chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping));
         } else {
           String errorMessage = "Can not send next chunks of file. They were skipped " + fileDefinition.getSourcePath();
           LOGGER.error(errorMessage);
           chunkSentFutures.add(Future.failedFuture(errorMessage));
+          doBreak = true;
+        }
+        if (doBreak) {
           break;
         }
       }
+
       CompositeFuture.all(chunkSentFutures).onComplete(ar -> {
         if (ar.failed()) {
           String errorMessage = "File processing finished with errors. Can not send chunks of the file " + fileDefinition.getSourcePath();

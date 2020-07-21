@@ -161,25 +161,35 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       List<Future> chunkSentFutures = new ArrayList<>();
       int totalRecords = countTotalRecordsInFile(file, jobProfile);
       while (reader.hasNext()) {
+        boolean doBreak = false;
         if (canSendNextChunk.get()) {
           coordinator.acceptLock();
-          List<InitialRecord> records = reader.next();
-          recordsCounter.add(records.size());
-          RawRecordsDto chunk = new RawRecordsDto()
-            .withInitialRecords(records)
-            .withRecordsMetadata(new RecordsMetadata()
-              .withContentType(reader.getContentType())
-              .withCounter(recordsCounter.getValue())
-              .withLast(false)
-              .withTotal(totalRecords));
-          chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping));
+          if (!canSendNextChunk.get()) {
+            chunkSentFutures.add(Future.failedFuture("canSendNextChunk has already been cleared to false"));
+            doBreak = true;
+          } else {
+            List<InitialRecord> records = reader.next();
+            recordsCounter.add(records.size());
+            RawRecordsDto chunk = new RawRecordsDto()
+              .withInitialRecords(records)
+              .withRecordsMetadata(new RecordsMetadata()
+                .withContentType(reader.getContentType())
+                .withCounter(recordsCounter.getValue())
+                .withLast(false)
+                .withTotal(totalRecords));
+            chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping));
+          }
         } else {
           String errorMessage = "Can not send next chunks of file. They were skipped " + fileDefinition.getSourcePath();
           LOGGER.error(errorMessage);
           chunkSentFutures.add(Future.failedFuture(errorMessage));
+          doBreak = true;
+        }
+        if (doBreak) {
           break;
         }
       }
+
       CompositeFuture.all(chunkSentFutures).onComplete(ar -> {
         if (ar.failed()) {
           String errorMessage = "File processing finished with errors. Can not send chunks of the file " + fileDefinition.getSourcePath();
@@ -245,11 +255,17 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    */
   private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, AtomicBoolean canSendNextChunk,
                                       BlockingCoordinator coordinator, OkapiConnectionParams params, boolean defaultMapping) {
+    if (!canSendNextChunk.get()) {
+      return Future.failedFuture("canSendNextChunk has already been cleared to false");
+    }
+
     Promise<Void> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
+
+      LOGGER.debug("About to send next chunk: {}", chunk.getRecordsMetadata().toString());
       client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, defaultMapping, chunk, response -> {
-        coordinator.acceptUnlock();
+        LOGGER.debug("Response received for cunk: {}", chunk.getRecordsMetadata().toString());
         if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
           LOGGER.debug("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getInitialRecords().size(), jobExecutionId);
           promise.complete();
@@ -259,10 +275,11 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
           LOGGER.error(errorMessage);
           promise.fail(new HttpStatusException(response.statusCode(), errorMessage));
         }
+        coordinator.acceptUnlock();
       });
     } catch (Exception e) {
-      coordinator.acceptUnlock();
       canSendNextChunk.set(false);
+      coordinator.acceptUnlock();
       LOGGER.error("Can not post chunk of raw records for JobExecution with id {}", jobExecutionId, e);
       promise.fail(e);
     }

@@ -1,3 +1,6 @@
+## 2020-07-22 v1.10.2
+* [MODDATAIMP-319](https://issues.folio.org/browse/MODDATAIMP-319) Fix Dom4j XXE vulnerability (CVE-2020-10683)
+
 ## 2020-07-10 v1.10.1
 * [MODDATAIMP-309](https://issues.folio.org/browse/MODDATAIMP-309) Return from file reading when post chunk is unsuccessful
 

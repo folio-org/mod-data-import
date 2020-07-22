@@ -29,7 +29,11 @@ public class MarcXmlReader implements SourceReader {
     this.chunkSize = chunkSize;
     recordsCounter = new MutableInt(0);
     try {
-      this.document = new SAXReader().read(file);
+      // SAXReader.createDefault() prevents XXE attacks by
+      // disabling external DTDs and External Entities
+      // https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-10683
+      // https://github.com/dom4j/dom4j/releases/tag/version-2.1.3
+      this.document = SAXReader.createDefault().read(file);
     } catch (DocumentException e) {
       LOGGER.error("Can not read the xml file: %s", e, file);
       throw new RecordsReaderException(e);

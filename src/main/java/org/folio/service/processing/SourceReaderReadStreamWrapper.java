@@ -196,7 +196,7 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
 
     record.addHeaders(kafkaHeaders);
 
-    record.addHeader("id", jobExecutionId);
+    record.addHeader("jobExecutionId", jobExecutionId);
     if (chunk.getRecordsMetadata().getLast()) {
       record.addHeader(END_SENTINEL, "true");
     }

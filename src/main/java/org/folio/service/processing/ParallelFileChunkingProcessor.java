@@ -49,10 +49,10 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
  * for further processing.
  */
 public class ParallelFileChunkingProcessor implements FileProcessor {
+  //TODO: make it an ENUM value
   public static final String DI_RAWMARCS_CHUNK_READ_EVENT_TYPE = "DI_RAWMARCS_CHUNK_READ";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
-
 
   private Vertx vertx;
 

@@ -712,7 +712,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     async.complete();
     async = context.async();
 
-    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null);
     fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson, false);
     async.complete();
     async = context.async();
@@ -779,7 +779,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     async.complete();
     async = context.async();
 
-    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null);
     fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson, false);
     async.complete();
     async = context.async();

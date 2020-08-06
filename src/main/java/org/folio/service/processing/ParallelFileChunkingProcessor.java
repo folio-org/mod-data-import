@@ -4,27 +4,25 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
+import io.vertx.kafka.client.producer.KafkaProducer;
 import org.apache.commons.collections4.list.UnmodifiableList;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.kafka.KafkaConfig;
+import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
-import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.processing.coordinator.BlockingCoordinator;
-import org.folio.service.processing.coordinator.QueuedBlockingCoordinator;
 import org.folio.service.processing.reader.SourceReader;
 import org.folio.service.processing.reader.SourceReaderBuilder;
 import org.folio.service.storage.FileStorageService;
@@ -40,7 +38,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.vertx.core.Future.succeededFuture;
 import static java.lang.String.format;
-import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
 
@@ -52,24 +49,21 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
  * for further processing.
  */
 public class ParallelFileChunkingProcessor implements FileProcessor {
+  public static final String DI_RAWMARCS_CHUNK_READ_EVENT_TYPE = "DI_RAWMARCS_CHUNK_READ";
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
-  private static final int THREAD_POOL_SIZE =
-    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.thread.pool.size", "20"));
-  private static final int BLOCKING_COORDINATOR_FILES_NUMBER =
-    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.blocking.coordinator.parallel.files.number", "1"));
-  private static final int BLOCKING_COORDINATOR_CHUNKS_NUMBER =
-    Integer.parseInt(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.blocking.coordinator.parallel.chunks.number", "10"));
+
 
   private Vertx vertx;
-  /* WorkerExecutor provides separate worker pool for code execution */
-  private WorkerExecutor executor;
+
+  private KafkaConfig kafkaConfig;
 
   public ParallelFileChunkingProcessor() {
   }
 
-  public ParallelFileChunkingProcessor(Vertx vertx) {
+  public ParallelFileChunkingProcessor(Vertx vertx, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
-    this.executor = this.vertx.createSharedWorkerExecutor("processing-files-thread-pool", THREAD_POOL_SIZE);
+    this.kafkaConfig = kafkaConfig;
   }
 
   @Override
@@ -108,28 +102,23 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                             UploadDefinition uploadDefinition,
                             OkapiConnectionParams params,
                             boolean defaultMapping) {
-    this.executor.executeBlocking(filesBlockingFuture -> {
-      BlockingCoordinator blockingCoordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_FILES_NUMBER);
-      List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
-      for (FileDefinition fileDefinition : fileDefinitions) {
-        blockingCoordinator.acceptLock();
-        this.executor.executeBlocking(fileBlockingFuture -> processFile(fileDefinition, jobProfile, fileStorageService, params, defaultMapping)
-            .onComplete(ar -> {
-              if (ar.failed()) {
-                LOGGER.error("File was processed with errors {}. Cause: {}", fileDefinition.getSourcePath(), ar.cause());
-                uploadDefinitionService.updateJobExecutionStatus(
-                  fileDefinition.getJobExecutionId(),
-                  new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
-                  params);
-              } else {
-                LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
-              }
-              blockingCoordinator.acceptUnlock();
-            }),
-          false, null
-        );
-      }
-    }, null);
+
+    List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
+    for (FileDefinition fileDefinition : fileDefinitions) {
+      vertx.runOnContext(v ->
+        processFile(fileDefinition, jobProfile, fileStorageService, params, defaultMapping).onComplete(par -> {
+            if (par.failed()) {
+              LOGGER.error("File was processed with errors {}. Cause: {}", fileDefinition.getSourcePath(), par.cause());
+              uploadDefinitionService.updateJobExecutionStatus(
+                fileDefinition.getJobExecutionId(),
+                new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
+                params);
+            } else {
+              LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+            }
+          }
+        ));
+    }
   }
 
   /**
@@ -146,81 +135,31 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                                      FileStorageService fileStorageService,
                                      OkapiConnectionParams params,
                                      boolean defaultMapping) {
-    Promise<Void> promise = Promise.promise();
-    MutableInt recordsCounter = new MutableInt(0);
-    BlockingCoordinator coordinator = new QueuedBlockingCoordinator(BLOCKING_COORDINATOR_CHUNKS_NUMBER);
-    try {
-      File file = fileStorageService.getFile(fileDefinition.getSourcePath());
-      SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
-      /*
-        If one of the dedicated handlers for sending chunks is failed, then all the other senders have to be aware of that
-        in a terms of the target file processing.
-        Using atomic variable because it's value stored in worker thread, but changes in event-loop thread.
-      */
-      AtomicBoolean canSendNextChunk = new AtomicBoolean(true);
-      List<Future> chunkSentFutures = new ArrayList<>();
-      int totalRecords = countTotalRecordsInFile(file, jobProfile);
-      while (reader.hasNext()) {
-        boolean doBreak = false;
-        if (canSendNextChunk.get()) {
-          coordinator.acceptLock();
-          if (!canSendNextChunk.get()) {
-            chunkSentFutures.add(Future.failedFuture("canSendNextChunk has already been cleared to false"));
-            doBreak = true;
-          } else {
-            List<InitialRecord> records = reader.next();
-            recordsCounter.add(records.size());
-            RawRecordsDto chunk = new RawRecordsDto()
-              .withInitialRecords(records)
-              .withRecordsMetadata(new RecordsMetadata()
-                .withContentType(reader.getContentType())
-                .withCounter(recordsCounter.getValue())
-                .withLast(false)
-                .withTotal(totalRecords));
-            chunkSentFutures.add(postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping));
-          }
-        } else {
-          String errorMessage = "Can not send next chunks of file. They were skipped " + fileDefinition.getSourcePath();
-          LOGGER.error(errorMessage);
-          chunkSentFutures.add(Future.failedFuture(errorMessage));
-          doBreak = true;
-        }
-        if (doBreak) {
-          break;
-        }
-      }
 
-      CompositeFuture.all(chunkSentFutures).onComplete(ar -> {
-        if (ar.failed()) {
-          String errorMessage = "File processing finished with errors. Can not send chunks of the file " + fileDefinition.getSourcePath();
-          LOGGER.error(errorMessage, ar.cause());
-        }
-        // Sending the last chunk
-        RawRecordsDto chunk = new RawRecordsDto()
-          .withRecordsMetadata(new RecordsMetadata()
-            .withContentType(reader.getContentType())
-            .withCounter(recordsCounter.getValue())
-            .withLast(true)
-            .withTotal(totalRecords));
-        postRawRecords(fileDefinition.getJobExecutionId(), chunk, canSendNextChunk, coordinator, params, defaultMapping)
-          .onComplete(r -> {
-            if (r.failed()) {
-              String errorMessage = "File processing stopped. Can not send the last chunk of the file " + fileDefinition.getSourcePath();
-              LOGGER.error(errorMessage);
-              promise.fail(errorMessage);
-            } else {
-              LOGGER.info("File " + fileDefinition.getSourcePath() + " has been successfully sent.");
-              promise.complete();
-            }
-          });
+    String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(), DI_RAWMARCS_CHUNK_READ_EVENT_TYPE);
 
-      });
-    } catch (Exception e) {
-      String errorMessage = format("Can not process file: %s. Cause: %s", fileDefinition.getSourcePath(), e.getMessage());
-      LOGGER.error(errorMessage, e);
-      promise.fail(errorMessage);
-    }
-    return promise.future();
+    File file = fileStorageService.getFile(fileDefinition.getSourcePath());
+    SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
+
+    int totalRecords = countTotalRecordsInFile(file, jobProfile);
+
+    SourceReaderReadStreamWrapper readStreamWrapper = new SourceReaderReadStreamWrapper(
+      vertx, reader, fileDefinition.getJobExecutionId(), totalRecords, params, 100, topicName);
+    readStreamWrapper.pause();
+
+    Promise<Void> processFilePromise = Promise.promise();
+    LOGGER.debug("About to start piping to KafkaProducer... jobProfile: " + jobProfile);
+    KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx, DI_RAWMARCS_CHUNK_READ_EVENT_TYPE + "_Producer", kafkaConfig.getProducerProps());
+    readStreamWrapper.pipeTo(producer, ar -> {
+      boolean succeeded = ar.succeeded();
+      LOGGER.debug("Data piping has been completed. ar.succeeded(): " + succeeded + " jobProfile: " + jobProfile);
+      LOGGER.debug("Closing KafkaProducer jobProfile: " + jobProfile);
+      producer.end(par -> LOGGER.debug("KafkaProducer has been closed jobProfile: " + jobProfile));
+      processFilePromise.handle(ar);
+    });
+
+    return processFilePromise.future();
+
   }
 
   /**
@@ -230,6 +169,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param jobProfile - job profile main info
    * @return total records in file;
    */
+  //TODO: just quite a contradictory method
   private int countTotalRecordsInFile(File file, JobProfileInfo jobProfile) {
     int total = 0;
     if (file == null || jobProfile == null) {
@@ -338,4 +278,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     }
     return promise.future();
   }
+
+
 }

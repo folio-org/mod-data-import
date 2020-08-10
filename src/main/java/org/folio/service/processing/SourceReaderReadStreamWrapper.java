@@ -46,7 +46,6 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
   private int recordsCounter = 0;
   private int messageCounter = 0;
 
-
   private Handler<Throwable> exceptionHandler;
   private Handler<Void> endHandler;
   private Handler<KafkaProducerRecord<String, String>> handler;
@@ -180,8 +179,9 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
   }
 
   private KafkaProducerRecord<String, String> createKafkaProducerRecord(RawRecordsDto chunk) throws IOException {
+    String correlationId = UUID.randomUUID().toString();
     Event event = new Event()
-      .withId(UUID.randomUUID().toString())
+      .withId(correlationId)
       .withEventType(DI_RAWMARCS_CHUNK_READ_EVENT_TYPE)
       .withEventPayload(ZIPArchiver.zip(Json.encode(chunk)))
       .withEventMetadata(new EventMetadata()
@@ -189,7 +189,8 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
         .withEventTTL(1)
         .withPublishedBy(PubSubClientUtils.constructModuleName()));
 
-    String key = String.valueOf(++messageCounter % maxDistributionNum);
+    int chunkNumber = ++messageCounter;
+    String key = String.valueOf(chunkNumber % maxDistributionNum);
 
     KafkaProducerRecord<String, String> record =
       KafkaProducerRecord.create(topicName, key, Json.encode(event));
@@ -197,11 +198,14 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
     record.addHeaders(kafkaHeaders);
 
     record.addHeader("jobExecutionId", jobExecutionId);
+    record.addHeader("correlationId", correlationId);
+    record.addHeader("chunkNumber", String.valueOf(chunkNumber));
+
     if (chunk.getRecordsMetadata().getLast()) {
       record.addHeader(END_SENTINEL, "true");
     }
 
-    LOGGER.debug("Next chunk has been created: messageCounter " + messageCounter +" record: " + record);
+    LOGGER.debug("Next chunk has been created: correlationId:" + correlationId + " chunkNumber:" + chunkNumber);
     return record;
   }
 

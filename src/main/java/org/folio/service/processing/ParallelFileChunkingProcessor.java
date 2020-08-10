@@ -1,14 +1,20 @@
 package org.folio.service.processing;
 
+import io.vertx.codegen.annotations.Nullable;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
+import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
+import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.commons.collections4.list.UnmodifiableList;
 import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -150,7 +156,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     Promise<Void> processFilePromise = Promise.promise();
     LOGGER.debug("About to start piping to KafkaProducer... jobProfile: " + jobProfile);
     KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx, DI_RAWMARCS_CHUNK_READ_EVENT_TYPE + "_Producer", kafkaConfig.getProducerProps());
-    readStreamWrapper.pipeTo(producer, ar -> {
+    readStreamWrapper.pipeTo(new WriteStreamWrapper(producer), ar -> {
       boolean succeeded = ar.succeeded();
       LOGGER.debug("Data piping has been completed. ar.succeeded(): " + succeeded + " jobProfile: " + jobProfile);
       LOGGER.debug("Closing KafkaProducer jobProfile: " + jobProfile);
@@ -279,5 +285,92 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     return promise.future();
   }
 
+  private static class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<String, String>> {
+    private final KafkaProducer<String, String> producer;
+
+    private WriteStreamWrapper(KafkaProducer<String, String> producer) {
+      this.producer = producer;
+    }
+
+    @Override
+    public WriteStream<KafkaProducerRecord<String, String>> exceptionHandler(Handler<Throwable> handler) {
+      producer.exceptionHandler(handler);
+      return this;
+    }
+
+    @Override
+    public WriteStream<KafkaProducerRecord<String, String>> write(KafkaProducerRecord<String, String> data) {
+      producer.write(data, ar -> {
+        String correlationId = null;
+        String chunkNumber = null;
+        List<KafkaHeader> headers = data.headers();
+        int size = headers.size();
+        for (KafkaHeader h : headers) {
+          if ("correlationId".equals(h.key())) {
+            correlationId = h.value().toString();
+          } else if ("chunkNumber".equals(h.key())) {
+            chunkNumber = h.value().toString();
+          }
+        }
+        if (ar.succeeded()) {
+          LOGGER.debug("Next chunk has been written: correlationId:" + correlationId + " chunkNumber:" + chunkNumber);
+        } else {
+          LOGGER.error("Next chunk has failed with errors correlationId:" + correlationId + " chunkNumber:" + chunkNumber, ar.cause());
+        }
+      });
+      return this;
+    }
+
+    @Override
+    public WriteStream<KafkaProducerRecord<String, String>> write(KafkaProducerRecord<String, String> data, Handler<AsyncResult<Void>> handler) {
+      producer.write(data, ar -> {
+        String correlationId = null;
+        String chunkNumber = null;
+        List<KafkaHeader> headers = data.headers();
+        int size = headers.size();
+        for (KafkaHeader h : headers) {
+          if ("correlationId".equals(h.key())) {
+            correlationId = h.value().toString();
+          } else if ("chunkNumber".equals(h.key())) {
+            chunkNumber = h.value().toString();
+          }
+        }
+        if (ar.succeeded()) {
+          LOGGER.debug("Next chunk has been written: correlationId:" + correlationId + " chunkNumber:" + chunkNumber);
+        } else {
+          LOGGER.error("Next chunk has failed with errors correlationId:" + correlationId + " chunkNumber:" + chunkNumber, ar.cause());
+        }
+        handler.handle(ar);
+      });
+      return this;
+    }
+
+    @Override
+    public void end() {
+      producer.end();
+    }
+
+    @Override
+    public void end(Handler<AsyncResult<Void>> handler) {
+      producer.end(handler);
+    }
+
+    @Override
+    public WriteStream<KafkaProducerRecord<String, String>> setWriteQueueMaxSize(int maxSize) {
+      producer.setWriteQueueMaxSize(maxSize);
+      return this;
+    }
+
+    @Override
+    public boolean writeQueueFull() {
+      return producer.writeQueueFull();
+    }
+
+    @Override
+    public WriteStream<KafkaProducerRecord<String, String>> drainHandler(@Nullable Handler<Void> handler) {
+      producer.drainHandler(handler);
+      return this;
+    }
+  }
 
 }

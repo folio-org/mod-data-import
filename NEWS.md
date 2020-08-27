@@ -1,3 +1,6 @@
+## (IN PROGRESS) v1.11.0
+* Add batch-MARC-import script, `scripts/load-marc-data-into-folio.sh`
+
 ## 2020-06-12 v1.10.0
 * [MODDATAIMP-300](https://issues.folio.org/browse/MODDATAIMP-300) Updated marc4j version to 2.9.1
 * Updated reference to raml-storage

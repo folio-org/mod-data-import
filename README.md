@@ -123,3 +123,24 @@ Secret button sends a request to /data-import/uploadDefinitions/{id}/processFile
 which is being created in module converter-storage only if it is deployed in test mode.
 Information about how to run module converter-storage in test mode can be find by reference 
 in [Sample data section] (https://github.com/folio-org/mod-data-import-converter-storage#sample-data)
+
+## Script to upload a batch of MARC records
+
+[The `scripts` directory](scripts) contains a shell-script, `load-marc-data-into-folio.sh`, and a file with a sample of 100 MARC records, `sample100.marc`. This script can be used to upload any batch of MARC files automatically, using the same sequence of WSAPI operations as the Secret Button. First, login to a FOLIO backend service using [the Okapi command-line utility](https://github.com/thefrontside/okapi.rb) or any other means that leaves definitions of the Okapi URL, tenant and token in the `.okapi` file in the home directory. Then run the script, naming the MARC file as its own argument:
+```
+scripts$ echo OKAPI_URL=https://folio-snapshot-stable-okapi.dev.folio.org > ~/.okapi
+scripts$ echo OKAPI_TENANT=diku >> ~/.okapi
+scripts$ okapi login
+username: diku_admin
+password: ************
+Login successful. Token saved to /Users/mike/.okapi
+scripts$ ./load-marc-data-into-folio.sh sample100.marc 
+=== Stage 1 ===
+=== Stage 2 ===
+=== Stage 3 ===
+HTTP/2 204 
+date: Thu, 27 Aug 2020 11:55:28 GMT
+x-okapi-trace: POST mod-authtoken-2.6.0-SNAPSHOT.73 http://10.36.1.38:9178/data-import/uploadDefinitions/123a8d01-e389-4893-a53e-cc2de846471d/processFiles.. : 202 7078us
+x-okapi-trace: POST mod-data-import-1.11.0-SNAPSHOT.140 http://10.36.1.38:9175/data-import/uploadDefinitions/123a8d01-e389-4893-a53e-cc2de846471d/processFiles.. : 204 6354us
+scripts$ 
+```

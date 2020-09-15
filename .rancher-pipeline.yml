@@ -9,7 +9,7 @@ stages:
   - publishImageConfig:
       dockerfilePath: ./Dockerfile
       buildContext: .
-      tag: docker.dev.folio.org/mod-source-record-manager:folijet-latest
+      tag: docker.dev.folio.org/mod-data-import:folijet-latest
       pushRemote: true
       registry: docker.dev.folio.org
 - name: Deploy

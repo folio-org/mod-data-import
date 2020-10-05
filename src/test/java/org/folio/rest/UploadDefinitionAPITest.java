@@ -4,6 +4,12 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.HeaderConfig;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.filter.Filter;
+import io.restassured.http.ContentType;
+import io.restassured.internal.RequestSpecificationImpl;
 import io.restassured.response.ValidatableResponse;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -23,6 +29,7 @@ import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.tools.utils.JwtUtils;
 import org.folio.service.processing.FileProcessor;
 import org.hamcrest.Matchers;
 import org.junit.After;
@@ -30,9 +37,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import javax.crypto.Mac;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Objects;
@@ -43,6 +53,7 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.DefaultFileExtensionAPITest.FILE_EXTENSION_DEFAULT;
+import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.ERROR;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.NEW;
@@ -201,6 +212,43 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
       .log().all();
+    async.complete();
+  }
+
+  @Test
+  public void uploadDefinitionGetByUserIdFromToken(TestContext context) {
+    Async async = context.async();
+    String expectedUserId = UUID.randomUUID().toString();
+    String token = getUnsecuredJwtWithUserId(expectedUserId);
+
+    Filter requestFilter = (requestSpec, responseSpec, ctx) -> {
+      requestSpec.removeHeader(OKAPI_USERID_HEADER);
+      return ctx.next(requestSpec, responseSpec);
+    };
+
+    String id = RestAssured.given()
+      .spec(spec)
+      .header(OKAPI_TOKEN_HEADER, token)
+      .filter(requestFilter)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .log().all().extract().body().jsonPath().get("id");
+
+    RestAssured.given()
+      .spec(spec)
+      .header(OKAPI_TOKEN_HEADER, token)
+      .filter(requestFilter)
+      .when()
+      .get(DEFINITION_PATH + "?query=status == NEW")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .log().all()
+      .body("totalRecords", is(1))
+      .body("uploadDefinitions[0].id", is(id))
+      .body("uploadDefinitions[0].metadata.createdByUserId", is(expectedUserId));
     async.complete();
   }
 
@@ -1130,6 +1178,18 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("total_records", is(2));
     async.complete();
+  }
+
+  private String getUnsecuredJwtWithUserId(String userId) {
+    String header = new JsonObject().put("alg", "none").encode();
+    String payload = new JsonObject()
+      .put("user_id", userId)
+      .put("tenant", TENANT_ID)
+      .encode();
+
+    String encodedHeader = Base64.getEncoder().encodeToString(header.getBytes(StandardCharsets.UTF_8));
+    String encodedPayload = Base64.getEncoder().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    return String.format("%s.%s.", encodedHeader, encodedPayload);
   }
 }
 

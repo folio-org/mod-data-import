@@ -1,3 +1,6 @@
+## 2020-10-05 v1.10.3
+* [MODDATAIMP-338](https://issues.folio.org/browse/MODDATAIMP-338) Data-import job prevents all users from uploading a file and initiating another data-import job
+
 ## 2020-07-22 v1.10.2
 * [MODDATAIMP-319](https://issues.folio.org/browse/MODDATAIMP-319) Fix Dom4j XXE vulnerability (CVE-2020-10683)
 

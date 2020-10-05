@@ -9,8 +9,10 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -19,6 +21,7 @@ import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
+import org.folio.rest.tools.utils.JwtUtils;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
@@ -33,6 +36,7 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.Map;
 
+import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.RestVerticle.STREAM_ABORT;
 import static org.folio.rest.jaxrs.model.FileDefinition.Status.ERROR;
 
@@ -94,7 +98,8 @@ public class DataImportImpl implements DataImport {
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        uploadDefinitionService.getUploadDefinitions(query, offset, limit, tenantId)
+        String preparedQuery = addCreatedByConditionToCqlQuery(query, okapiHeaders);
+        uploadDefinitionService.getUploadDefinitions(preparedQuery, offset, limit, tenantId)
           .map(GetDataImportUploadDefinitionsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -414,5 +419,29 @@ public class DataImportImpl implements DataImport {
       .map(exist -> exist && errors.getTotalRecords() == 0
         ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_DUPLICATE_ERROR_CODE))).withTotalRecords(errors.getErrors().size() + 1)
         : errors);
+  }
+
+  private String addCreatedByConditionToCqlQuery(String cqlQuery, Map<String, String> okapiHeaders) {
+    String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
+    String token = okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN);
+    if (userId == null && token != null) {
+      userId = getUserIdFromToken(token);
+    }
+    if (StringUtils.isNotBlank(cqlQuery)) {
+      return String.format("metadata.createdByUserId == %s and %s", userId, cqlQuery);
+    }
+    return cqlQuery;
+  }
+
+  private String getUserIdFromToken(String token) {
+    try {
+      String[] split = token.split("\\.");
+      String json = JwtUtils.getJson(split[1]);
+      JsonObject tokenJson = new JsonObject(json);
+      return tokenJson.getString("user_id");
+    } catch (Exception e) {
+      LOG.warn("Invalid x-okapi-token: " + token, e);
+      return null;
+    }
   }
 }

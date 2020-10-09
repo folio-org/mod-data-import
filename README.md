@@ -87,12 +87,12 @@ curl -w '\n' -X POST -D -   \
     -d @target/TenantModuleDescriptor.json \
     http://localhost:9130/_/proxy/tenants/<tenant_name>/modules
 ```
-## **Module properties to set up at mod-configuration**
+## Module properties to set up at mod-configuration
 
-* **_data.import.storage.type_** - **type of uploaded data storage. Default value is LOCAL_STORAGE.** Other implementations for storage should be added.
+* **_data.import.storage.type_** - type of data storage used for uploaded files. Default value is **LOCAL_STORAGE**. Other implementations for storage should be added.
 * **_data.import.storage.path_** - **path where uploaded file will be stored**
 
-****In case of multiple instance deployment schema, the same persistent volume must be mounted to every instance to the mount point defined by the value of _data.import.storage.path_ property.****
+****In case of multiple instance deployment, for every instance the same persistent volume must be mounted to the mount point defined by the value of _data.import.storage.path_ property.****
 
 ## Maximum upload file size and java heap memory setups
 mod-data-import provides the ability to uplaod a file of any size. The only limitation is related to the current implementation of the RMB and the size of the heap in the java process. Currently, before saving the file, it is read into memory, respectively, it is necessary to have the size of the java heap equal to the file size plus 10 percent.

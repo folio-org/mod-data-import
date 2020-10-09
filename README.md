@@ -89,8 +89,8 @@ curl -w '\n' -X POST -D -   \
 ```
 ## **Module properties to set up at mod-configuration**
 
-* **_data.import.storage.type_** - **type of uploaded data storing. Default value is LOCAL_STORAGE. Need to add another implementations for storing**
-* **_data.import.storage.path_** - **path where uploaded file will be storing**
+* **_data.import.storage.type_** - **type of uploaded data storage. Default value is LOCAL_STORAGE.** Other implementations for storage should be added.
+* **_data.import.storage.path_** - **path where uploaded file will be stored**
 
 ****In case of multiple instance deployment schema, the same persistent volume must be mounted to every instance to the mount point defined by the value of _data.import.storage.path_ property.****
 

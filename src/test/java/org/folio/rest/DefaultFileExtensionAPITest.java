@@ -23,7 +23,7 @@ public class DefaultFileExtensionAPITest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(16));
+      .body("totalRecords", is(13));
 
     RestAssured.given()
       .spec(spec)
@@ -32,7 +32,7 @@ public class DefaultFileExtensionAPITest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(16));
+      .body("totalRecords", is(13));
   }
 
 }

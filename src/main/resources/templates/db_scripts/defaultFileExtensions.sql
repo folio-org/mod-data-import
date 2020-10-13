@@ -2,31 +2,6 @@ INSERT INTO
   ${myuniversity}_${mymodule}.default_file_extensions (id, jsonb)
 VALUES
   (
-    'f375ffe9-b00b-4786-b0a8-cd99f93e5aab',
-    '{
-      "id":"f375ffe9-b00b-4786-b0a8-cd99f93e5aab",
-      "extension":".csv",
-      "description": "",
-      "dataTypes":[
-        "Delimited"
-      ],
-      "userInfo":{
-        "firstName":"",
-        "lastName":"",
-        "userName":"System"
-      },
-      "importBlocked":false,
-      "metadata":{
-        "createdDate":"2019-01-01T11:22:07Z",
-        "createdByUserId":"00000000-0000-0000-0000-000000000000",
-        "createdByUsername":"System",
-        "updatedDate":"2019-01-01T11:22:07Z",
-        "updatedByUserId":"00000000-0000-0000-0000-000000000000",
-        "updatedByUsername":"System"
-      }
-    }'
-  ),
-  (
     '5cf7a0e5-f359-43f5-8c96-e5df74131183',
     '{
       "id":"5cf7a0e5-f359-43f5-8c96-e5df74131183",
@@ -286,56 +261,6 @@ VALUES
 
       ],
       "importBlocked":true,
-      "userInfo":{
-        "firstName":"",
-        "lastName":"",
-        "userName":"System"
-      },
-      "metadata":{
-        "createdDate":"2019-01-01T11:22:07Z",
-        "createdByUserId":"00000000-0000-0000-0000-000000000000",
-        "createdByUsername":"System",
-        "updatedDate":"2019-01-01T11:22:07Z",
-        "updatedByUserId":"00000000-0000-0000-0000-000000000000",
-        "updatedByUsername":"System"
-      }
-    }'
-  ),
-  (
-    '4a052746-5a21-44d1-a2ed-472c5747a488',
-    '{
-      "id":"4a052746-5a21-44d1-a2ed-472c5747a488",
-      "extension":".tsv",
-      "description": "",
-      "dataTypes":[
-        "Delimited"
-      ],
-      "importBlocked":false,
-      "userInfo":{
-        "firstName":"",
-        "lastName":"",
-        "userName":"System"
-      },
-      "metadata":{
-        "createdDate":"2019-01-01T11:22:07Z",
-        "createdByUserId":"00000000-0000-0000-0000-000000000000",
-        "createdByUsername":"System",
-        "updatedDate":"2019-01-01T11:22:07Z",
-        "updatedByUserId":"00000000-0000-0000-0000-000000000000",
-        "updatedByUsername":"System"
-      }
-    }'
-  ),
-  (
-    'bd7ccd60-0528-4abf-88cc-a89b0b127be1',
-    '{
-      "id":"bd7ccd60-0528-4abf-88cc-a89b0b127be1",
-      "extension":".txt",
-      "description": "",
-      "dataTypes":[
-        "Delimited"
-      ],
-      "importBlocked":false,
       "userInfo":{
         "firstName":"",
         "lastName":"",

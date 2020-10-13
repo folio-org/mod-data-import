@@ -59,6 +59,11 @@
       "run": "before",
       "snippetPath": "upgrade_rmb_25.0-29.1.sql",
       "fromModuleVersion": "mod-data-import-1.9.1"
+    },
+    {
+      "run": "after",
+      "snippetPath": "delete_delimited_formats_file_extensions.sql",
+      "fromModuleVersion": "mod-data-import-1.11.0"
     }
   ]
 }

@@ -1,4 +1,4 @@
-## (IN PROGRESS) v1.11.0
+## 2020-10-14 v1.11.0
 * Add batch-MARC-import script, `scripts/load-marc-data-into-folio.sh`
 * [MODDATAIMP-324](https://issues.folio.org/browse/MODDATAIMP-324) Update all Data-Import modules to the new RMB version
 * [MODDATAIMP-338](https://issues.folio.org/browse/MODDATAIMP-338) Data-import job prevents all users from uploading a file and initiating another data-import job

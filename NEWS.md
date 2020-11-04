@@ -3,6 +3,7 @@
 * [MODDATAIMP-324](https://issues.folio.org/browse/MODDATAIMP-324) Update all Data-Import modules to the new RMB version
 * [MODDATAIMP-338](https://issues.folio.org/browse/MODDATAIMP-338) Data-import job prevents all users from uploading a file and initiating another data-import job
 * [MODDATAIMP-325](https://issues.folio.org/browse/MODDATAIMP-325) Remove delimited reference values from file extensions data settings
+* [MODDATAIMP-342](https://issues.folio.org/browse/MODDATAIMP-342) Upgrade to RMB v31.1.5
 
 ## 2020-06-12 v1.10.0
 * [MODDATAIMP-300](https://issues.folio.org/browse/MODDATAIMP-300) Updated marc4j version to 2.9.1

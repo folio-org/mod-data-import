@@ -21,7 +21,6 @@ import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
-import org.folio.rest.tools.utils.JwtUtils;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
@@ -33,6 +32,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
 
@@ -436,12 +437,17 @@ public class DataImportImpl implements DataImport {
   private String getUserIdFromToken(String token) {
     try {
       String[] split = token.split("\\.");
-      String json = JwtUtils.getJson(split[1]);
+      String json = getJson(split[1]);
       JsonObject tokenJson = new JsonObject(json);
       return tokenJson.getString("user_id");
     } catch (Exception e) {
       LOG.warn("Invalid x-okapi-token: " + token, e);
       return null;
     }
+  }
+
+  private static String getJson(String strEncoded) {
+    byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
+    return new String(decodedBytes, StandardCharsets.UTF_8);
   }
 }

@@ -1,20 +1,14 @@
 package org.folio.service.processing;
 
-import io.vertx.codegen.annotations.Nullable;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
-import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
-import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.commons.collections4.list.UnmodifiableList;
 import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -25,10 +19,10 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
-import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.service.processing.coordinator.BlockingCoordinator;
+import org.folio.service.processing.kafka.SourceReaderReadStreamWrapper;
+import org.folio.service.processing.kafka.WriteStreamWrapper;
 import org.folio.service.processing.reader.SourceReader;
 import org.folio.service.processing.reader.SourceReaderBuilder;
 import org.folio.service.storage.FileStorageService;
@@ -40,10 +34,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.vertx.core.Future.succeededFuture;
-import static java.lang.String.format;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_MARC_BIB_RECORDS_CHUNK_READ;
 import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
@@ -152,7 +144,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
     SourceReaderReadStreamWrapper readStreamWrapper = new SourceReaderReadStreamWrapper(
       vertx, reader, fileDefinition.getJobExecutionId(), totalRecords,
-      params, 100, topicName);
+      params, 100, topicName, defaultMapping);
     readStreamWrapper.pause();
 
     Promise<Void> processFilePromise = Promise.promise();
@@ -189,50 +181,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       total += reader.next().size();
     }
     return total;
-  }
-
-  /**
-   * Sends chunk with records to the corresponding consumer
-   *
-   * @param jobExecutionId   job id
-   * @param chunk            chunk of records
-   * @param canSendNextChunk flag the identifies has the last record been successfully sent and can the other handlers
-   *                         send raw records (chunks)
-   * @param coordinator      blocking coordinator
-   * @param params           parameters necessary for connection to the OKAPI
-   * @return Future
-   */
-  private Future<Void> postRawRecords(String jobExecutionId, RawRecordsDto chunk, AtomicBoolean canSendNextChunk,
-                                      BlockingCoordinator coordinator, OkapiConnectionParams params, boolean defaultMapping) {
-    if (!canSendNextChunk.get()) {
-      return Future.failedFuture("canSendNextChunk has already been cleared to false");
-    }
-
-    Promise<Void> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
-    try {
-
-      LOGGER.debug("About to send next chunk: {}", chunk.getRecordsMetadata().toString());
-      client.postChangeManagerJobExecutionsRecordsById(jobExecutionId, defaultMapping, chunk, response -> {
-        LOGGER.debug("Response received for chunk: {}", chunk.getRecordsMetadata().toString());
-        if (response.statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
-          LOGGER.debug("Chunk of records with size {} was successfully posted for JobExecution {}", chunk.getInitialRecords().size(), jobExecutionId);
-          promise.complete();
-        } else {
-          canSendNextChunk.set(false);
-          String errorMessage = format("Error posting chunk of raw records for JobExecution with id %s. Status code %s", jobExecutionId, response.statusMessage());
-          LOGGER.error(errorMessage);
-          promise.fail(new HttpStatusException(response.statusCode(), errorMessage));
-        }
-        coordinator.acceptUnlock();
-      });
-    } catch (Exception e) {
-      canSendNextChunk.set(false);
-      coordinator.acceptUnlock();
-      LOGGER.error("Can not post chunk of raw records for JobExecution with id {}", jobExecutionId, e);
-      promise.fail(e);
-    }
-    return promise.future();
   }
 
   /**
@@ -286,92 +234,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       promise.fail(e);
     }
     return promise.future();
-  }
-
-  private static class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<String, String>> {
-    private final KafkaProducer<String, String> producer;
-
-    private WriteStreamWrapper(KafkaProducer<String, String> producer) {
-      this.producer = producer;
-    }
-
-    @Override
-    public WriteStream<KafkaProducerRecord<String, String>> exceptionHandler(Handler<Throwable> handler) {
-      producer.exceptionHandler(handler);
-      return this;
-    }
-
-    @Override
-    public WriteStream<KafkaProducerRecord<String, String>> write(KafkaProducerRecord<String, String> data) {
-      producer.write(data, ar -> {
-        String correlationId = null;
-        String chunkNumber = null;
-        List<KafkaHeader> headers = data.headers();
-        for (KafkaHeader h : headers) {
-          if ("correlationId".equals(h.key())) {
-            correlationId = h.value().toString();
-          } else if ("chunkNumber".equals(h.key())) {
-            chunkNumber = h.value().toString();
-          }
-        }
-        if (ar.succeeded()) {
-          LOGGER.debug("Next chunk has been written: correlationId: {} chunkNumber: {}", correlationId, chunkNumber);
-        } else {
-          LOGGER.error("Next chunk has failed with errors correlationId: {} chunkNumber: {}", ar.cause(), correlationId, chunkNumber);
-        }
-      });
-      return this;
-    }
-
-    @Override
-    public WriteStream<KafkaProducerRecord<String, String>> write(KafkaProducerRecord<String, String> data, Handler<AsyncResult<Void>> handler) {
-      producer.write(data, ar -> {
-        String correlationId = null;
-        String chunkNumber = null;
-        List<KafkaHeader> headers = data.headers();
-        for (KafkaHeader h : headers) {
-          if ("correlationId".equals(h.key())) {
-            correlationId = h.value().toString();
-          } else if ("chunkNumber".equals(h.key())) {
-            chunkNumber = h.value().toString();
-          }
-        }
-        if (ar.succeeded()) {
-          LOGGER.debug("Next chunk has been written: correlationId: {} chunkNumber: {}", correlationId, chunkNumber);
-        } else {
-          LOGGER.error("Next chunk has failed with errors correlationId: {} chunkNumber: {}", ar.cause(), correlationId, chunkNumber);
-        }
-        handler.handle(ar);
-      });
-      return this;
-    }
-
-    @Override
-    public void end() {
-      producer.end();
-    }
-
-    @Override
-    public void end(Handler<AsyncResult<Void>> handler) {
-      producer.end(handler);
-    }
-
-    @Override
-    public WriteStream<KafkaProducerRecord<String, String>> setWriteQueueMaxSize(int maxSize) {
-      producer.setWriteQueueMaxSize(maxSize);
-      return this;
-    }
-
-    @Override
-    public boolean writeQueueFull() {
-      return producer.writeQueueFull();
-    }
-
-    @Override
-    public WriteStream<KafkaProducerRecord<String, String>> drainHandler(@Nullable Handler<Void> handler) {
-      producer.drainHandler(handler);
-      return this;
-    }
   }
 
 }

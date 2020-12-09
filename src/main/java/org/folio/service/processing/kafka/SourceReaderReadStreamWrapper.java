@@ -1,4 +1,4 @@
-package org.folio.service.processing;
+package org.folio.service.processing.kafka;
 
 import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.Handler;
@@ -12,7 +12,6 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.processing.events.utils.ZIPArchiver;
-import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.jaxrs.model.InitialRecord;
@@ -28,7 +27,7 @@ import java.util.stream.Collectors;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_MARC_BIB_RECORDS_CHUNK_READ;
 
-class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<String, String>> {
+public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<String, String>> {
   private static final Logger LOGGER = LoggerFactory.getLogger(SourceReaderReadStreamWrapper.class);
 
   private static final String END_SENTINEL = "EOF";
@@ -41,6 +40,7 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
   private final String tenantId;
   private final int maxDistributionNum;
   private final String topicName;
+  private final boolean defaultMapping;
 
   private final InboundBuffer<KafkaProducerRecord<String, String>> queue;
 
@@ -53,7 +53,9 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
 
   private boolean closed;
 
-  SourceReaderReadStreamWrapper(Vertx vertx, SourceReader reader, String jobExecutionId, int totalRecordsInFile, OkapiConnectionParams okapiConnectionParams, int maxDistributionNum, String topicName) {
+  public SourceReaderReadStreamWrapper(Vertx vertx, SourceReader reader, String jobExecutionId, int totalRecordsInFile,
+                                       OkapiConnectionParams okapiConnectionParams, int maxDistributionNum, String topicName,
+                                       boolean defaultMapping) {
     this.vertx = vertx;
     this.reader = reader;
     this.jobExecutionId = jobExecutionId;
@@ -69,6 +71,7 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
 
     this.queue = new InboundBuffer<>(vertx.getOrCreateContext(), 0);
     this.topicName = topicName;
+    this.defaultMapping = defaultMapping;
     queue.handler(record -> {
       handleNextChunk(record);
 
@@ -168,7 +171,7 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
 
         KafkaProducerRecord<String, String> kafkaProducerRecord = createKafkaProducerRecord(chunk);
         boolean canWrite = queue.write(kafkaProducerRecord);
-        LOGGER.debug("Next chunk has been written to the queue. Key: " + kafkaProducerRecord.key());
+        LOGGER.debug("Next chunk has been written to the queue. Key: {}", kafkaProducerRecord.key());
         if (canWrite && notEof && !closed) {
           doReadInternal();
         }
@@ -201,12 +204,13 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
     record.addHeader("jobExecutionId", jobExecutionId);
     record.addHeader("correlationId", correlationId);
     record.addHeader("chunkNumber", String.valueOf(chunkNumber));
+    record.addHeader("defaultMapping", String.valueOf(defaultMapping));
 
     if (chunk.getRecordsMetadata().getLast()) {
       record.addHeader(END_SENTINEL, "true");
     }
 
-    LOGGER.debug("Next chunk has been created: correlationId:" + correlationId + " chunkNumber:" + chunkNumber);
+    LOGGER.debug("Next chunk has been created: correlationId: {} chunkNumber: {}", correlationId, chunkNumber);
     return record;
   }
 
@@ -233,7 +237,7 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
   private void handleEnd() {
     closed = true;
 
-    LOGGER.debug("End handler. Processing completed: " + this);
+    LOGGER.debug("End handler. Processing completed: {}", this);
 
     Handler<Void> endHandler;
     synchronized (this) {

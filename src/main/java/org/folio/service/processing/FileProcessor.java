@@ -3,6 +3,7 @@ package org.folio.service.processing;
 import io.vertx.codegen.annotations.ProxyGen;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.folio.kafka.KafkaConfig;
 
 /**
  * Processing files associated with given request.
@@ -12,8 +13,8 @@ public interface FileProcessor { //NOSONAR
 
   String FILE_PROCESSOR_ADDRESS = "file-processor.queue"; //NOSONAR
 
-  static FileProcessor create(Vertx vertx) {
-    return new ParallelFileChunkingProcessor(vertx);
+  static FileProcessor create(Vertx vertx, KafkaConfig kafkaConfig) {
+    return new ParallelFileChunkingProcessor(vertx, kafkaConfig);
   }
 
   static FileProcessor createProxy(Vertx vertx) {

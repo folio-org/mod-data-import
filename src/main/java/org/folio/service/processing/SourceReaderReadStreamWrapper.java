@@ -12,6 +12,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.processing.events.utils.ZIPArchiver;
+import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.jaxrs.model.InitialRecord;
@@ -25,7 +26,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.folio.service.processing.ParallelFileChunkingProcessor.DI_RAWMARCS_CHUNK_READ_EVENT_TYPE;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_MARC_BIB_RECORDS_CHUNK_READ;
 
 class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<String, String>> {
   private static final Logger LOGGER = LoggerFactory.getLogger(SourceReaderReadStreamWrapper.class);
@@ -182,7 +183,7 @@ class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<St
     String correlationId = UUID.randomUUID().toString();
     Event event = new Event()
       .withId(correlationId)
-      .withEventType(DI_RAWMARCS_CHUNK_READ_EVENT_TYPE)
+      .withEventType(DI_RAW_MARC_BIB_RECORDS_CHUNK_READ.value())
       .withEventPayload(ZIPArchiver.zip(Json.encode(chunk)))
       .withEventMetadata(new EventMetadata()
         .withTenantId(tenantId)

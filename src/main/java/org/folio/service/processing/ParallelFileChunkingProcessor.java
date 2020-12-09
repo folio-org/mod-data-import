@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.vertx.core.Future.succeededFuture;
 import static java.lang.String.format;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_MARC_BIB_RECORDS_CHUNK_READ;
 import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
 
@@ -55,8 +56,6 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
  * for further processing.
  */
 public class ParallelFileChunkingProcessor implements FileProcessor {
-  //TODO: make it an ENUM value
-  public static final String DI_RAWMARCS_CHUNK_READ_EVENT_TYPE = "DI_RAWMARCS_CHUNK_READ";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
 
@@ -142,7 +141,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                                      OkapiConnectionParams params,
                                      boolean defaultMapping) {
 
-    String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(), DI_RAWMARCS_CHUNK_READ_EVENT_TYPE);
+    String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
+      KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(),
+      DI_RAW_MARC_BIB_RECORDS_CHUNK_READ.value());
 
     File file = fileStorageService.getFile(fileDefinition.getSourcePath());
     SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
@@ -150,12 +151,14 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     int totalRecords = countTotalRecordsInFile(file, jobProfile);
 
     SourceReaderReadStreamWrapper readStreamWrapper = new SourceReaderReadStreamWrapper(
-      vertx, reader, fileDefinition.getJobExecutionId(), totalRecords, params, 100, topicName);
+      vertx, reader, fileDefinition.getJobExecutionId(), totalRecords,
+      params, 100, topicName);
     readStreamWrapper.pause();
 
     Promise<Void> processFilePromise = Promise.promise();
     LOGGER.debug("About to start piping to KafkaProducer... jobProfile: {}", jobProfile);
-    KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx, DI_RAWMARCS_CHUNK_READ_EVENT_TYPE + "_Producer", kafkaConfig.getProducerProps());
+    KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx,
+      DI_RAW_MARC_BIB_RECORDS_CHUNK_READ + "_Producer", kafkaConfig.getProducerProps());
     readStreamWrapper.pipeTo(new WriteStreamWrapper(producer), ar -> {
       boolean succeeded = ar.succeeded();
       LOGGER.debug("Data piping has been completed. ar.succeeded(): {} jobProfile: {}",succeeded, jobProfile);

@@ -193,6 +193,7 @@ public abstract class AbstractRestTest {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopEmbeddedPostgres();
       }
+      cluster.stop();
       async.complete();
     }));
   }

@@ -16,7 +16,7 @@ stages:
   steps:
   - applyAppConfig:
       catalogTemplate: p-gh7sb:folijet-helmcharts-mod-data-import
-      version: 0.1.26
+      version: 0.1.32
       answers:
         image.repository: docker.dev.folio.org/mod-data-import
         image.tag: folijet-latest

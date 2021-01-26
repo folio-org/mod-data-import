@@ -4,11 +4,11 @@ import org.folio.service.processing.reader.EdifactParser;
 
 import java.util.Map;
 
-public class EdifactHeaderState extends EdifactState {
+public class EdifactGeneralState extends EdifactState {
 
   private StringBuilder content = new StringBuilder();
 
-  public EdifactHeaderState(EdifactParser edifactParser, Map<String, Character> delimiters) {
+  public EdifactGeneralState(EdifactParser edifactParser, Map<String, Character> delimiters) {
     super(edifactParser, delimiters);
   }
 

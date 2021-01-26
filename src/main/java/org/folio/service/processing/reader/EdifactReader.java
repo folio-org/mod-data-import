@@ -20,10 +20,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Implementation reads source records in EDIFACT format from the local file system.
+ * <code>next</code> method returns list of {@link InitialRecord} when the target file has come to the end.
+ */
 public class EdifactReader implements SourceReader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EdifactReader.class);
-
   private static final Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
 
   private EDIStreamReader reader;
@@ -48,7 +51,6 @@ public class EdifactReader implements SourceReader {
     }
   }
 
-
   @Override
   public List<InitialRecord> next() {
     try {
@@ -64,12 +66,12 @@ public class EdifactReader implements SourceReader {
 
   @Override
   public boolean hasNext() {
-    throw new IllegalArgumentException("Not implemented yet.");
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   @Override
   public RecordsMetadata.ContentType getContentType() {
-    return RecordsMetadata.ContentType.MARC_XML; //TODO: change it to EDI
+    return RecordsMetadata.ContentType.EDI;
   }
 }
 

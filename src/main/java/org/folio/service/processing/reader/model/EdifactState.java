@@ -11,6 +11,9 @@ import static org.folio.service.processing.reader.model.EdifactState.TYPE.FOOTER
 import static org.folio.service.processing.reader.model.EdifactState.TYPE.HEADER;
 import static org.folio.service.processing.reader.model.EdifactState.TYPE.INVOICE;
 
+/**
+ * EdifactState is an abstract class for splitting EDIFACT on separate invoices.
+ */
 public abstract class EdifactState {
 
   public static final String START_INVOICE_TAG = "UNH";

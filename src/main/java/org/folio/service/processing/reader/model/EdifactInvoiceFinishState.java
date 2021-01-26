@@ -13,10 +13,10 @@ public class EdifactInvoiceFinishState extends EdifactState {
 
   @Override
   public void handle(String data) {
-    String content = parser.getHeaderContent()
-      + parser.getInvoiceContent() + data + getSegmentSeparator();
+    String content = parser.getHeader()
+      + parser.getInvoiceBody() + data + getSegmentSeparator();
     parser.getInitialRecords().add(getInitialRecord(content));
-    parser.cleanInvoiceContent();
+    parser.cleanInvoiceBody();
   }
 
   @Override

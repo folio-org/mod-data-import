@@ -7,8 +7,9 @@ import java.util.Map;
 
 public class EdifactFooterState extends EdifactState {
 
-  StringBuilder content = new StringBuilder(MESSAGE_END).append(getDataElementSeparator())
-    .append("1").append(getDataElementSeparator());
+  public static final String NUMBER_INVOICES_IN_CHUNK = "1";
+  private StringBuilder content = new StringBuilder(MESSAGE_END).append(getDataElementSeparator())
+    .append(NUMBER_INVOICES_IN_CHUNK).append(getDataElementSeparator());
 
   public EdifactFooterState(EdifactParser edifactParser, Map<String, Character> delimiters) {
     super(edifactParser, delimiters);

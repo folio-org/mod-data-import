@@ -69,7 +69,7 @@ public class EdifactReader implements SourceReader {
 
   @Override
   public RecordsMetadata.ContentType getContentType() {
-    return RecordsMetadata.ContentType.EDI;
+    return RecordsMetadata.ContentType.MARC_XML; //TODO: change it to EDI
   }
 }
 

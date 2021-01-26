@@ -52,7 +52,7 @@ public class EdifactParser {
   }
 
   public void handle(String data) {
-    TYPE position = state.getCurrentPosition(data);
+    TYPE position = state.getCurrentLogicalPositionInFile(data);
     handlers.get(position).handle(data);
   }
 

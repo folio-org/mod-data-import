@@ -13,6 +13,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
@@ -21,6 +23,8 @@ import java.util.Map;
 public class EdifactReader implements SourceReader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EdifactReader.class);
+
+  private static final Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
 
   private EDIStreamReader reader;
   private EdifactParser edifactParser;
@@ -48,7 +52,7 @@ public class EdifactReader implements SourceReader {
   @Override
   public List<InitialRecord> next() {
     try {
-      Files.lines(file.toPath()).map(l -> l.split(edifactParser.getSegmentSeparator()))
+      Files.lines(file.toPath(), DEFAULT_CHARSET).map(l -> l.split(edifactParser.getSegmentSeparator()))
         .flatMap(Arrays::stream).forEach(edifactParser::handle);
     } catch (IOException e) {
       String errorMessage = "Error during handling the file: " + file.getName();

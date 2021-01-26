@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class EdifactFooterState extends EdifactState {
 
-  StringBuilder content = new StringBuilder("UNZ").append(getDataElementSeparator())
+  StringBuilder content = new StringBuilder(MESSAGE_END).append(getDataElementSeparator())
     .append("1").append(getDataElementSeparator());
 
   public EdifactFooterState(EdifactParser edifactParser, Map<String, Character> delimiters) {

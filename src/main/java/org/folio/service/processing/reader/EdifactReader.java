@@ -71,7 +71,7 @@ public class EdifactReader implements SourceReader {
 
   @Override
   public RecordsMetadata.ContentType getContentType() {
-    return RecordsMetadata.ContentType.EDI;
+    return RecordsMetadata.ContentType.EDIFACT_RAW;
   }
 }
 

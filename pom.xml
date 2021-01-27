@@ -307,8 +307,8 @@
               <arguments>
                 <argument>submodule</argument>
                 <argument>update</argument>
-                <argument>--remote</argument>
-                <argument>--merge</argument>
+                <argument>--init</argument>
+                <argument>--recursive</argument>
               </arguments>
             </configuration>
           </execution>

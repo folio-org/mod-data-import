@@ -76,7 +76,7 @@ public class EdifactReaderUnitTest {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = RecordsReaderException.class)
   public void shouldThrowExceptionOnEmptyFile() {
 
     // given

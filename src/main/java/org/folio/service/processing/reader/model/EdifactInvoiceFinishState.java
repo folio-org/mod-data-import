@@ -21,12 +21,12 @@ public class EdifactInvoiceFinishState extends EdifactState {
 
   @Override
   public String getContent() {
-    throw new IllegalArgumentException("Not implemented.");
+    throw new UnsupportedOperationException("Not supported.");
   }
 
   @Override
   public void cleanContent() {
-    throw new IllegalArgumentException("Not implemented.");
+    throw new UnsupportedOperationException("Not supported.");
   }
 
   private InitialRecord getInitialRecord(String content) {

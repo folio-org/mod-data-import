@@ -44,10 +44,12 @@ public class EdifactReader implements SourceReader {
         delimiters = reader.getDelimiters();
         edifactParser = new EdifactParser(delimiters);
       }
-    } catch (IOException | EDIStreamException e) {
-      String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
-      LOGGER.error(errorMessage);
-      throw new IllegalArgumentException(errorMessage);
+    } catch (IOException e) {
+      LOGGER.error("Error during handling the file: " + file.getName(), e);
+      throw new RecordsReaderException(e);
+    } catch (EDIStreamException e) {
+      LOGGER.error("Can not initialize reader. Cause: " + e.getMessage());
+      throw new RecordsReaderException(e);
     }
   }
 
@@ -57,16 +59,15 @@ public class EdifactReader implements SourceReader {
       Files.lines(file.toPath(), DEFAULT_CHARSET).map(l -> l.split(edifactParser.getSegmentSeparator()))
         .flatMap(Arrays::stream).forEach(edifactParser::handle);
     } catch (IOException e) {
-      String errorMessage = "Error during handling the file: " + file.getName();
-      LOGGER.error(errorMessage, e);
-      throw new IllegalArgumentException(errorMessage);
+      LOGGER.error("Error during handling the file: " + file.getName(), e);
+      throw new RecordsReaderException(e);
     }
     return edifactParser.getInitialRecords();
   }
 
   @Override
   public boolean hasNext() {
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new UnsupportedOperationException("Not supported.");
   }
 
   @Override

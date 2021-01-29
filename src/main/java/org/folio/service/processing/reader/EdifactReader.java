@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Implementation reads source records in EDIFACT format from the local file system.
@@ -35,10 +36,9 @@ public class EdifactReader implements SourceReader {
   private Map<String, Character> delimiters = null;
 
   public EdifactReader(File file) {
-    try {
-      this.file = file;
+    this.file = file;
+    try (InputStream stream = new FileInputStream(file)) {
       EDIInputFactory factory = EDIInputFactory.newFactory();
-      InputStream stream = new FileInputStream(file);
       reader = factory.createEDIStreamReader(stream);
       if (reader.next() == EDIStreamEvent.START_INTERCHANGE) {
         delimiters = reader.getDelimiters();
@@ -55,8 +55,9 @@ public class EdifactReader implements SourceReader {
 
   @Override
   public List<InitialRecord> next() {
-    try {
-      Files.lines(file.toPath(), DEFAULT_CHARSET).map(l -> l.split(edifactParser.getSegmentSeparator()))
+
+    try (final Stream<String> strings = Files.lines(file.toPath(), DEFAULT_CHARSET)) {
+      strings.map(l -> l.split(edifactParser.getSegmentSeparator()))
         .flatMap(Arrays::stream).forEach(edifactParser::handle);
     } catch (IOException e) {
       LOGGER.error("Error during handling the file: " + file.getName(), e);

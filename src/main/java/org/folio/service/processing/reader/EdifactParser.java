@@ -23,7 +23,7 @@ public class EdifactParser {
 
   private final EdifactState state;
   private final Map<TYPE, EdifactState> handlers;
-  private List<InitialRecord> invoices = new ArrayList<>();
+  private final List<InitialRecord> invoices = new ArrayList<>();
 
   /**
    * Init EdifactParser.

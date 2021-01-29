@@ -3,6 +3,7 @@ package org.folio.service.processing.reader.model;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.service.processing.reader.EdifactParser;
 
+import java.util.List;
 import java.util.Map;
 
 public class EdifactInvoiceFinishState extends EdifactState {
@@ -15,7 +16,9 @@ public class EdifactInvoiceFinishState extends EdifactState {
   public void handle(String data) {
     String content = parser.getHeader()
       + parser.getInvoiceBody() + data + getSegmentSeparator();
-    parser.getInitialRecords().add(getInitialRecord(content));
+
+    List<InitialRecord> records = parser.getInitialRecords();
+    records.add(initInitialRecord(content).withOrder(records.size() + 1));
     parser.cleanInvoiceBody();
   }
 
@@ -29,7 +32,7 @@ public class EdifactInvoiceFinishState extends EdifactState {
     throw new UnsupportedOperationException("Not supported.");
   }
 
-  private InitialRecord getInitialRecord(String content) {
+  private InitialRecord initInitialRecord(String content) {
     InitialRecord initialRecord = new InitialRecord();
     initialRecord.setRecord(content);
     return initialRecord;

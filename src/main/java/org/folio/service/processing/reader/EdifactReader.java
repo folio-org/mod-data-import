@@ -29,6 +29,8 @@ public class EdifactReader implements SourceReader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EdifactReader.class);
   private static final Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
+  public static final String EDIFACT_EDI_EXTENSION = "edi";
+  public static final String EDIFACT_INV_EXTENSION = "inv";
 
   private EDIStreamReader reader;
   private EdifactParser edifactParser;

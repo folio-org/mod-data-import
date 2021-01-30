@@ -54,14 +54,17 @@ public class EdifactReaderUnitTest {
     for (String fileName : filesAndRecordsNumber.keySet()) {
       // given
       System.out.printf("Handle: %s%n", fileName);
-      reader = new EdifactReader(new File(PATH_TO_EDIFACT + fileName));
+      reader = new EdifactReader(new File(PATH_TO_EDIFACT + fileName), 2);
 
       //check files before tests
       System.out.println("\tValidating source file...");
       List<String> expValidation = validateFile(factory, new FileInputStream(PATH_TO_EDIFACT + fileName));
 
       // when
-      actualRecords = new ArrayList<>(reader.next());
+      actualRecords = new ArrayList<>();
+      while (reader.hasNext()) {
+        actualRecords.addAll(reader.next());
+      }
 
       // then
       Assert.assertEquals("File: " + fileName, filesAndRecordsNumber.get(fileName).intValue(), actualRecords.size());
@@ -82,7 +85,7 @@ public class EdifactReaderUnitTest {
   public void shouldThrowExceptionOnEmptyFile() {
 
     // given
-    SourceReader reader = new EdifactReader(new File(PATH_TO_EDIFACT + SOURCE_EMPTY));
+    SourceReader reader = new EdifactReader(new File(PATH_TO_EDIFACT + SOURCE_EMPTY), 2);
 
     // then
     reader.next();

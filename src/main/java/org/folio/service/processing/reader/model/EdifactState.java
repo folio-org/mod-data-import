@@ -16,6 +16,9 @@ import static org.folio.service.processing.reader.model.EdifactState.TYPE.INVOIC
  */
 public abstract class EdifactState {
 
+  public static final String NUMBER_INVOICES_IN_CHUNK = "1";
+
+  public static final String INTERCHANGE_TAG = "UNB";
   public static final String START_INVOICE_TAG = "UNH";
   public static final String END_INVOICE_TAG = "UNT";
   public static final String MESSAGE_END = "UNZ";
@@ -53,6 +56,10 @@ public abstract class EdifactState {
   public abstract String getContent();
 
   public abstract void cleanContent();
+
+  public String getFooterTemplate() {
+    return MESSAGE_END + getDataElementSeparator() + NUMBER_INVOICES_IN_CHUNK + getDataElementSeparator();
+  }
 
   public String getSegmentSeparator() {
     return String.valueOf(delimiters.get(SEGMENT));

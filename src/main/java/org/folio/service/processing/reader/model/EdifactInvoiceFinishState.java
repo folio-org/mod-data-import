@@ -3,9 +3,11 @@ package org.folio.service.processing.reader.model;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.service.processing.reader.EdifactParser;
 
-import java.util.List;
 import java.util.Map;
 
+/**
+ * EdifactInvoiceFinishState is a class for preparing {@link InitialRecord InitialRecord.class} collection.
+ */
 public class EdifactInvoiceFinishState extends EdifactState {
 
   public EdifactInvoiceFinishState(EdifactParser edifactParser, Map<String, Character> delimiters) {
@@ -14,11 +16,9 @@ public class EdifactInvoiceFinishState extends EdifactState {
 
   @Override
   public void handle(String data) {
-    String content = parser.getHeader()
-      + parser.getInvoiceBody() + data + getSegmentSeparator();
-
-    List<InitialRecord> records = parser.getInitialRecords();
-    records.add(initInitialRecord(content).withOrder(records.size() + 1));
+    String content = parser.getHeader() + parser.getInvoiceBody() + data + getSegmentSeparator()
+      + getFooterTemplate() + parser.getControlReferenceValue() + getSegmentSeparator();
+    parser.getInitialRecords().add(initInitialRecord(content).withOrder(parser.getInitialRecords().size() + 1));
     parser.cleanInvoiceBody();
   }
 

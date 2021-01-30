@@ -5,11 +5,13 @@ import org.folio.service.processing.reader.EdifactParser;
 
 import java.util.Map;
 
+/**
+ * EdifactFooterState is a class for return EDIFACT footer segment.
+ * This class have to used when processing in a stream.
+ */
 public class EdifactFooterState extends EdifactState {
 
-  public static final String NUMBER_INVOICES_IN_CHUNK = "1";
-  private StringBuilder content = new StringBuilder(MESSAGE_END).append(getDataElementSeparator())
-    .append(NUMBER_INVOICES_IN_CHUNK).append(getDataElementSeparator());
+  private StringBuilder content = new StringBuilder(getFooterTemplate());
 
   public EdifactFooterState(EdifactParser edifactParser, Map<String, Character> delimiters) {
     super(edifactParser, delimiters);

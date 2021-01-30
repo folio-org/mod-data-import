@@ -17,13 +17,14 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
 /**
  * Implementation reads source records in EDIFACT format from the local file system.
- * <code>next</code> method returns list of {@link InitialRecord} when the target file has come to the end.
+ * <code>next</code> method returns list of {@link InitialRecord InitialRecord.class} when the target file has come to the end.
  */
 public class EdifactReader implements SourceReader {
 
@@ -32,19 +33,23 @@ public class EdifactReader implements SourceReader {
   public static final String EDIFACT_EDI_EXTENSION = "edi";
   public static final String EDIFACT_INV_EXTENSION = "inv";
 
-  private EDIStreamReader reader;
+  private final int chunkSize;
   private EdifactParser edifactParser;
-  private File file;
-  private Map<String, Character> delimiters = null;
+  private Stream<String> segmentsStream;
+  private Iterator<String> segmentIterator;
 
-  public EdifactReader(File file) {
-    this.file = file;
+  public EdifactReader(File file, int chunkSize) {
+    this.chunkSize = chunkSize;
     try (InputStream stream = new FileInputStream(file)) {
       EDIInputFactory factory = EDIInputFactory.newFactory();
-      reader = factory.createEDIStreamReader(stream);
+      EDIStreamReader reader = factory.createEDIStreamReader(stream);
       if (reader.next() == EDIStreamEvent.START_INTERCHANGE) {
-        delimiters = reader.getDelimiters();
+        Map<String, Character> delimiters = reader.getDelimiters();
         edifactParser = new EdifactParser(delimiters);
+        segmentsStream = Files.lines(file.toPath(), DEFAULT_CHARSET)
+          .map(l -> l.split(edifactParser.getSegmentSeparator()))
+          .flatMap(Arrays::stream);
+        segmentIterator = segmentsStream.iterator();
       }
     } catch (IOException e) {
       LOGGER.error("Error during handling the file: " + file.getName(), e);
@@ -57,20 +62,16 @@ public class EdifactReader implements SourceReader {
 
   @Override
   public List<InitialRecord> next() {
-
-    try (final Stream<String> strings = Files.lines(file.toPath(), DEFAULT_CHARSET)) {
-      strings.map(l -> l.split(edifactParser.getSegmentSeparator()))
-        .flatMap(Arrays::stream).forEach(edifactParser::handle);
-    } catch (IOException e) {
-      LOGGER.error("Error during handling the file: " + file.getName(), e);
-      throw new RecordsReaderException(e);
+    edifactParser.cleanInitialRecords();
+    while (segmentIterator.hasNext() && edifactParser.getInitialRecords().size() <= chunkSize) {
+      edifactParser.handle(segmentIterator.next());
     }
     return edifactParser.getInitialRecords();
   }
 
   @Override
   public boolean hasNext() {
-    throw new UnsupportedOperationException("Not supported.");
+    return edifactParser.hasNext();
   }
 
   @Override

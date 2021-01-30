@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.folio.service.processing.reader.model.EdifactState.MESSAGE_END;
+import static org.folio.service.processing.reader.model.EdifactState.NUMBER_INVOICES_IN_CHUNK;
 import static org.folio.service.processing.reader.model.EdifactState.TYPE;
 import static org.folio.service.processing.reader.model.EdifactState.TYPE.FINISH_INVOICE;
 import static org.folio.service.processing.reader.model.EdifactState.TYPE.FOOTER;
@@ -48,6 +50,15 @@ public class EdifactParser {
   }
 
   /**
+   * Returns data element separator.
+   *
+   * @return data element separator.
+   */
+  public String getDataElementSeparator() {
+    return state.getDataElementSeparator();
+  }
+
+  /**
    * Returns EDIFACT header.
    *
    * @return - EDIFACT header.
@@ -66,6 +77,15 @@ public class EdifactParser {
   }
 
   /**
+   * Returns EDIFACT control reference value for footer.
+   *
+   * @return - EDIFACT control reference value.
+   */
+  public String getControlReferenceValue() {
+    return ((EdifactGeneralState) handlers.get(HEADER)).getControlReference();
+  }
+
+  /**
    * Cleans collected EDIFACT invoice record.
    */
   public void cleanInvoiceBody() {
@@ -79,6 +99,18 @@ public class EdifactParser {
    */
   public List<InitialRecord> getInitialRecords() {
     return invoices;
+  }
+
+  /**
+   * Cleans the collection of {@link InitialRecord InitialRecords.class} objects
+   */
+  public void cleanInitialRecords() {
+    invoices.clear();
+  }
+
+  public boolean hasNext() {
+    return handlers.get(FOOTER).getContent().length() ==
+      (MESSAGE_END.length() + NUMBER_INVOICES_IN_CHUNK.length() + getDataElementSeparator().length() * 2);
   }
 
   /**

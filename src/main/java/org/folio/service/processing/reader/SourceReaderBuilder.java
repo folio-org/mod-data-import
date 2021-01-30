@@ -37,7 +37,7 @@ public class SourceReaderBuilder {
         sourceReader = new MarcRawReader(file, CHUNK_SIZE);
       }
     } else if (isEdifact(extension, jobProfile)) {
-      sourceReader = new EdifactReader(file);
+      sourceReader = new EdifactReader(file, CHUNK_SIZE);
     }
 
     return ofNullable(sourceReader).orElseThrow(() -> new UnsupportedOperationException("Unsupported file format"));

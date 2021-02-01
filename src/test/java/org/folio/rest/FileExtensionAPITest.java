@@ -225,6 +225,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
     FileExtension fileExtension = createResponse.body().as(FileExtension.class);
 
     fileExtension.setImportBlocked(true);
+    fileExtension.setMetadata(null);
     RestAssured.given()
       .spec(spec)
       .body(fileExtension)
@@ -323,7 +324,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(fileExtension.withExtension(fileExtension_6.getExtension()))
+      .body(fileExtension.withExtension(fileExtension_6.getExtension()).withMetadata(null))
       .when()
       .put(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
       .then()

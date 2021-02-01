@@ -244,13 +244,13 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId(String uploadDefinitionId, boolean defaultMapping,
-                                                                              ProcessFilesRqDto entity, Map<String, String> okapiHeaders,
+  public void postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId(String uploadDefinitionId, ProcessFilesRqDto entity,
+                                                                              Map<String, String> okapiHeaders,
                                                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         LOG.info("Starting file processing for upload definition {}", uploadDefinitionId);
-        fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders), defaultMapping);
+        fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders));
         Future.succeededFuture()
           .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
           .map(Response.class::cast)

@@ -26,6 +26,7 @@ types:
   fileExtension: !include raml-storage/schemas/mod-data-import/fileExtension.json
   fileExtensionCollection: !include raml-storage/schemas/mod-data-import/fileExtensionCollection.json
   dataTypeCollection: !include raml-storage/schemas/mod-data-import/dataTypeCollection.json
+  dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -149,11 +150,6 @@ resourceTypes:
         post:
           description: Starts the file processing
           is: [validate]
-          queryParameters:
-            defaultMapping:
-              description: Boolean value which defines a mapping
-              type: boolean
-              default: false
           body:
             application/json:
               type: processFilesRqDto

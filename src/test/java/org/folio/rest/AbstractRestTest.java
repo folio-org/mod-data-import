@@ -15,6 +15,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
@@ -28,6 +29,7 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 
 import java.io.UnsupportedEncodingException;
@@ -37,6 +39,8 @@ import java.util.Collections;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 
@@ -55,6 +59,11 @@ public abstract class AbstractRestTest {
   protected static final String TOKEN = "token";
   protected static RequestSpecification spec;
   protected static RequestSpecification specUpload;
+  private static final String KAFKA_HOST = "FOLIO_KAFKA_HOST";
+  private static final String KAFKA_PORT = "FOLIO_KAFKA_PORT";
+  private static final String OKAPI_URL_ENV = "OKAPI_URL";
+  private static final int PORT = NetworkUtils.nextFreePort();
+  protected static final String OKAPI_URL = "http://localhost:" + PORT;
 
   private static final String GET_USER_URL = "/users?query=id==";
 
@@ -109,6 +118,9 @@ public abstract class AbstractRestTest {
     .withJobExecutions(Arrays.asList(new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars_Bibs(1).mrc"),
       new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars.mrc")));
 
+  @ClassRule
+  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
+
   @Rule
   public WireMockRule mockServer = new WireMockRule(
     WireMockConfiguration.wireMockConfig()
@@ -119,6 +131,12 @@ public abstract class AbstractRestTest {
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
+    String[] hostAndPort = cluster.getBrokerList().split(":");
+
+    System.setProperty(KAFKA_HOST, hostAndPort[0]);
+    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
+
     port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
     PostgresClient.stopEmbeddedPostgres();
@@ -175,6 +193,7 @@ public abstract class AbstractRestTest {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopEmbeddedPostgres();
       }
+      cluster.close();
       async.complete();
     }));
   }

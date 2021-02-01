@@ -320,7 +320,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     async = context.async();
     RestAssured.given()
       .spec(spec)
-      .body(uploadDefinition)
+      .body(uploadDefinition.withMetadata(null))
       .when()
       .put(DEFINITION_PATH + "/" + uploadDefinition.getId())
       .then()
@@ -773,8 +773,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     async.complete();
     async = context.async();
 
-    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
-    fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson, false);
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null);
+    fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
     async.complete();
     async = context.async();
     UploadDefinition uploadDefinition = new UploadDefinition();
@@ -840,8 +840,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     async.complete();
     async = context.async();
 
-    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx());
-    fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson, false);
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null);
+    fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
     async.complete();
     async = context.async();
     UploadDefinition uploadDefinition = new UploadDefinition();
@@ -903,6 +903,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     async.complete();
 
     async = context.async();
+    request.getUploadDefinition().withMetadata(null);
     RestAssured.given()
       .spec(spec)
       .body(JsonObject.mapFrom(request).encode())

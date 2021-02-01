@@ -1,4 +1,5 @@
-## xxxx-xx-xx v1.12.0-SNAPSHOT
+## xxxx-xx-xx v2.0.0-SNAPSHOT
+* [MODDATAIMP-315](https://issues.folio.org/browse/MODDATAIMP-315) Use Kafka for data-import file processing
 * [MODDATAIMP-352](https://issues.folio.org/browse/MODDATAIMP-352) Implement source reader for EDIFACT files.
 
 ## 2020-11-06 v1.11.1

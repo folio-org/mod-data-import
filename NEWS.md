@@ -1,4 +1,5 @@
 ## xxxx-xx-xx v1.12.0-SNAPSHOT
+* [MODDATAIMP-352](https://issues.folio.org/browse/MODDATAIMP-352) Implement source reader for EDIFACT files.
 
 ## 2020-11-06 v1.11.1
 * [MODDATAIMP-316](https://issues.folio.org/browse/MODDATAIMP-316) Disable CQL2PgJSON & CQLWrapper extra logging in mod-data-import

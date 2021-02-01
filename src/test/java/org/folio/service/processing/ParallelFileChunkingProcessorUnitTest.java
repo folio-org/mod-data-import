@@ -51,6 +51,7 @@ import static org.mockito.Mockito.when;
  * Testing ParallelFileChunkingProcessor
  */
 @RunWith(VertxUnitRunner.class)
+//TODO fix in scope of MODSOURMAN-400
 @Ignore
 public class ParallelFileChunkingProcessorUnitTest {
 

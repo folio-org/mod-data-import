@@ -64,7 +64,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   }
 
   @Override
-  public void process(JsonObject jsonRequest, JsonObject jsonParams, boolean defaultMapping) { //NOSONAR
+  public void process(JsonObject jsonRequest, JsonObject jsonParams) { //NOSONAR
     ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
     UploadDefinition uploadDefinition = request.getUploadDefinition();
     JobProfileInfo jobProfile = request.getJobProfileInfo();
@@ -75,7 +75,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
       .compose(ar -> FileStorageServiceBuilder.build(this.vertx, params.getTenantId(), params))
       .compose(fileStorageService -> {
-        processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params, defaultMapping);
+        processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params);
         uploadDefinitionService.updateBlocking(
           uploadDefinition.getId(),
           definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
@@ -97,13 +97,12 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                             UploadDefinitionService uploadDefinitionService,
                             FileStorageService fileStorageService,
                             UploadDefinition uploadDefinition,
-                            OkapiConnectionParams params,
-                            boolean defaultMapping) {
+                            OkapiConnectionParams params) {
 
     List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
     for (FileDefinition fileDefinition : fileDefinitions) {
       vertx.runOnContext(v ->
-        processFile(fileDefinition, jobProfile, fileStorageService, params, defaultMapping).onComplete(par -> {
+        processFile(fileDefinition, jobProfile, fileStorageService, params).onComplete(par -> {
             if (par.failed()) {
               LOGGER.error("File was processed with errors {}. Cause: {}", fileDefinition.getSourcePath(), par.cause());
               uploadDefinitionService.updateJobExecutionStatus(
@@ -130,8 +129,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   protected Future<Void> processFile(FileDefinition fileDefinition,
                                      JobProfileInfo jobProfile,
                                      FileStorageService fileStorageService,
-                                     OkapiConnectionParams params,
-                                     boolean defaultMapping) {
+                                     OkapiConnectionParams params) {
 
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(),
@@ -144,7 +142,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
     SourceReaderReadStreamWrapper readStreamWrapper = new SourceReaderReadStreamWrapper(
       vertx, reader, fileDefinition.getJobExecutionId(), totalRecords,
-      params, 100, topicName, defaultMapping);
+      params, 100, topicName);
     readStreamWrapper.pause();
 
     Promise<Void> processFilePromise = Promise.promise();

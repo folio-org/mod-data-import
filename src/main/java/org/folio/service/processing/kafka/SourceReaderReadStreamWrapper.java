@@ -40,7 +40,6 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   private final String tenantId;
   private final int maxDistributionNum;
   private final String topicName;
-  private final boolean defaultMapping;
 
   private final InboundBuffer<KafkaProducerRecord<String, String>> queue;
 
@@ -54,8 +53,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   private boolean closed;
 
   public SourceReaderReadStreamWrapper(Vertx vertx, SourceReader reader, String jobExecutionId, int totalRecordsInFile,
-                                       OkapiConnectionParams okapiConnectionParams, int maxDistributionNum, String topicName,
-                                       boolean defaultMapping) {
+                                       OkapiConnectionParams okapiConnectionParams, int maxDistributionNum, String topicName) {
     this.vertx = vertx;
     this.reader = reader;
     this.jobExecutionId = jobExecutionId;
@@ -71,7 +69,6 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
 
     this.queue = new InboundBuffer<>(vertx.getOrCreateContext(), 0);
     this.topicName = topicName;
-    this.defaultMapping = defaultMapping;
     queue.handler(record -> {
       handleNextChunk(record);
 
@@ -204,7 +201,6 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     record.addHeader("jobExecutionId", jobExecutionId);
     record.addHeader("correlationId", correlationId);
     record.addHeader("chunkNumber", String.valueOf(chunkNumber));
-    record.addHeader("defaultMapping", String.valueOf(defaultMapping));
 
     if (chunk.getRecordsMetadata().getLast()) {
       record.addHeader(END_SENTINEL, "true");

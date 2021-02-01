@@ -75,7 +75,6 @@ public class EdifactReaderUnitTest {
         actValidation = validateFile(factory,
           new ByteArrayInputStream(initialRecord.getRecord().getBytes(StandardCharsets.UTF_8)));
         Assert.assertNotNull("Order is null", initialRecord.getOrder());
-        Assert.assertTrue("Order is less than 0",initialRecord.getOrder() > 0);
       }
       Assert.assertEquals("File: " + fileName, expValidation, actValidation);
     }

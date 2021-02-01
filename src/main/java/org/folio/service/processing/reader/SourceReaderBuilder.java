@@ -7,6 +7,8 @@ import java.io.File;
 
 import static java.util.Optional.ofNullable;
 import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
+import static org.folio.service.processing.reader.EdifactReader.EDIFACT_EDI_EXTENSION;
+import static org.folio.service.processing.reader.EdifactReader.EDIFACT_INV_EXTENSION;
 import static org.folio.service.processing.reader.MarcJsonReader.JSON_EXTENSION;
 import static org.folio.service.processing.reader.MarcXmlReader.XML_EXTENSION;
 
@@ -34,9 +36,16 @@ public class SourceReaderBuilder {
       } else {
         sourceReader = new MarcRawReader(file, CHUNK_SIZE);
       }
+    } else if (isEdifact(extension, jobProfile)) {
+      sourceReader = new EdifactReader(file, CHUNK_SIZE);
     }
 
     return ofNullable(sourceReader).orElseThrow(() -> new UnsupportedOperationException("Unsupported file format"));
+  }
+
+  private static boolean isEdifact(String extension, JobProfileInfo jobProfile) {
+    return ((jobProfile.getDataType() == JobProfileInfo.DataType.EDIFACT)
+      && (EDIFACT_EDI_EXTENSION.equals(extension) || EDIFACT_INV_EXTENSION.equals(extension)));
   }
 
   private static boolean isMarc(JobProfileInfo jobProfile) {

@@ -18,7 +18,7 @@ public class EdifactInvoiceFinishState extends EdifactState {
   public void handle(String data) {
     String content = parser.getHeader() + parser.getInvoiceBody() + data + getSegmentSeparator()
       + getFooterTemplate() + parser.getControlReferenceValue() + getSegmentSeparator();
-    parser.getInitialRecords().add(initInitialRecord(content).withOrder(parser.getInitialRecords().size() + 1));
+    parser.getInitialRecords().add(initInitialRecord(content).withOrder(parser.getInitialRecords().size()));
     parser.cleanInvoiceBody();
   }
 

@@ -59,8 +59,8 @@ public abstract class AbstractRestTest {
   protected static final String TOKEN = "token";
   protected static RequestSpecification spec;
   protected static RequestSpecification specUpload;
-  private static final String KAFKA_HOST = "FOLIO_KAFKA_HOST";
-  private static final String KAFKA_PORT = "FOLIO_KAFKA_PORT";
+  private static final String KAFKA_HOST = "KAFKA_HOST";
+  private static final String KAFKA_PORT = "KAFKA_PORT";
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;

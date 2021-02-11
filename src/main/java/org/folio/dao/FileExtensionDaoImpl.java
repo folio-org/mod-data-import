@@ -3,8 +3,8 @@ package org.folio.dao;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import org.folio.dao.util.PostgresClientFactory;
@@ -29,7 +29,7 @@ import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 @Repository
 public class FileExtensionDaoImpl implements FileExtensionDao {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileExtensionDaoImpl.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   private static final String DEFAULT_FILE_EXTENSIONS_TABLE = "default_file_extensions";
@@ -194,7 +194,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
     Promise<SQLConnection> tx = Promise.promise();
     Future.succeededFuture()
       .compose(v -> {
-        client.startTx(tx.future());
+        client.startTx(e -> tx.future());
         return tx.future();
       }).compose(v -> copyExtensionsFromDefault(tx.future(), tenantId))
       .onComplete(r -> {

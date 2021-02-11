@@ -26,8 +26,8 @@ public class InitAPIImpl implements InitAPI {
       SpringContextUtil.autowireDependencies(this, context);
       initFileProcessor(vertx);
       handler.handle(Future.succeededFuture(true));
-    } catch (Throwable th) {
-      handler.handle(Future.failedFuture(th));
+    } catch (Exception e) {
+      handler.handle(Future.failedFuture(e));
     }
   }
 

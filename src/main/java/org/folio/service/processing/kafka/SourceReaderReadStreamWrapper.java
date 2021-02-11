@@ -4,8 +4,8 @@ import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.impl.InboundBuffer;
 import io.vertx.kafka.client.producer.KafkaHeader;
@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_MARC_BIB_RECORDS_CHUNK_READ;
 
 public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<String, String>> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SourceReaderReadStreamWrapper.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private static final String END_SENTINEL = "EOF";
 
@@ -77,9 +77,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
       }
     });
 
-    queue.drainHandler(v -> {
-      doRead();
-    });
+    queue.drainHandler(v -> doRead());
 
     LOGGER.debug("SourceReaderReadStreamWrapper has been created");
   }
@@ -172,9 +170,9 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
         if (canWrite && notEof && !closed) {
           doReadInternal();
         }
-      } catch (Throwable th) {
-        LOGGER.error(th);
-        handleException(th);
+      } catch (Exception e) {
+        LOGGER.error(e);
+        handleException(e);
       }
     });
   }

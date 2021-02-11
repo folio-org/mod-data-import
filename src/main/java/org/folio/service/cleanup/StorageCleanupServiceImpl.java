@@ -1,11 +1,12 @@
 package org.folio.service.cleanup;
 
+import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dataimport.util.ConfigurationUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -26,10 +27,11 @@ import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 @Service
 public class StorageCleanupServiceImpl implements StorageCleanupService {
 
+  private static final Logger LOGGER = LogManager.getLogger();
+
   private static final String TIME_WITHOUT_UPLOAD_DEFINITION_CHANGES_CODE = "data.import.cleanup.time";
   private static final long TIME_WITHOUT_CHANGES_DEFAULT_VALUE_MILLIS =
     Long.parseLong(MODULE_SPECIFIC_ARGS.getOrDefault(TIME_WITHOUT_UPLOAD_DEFINITION_CHANGES_CODE, "3600000"));
-  private static final Logger LOGGER = LoggerFactory.getLogger(StorageCleanupServiceImpl.class);
 
   @Autowired
   private Vertx vertx;
@@ -71,11 +73,11 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
   }
 
   private Future<CompositeFuture> deleteFilesByUploadDefinitions(FileStorageService fileStorageService, List<UploadDefinition> uploadDefinitions) {
-    List<Future> deleteFilesFutures = new ArrayList<>();
+    List<Future<Boolean>> deleteFilesFutures = new ArrayList<>();
     uploadDefinitions.stream()
       .flatMap(uploadDefinition -> uploadDefinition.getFileDefinitions().stream())
       .forEach(fileDefinition -> deleteFilesFutures.add(fileStorageService.deleteFile(fileDefinition)));
-    return CompositeFuture.all(deleteFilesFutures);
+    return GenericCompositeFuture.all(deleteFilesFutures);
   }
 
 }

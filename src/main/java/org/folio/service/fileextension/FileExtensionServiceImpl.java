@@ -5,8 +5,8 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import org.folio.dao.FileExtensionDao;
@@ -30,7 +30,7 @@ import java.util.UUID;
 
 @Service
 public class FileExtensionServiceImpl implements FileExtensionService {
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileExtensionServiceImpl.class);
+  private static final Logger LOGGER = LogManager.getLogger();
   private static final String GET_USER_URL = "/users?query=id==";
 
   @Autowired

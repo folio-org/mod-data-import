@@ -1,13 +1,13 @@
 package org.folio.service.upload;
 
-import io.vertx.core.CompositeFuture;
+import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
 import org.folio.HttpStatus;
 import org.folio.dao.UploadDefinitionDao;
@@ -52,7 +52,8 @@ import java.util.stream.Collectors;
 @Service
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
-  private static final Logger logger = LoggerFactory.getLogger(UploadDefinitionServiceImpl.class);
+  private static final Logger LOGGER = LogManager.getLogger();
+
   private static final String FILE_UPLOAD_ERROR_MESSAGE = "upload.fileSize.invalid";
   private static final String UPLOAD_FILE_EXTENSION_BLOCKED_ERROR_MESSAGE = "validation.uploadDefinition.fileExtension.blocked";
 
@@ -68,7 +69,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
    * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
    * will be rewritten with DI support.
    *
-   * @param vertx
+   * @param vertx - Vertx argument
    */
   public UploadDefinitionServiceImpl(Vertx vertx) {
     this.uploadDefinitionDao = new UploadDefinitionDaoImpl(vertx);
@@ -117,7 +118,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
                 .compose(result -> {
                   updateJobExecutionStatuses(jobExecutionList, new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
                     .otherwise(throwable -> {
-                      logger.error("Couldn't update JobExecution status to DISCARDED after UploadDefinition {} was deleted", id, throwable);
+                      LOGGER.error("Couldn't update JobExecution status to DISCARDED after UploadDefinition {} was deleted", id, throwable);
                       return result;
                     });
                   return Future.succeededFuture(result);
@@ -151,7 +152,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
           promise.complete(true);
         } else {
-          logger.error("Error updating status of JobExecution with id {}", jobExecutionId, response.statusMessage());
+          LOGGER.error("Error updating status of JobExecution with id {}. Status message: {}", jobExecutionId, response.statusMessage());
           promise.fail(new HttpStatusException(response.statusCode(), "Error updating status of JobExecution"));
         }
       });
@@ -178,7 +179,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   private Future<Errors> validateFilesExtensionName(UploadDefinition definition, Errors errors, String tenantId) {
-    List<Future> listOfValidations = new ArrayList<>(definition.getFileDefinitions().size());
+    List<Future<Errors>> listOfValidations = new ArrayList<>(definition.getFileDefinitions().size());
     for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
       String fileExtension = getFileExtensionFromString(fileDefinition.getName());
       listOfValidations.add(fileExtensionService.getFileExtensionByExtenstion(fileExtension, tenantId)
@@ -190,7 +191,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
           return errors;
         }));
     }
-    return CompositeFuture.all(listOfValidations)
+    return GenericCompositeFuture.all(listOfValidations)
       .map(errors);
   }
 
@@ -216,7 +217,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         freeSpaceKb += store.getUsableSpace() / 1024;
       } catch (IOException e) {
         String errorMessage = "Error during check free disk size";
-        logger.error(errorMessage, e);
+        LOGGER.error(errorMessage, e);
         throw new InternalServerErrorException(errorMessage, e);
       }
     }
@@ -257,7 +258,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     try {
       client.postChangeManagerJobExecutions(initJobExecutionsRqDto, response -> {
         if (response.statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
-          logger.error("Error creating new JobExecution for UploadDefinition with id {}", definition.getId(), response.statusMessage());
+          LOGGER.error("Error creating new JobExecution for UploadDefinition with id {}. Status message: {}", definition.getId(), response.statusMessage());
           promise.fail(new HttpStatusException(response.statusCode(), "Error creating new JobExecution"));
         } else {
           response.bodyHandler(buffer -> {
@@ -299,12 +300,12 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Promise<UploadDefinition> promise = Promise.promise();
     if (definition.getMetaJobExecutionId() == null || definition.getMetaJobExecutionId().isEmpty()) {
       promise.fail(new BadRequestException());
-      logger.error("Cant save Upload Definition without MetaJobExecutionId");
+      LOGGER.error("Cant save Upload Definition without MetaJobExecutionId");
       return promise.future();
     }
     for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
       if (fileDefinition.getJobExecutionId() == null || fileDefinition.getJobExecutionId().isEmpty()) {
-        logger.error("Cant save File Definition without JobExecutionId");
+        LOGGER.error("Cant save File Definition without JobExecutionId");
         promise.fail(new BadRequestException());
         return promise.future();
       }
@@ -339,7 +340,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
           response.bodyHandler(buffer -> promise.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecutionCollection.class)));
         } else {
           String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
-          logger.error(errorMessage);
+          LOGGER.error(errorMessage);
           promise.fail(errorMessage);
         }
       });
@@ -358,7 +359,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
           response.bodyHandler(buffer -> promise.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecution.class)));
         } else {
           String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
-          logger.error(errorMessage);
+          LOGGER.error(errorMessage);
           promise.fail(errorMessage);
         }
       });
@@ -391,24 +392,23 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return jobExecutions.stream().filter(jobExecution ->
       JobExecution.Status.NEW.equals(jobExecution.getStatus()) ||
         JobExecution.Status.FILE_UPLOADED.equals(jobExecution.getStatus()) ||
-        JobExecution.Status.DISCARDED.equals(jobExecution.getStatus()))
-      .collect(Collectors.toList()).size() == jobExecutions.size();
+        JobExecution.Status.DISCARDED.equals(jobExecution.getStatus())).count() == jobExecutions.size();
   }
 
   private Future<Boolean> updateJobExecutionStatuses(List<JobExecution> jobExecutions, StatusDto status, OkapiConnectionParams params) {
-    List<Future> futures = new ArrayList<>();
+    List<Future<Boolean>> futures = new ArrayList<>();
     for (JobExecution jobExecution : jobExecutions) {
       futures.add(updateJobExecutionStatus(jobExecution.getId(), status, params));
     }
-    return CompositeFuture.all(futures).map(Future::succeeded);
+    return GenericCompositeFuture.all(futures).map(Future::succeeded);
   }
 
   private Future<Boolean> deleteFiles(List<FileDefinition> fileDefinitions, OkapiConnectionParams params) {
-    List<Future> futures = new ArrayList<>();
+    List<Future<Boolean>> futures = new ArrayList<>();
     for (FileDefinition fileDefinition : fileDefinitions) {
       futures.add(deleteFile(fileDefinition, params));
     }
-    return CompositeFuture.all(futures).map(Future::succeeded);
+    return GenericCompositeFuture.all(futures).map(Future::succeeded);
   }
 
 }

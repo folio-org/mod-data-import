@@ -5,8 +5,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.folio.rest.jaxrs.model.InitialRecord;
@@ -23,7 +24,8 @@ import java.util.List;
  */
 public class MarcJsonReader implements SourceReader {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MarcJsonReader.class);
+  private static final Logger LOGGER = LogManager.getLogger();
+
   public static final String JSON_EXTENSION = "json";
   private JsonReader reader;
   private int chunkSize;

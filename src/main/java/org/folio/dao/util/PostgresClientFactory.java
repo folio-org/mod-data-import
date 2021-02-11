@@ -18,7 +18,7 @@ public class PostgresClientFactory {
    * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
    * will be rewritten with DI support.
    *
-   * @param vertx
+   * @param vertx - Vertx argument
    */
   public PostgresClientFactory(Vertx vertx) {
     this.vertx = vertx;

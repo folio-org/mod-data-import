@@ -14,8 +14,8 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>31.1.5</raml-module-builder.version>
-    <vertx.version>3.9.4</vertx.version>
+    <raml-module-builder.version>32.1.0</raml-module-builder.version>
+    <vertx.version>4.0.0</vertx.version>
     <junit.version>4.13.1</junit.version>
     <rest-assured.version>4.3.1</rest-assured.version>
     <jackson.version>2.10.1</jackson.version>
@@ -390,7 +390,7 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
+          <complianceLevel>11</complianceLevel>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
           <aspectLibraries>

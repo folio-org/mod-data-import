@@ -33,7 +33,7 @@ public abstract class EdifactState {
   final EdifactParser parser;
   final Map<String, Character> delimiters;
 
-  public EdifactState(EdifactParser edifactParser, Map<String, Character> delimiters) {
+  protected EdifactState(EdifactParser edifactParser, Map<String, Character> delimiters) {
     this.parser = edifactParser;
     this.delimiters = delimiters;
   }

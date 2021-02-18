@@ -5,8 +5,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.any;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 
-import java.util.UUID;
-
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -24,9 +22,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class ModTenantApiTest extends AbstractRestTest{
 
-  private static final String MODULE_TO_VERSION = "mod-pubsub-1.0.0";
+  private static final String MODULE_TO_VERSION = "mod-data-import-1.0.0";
   private static final String TENANT_URL = "/_/tenant";
-  private static final String USERS_URL = "/users";
 
   @ClassRule
   public static WireMockRule wireMockRule = new WireMockRule(

@@ -234,11 +234,11 @@ public abstract class AbstractRestTest {
       .build();
       WireMock.stubFor(WireMock.get(GET_USER_URL + okapiUserIdHeader)
         .willReturn(WireMock.okJson(userResponse.toString())));
-      WireMock.stubFor(WireMock.get(OKAPI_URL + "/configurations/entries?query="
+      WireMock.stubFor(WireMock.get("/configurations/entries?query="
         + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")", StandardCharsets.UTF_8)
         + "&offset=0&limit=3&")
         .willReturn(WireMock.okJson(config.toString())));
-      WireMock.stubFor(WireMock.get(OKAPI_URL + "/configurations/entries?query="
+      WireMock.stubFor(WireMock.get("/configurations/entries?query="
         + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", StandardCharsets.UTF_8)
         + "&offset=0&limit=3&")
         .willReturn(WireMock.okJson(config2.toString())));

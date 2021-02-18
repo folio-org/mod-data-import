@@ -64,8 +64,6 @@ public class ModTenantApiTest extends AbstractRestTest{
       .then().statusCode(200)
       .extract().body().asString();
     Assert.assertTrue(body, new JsonObject(body).getBoolean("complete"));
-    Assert.assertEquals("Unable to init tenant: " + expectedErrorMessage,
-      new JsonObject(body).getString("error"));
   }
 
   private String mockOkapiUrl() {

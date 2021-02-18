@@ -41,12 +41,6 @@ public class ModTenantAPI extends TenantAPI {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
 
-  @Validate
-  @Override
-  public void postTenant(TenantAttributes entity, Map<String, String> headers, Handler<AsyncResult<Response>> handlers, Context context) {
-    super.postTenantSync(entity, headers, handlers, context);
-  }
-
   @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
     return super.loadData(attributes, tenantId, headers, context)
@@ -55,7 +49,6 @@ public class ModTenantAPI extends TenantAPI {
         return setupDefaultFileExtensions(headers).map(num);
       });
   }
-
 
   private Future<Boolean> setupDefaultFileExtensions(Map<String, String> headers) {
     try {

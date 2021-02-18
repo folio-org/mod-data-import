@@ -194,7 +194,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
     Promise<SQLConnection> tx = Promise.promise();
     Future.succeededFuture()
       .compose(v -> {
-        client.startTx(e -> tx.future());
+        client.startTx(tx);
         return tx.future();
       }).compose(v -> copyExtensionsFromDefault(tx.future(), tenantId))
       .onComplete(r -> {

@@ -1,14 +1,19 @@
 package org.folio.service.upload;
 
 import org.folio.okapi.common.GenericCompositeFuture;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import io.vertx.ext.web.handler.impl.HttpStatusException;
+
 import org.folio.HttpStatus;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
@@ -35,6 +40,7 @@ import org.springframework.stereotype.Service;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.NotFoundException;
+
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
@@ -149,11 +155,11 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.putChangeManagerJobExecutionsStatusById(jobExecutionId, status, response -> {
-        if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
+        if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           promise.complete(true);
         } else {
-          LOGGER.error("Error updating status of JobExecution with id {}. Status message: {}", jobExecutionId, response.statusMessage());
-          promise.fail(new HttpStatusException(response.statusCode(), "Error updating status of JobExecution"));
+          LOGGER.error("Error updating status of JobExecution with id {}. Status message: {}", jobExecutionId, response.result().statusMessage());
+          promise.fail(new HttpStatusException(response.result().statusCode(), "Error updating status of JobExecution"));
         }
       });
     } catch (Exception e) {
@@ -257,26 +263,24 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.postChangeManagerJobExecutions(initJobExecutionsRqDto, response -> {
-        if (response.statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
-          LOGGER.error("Error creating new JobExecution for UploadDefinition with id {}. Status message: {}", definition.getId(), response.statusMessage());
-          promise.fail(new HttpStatusException(response.statusCode(), "Error creating new JobExecution"));
+        if (response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
+          LOGGER.error("Error creating new JobExecution for UploadDefinition with id {}. Status message: {}", definition.getId(), response.result().statusMessage());
+          promise.fail(new HttpStatusException(response.result().statusCode(), "Error creating new JobExecution"));
         } else {
-          response.bodyHandler(buffer -> {
-            JsonObject responseBody = buffer.toJsonObject();
-            JsonArray jobExecutions = responseBody.getJsonArray("jobExecutions");
-            for (int i = 0; i < jobExecutions.size(); i++) {
-              JsonObject jobExecution = jobExecutions.getJsonObject(i);
-              String jobExecutionPath = jobExecution.getString("sourcePath");
-              definition.getFileDefinitions()
-                .forEach(fileDefinition -> {
-                  if (jobExecutionPath != null && jobExecutionPath.equals(fileDefinition.getName())) {
-                    fileDefinition.setJobExecutionId(jobExecution.getString("id"));
-                  }
-                });
-            }
-            definition.setMetaJobExecutionId(responseBody.getString("parentJobExecutionId"));
-            promise.complete(definition);
-          });
+          JsonObject responseBody = response.result().bodyAsJsonObject();
+          JsonArray jobExecutions = responseBody.getJsonArray("jobExecutions");
+          for (int i = 0; i < jobExecutions.size(); i++) {
+            JsonObject jobExecution = jobExecutions.getJsonObject(i);
+            String jobExecutionPath = jobExecution.getString("sourcePath");
+            definition.getFileDefinitions()
+              .forEach(fileDefinition -> {
+                if (jobExecutionPath != null && jobExecutionPath.equals(fileDefinition.getName())) {
+                  fileDefinition.setJobExecutionId(jobExecution.getString("id"));
+                }
+              });
+          }
+          definition.setMetaJobExecutionId(responseBody.getString("parentJobExecutionId"));
+          promise.complete(definition);
         }
       });
     } catch (Exception e) {
@@ -336,8 +340,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, null, 0, response -> {
-        if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
-          response.bodyHandler(buffer -> promise.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecutionCollection.class)));
+        if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
+          Buffer responseAsBuffer = response.result().bodyAsBuffer();
+          promise.handle(BufferMapper.mapBufferContentToEntity(responseAsBuffer, JobExecutionCollection.class));
         } else {
           String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
           LOGGER.error(errorMessage);
@@ -355,8 +360,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.getChangeManagerJobExecutionsById(jobExecutionId, null, response -> {
-        if (response.statusCode() == HttpStatus.HTTP_OK.toInt()) {
-          response.bodyHandler(buffer -> promise.handle(BufferMapper.mapBufferContentToEntity(buffer, JobExecution.class)));
+        if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
+          Buffer responseAsBuffer = response.result().bodyAsBuffer();
+          promise.handle(BufferMapper.mapBufferContentToEntity(responseAsBuffer, JobExecution.class));
         } else {
           String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
           LOGGER.error(errorMessage);

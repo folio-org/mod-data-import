@@ -219,9 +219,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
-        if (response.statusCode() != HttpStatus.HTTP_OK.toInt()) {
-          LOGGER.error("Error updating job profile for JobExecution {}. StatusCode: {}", jobId, response.statusMessage());
-          promise.fail(new HttpStatusException(response.statusCode(), "Error updating JobExecution"));
+        if (response.result().statusCode() != HttpStatus.HTTP_OK.toInt()) {
+          LOGGER.error("Error updating job profile for JobExecution {}. StatusCode: {}", jobId, response.result().statusMessage());
+          promise.fail(new HttpStatusException(response.result().statusCode(), "Error updating JobExecution"));
         } else {
           LOGGER.info("Job profile for job {} successfully updated.", jobId);
           promise.complete();

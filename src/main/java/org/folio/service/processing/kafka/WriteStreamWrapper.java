@@ -71,7 +71,7 @@ public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<Strin
     return this;
   }
 
-  private Future<Void> logChunkProcessingResult(List<KafkaHeader> headers, AsyncResult<Void> ar) {
+  private void logChunkProcessingResult(List<KafkaHeader> headers, AsyncResult<Void> ar) {
     String correlationId = null;
     String chunkNumber = null;
     for (KafkaHeader h : headers) {
@@ -83,10 +83,8 @@ public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<Strin
     }
     if (ar.succeeded()) {
       LOGGER.debug("Next chunk has been written: correlationId: {} chunkNumber: {}", correlationId, chunkNumber);
-      return Future.succeededFuture();
     } else {
       LOGGER.error("Next chunk has failed with errors correlationId: {} chunkNumber: {}", correlationId, chunkNumber, ar.cause());
-      return Future.failedFuture(ar.cause().getMessage());
     }
   }
 }

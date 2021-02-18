@@ -85,7 +85,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     Promise<SQLConnection> tx = Promise.promise();
     Future.succeededFuture()
       .compose(v -> {
-        client.startTx(e -> tx.future());
+        client.startTx(tx);
         return tx.future();
       }).compose(v -> {
       Promise<RowSet<Row>> selectPromise = Promise.promise();

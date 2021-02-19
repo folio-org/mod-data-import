@@ -1,7 +1,7 @@
 package org.folio.service.processing.reader;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.folio.rest.jaxrs.model.InitialRecord;
@@ -24,9 +24,10 @@ import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
  * <code>next</code> method returns buffer content once the buffer is full or the target file has come to the end.
  */
 public class MarcRawReader implements SourceReader {
-  private static final Logger LOGGER = LoggerFactory.getLogger(MarcRawReader.class);
+
+  private static final Logger LOGGER = LogManager.getLogger();
+
   private static final Charset CHARSET = Charset.forName(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.record.charset", "UTF8"));
-  private static final Logger logger = LoggerFactory.getLogger(MarcRawReader.class);
   private MarcPermissiveStreamReader reader;
   private int chunkSize;
   private MutableInt recordsCounter;
@@ -55,7 +56,7 @@ public class MarcRawReader implements SourceReader {
       try {
         recordsBuffer.add(new InitialRecord().withRecord(bos.toString(CHARSET.name())).withOrder(recordsCounter.getAndIncrement()));
       } catch (UnsupportedEncodingException e) {
-        logger.error("Error during reading MARC record. Record will be skipped.", e);
+        LOGGER.error("Error during reading MARC record. Record will be skipped.", e);
       }
       if (recordsBuffer.isFull()) {
         return recordsBuffer.getRecords();

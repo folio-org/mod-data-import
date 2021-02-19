@@ -2,9 +2,12 @@ package org.folio.service.processing.kafka;
 
 import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.vertx.core.streams.WriteStream;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
@@ -14,7 +17,7 @@ import java.util.List;
 
 public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<String, String>> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WriteStreamWrapper.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private final KafkaProducer<String, String> producer;
 
@@ -29,23 +32,21 @@ public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<Strin
   }
 
   @Override
-  public WriteStream<KafkaProducerRecord<String, String>> write(KafkaProducerRecord<String, String> data) {
-    producer.write(data, ar -> logChunkProcessingResult(data.headers(), ar));
-    return this;
+  public Future<Void> write(KafkaProducerRecord<String, String> data) {
+    return Future.future(e -> producer.write(data, ar -> logChunkProcessingResult(data.headers(), ar)));
   }
 
   @Override
-  public WriteStream<KafkaProducerRecord<String, String>> write(KafkaProducerRecord<String, String> data, Handler<AsyncResult<Void>> handler) {
+  public void write(KafkaProducerRecord<String, String> data, Handler<AsyncResult<Void>> handler) {
     producer.write(data, ar -> {
       logChunkProcessingResult(data.headers(), ar);
       handler.handle(ar);
     });
-    return this;
   }
 
   @Override
-  public void end() {
-    producer.end();
+  public Future<Void> end() {
+    return Future.future( e ->producer.end());
   }
 
   @Override
@@ -83,7 +84,7 @@ public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<Strin
     if (ar.succeeded()) {
       LOGGER.debug("Next chunk has been written: correlationId: {} chunkNumber: {}", correlationId, chunkNumber);
     } else {
-      LOGGER.error("Next chunk has failed with errors correlationId: {} chunkNumber: {}", ar.cause(), correlationId, chunkNumber);
+      LOGGER.error("Next chunk has failed with errors correlationId: {} chunkNumber: {}", correlationId, chunkNumber, ar.cause());
     }
   }
 }

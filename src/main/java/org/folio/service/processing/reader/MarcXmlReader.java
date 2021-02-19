@@ -1,7 +1,7 @@
 package org.folio.service.processing.reader;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -18,8 +18,10 @@ import java.util.List;
  * It reads marc records from an xml file by specified size of chunk.
  */
 public class MarcXmlReader implements SourceReader {
+
+  private static final Logger LOGGER = LogManager.getLogger();
+
   public static final String XML_EXTENSION = "xml";
-  private static final Logger LOGGER = LoggerFactory.getLogger(MarcXmlReader.class);
   private Document document;
   private int chunkSize;
   private Iterator iterator;
@@ -35,7 +37,7 @@ public class MarcXmlReader implements SourceReader {
       // https://github.com/dom4j/dom4j/releases/tag/version-2.1.3
       this.document = SAXReader.createDefault().read(file);
     } catch (DocumentException e) {
-      LOGGER.error("Can not read the xml file: %s", e, file);
+      LOGGER.error("Can not read the xml file: {}", file, e);
       throw new RecordsReaderException(e);
     }
     this.iterator = document.getRootElement().elementIterator();

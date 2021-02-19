@@ -14,8 +14,8 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>31.1.5</raml-module-builder.version>
-    <vertx.version>3.9.4</vertx.version>
+    <raml-module-builder.version>32.1.0</raml-module-builder.version>
+    <vertx.version>4.0.0</vertx.version>
     <junit.version>4.13.1</junit.version>
     <rest-assured.version>4.3.1</rest-assured.version>
     <jackson.version>2.10.1</jackson.version>
@@ -23,7 +23,7 @@
     <marc4j.version>2.9.1</marc4j.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mod-configuration-client.version>5.4.0</mod-configuration-client.version>
+    <mod-configuration-client.version>5.6.0</mod-configuration-client.version>
     <sonar.exclusions>**/ParallelFileChunkingProcessor.java</sonar.exclusions>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <lombok.version>1.18.12</lombok.version>
@@ -84,7 +84,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>1.1.0</version>
+      <version>1.3.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -124,7 +124,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>mod-pubsub-client</artifactId>
-      <version>1.3.3</version>
+      <version>1.4.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -194,7 +194,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.7.0</version>
+      <version>1.8.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -390,7 +390,7 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
+          <complianceLevel>11</complianceLevel>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
           <aspectLibraries>
@@ -527,6 +527,7 @@
                   <manifestEntries>
                     <Main-Class>org.folio.rest.RestLauncher</Main-Class>
                     <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
+                    <Multi-Release>true</Multi-Release>
                   </manifestEntries>
                 </transformer>
               </transformers>
@@ -556,6 +557,11 @@
               io.vertx.core.logging.Log4j2LogDelegateFactory
             </vertx.logger-delegate-factory-class-name>
           </systemPropertyVariables>
+          <argLine>
+            --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
+            -Dio.netty.tryReflectionSetAccessible=true
+            --illegal-access=warn
+          </argLine>
         </configuration>
       </plugin>
 

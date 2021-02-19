@@ -16,7 +16,7 @@ public abstract class AbstractFileStorageService implements FileStorageService {
   protected String tenantId;
   protected FileSystem fs;
 
-  public AbstractFileStorageService(Vertx vertx, String tenantId) {
+  protected AbstractFileStorageService(Vertx vertx, String tenantId) {
     this.vertx = vertx;
     this.tenantId = tenantId;
     this.fs = vertx.fileSystem();

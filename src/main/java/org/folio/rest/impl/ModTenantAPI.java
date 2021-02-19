@@ -6,8 +6,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ConfigurationUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.annotations.Validate;
@@ -29,7 +29,7 @@ public class ModTenantAPI extends TenantAPI {
   private static final String DELAY_TIME_BETWEEN_CLEANUP_CODE = "data.import.cleanup.delay.time";
   private static final long DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS = 3600_000;
 
-  private static final Logger logger = LoggerFactory.getLogger(ModTenantAPI.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
   private FileExtensionService fileExtensionService;
@@ -41,23 +41,18 @@ public class ModTenantAPI extends TenantAPI {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
 
-  @Validate
   @Override
-  public void postTenant(TenantAttributes entity, Map<String, String> headers, Handler<AsyncResult<Response>> handlers, Context context) {
-    super.postTenant(entity, headers, ar -> {
-      if (ar.failed()) {
-        handlers.handle(ar);
-      } else {
+  Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
+    return super.loadData(attributes, tenantId, headers, context)
+      .compose(num -> {
         initStorageCleanupService(headers, context);
-        setupDefaultFileExtensions(headers)
-          .onComplete(event -> handlers.handle(ar));
-      }
-    }, context);
+        return setupDefaultFileExtensions(headers).map(num);
+      });
   }
 
   private Future<Boolean> setupDefaultFileExtensions(Map<String, String> headers) {
     try {
-      String tenantId = TenantTool.calculateTenantId((String) headers.get(OKAPI_TENANT_HEADER));
+      String tenantId = TenantTool.calculateTenantId(headers.get(OKAPI_TENANT_HEADER));
       return
         fileExtensionService.getFileExtensions(null, 0, 1, tenantId)
           .compose(r -> createDefExtensionsIfNeeded(r, fileExtensionService, tenantId));
@@ -84,18 +79,15 @@ public class ModTenantAPI extends TenantAPI {
     ConfigurationUtil.getPropertyByCode(DELAY_TIME_BETWEEN_CLEANUP_CODE, params)
       .map(Long::parseLong)
       .otherwise(DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS)
-      .onComplete(delayTimeAr -> {
-        vertx.setPeriodic(delayTimeAr.result(), e -> {
-          vertx.<Void>executeBlocking(b -> storageCleanupService.cleanStorage(params),
-            cleanupAr -> {
-              if (cleanupAr.failed()) {
-                logger.error("Error during cleaning file storage.", cleanupAr.cause());
-              } else {
-                logger.info("File storage was successfully cleaned of unused files");
-              }
-            });
-        });
-      });
+      .onComplete(delayTimeAr -> vertx.setPeriodic(delayTimeAr.result(),
+        e -> vertx.<Void>executeBlocking(b -> storageCleanupService.cleanStorage(params),
+        cleanupAr -> {
+          if (cleanupAr.failed()) {
+            LOGGER.error("Error during cleaning file storage.", cleanupAr.cause());
+          } else {
+            LOGGER.info("File storage was successfully cleaned of unused files");
+          }
+        })));
   }
 
 }

@@ -179,19 +179,6 @@ public abstract class AbstractRestTest {
         TenantAttributes tenantAttributes = new TenantAttributes();
         tenantAttributes.setModuleTo(PomReader.INSTANCE.getModuleName());
         tenantClient.postTenant(tenantAttributes, res2 -> {
-          if (res2.result().statusCode() == 204) {
-            return;
-          } if (res2.result().statusCode() == 201) {
-            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
-              context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
-              String error = res3.bodyAsJson(TenantJob.class).getError();
-              if (error != null) {
-                context.assertEquals("Failed to make post tenant. Received status code 400", error);
-              }
-            }));
-          } else {
-            context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
-          }
           async.complete();
         });
       } catch (Exception e) {

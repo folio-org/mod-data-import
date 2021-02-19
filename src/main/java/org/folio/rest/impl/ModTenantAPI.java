@@ -42,6 +42,11 @@ public class ModTenantAPI extends TenantAPI {
   }
 
   @Override
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
+    super.postTenantSync(tenantAttributes, headers, handler, context);
+  }
+
+  @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
     return super.loadData(attributes, tenantId, headers, context)
       .compose(num -> {

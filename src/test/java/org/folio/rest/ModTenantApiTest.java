@@ -1,4 +1,3 @@
-/*
 package org.folio.rest;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -44,7 +43,7 @@ public class ModTenantApiTest extends AbstractRestTest{
       .header(OKAPI_URL_HEADER, mockOkapiUrl())
       .body(JsonObject.mapFrom(new TenantAttributes().withModuleTo(MODULE_TO_VERSION)).encode())
       .when().post(TENANT_URL)
-      .then().statusCode(204)
+      .then().statusCode(201)
       .extract().body().asString();
 
     String id = new JsonObject(body).getString("id");
@@ -61,4 +60,3 @@ public class ModTenantApiTest extends AbstractRestTest{
     return "http://localhost:" + wireMockRule.port();
   }
 }
-*/

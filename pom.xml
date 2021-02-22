@@ -18,7 +18,7 @@
     <vertx.version>4.0.0</vertx.version>
     <junit.version>4.13.1</junit.version>
     <rest-assured.version>4.3.1</rest-assured.version>
-    <jackson.version>2.10.1</jackson.version>
+    <jackson.version>2.10.5.1</jackson.version>
     <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
     <marc4j.version>2.9.1</marc4j.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>

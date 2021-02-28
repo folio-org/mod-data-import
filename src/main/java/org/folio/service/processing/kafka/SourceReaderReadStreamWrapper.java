@@ -150,6 +150,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
           recordsCounter += records.size();
 
           chunk = new RawRecordsDto()
+            .withId(UUID.randomUUID().toString())
             .withInitialRecords(records)
             .withRecordsMetadata(new RecordsMetadata()
               .withContentType(reader.getContentType())

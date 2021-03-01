@@ -1,7 +1,7 @@
 package org.folio.service.processing.reader;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.xlate.edi.stream.EDIInputFactory;
 import io.xlate.edi.stream.EDIStreamEvent;
 import io.xlate.edi.stream.EDIStreamException;
@@ -28,7 +28,8 @@ import java.util.stream.Stream;
  */
 public class EdifactReader implements SourceReader {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(EdifactReader.class);
+  private static final Logger LOGGER = LogManager.getLogger();
+
   private static final Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
   public static final String EDIFACT_EDI_EXTENSION = "edi";
   public static final String EDIFACT_INV_EXTENSION = "inv";
@@ -52,10 +53,10 @@ public class EdifactReader implements SourceReader {
         segmentIterator = segmentsStream.iterator();
       }
     } catch (IOException e) {
-      LOGGER.error("Error during handling the file: " + file.getName(), e);
+      LOGGER.error("Error during handling the file: {}", file.getName(), e);
       throw new RecordsReaderException(e);
     } catch (EDIStreamException e) {
-      LOGGER.error("Can not initialize reader. Cause: " + e.getMessage());
+      LOGGER.error("Can not initialize reader. Cause: {}", e.getMessage());
       throw new RecordsReaderException(e);
     }
   }

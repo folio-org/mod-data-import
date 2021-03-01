@@ -2,8 +2,8 @@ package org.folio.service.file;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.StatusDto;
@@ -23,7 +23,7 @@ import java.util.Optional;
 @Service
 public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleService {
 
-  private static final Logger logger = LoggerFactory.getLogger(FileUploadLifecycleServiceImpl.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
   private UploadDefinitionService uploadDefinitionService;
@@ -60,7 +60,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
         promise.complete(uploadDef);
       } else {
         String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
-        logger.error(errorMessage);
+        LOGGER.error(errorMessage);
         promise.fail(new NotFoundException(errorMessage));
       }
       return promise.future();
@@ -78,7 +78,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
       uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
         .onComplete(booleanAsyncResult -> {
           if (booleanAsyncResult.failed()) {
-            logger.error("Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
+            LOGGER.error("Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
               fileDefinition.getJobExecutionId(), fileDefinition.getId(), booleanAsyncResult.cause());
           }
         });
@@ -97,7 +97,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
       return getStorage(params).compose(service -> service.saveFile(data, fileDefinition, params));
     } else {
       String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
-      logger.error(errorMessage);
+      LOGGER.error(errorMessage);
       return Future.failedFuture(new NotFoundException(errorMessage));
     }
   }
@@ -121,7 +121,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
               uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
                 .onComplete(updateStatusResult -> {
                   if (updateStatusResult.failed()) {
-                    logger.error(
+                    LOGGER.error(
                       "Couldn't update JobExecution status with id {} to DISCARDED after file with id {} was deleted",
                       fileDefinition.getJobExecutionId(), id, updateStatusResult.cause());
                   }
@@ -132,7 +132,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
           });
       } else {
         String errorMessage = String.format("FileDefinition with id %s was not fount", id);
-        logger.error(errorMessage);
+        LOGGER.error(errorMessage);
         promise.fail(errorMessage);
       }
       return promise.future();

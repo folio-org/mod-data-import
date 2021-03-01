@@ -1,12 +1,12 @@
 package org.folio.service.processing;
 
-import io.vertx.core.CompositeFuture;
+import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import org.apache.commons.collections4.list.UnmodifiableList;
@@ -49,7 +49,7 @@ import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
  */
 public class ParallelFileChunkingProcessor implements FileProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ParallelFileChunkingProcessor.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private Vertx vertx;
 
@@ -191,11 +191,11 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    */
   private Future<Void> updateJobsProfile(List<JobExecution> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Promise<Void> promise = Promise.promise();
-    List<Future> updateJobProfileFutures = new ArrayList<>(jobs.size());
+    List<Future<Void>> updateJobProfileFutures = new ArrayList<>(jobs.size());
     for (JobExecution job : jobs) {
       updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
     }
-    CompositeFuture.all(updateJobProfileFutures).onComplete(updatedJobsProfileAr -> {
+    GenericCompositeFuture.all(updateJobProfileFutures).onComplete(updatedJobsProfileAr -> {
       if (updatedJobsProfileAr.failed()) {
         promise.fail(updatedJobsProfileAr.cause());
       } else {
@@ -219,9 +219,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
-        if (response.statusCode() != HttpStatus.HTTP_OK.toInt()) {
-          LOGGER.error("Error updating job profile for JobExecution {}. StatusCode: {}", jobId, response.statusMessage());
-          promise.fail(new HttpStatusException(response.statusCode(), "Error updating JobExecution"));
+        if (response.result().statusCode() != HttpStatus.HTTP_OK.toInt()) {
+          LOGGER.error("Error updating job profile for JobExecution {}. StatusCode: {}", jobId, response.result().statusMessage());
+          promise.fail(new HttpStatusException(response.result().statusCode(), "Error updating JobExecution"));
         } else {
           LOGGER.info("Job profile for job {} successfully updated.", jobId);
           promise.complete();

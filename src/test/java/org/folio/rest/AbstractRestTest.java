@@ -22,6 +22,7 @@ import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionCollection;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.PomReader;
@@ -32,8 +33,8 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.UUID;
@@ -178,6 +179,19 @@ public abstract class AbstractRestTest {
         TenantAttributes tenantAttributes = new TenantAttributes();
         tenantAttributes.setModuleTo(PomReader.INSTANCE.getModuleName());
         tenantClient.postTenant(tenantAttributes, res2 -> {
+          if (res2.result().statusCode() == 204) {
+            return;
+          } if (res2.result().statusCode() == 201) {
+            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
+              context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
+              String error = res3.bodyAsJson(TenantJob.class).getError();
+              if (error != null) {
+                context.assertEquals("Failed to make post tenant. Received status code 400", error);
+              }
+            }));
+          } else {
+            context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
+          }
           async.complete();
         });
       } catch (Exception e) {
@@ -218,15 +232,14 @@ public abstract class AbstractRestTest {
       .setBaseUri("http://localhost:" + port)
       .addHeader("Accept", "text/plain, application/json")
       .build();
-    try {
       WireMock.stubFor(WireMock.get(GET_USER_URL + okapiUserIdHeader)
         .willReturn(WireMock.okJson(userResponse.toString())));
       WireMock.stubFor(WireMock.get("/configurations/entries?query="
-        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")", "UTF-8")
+        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")", StandardCharsets.UTF_8)
         + "&offset=0&limit=3&")
         .willReturn(WireMock.okJson(config.toString())));
       WireMock.stubFor(WireMock.get("/configurations/entries?query="
-        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", "UTF-8")
+        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", StandardCharsets.UTF_8)
         + "&offset=0&limit=3&")
         .willReturn(WireMock.okJson(config2.toString())));
       WireMock.stubFor(WireMock.post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
@@ -239,8 +252,6 @@ public abstract class AbstractRestTest {
         .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).toString())));
       WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))
         .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(childrenJobExecutions).toString())));
-    } catch (UnsupportedEncodingException ignored) {
-    }
   }
 
   private void clearTable(TestContext context) {

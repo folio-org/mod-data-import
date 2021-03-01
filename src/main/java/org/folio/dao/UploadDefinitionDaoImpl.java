@@ -5,10 +5,13 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+
 import org.apache.commons.lang3.time.TimeZones;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.dao.util.PostgresClientFactory;
@@ -25,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import javax.ws.rs.NotFoundException;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Optional;
@@ -40,7 +44,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   private static final String UPLOAD_DEFINITION_ID_FIELD = "'id'";
   public static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss";
 
-  private final Logger logger = LoggerFactory.getLogger(UploadDefinitionDaoImpl.class);
+  private static final Logger LOGGER = LogManager.getLogger();
   private SimpleDateFormat dateFormatter;
 
   @Autowired
@@ -81,7 +85,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     Promise<SQLConnection> tx = Promise.promise();
     Future.succeededFuture()
       .compose(v -> {
-        client.startTx(tx.future());
+        client.startTx(tx);
         return tx.future();
       }).compose(v -> {
       Promise<RowSet<Row>> selectPromise = Promise.promise();
@@ -107,7 +111,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
             promise.complete(onUpdate.result()));
         } else {
           client.rollbackTx(tx.future(), r -> {
-            logger.error(rollbackMessage, onUpdate.cause());
+            LOGGER.error(rollbackMessage, onUpdate.cause());
             promise.fail(onUpdate.cause());
           });
         }
@@ -123,7 +127,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       CQLWrapper cql = getCQLWrapper(UPLOAD_DEFINITION_TABLE, query, limit, offset);
       pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, cql, true, false, promise);
     } catch (Exception e) {
-      logger.error("Error during getting UploadDefinitions from view", e);
+      LOGGER.error("Error during getting UploadDefinitions from view", e);
       promise.fail(e);
     }
     return promise.future().map(uploadDefinitionResults -> new DefinitionCollection()
@@ -138,7 +142,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id);
       pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), true, promise);
     } catch (Exception e) {
-      logger.error("Error during get UploadDefinition by ID from view", e);
+      LOGGER.error("Error during get UploadDefinition by ID from view", e);
       promise.fail(e);
     }
     return promise.future()
@@ -160,7 +164,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + uploadDefinition.getId());
       pgClientFactory.createInstance(tenantId).update(tx, UPLOAD_DEFINITION_TABLE, uploadDefinition, filter, true, promise);
     } catch (Exception e) {
-      logger.error("Error during updating UploadDefinition by ID", e);
+      LOGGER.error("Error during updating UploadDefinition by ID", e);
       promise.fail(e);
     }
     return promise.future().map(uploadDefinition);
@@ -181,7 +185,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       String queryFilter = getFilterByStatus(status, lastUpdateDate);
       pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, queryFilter, true, false, promise);
     } catch (Exception e) {
-      logger.error("Error during getting UploadDefinitions by status and date", e);
+      LOGGER.error("Error during getting UploadDefinitions by status and date", e);
       promise.fail(e);
     }
     return promise.future().map(uploadDefinitionResults -> new DefinitionCollection()

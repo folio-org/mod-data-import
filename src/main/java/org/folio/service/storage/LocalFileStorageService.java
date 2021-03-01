@@ -3,8 +3,8 @@ package org.folio.service.storage;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 
@@ -16,8 +16,9 @@ import java.nio.file.StandardOpenOption;
 
 public class LocalFileStorageService extends AbstractFileStorageService {
 
+  private static final Logger LOGGER = LogManager.getLogger();
+
   private static final String FILE_STORAGE_PATH_CODE = "data.import.storage.path";
-  private static final Logger logger = LoggerFactory.getLogger(LocalFileStorageService.class);
 
   public LocalFileStorageService(Vertx vertx, String tenantId) {
     super(vertx, tenantId);
@@ -46,21 +47,21 @@ public class LocalFileStorageService extends AbstractFileStorageService {
                 fileDefinition.setSourcePath(path);
                 b.complete();
               } catch (Exception e) {
-                logger.error("Error during save file source data to the local system's storage. FileId: {}", fileId, e);
+                LOGGER.error("Error during save file source data to the local system's storage. FileId: {}", fileId, e);
                 b.fail(e);
               }
             },
             r -> {
               if (r.failed()) {
-                logger.error("Error during calculating path for file save. FileId: {}", fileId, r.cause());
+                LOGGER.error("Error during calculating path for file save. FileId: {}", fileId, r.cause());
                 promise.fail(r.cause());
               } else {
-                logger.debug("File part was saved to the storage. FileId: {}", fileId);
+                LOGGER.debug("File part was saved to the storage. FileId: {}", fileId);
                 promise.complete(fileDefinition);
               }
             });
         } else {
-          logger.error("Error during calculating path for file save. FileId: {}", fileId, pathReply.cause());
+          LOGGER.error("Error during calculating path for file save. FileId: {}", fileId, pathReply.cause());
           promise.fail(new BadRequestException(pathReply.cause()));
         }
       });
@@ -74,7 +75,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
       fs.deleteBlocking(fileDefinition.getSourcePath());
       promise.complete(true);
     } catch (Exception e) {
-      logger.error("Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
+      LOGGER.error("Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
       promise.complete(false);
     }
     return promise.future();

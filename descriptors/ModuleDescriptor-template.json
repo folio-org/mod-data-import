@@ -166,7 +166,23 @@
             "inventory-storage.instances.item.put",
             "inventory-storage.preceding-succeeding-titles.item.post",
             "converter-storage.field-protection-settings.get",
-            "converter-storage.jobprofilesnapshots.get"
+            "converter-storage.jobprofilesnapshots.get",
+            "invoice-storage.invoices.item.post",
+            "invoice-storage.invoice-number.get",
+            "acquisitions-units.units.collection.get",
+            "acquisitions-units.memberships.collection.get",
+            "invoice-storage.invoice-line-number.get",
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoices.item.put",
+            "invoice-storage.invoice-lines.item.post",
+            "invoice-storage.invoice-lines.item.put",
+            "invoice-storage.invoice-lines.collection.get",
+            "acquisitions-units.units.collection.get",
+            "acquisitions-units.memberships.collection.get",
+            "orders.po-lines.item.get",
+            "orders-storage.order-invoice-relationships.collection.get",
+            "orders-storage.order-invoice-relationships.item.post",
+            "orders.po-lines.collection.get"
           ]
         },
         {

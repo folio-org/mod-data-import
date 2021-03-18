@@ -1,4 +1,4 @@
-## xxxx-xx-xx v2.0.0-SNAPSHOT
+## 2021-03-18 v2.0.0
 * [MODDATAIMP-315](https://issues.folio.org/browse/MODDATAIMP-315) Use Kafka for data-import file processing
 * [MODDATAIMP-352](https://issues.folio.org/browse/MODDATAIMP-352) Implement source reader for EDIFACT files.
 * [MODDATAIMP-358](https://issues.folio.org/browse/MODDATAIMP-358) Upgrade to RAML Module Builder 32.x.

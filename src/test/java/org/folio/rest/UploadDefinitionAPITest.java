@@ -28,6 +28,7 @@ import org.folio.service.processing.FileProcessor;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -931,6 +932,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     });
   }
 
+  @Ignore
   @Test
   public void postFilesProcessingWithUnprocessableEntity() {
     UploadDefinition uploadDefinition = new UploadDefinition()

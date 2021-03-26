@@ -1,3 +1,6 @@
+## 2021-XX-XX v2.1.0-SNAPSHOT
+* [MODDATAIMP-388](https://issues.folio.org/browse/MODDATAIMP-388) Import job is not completed on file parsing error[BUGFIX]
+
 ## 2021-03-18 v2.0.0
 * [MODDATAIMP-315](https://issues.folio.org/browse/MODDATAIMP-315) Use Kafka for data-import file processing
 * [MODDATAIMP-352](https://issues.folio.org/browse/MODDATAIMP-352) Implement source reader for EDIFACT files.

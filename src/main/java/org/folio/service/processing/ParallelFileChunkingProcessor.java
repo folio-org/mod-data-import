@@ -23,6 +23,7 @@ import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.processing.kafka.SourceReaderReadStreamWrapper;
 import org.folio.service.processing.kafka.WriteStreamWrapper;
+import org.folio.service.processing.reader.RecordsReaderException;
 import org.folio.service.processing.reader.SourceReader;
 import org.folio.service.processing.reader.SourceReaderBuilder;
 import org.folio.service.storage.FileStorageService;
@@ -136,16 +137,26 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       DI_RAW_MARC_BIB_RECORDS_CHUNK_READ.value());
 
     File file = fileStorageService.getFile(fileDefinition.getSourcePath());
-    SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
 
-    int totalRecords = countTotalRecordsInFile(file, jobProfile);
+    Promise<Void> processFilePromise = Promise.promise();
+
+    int totalRecords;
+    SourceReader reader;
+    try {
+      totalRecords = countTotalRecordsInFile(file, jobProfile);
+      reader = SourceReaderBuilder.build(file, jobProfile);
+    } catch (RecordsReaderException e) {
+      String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
+      LOGGER.error(errorMessage);
+      processFilePromise.fail(errorMessage);
+      return processFilePromise.future();
+    }
 
     SourceReaderReadStreamWrapper readStreamWrapper = new SourceReaderReadStreamWrapper(
       vertx, reader, fileDefinition.getJobExecutionId(), totalRecords,
       params, 100, topicName);
     readStreamWrapper.pause();
 
-    Promise<Void> processFilePromise = Promise.promise();
     LOGGER.debug("About to start piping to KafkaProducer... jobProfile: {}", jobProfile);
     KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx,
       DI_RAW_MARC_BIB_RECORDS_CHUNK_READ + "_Producer", kafkaConfig.getProducerProps());

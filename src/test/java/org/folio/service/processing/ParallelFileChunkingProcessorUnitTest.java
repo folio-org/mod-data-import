@@ -63,6 +63,7 @@ public class ParallelFileChunkingProcessorUnitTest {
   private static final String SOURCE_PATH_4 = "src/test/resources/invalidJsonExample.json";
   private static final String SOURCE_PATH_5 = "src/test/resources/UChicago_SampleBibs.xml";
   private static final String SOURCE_PATH_6 = "src/test/resources/invalidUChicago_SampleBibs.xml";
+  private static final String SOURCE_PATH_7 = "src/test/resources/invalidMarcFile.mrc";
 
   private static final int RECORDS_NUMBER = 62;
   private static final int CHUNKS_NUMBER = 2;
@@ -507,6 +508,36 @@ public class ParallelFileChunkingProcessorUnitTest {
 
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_6));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
+    future.onComplete(ar -> {
+      assertTrue(ar.failed());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReturnErrorOnInvalidMrcFile(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_7));
 
     /* when */
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);

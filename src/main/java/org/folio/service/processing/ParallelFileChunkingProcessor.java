@@ -1,14 +1,18 @@
 package org.folio.service.processing;
 
 import org.folio.okapi.common.GenericCompositeFuture;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import io.vertx.ext.web.handler.impl.HttpStatusException;
 import io.vertx.kafka.client.producer.KafkaProducer;
+
 import org.apache.commons.collections4.list.UnmodifiableList;
 import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -66,23 +70,27 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   @Override
   public void process(JsonObject jsonRequest, JsonObject jsonParams) { //NOSONAR
-    ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
-    UploadDefinition uploadDefinition = request.getUploadDefinition();
-    JobProfileInfo jobProfile = request.getJobProfileInfo();
-    OkapiConnectionParams params = new OkapiConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
-    UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
-    succeededFuture()
-      .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
-      .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
-      .compose(ar -> FileStorageServiceBuilder.build(this.vertx, params.getTenantId(), params))
-      .compose(fileStorageService -> {
-        processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params);
-        uploadDefinitionService.updateBlocking(
-          uploadDefinition.getId(),
-          definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
-          params.getTenantId());
-        return succeededFuture();
-      });
+    try {
+      ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
+      UploadDefinition uploadDefinition = request.getUploadDefinition();
+      JobProfileInfo jobProfile = request.getJobProfileInfo();
+      OkapiConnectionParams params = new OkapiConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
+      UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
+      succeededFuture()
+        .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
+        .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
+        .compose(ar -> FileStorageServiceBuilder.build(this.vertx, params.getTenantId(), params))
+        .compose(fileStorageService -> {
+          processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params);
+          uploadDefinitionService.updateBlocking(
+            uploadDefinition.getId(),
+            definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
+            params.getTenantId());
+          return succeededFuture();
+        });
+    } catch (Exception e) {
+      LOGGER.error("Can`t process file with this json-request: {}", jsonRequest);
+    }
   }
 
   /**
@@ -144,6 +152,12 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     SourceReader reader;
     try {
       totalRecords = countTotalRecordsInFile(file, jobProfile);
+      if (totalRecords == 0) {
+        String errorMessage = "File is empty or content is invalid!";
+        LOGGER.error(errorMessage);
+        processFilePromise.fail(errorMessage);
+        return processFilePromise.future();
+      }
       reader = SourceReaderBuilder.build(file, jobProfile);
     } catch (RecordsReaderException e) {
       String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
@@ -162,7 +176,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       DI_RAW_MARC_BIB_RECORDS_CHUNK_READ + "_Producer", kafkaConfig.getProducerProps());
     readStreamWrapper.pipeTo(new WriteStreamWrapper(producer), ar -> {
       boolean succeeded = ar.succeeded();
-      LOGGER.debug("Data piping has been completed. ar.succeeded(): {} jobProfile: {}",succeeded, jobProfile);
+      LOGGER.debug("Data piping has been completed. ar.succeeded(): {} jobProfile: {}", succeeded, jobProfile);
       LOGGER.debug("Closing KafkaProducer jobProfile: {}", jobProfile);
       producer.end(par -> LOGGER.debug("KafkaProducer has been closed jobProfile: {}", jobProfile));
       processFilePromise.handle(ar);

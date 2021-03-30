@@ -89,7 +89,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
           return succeededFuture();
         });
     } catch (Exception e) {
-      LOGGER.error("Can`t process file with this json-request: {}", jsonRequest);
+      LOGGER.error("Can`t process file. Cause: ", e.getMessage());
     }
   }
 

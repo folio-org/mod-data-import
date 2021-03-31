@@ -70,7 +70,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   @Override
   public void process(JsonObject jsonRequest, JsonObject jsonParams) { //NOSONAR
-    try {
       ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
       UploadDefinition uploadDefinition = request.getUploadDefinition();
       JobProfileInfo jobProfile = request.getJobProfileInfo();
@@ -87,10 +86,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
             definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
             params.getTenantId());
           return succeededFuture();
-        });
-    } catch (Exception e) {
-      LOGGER.error("Can`t process file. Cause: ", e.getMessage());
-    }
+        }).onFailure(e -> LOGGER.error("Can`t process file. Cause: {}", e.getMessage()));
   }
 
   /**

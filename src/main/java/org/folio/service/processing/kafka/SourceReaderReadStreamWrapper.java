@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_MARC_BIB_RECORDS_CHUNK_READ;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
 
 public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<String, String>> {
   private static final Logger LOGGER = LogManager.getLogger();
@@ -182,7 +182,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     String correlationId = UUID.randomUUID().toString();
     Event event = new Event()
       .withId(correlationId)
-      .withEventType(DI_RAW_MARC_BIB_RECORDS_CHUNK_READ.value())
+      .withEventType(DI_RAW_RECORDS_CHUNK_READ.value())
       .withEventPayload(ZIPArchiver.zip(Json.encode(chunk)))
       .withEventMetadata(new EventMetadata()
         .withTenantId(tenantId)

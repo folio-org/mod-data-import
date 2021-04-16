@@ -137,8 +137,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                                      OkapiConnectionParams params) {
 
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
-      KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(),
-      DI_RAW_RECORDS_CHUNK_READ.value());
+      KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(), DI_RAW_RECORDS_CHUNK_READ.value());
 
     File file = fileStorageService.getFile(fileDefinition.getSourcePath());
 

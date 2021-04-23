@@ -3,10 +3,10 @@ package org.folio.dao;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
@@ -23,6 +23,7 @@ import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.NotFoundException;
 import java.util.Optional;
 
+import static java.lang.String.format;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
@@ -102,8 +103,12 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   }
 
   @Override
-  public Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension, String tenantId) {
-    return getFileExtensionByField(EXTENSION_FIELD, extension, tenantId);
+  public Future<Optional<FileExtension>> getFileExtensionByExtension(String extension, String tenantId) {
+    String caseInsensitiveExtensionQuery = format("extension == %s", extension);
+
+    return getFileExtensions(caseInsensitiveExtensionQuery, 0, 1, tenantId)
+      .map(fileExtensions -> fileExtensions.getFileExtensions().isEmpty()
+        ? Optional.empty() : Optional.of(fileExtensions.getFileExtensions().get(0)));
   }
 
   @Override
@@ -123,7 +128,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
           LOGGER.error("Could not update fileExtension with id {}", fileExtension.getId(), updateResult.cause());
           promise.fail(updateResult.cause());
         } else if (updateResult.result().rowCount() != 1) {
-          String errorMessage = String.format("FileExtension with id '%s' was not found", fileExtension.getId());
+          String errorMessage = format("FileExtension with id '%s' was not found", fileExtension.getId());
           LOGGER.error(errorMessage);
           promise.fail(new NotFoundException(errorMessage));
         } else {

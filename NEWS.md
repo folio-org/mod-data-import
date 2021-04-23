@@ -1,6 +1,10 @@
+## 2021-04-23 v2.0.2
+* [MODDATAIMP-413](https://issues.folio.org/browse/MODDATAIMP-413) When a file is uploaded for data import, the file extension check should be case-insensitive
+
 ## 2021-04-09 v2.0.1
 * [MODDATAIMP-388](https://issues.folio.org/browse/MODDATAIMP-388) Import job is not completed on file parsing error
 * [MODDATAIMP-400](https://issues.folio.org/browse/MODDATAIMP-400) Resolve data-import catching error issues
+
 
 ## 2021-03-18 v2.0.0
 * [MODDATAIMP-315](https://issues.folio.org/browse/MODDATAIMP-315) Use Kafka for data-import file processing

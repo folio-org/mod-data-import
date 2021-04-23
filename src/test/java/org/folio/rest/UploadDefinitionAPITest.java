@@ -86,8 +86,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     .withSize(Integer.MAX_VALUE);
 
   private static FileDefinition file5 = new FileDefinition()
-    .withUiKey("CornellFOLIOExemplars.gif.md1547160916680")
-    .withName("CornellFOLIOExemplars.gif")
+    .withUiKey("CornellFOLIOExemplars.GIF.md1547160916680")
+    .withName("CornellFOLIOExemplars.GIF")
     .withSize(209);
 
   private static FileDefinition file6 = new FileDefinition()

@@ -40,7 +40,7 @@ public interface FileExtensionDao {
    * @param tenantId  tenant id tenant id
    * @return future with optional {@link FileExtension}
    */
-  Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension, String tenantId);
+  Future<Optional<FileExtension>> getFileExtensionByExtension(String extension, String tenantId);
 
   /**
    * Searches for all {@link FileExtension} in database from selected table

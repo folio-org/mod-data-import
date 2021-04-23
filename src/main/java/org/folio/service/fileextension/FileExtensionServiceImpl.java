@@ -61,7 +61,7 @@ public class FileExtensionServiceImpl implements FileExtensionService {
 
   @Override
   public Future<Optional<FileExtension>> getFileExtensionByExtenstion(String extension, String tenantId) {
-    return fileExtensionDao.getFileExtensionByExtenstion(extension, tenantId);
+    return fileExtensionDao.getFileExtensionByExtension(extension, tenantId);
   }
 
   @Override

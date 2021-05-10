@@ -8,7 +8,7 @@ VALUES
       "extension":".dat",
       "description": "",
       "dataTypes":[
-        "MARC_BIB"
+        "MARC"
       ],
       "importBlocked":false,
       "userInfo":{
@@ -133,7 +133,7 @@ VALUES
       "extension":".marc",
       "description": "",
       "dataTypes":[
-        "MARC_BIB"
+        "MARC"
       ],
       "importBlocked":false,
       "userInfo":{
@@ -158,7 +158,7 @@ VALUES
       "extension":".mrc",
       "description": "",
       "dataTypes":[
-        "MARC_BIB"
+        "MARC"
       ],
       "importBlocked":false,
       "userInfo":{
@@ -208,7 +208,7 @@ VALUES
       "extension":".ord",
       "description": "",
       "dataTypes":[
-        "MARC_BIB"
+        "MARC"
       ],
       "importBlocked":false,
       "userInfo":{
@@ -283,7 +283,7 @@ VALUES
       "extension":".xml",
       "description": "",
       "dataTypes":[
-        "MARC_BIB"
+        "MARC"
       ],
       "importBlocked":false,
       "userInfo":{

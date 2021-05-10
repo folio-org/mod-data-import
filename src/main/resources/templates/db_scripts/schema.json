@@ -64,6 +64,11 @@
       "run": "after",
       "snippetPath": "delete_delimited_formats_file_extensions.sql",
       "fromModuleVersion": "mod-data-import-1.11.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "update_file_extensions.sql",
+      "fromModuleVersion": "mod-data-import-2.1.0"
     }
   ]
 }

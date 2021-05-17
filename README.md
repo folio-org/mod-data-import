@@ -103,6 +103,9 @@ After setup, it is good to check logs in all related modules for errors. Data im
 **Environment variables** that can be adjusted for this module and default values:
 * "_file.processing.buffer.chunk.size_": 50
 
+####Note
+**These variables are relevant for the **Iris** release. Module version: 2.0.0 (2.0.1, 2.0.2).**
+
 
 ## Maximum upload file size and java heap memory setups
 mod-data-import provides the ability to uplaod a file of any size. The only limitation is related to the current implementation of the RMB and the size of the heap in the java process. Currently, before saving the file, it is read into memory, respectively, it is necessary to have the size of the java heap equal to the file size plus 10 percent.

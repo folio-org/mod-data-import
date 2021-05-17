@@ -94,6 +94,16 @@ curl -w '\n' -X POST -D -   \
 
 ****In case of multiple instance deployment, for every instance the same persistent volume must be mounted to the mount point defined by the value of _data.import.storage.path_ property.****
 
+## Interaction with Kafka
+
+
+There are several properties that should be set for modules that interact with Kafka: **KAFKA_HOST, KAFKA_PORT, OKAPI_URL, ENV**(unique env ID).
+After setup, it is good to check logs in all related modules for errors. Data import consumers and producers work in separate verticles that are set up in RMB's InitAPI for each module. That would be the first place to check deploy/install logs.
+
+**Environment variables** that can be adjusted for this module and default values:
+* "_file.processing.buffer.chunk.size_": 50
+
+
 ## Maximum upload file size and java heap memory setups
 mod-data-import provides the ability to uplaod a file of any size. The only limitation is related to the current implementation of the RMB and the size of the heap in the java process. Currently, before saving the file, it is read into memory, respectively, it is necessary to have the size of the java heap equal to the file size plus 10 percent.
 

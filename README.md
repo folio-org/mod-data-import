@@ -98,12 +98,12 @@ curl -w '\n' -X POST -D -   \
 
 
 There are several properties that should be set for modules that interact with Kafka: **KAFKA_HOST, KAFKA_PORT, OKAPI_URL, ENV**(unique env ID).
-After setup, it is good to check logs in all related modules for errors. Data import consumers and producers work in separate verticles that are set up in RMB's InitAPI for each module. That would be the first place to check deploy/install logs.
+After setup, it is good to check logs in all related modules for errors.
 
 **Environment variables** that can be adjusted for this module and default values:
 * "_file.processing.buffer.chunk.size_": 50
 
-####Note
+#### Note
 **These variables are relevant for the **Iris** release. Module version: 2.0.0 (2.0.1, 2.0.2).**
 
 

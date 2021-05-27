@@ -2,6 +2,7 @@ package org.folio.service.processing.reader;
 
 import org.apache.commons.io.FilenameUtils;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
+import org.folio.rest.jaxrs.model.JobProfileInfo.DataType;
 
 import java.io.File;
 
@@ -49,6 +50,8 @@ public class SourceReaderBuilder {
   }
 
   private static boolean isMarc(JobProfileInfo jobProfile) {
-    return jobProfile != null && jobProfile.getDataType() == JobProfileInfo.DataType.MARC;
+    return jobProfile != null && (jobProfile.getDataType() == DataType.MARC_BIB ||
+      jobProfile.getDataType() == DataType.MARC_AUTHORITY ||
+      jobProfile.getDataType() == DataType.MARC_HOLDING);
   }
 }

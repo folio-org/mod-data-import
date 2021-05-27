@@ -640,7 +640,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withJobProfileInfo(new JobProfileInfo()
         .withName("Marc jobs profile")
         .withId(UUID.randomUUID().toString())
-        .withDataType(JobProfileInfo.DataType.MARC))
+        .withDataType(JobProfileInfo.DataType.MARC_BIB))
       .withUserId(UUID.randomUUID().toString());
     async.complete();
     async = context.async();
@@ -758,7 +758,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     JobProfileInfo jobProf = new JobProfileInfo();
     jobProf.setId(UUID.randomUUID().toString());
     jobProf.setName(StringUtils.EMPTY);
-    jobProf.setDataType(JobProfileInfo.DataType.MARC);
+    jobProf.setDataType(JobProfileInfo.DataType.MARC_BIB);
 
     ProcessFilesRqDto processFilesReqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDef)
@@ -786,7 +786,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     JobProfileInfo jobProfile = new JobProfileInfo();
     jobProfile.setId(UUID.randomUUID().toString());
     jobProfile.setName(StringUtils.EMPTY);
-    jobProfile.setDataType(JobProfileInfo.DataType.MARC);
+    jobProfile.setDataType(JobProfileInfo.DataType.MARC_BIB);
     ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDefinition)
       .withJobProfileInfo(jobProfile);
@@ -825,7 +825,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     JobProfileInfo jobProf = new JobProfileInfo();
     jobProf.setId(UUID.randomUUID().toString());
     jobProf.setName(StringUtils.EMPTY);
-    jobProf.setDataType(JobProfileInfo.DataType.MARC);
+    jobProf.setDataType(JobProfileInfo.DataType.MARC_BIB);
 
     ProcessFilesRqDto processFilesReqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDef)
@@ -853,7 +853,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     JobProfileInfo jobProfile = new JobProfileInfo();
     jobProfile.setId(UUID.randomUUID().toString());
     jobProfile.setName(StringUtils.EMPTY);
-    jobProfile.setDataType(JobProfileInfo.DataType.MARC);
+    jobProfile.setDataType(JobProfileInfo.DataType.MARC_BIB);
     ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDefinition)
       .withJobProfileInfo(jobProfile);
@@ -886,7 +886,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     JobProfileInfo jobProfile = new JobProfileInfo();
     jobProfile.setId(UUID.randomUUID().toString());
     jobProfile.setName(StringUtils.EMPTY);
-    jobProfile.setDataType(JobProfileInfo.DataType.MARC);
+    jobProfile.setDataType(JobProfileInfo.DataType.MARC_BIB);
 
     ProcessFilesRqDto request = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDefinition)
@@ -940,7 +940,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withStatus(UploadDefinition.Status.IN_PROGRESS);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC);
+      .withDataType(JobProfileInfo.DataType.MARC_BIB);
     ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
       .withUploadDefinition(uploadDefinition)
       .withJobProfileInfo(jobProfile);

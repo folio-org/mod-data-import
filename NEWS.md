@@ -1,4 +1,5 @@
 ## XXXX-XX-XX v2.1.0-SNAPSHOT
+* [MODDATAIMP-451](https://issues.folio.org/browse/MODDATAIMP-451) Update interface version
 
 ## 2021-04-23 v2.0.2
 * [MODDATAIMP-413](https://issues.folio.org/browse/MODDATAIMP-413) When a file is uploaded for data import, the file extension check should be case-insensitive

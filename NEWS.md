@@ -1,3 +1,7 @@
+## 2021-06-17 v2.0.3
+* Upgrade to folio-kafka-wrapper v2.0.8
+* Upgrade to data-import-processing-core v3.0.3
+
 ## 2021-04-23 v2.0.2
 * [MODDATAIMP-413](https://issues.folio.org/browse/MODDATAIMP-413) When a file is uploaded for data import, the file extension check should be case-insensitive
 

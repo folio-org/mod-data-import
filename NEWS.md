@@ -1,4 +1,5 @@
-## XXXX-XX-XX v2.1.0-SNAPSHOT
+## 2021-06-17 v2.1.0
+* [MODDATAIMP-433](https://issues.folio.org/browse/MODDATAIMP-433) Store MARC Authority Records
 * [MODDATAIMP-451](https://issues.folio.org/browse/MODDATAIMP-451) Update interface version
 
 ## 2021-04-23 v2.0.2

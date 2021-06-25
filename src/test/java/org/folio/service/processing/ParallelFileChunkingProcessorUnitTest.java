@@ -91,17 +91,7 @@ public class ParallelFileChunkingProcessorUnitTest {
 
   @Test
   public void shouldReadMarcBibAndSendAllChunks(TestContext context) {
-    readAndSendAllChunks(context, DataType.MARC_BIB);
-  }
-
-  @Test
-  public void shouldReadMarcAuthorityAndSendAllChunks(TestContext context) {
-    readAndSendAllChunks(context, DataType.MARC_AUTHORITY);
-  }
-
-  @Test
-  public void shouldReadMarcHoldingAndSendAllChunks(TestContext context) {
-    readAndSendAllChunks(context, DataType.MARC_HOLDING);
+    readAndSendAllChunks(context, DataType.MARC);
   }
 
   private void readAndSendAllChunks(TestContext context, DataType marcAuthority) {
@@ -164,7 +154,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
@@ -212,7 +202,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
     when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
@@ -237,7 +227,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     /* when */
     Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, null, null);
@@ -263,7 +253,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
@@ -295,7 +285,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
@@ -390,7 +380,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
@@ -439,7 +429,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
@@ -469,7 +459,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
@@ -518,7 +508,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
@@ -548,7 +538,7 @@ public class ParallelFileChunkingProcessorUnitTest {
       .withJobExecutionId(jobExecutionId);
     JobProfileInfo jobProfile = new JobProfileInfo()
       .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withName("MARC profile");
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 

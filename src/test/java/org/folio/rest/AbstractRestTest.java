@@ -85,7 +85,7 @@ public abstract class AbstractRestTest {
     .withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
     .withJobProfileInfo(new JobProfileInfo()
       .withName("Marc jobs profile")
-      .withDataType(JobProfileInfo.DataType.MARC_BIB)
+      .withDataType(JobProfileInfo.DataType.MARC)
       .withId(UUID.randomUUID().toString()))
     .withUserId(UUID.randomUUID().toString());
 

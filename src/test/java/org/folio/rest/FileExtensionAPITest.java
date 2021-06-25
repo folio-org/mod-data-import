@@ -32,7 +32,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
 
   private static FileExtension fileExtension_1 = new FileExtension()
     .withExtension(".marc")
-    .withDataTypes(Collections.singletonList(DataType.MARC_BIB))
+    .withDataTypes(Collections.singletonList(DataType.MARC))
     .withImportBlocked(false);
   private static FileExtension fileExtension_2 = new FileExtension()
     .withExtension(".edi")

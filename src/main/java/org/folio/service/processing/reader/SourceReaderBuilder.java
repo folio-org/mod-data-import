@@ -50,8 +50,5 @@ public class SourceReaderBuilder {
   }
 
   private static boolean isMarc(JobProfileInfo jobProfile) {
-    return jobProfile != null && (jobProfile.getDataType() == DataType.MARC_BIB ||
-      jobProfile.getDataType() == DataType.MARC_AUTHORITY ||
-      jobProfile.getDataType() == DataType.MARC_HOLDING);
-  }
+    return jobProfile != null && jobProfile.getDataType() == JobProfileInfo.DataType.MARC;  }
 }

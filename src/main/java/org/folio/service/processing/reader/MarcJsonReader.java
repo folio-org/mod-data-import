@@ -51,8 +51,8 @@ public class MarcJsonReader implements SourceReader {
         reader.beginArray();
       }
       while (reader.hasNext()) {
-        JsonObject record = gson.fromJson(reader, JsonObject.class);
-        recordsBuffer.add(new InitialRecord().withRecord(record.toString()).withOrder(recordsCounter.getAndIncrement()));
+        JsonObject currentRecord = gson.fromJson(reader, JsonObject.class);
+        recordsBuffer.add(new InitialRecord().withRecord(currentRecord.toString()).withOrder(recordsCounter.getAndIncrement()));
         if (recordsBuffer.isFull()) {
           return recordsBuffer.getRecords();
         }

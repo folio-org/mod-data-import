@@ -24,7 +24,7 @@ public class MarcXmlReader implements SourceReader {
   public static final String XML_EXTENSION = "xml";
   private Document document;
   private int chunkSize;
-  private Iterator iterator;
+  private Iterator<Element> iterator;
   private MutableInt recordsCounter;
 
   public MarcXmlReader(File file, int chunkSize) {

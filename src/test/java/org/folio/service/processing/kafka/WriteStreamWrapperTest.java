@@ -5,12 +5,12 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+//import org.junit.jupiter.api.Assertions;
+//import org.junit.jupiter.api.BeforeEach;
+//import org.junit.jupiter.api.Test;
+//import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.junit.jupiter.MockitoExtension;
+//import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -20,13 +20,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith({io.vertx.junit5.VertxExtension.class, MockitoExtension.class})
+//@ExtendWith({io.vertx.junit5.VertxExtension.class, MockitoExtension.class})
 public class WriteStreamWrapperTest {
   @InjectMocks
   private WriteStreamWrapper wrapper;
   private KafkaProducer<String, String> kafkaProducer;
   private KafkaProducerRecord<String, String> data;
-
+/*
   @BeforeEach
   public void onSetUp() {
     kafkaProducer = mock(KafkaProducer.class);
@@ -127,5 +127,5 @@ public class WriteStreamWrapperTest {
     wrapper.drainHandler(handler);
     //then
     verify(kafkaProducer, times(1)).drainHandler(any());
-  }
+  }*/
 }

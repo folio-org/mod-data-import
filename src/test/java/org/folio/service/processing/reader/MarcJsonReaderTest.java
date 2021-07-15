@@ -81,4 +81,22 @@ public class MarcJsonReaderTest {
     //then
     reader.hasNext();
   }
+
+  @Test
+  public void shouldReturn3ChunksOfRecords() {
+    //given
+    int expectedChunksNumber = 3;
+    int chunkSize = 21;
+    SourceReader reader = new MarcJsonReader(new File(SOURCE_PATH), chunkSize);
+    List<InitialRecord> actualRecords = new ArrayList<>();
+    int actualChunkNumber = 0;
+    //when
+    while (reader.hasNext()) {
+      actualRecords.addAll(reader.next());
+      actualChunkNumber++;
+    }
+    //then
+    Assert.assertEquals(EXPECTED_RECORDS_NUMBER, actualRecords.size());
+    Assert.assertEquals(expectedChunksNumber, actualChunkNumber);
+  }
 }

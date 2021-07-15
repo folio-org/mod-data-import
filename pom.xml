@@ -24,8 +24,8 @@
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mod-configuration-client.version>5.6.0</mod-configuration-client.version>
-    <sonar.exclusions>**/ParallelFileChunkingProcessor.java</sonar.exclusions>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
+    <sonar.exclusions>**/ApplicationConfig.java</sonar.exclusions>
     <lombok.version>1.18.12</lombok.version>
   </properties>
 

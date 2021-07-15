@@ -154,7 +154,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         return processFilePromise.future();
       }
       reader = SourceReaderBuilder.build(file, jobProfile);
-    } catch (RecordsReaderException e) {
+    } catch (RecordsReaderException | UnsupportedOperationException e) {
       String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
       LOGGER.error(errorMessage);
       processFilePromise.fail(errorMessage);

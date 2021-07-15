@@ -19,6 +19,8 @@ public class MarcSourceReaderUnitTest {
   private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
   private static final String SOURCE_WITH_WRONG_ENCODING_PATH = "src/test/resources/61PRINT160129.mrc";
   private static final int EXPECTED_RECORDS_NUMBER = 62;
+  private static final int EXPECTED_RECORDS_NUMBER_CHUNK_SIZE_100 = 246;
+  private static final String MARC_TYPE = "MARC_RAW";
 
   @Test
   public void shouldReturnAllRecords() {
@@ -45,7 +47,7 @@ public class MarcSourceReaderUnitTest {
       actualRecords.addAll(reader.next());
     }
     // then
-    Assert.assertEquals(246, actualRecords.size());
+    Assert.assertEquals(EXPECTED_RECORDS_NUMBER_CHUNK_SIZE_100, actualRecords.size());
   }
 
   @Test
@@ -82,5 +84,17 @@ public class MarcSourceReaderUnitTest {
     // then
     Assert.assertEquals(EXPECTED_RECORDS_NUMBER, actualRecords.size());
     Assert.assertEquals(expectedChunksNumber, actualChunkNumber);
+  }
+
+  @Test
+  public void getContentTypeShouldReturnMarcRawTypeValue() {
+    // given
+    int chunkSize = 77;
+    SourceReader reader = new MarcRawReader(new File(SOURCE_PATH), chunkSize);
+    // when
+    String typeValue = reader.getContentType().toString();
+    // then
+    Assert.assertNotNull(typeValue);
+    Assert.assertEquals(MARC_TYPE, typeValue);
   }
 }

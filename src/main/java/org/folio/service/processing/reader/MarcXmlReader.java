@@ -24,7 +24,7 @@ public class MarcXmlReader implements SourceReader {
   public static final String XML_EXTENSION = "xml";
   private Document document;
   private int chunkSize;
-  private Iterator iterator;
+  private Iterator<Element> iterator;
   private MutableInt recordsCounter;
 
   public MarcXmlReader(File file, int chunkSize) {
@@ -47,7 +47,7 @@ public class MarcXmlReader implements SourceReader {
   public List<InitialRecord> next() {
     RecordsBuffer buffer = new RecordsBuffer(this.chunkSize);
     while (iterator.hasNext()) {
-      Element element = (Element) iterator.next();
+      Element element = iterator.next();
       buffer.add(new InitialRecord().withRecord(element.asXML()).withOrder(recordsCounter.getAndIncrement()));
       if (buffer.isFull()) {
         break;

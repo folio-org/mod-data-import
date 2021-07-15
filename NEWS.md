@@ -1,3 +1,6 @@
+## 2021-07-15 v2.1.0
+* [MODDATAIMP-483](https://issues.folio.org/browse/MODDATAIMP-483) Increase test coverage for mod-data-import
+
 ## 2021-06-17 v2.1.0
 * [MODDATAIMP-433](https://issues.folio.org/browse/MODDATAIMP-433) Store MARC Authority Records
 * [MODDATAIMP-451](https://issues.folio.org/browse/MODDATAIMP-451) Update interface version

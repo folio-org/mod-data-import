@@ -39,7 +39,7 @@ public class ApplicationConfig {
       .okapiUrl(okapiUrl)
       .replicationFactor(replicationFactor)
       .build();
-    LOGGER.debug("kafkaConfig: " + kafkaConfig);
+    LOGGER.debug("kafkaConfig: {}", kafkaConfig);
 
     return kafkaConfig;
   }

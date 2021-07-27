@@ -36,7 +36,7 @@ public class ApplicationConfig {
     LOGGER.info("EnvId resolved by Spring: {}", envId);
 
     KafkaConfig kafkaConfig = KafkaConfig.builder()
-      .envId(envId.equalsIgnoreCase("folio") ? "folijet": "folio")
+      .envId(envId.equalsIgnoreCase("folio") ? "folijet": "folijet")
       .kafkaHost(kafkaHost)
       .kafkaPort(kafkaPort)
       .okapiUrl(okapiUrl)

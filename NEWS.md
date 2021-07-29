@@ -1,3 +1,6 @@
+## 2021-08-02 v2.1.2
+* [MODDATAIMP-459](https://issues.folio.org/browse/MODDATAIMP-459) EDIFACT files with CAPS file extensions do not import
+
 ## 2021-06-25 v2.1.1
 * [MODDATAIMP-464](https://issues.folio.org/browse/MODDATAIMP-464) Change dataType to have have common type for MARC related subtypes
 * Update data-import-processing-core dependency to v3.1.2

@@ -135,9 +135,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                                      JobProfileInfo jobProfile,
                                      FileStorageService fileStorageService,
                                      OkapiConnectionParams params) {
+    String eventType = DI_RAW_RECORDS_CHUNK_READ.value();
 
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
-      KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(), DI_RAW_RECORDS_CHUNK_READ.value());
+      KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(), eventType);
 
     File file = fileStorageService.getFile(fileDefinition.getSourcePath());
 
@@ -166,12 +167,13 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       params, 100, topicName);
     readStreamWrapper.pause();
 
-    LOGGER.debug("About to start piping to KafkaProducer... jobProfile: {}", jobProfile);
+    LOGGER.info("Starting to send event to Kafka... jobProfile: {}, eventType: {}", jobProfile, eventType);
     KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx,
       DI_RAW_RECORDS_CHUNK_READ + "_Producer", kafkaConfig.getProducerProps());
     readStreamWrapper.pipeTo(new WriteStreamWrapper(producer), ar -> {
       boolean succeeded = ar.succeeded();
-      LOGGER.debug("Data piping has been completed. ar.succeeded(): {} jobProfile: {}", succeeded, jobProfile);
+      LOGGER.info("Sending event to Kafka finished. ar.succeeded(): {} jobProfile: {}, eventType: {}",
+        succeeded, jobProfile, eventType);
       LOGGER.debug("Closing KafkaProducer jobProfile: {}", jobProfile);
       producer.end(par -> LOGGER.debug("KafkaProducer has been closed jobProfile: {}", jobProfile));
       processFilePromise.handle(ar);

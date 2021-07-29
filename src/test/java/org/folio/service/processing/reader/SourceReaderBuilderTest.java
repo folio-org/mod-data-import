@@ -42,7 +42,6 @@ public class SourceReaderBuilderTest {
     //when
     SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_JSON_PATH), marcJobProfile);
     //then
-    Assert.assertNotNull(reader);
     Assert.assertEquals(expectedMarcType, reader.getContentType().toString());
   }
 
@@ -53,7 +52,6 @@ public class SourceReaderBuilderTest {
     //when
     SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_XML_PATH), marcJobProfile);
     //then
-    Assert.assertNotNull(reader);
     Assert.assertEquals(expectedMarcType, reader.getContentType().toString());
   }
 
@@ -64,7 +62,6 @@ public class SourceReaderBuilderTest {
     //when
     SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_MARC_PATH), marcJobProfile);
     //then
-    Assert.assertNotNull(reader);
     Assert.assertEquals(expectedMarcType, reader.getContentType().toString());
   }
 
@@ -75,7 +72,6 @@ public class SourceReaderBuilderTest {
     //when
     reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_EDI_EXTENSION), edifactJobProfile);
     //then
-    Assert.assertNotNull(reader);
     Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
   }
 
@@ -86,7 +82,6 @@ public class SourceReaderBuilderTest {
     //when
     reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_EDI_EXTENSION), edifactJobProfile);
     //then
-    Assert.assertNotNull(reader);
     Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
   }
 
@@ -97,7 +92,6 @@ public class SourceReaderBuilderTest {
     //when
     reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_EDI_EXTENSION), edifactJobProfile);
     //then
-    Assert.assertNotNull(reader);
     Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
   }
 
@@ -108,7 +102,6 @@ public class SourceReaderBuilderTest {
     //when
     reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_INV_EXTENSION), edifactJobProfile);
     //then
-    Assert.assertNotNull(reader);
     Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
   }
 
@@ -119,7 +112,6 @@ public class SourceReaderBuilderTest {
     //when
     reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_INV_EXTENSION), edifactJobProfile);
     //then
-    Assert.assertNotNull(reader);
     Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
   }
 
@@ -130,7 +122,6 @@ public class SourceReaderBuilderTest {
     //when
     reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_INV_EXTENSION), edifactJobProfile);
     //then
-    Assert.assertNotNull(reader);
     Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
   }
 }

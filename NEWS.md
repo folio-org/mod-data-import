@@ -1,3 +1,6 @@
+## 2021-07-29 v2.1.1
+* [MODDATAIMP-459](https://issues.folio.org/browse/MODDATAIMP-459) EDIFACT files with CAPS file extensions do not import
+
 ## 2021-07-15 v2.1.0
 * [MODDATAIMP-483](https://issues.folio.org/browse/MODDATAIMP-483) Increase test coverage for mod-data-import
 

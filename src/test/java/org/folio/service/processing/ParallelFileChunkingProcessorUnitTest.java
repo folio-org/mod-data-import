@@ -74,6 +74,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private static final String LOCAL_HOST = "http://localhost:";
   private static final String KAFKA_HOST_PROP_NAME = "KAFKA_HOST";
   private static final String KAFKA_PORT_PROP_NAME = "KAFKA_PORT";
+  private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
   public static final String EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA = "Exception occurred while getting recorders from kafka {}";
   public static final String EXCEPTION_OCCURRED_WHILE_UNZIPPING_EVENT_PAYLOAD = "Exception occurred while unzipping event payload {}";
 
@@ -96,6 +97,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       .kafkaHost(System.getProperty(KAFKA_HOST_PROP_NAME))
       .kafkaPort(System.getProperty(KAFKA_PORT_PROP_NAME))
       .envId(KAFKA_ENV)
+      .maxRequestSize(Integer.parseInt(System.getProperty(KAFKA_MAX_REQUEST_SIZE)))
       .okapiUrl(LOCAL_HOST + okapiPort)
       .build();
 

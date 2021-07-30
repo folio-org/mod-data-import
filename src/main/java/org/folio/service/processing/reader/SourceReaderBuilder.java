@@ -46,7 +46,7 @@ public class SourceReaderBuilder {
 
   private static boolean isEdifact(String extension, JobProfileInfo jobProfile) {
     return ((jobProfile.getDataType() == JobProfileInfo.DataType.EDIFACT)
-      && (EDIFACT_EDI_EXTENSION.equals(extension) || EDIFACT_INV_EXTENSION.equals(extension)));
+      && (EDIFACT_EDI_EXTENSION.equalsIgnoreCase(extension) || EDIFACT_INV_EXTENSION.equalsIgnoreCase(extension)));
   }
 
   private static boolean isMarc(JobProfileInfo jobProfile) {

@@ -1,3 +1,6 @@
+## 2021-07-30 v2.1.0
+* [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages
+
 ## 2021-07-15 v2.1.0
 * [MODDATAIMP-483](https://issues.folio.org/browse/MODDATAIMP-483) Increase test coverage for mod-data-import
 

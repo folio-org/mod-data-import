@@ -34,13 +34,10 @@ public class ApplicationConfig {
 
   @Bean(name = "newKafkaConfig")
   public KafkaConfig kafkaConfigBean() {
-    LOGGER.info("ENV variable value is: {}", System.getenv("ENV"));
-    LOGGER.info("EnvId resolved by Spring: {}", envId);
-
     KafkaConfig kafkaConfig = KafkaConfig.builder()
       .envId(envId)
-      .kafkaHost("kafka")
-      .kafkaPort("9092")
+      .kafkaHost(kafkaHost)
+      .kafkaPort(kafkaPort)
       .okapiUrl(okapiUrl)
       .replicationFactor(replicationFactor)
       .maxRequestSize(maxRequestSize)

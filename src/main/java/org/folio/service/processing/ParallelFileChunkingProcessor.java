@@ -169,7 +169,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
     LOGGER.info("Starting to send event to Kafka... jobProfile: {}, eventType: {}", jobProfile, eventType);
     KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx,
-      DI_RAW_RECORDS_CHUNK_READ + "_Producer", kafkaConfig.getProducerProps());
+      eventType + "_Producer", kafkaConfig.getProducerProps());
     readStreamWrapper.pipeTo(new WriteStreamWrapper(producer), ar -> {
       boolean succeeded = ar.succeeded();
       LOGGER.info("Sending event to Kafka finished. ar.succeeded(): {} jobProfile: {}, eventType: {}",

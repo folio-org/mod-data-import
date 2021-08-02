@@ -1,245 +1,445 @@
 package org.folio.service.processing;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
+import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
+import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import net.mguenther.kafka.junit.ObserveKeyValues;
 import org.apache.commons.lang.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.processing.events.utils.ZIPArchiver;
-import org.folio.rest.AbstractRestTest;
-import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
+import org.folio.rest.jaxrs.model.JobProfileInfo.DataType;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.service.storage.FileStorageService;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mockito;
+import org.mockito.Spy;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
+import static org.folio.rest.jaxrs.model.RecordsMetadata.ContentType.MARC_JSON;
+import static org.folio.rest.jaxrs.model.RecordsMetadata.ContentType.MARC_RAW;
+import static org.folio.rest.jaxrs.model.RecordsMetadata.ContentType.MARC_XML;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
  * Testing ParallelFileChunkingProcessor
  */
 @RunWith(VertxUnitRunner.class)
-public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
-  private static final String TOKEN = "token";
-  private static final String KAFKA_ENV = "test-env";
-  private static final String TENANT_ID = "diku";
-  private static final String TENANT_ID_TEST_MARC_RAW = "diku_marc_raw";
-  private static final String TENANT_ID_TEST_MARC_JSON = "diku_marc_json";
-  private static final String TENANT_ID_TEST_MARC_XML = "diku_marc_xml";
+//TODO fix in scope of MODSOURMAN-400
+@Ignore
+public class ParallelFileChunkingProcessorUnitTest {
 
-  private static final String SOURCE_PATH_1 = "src/test/resources/CornellFOLIOExemplars.mrc";
-  private static final String SOURCE_PATH_2 = "src/test/resources/ChalmersFOLIOExamples.json";
-  private static final String SOURCE_PATH_3 = "src/test/resources/invalidJsonExample.json";
-  private static final String SOURCE_PATH_4 = "src/test/resources/UChicago_SampleBibs.xml";
-  private static final String SOURCE_PATH_5 = "src/test/resources/invalidUChicago_SampleBibs.xml";
-  private static final String SOURCE_PATH_6 = "src/test/resources/invalidMarcFile.mrc";
-  private static final String CONTENT_TYPE_RAW = "MARC_RAW";
-  private static final String CONTENT_TYPE_JSON = "MARC_JSON";
-  private static final String CONTENT_TYPE_XML = "MARC_XML";
-  private static final String MARC_TYPE_JOB_PROFILE = "marcJobProfile";
-  private static final String EDI_FACT_JOB_PROFILE = "ediFactJobProfile";
-  private static final String EMPTY_TYPE_JOB_PROFILE = "emptyTypeJobProfile";
-  private static final String JOB_PROFILE_NAME = "MARC profile";
-  private static final String LOCAL_HOST = "http://localhost:";
-  private static final String KAFKA_HOST_PROP_NAME = "KAFKA_HOST";
-  private static final String KAFKA_PORT_PROP_NAME = "KAFKA_PORT";
-  public static final String EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA = "Exception occurred while getting recorders from kafka {}";
-  public static final String EXCEPTION_OCCURRED_WHILE_UNZIPPING_EVENT_PAYLOAD = "Exception occurred while unzipping event payload {}";
+  private static final String TENANT = "diku";
+  private static final String TOKEN = "token";
+
+  private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
+  private static final String SOURCE_PATH_3 = "src/test/resources/ChalmersFOLIOExamples.json";
+  private static final String SOURCE_PATH_4 = "src/test/resources/invalidJsonExample.json";
+  private static final String SOURCE_PATH_5 = "src/test/resources/UChicago_SampleBibs.xml";
+  private static final String SOURCE_PATH_6 = "src/test/resources/invalidUChicago_SampleBibs.xml";
+  private static final String SOURCE_PATH_7 = "src/test/resources/invalidMarcFile.mrc";
 
   private static final int RECORDS_NUMBER = 62;
-  private static final Logger LOGGER = LogManager.getLogger();
-  private final Map<String, String> okapiHeaders = new HashMap<>();
-  private final Vertx vertx = Vertx.vertx();
-  private ParallelFileChunkingProcessor fileProcessor;
-  private KafkaConfig kafkaConfig;
-  private Map<String, JobProfileInfo> jobProfiles;
+  private static final int CHUNKS_NUMBER = 2;
+
+  @Spy
+  private HttpClient httpClient = Vertx.vertx().createHttpClient();
+  @InjectMocks
+  private ParallelFileChunkingProcessor fileProcessor = new ParallelFileChunkingProcessor();
+  private Map<String, String> headers = new HashMap<>();
+  private Vertx vertx = Vertx.vertx();
+
+  @Rule
+  public WireMockRule mockServer = new WireMockRule(
+    WireMockConfiguration.wireMockConfig()
+      .dynamicPort()
+      .notifier(new Slf4jNotifier(true)));
 
   @Before
   public void setUp() {
-    int okapiPort = mockServer.port();
-    okapiHeaders.put(OKAPI_URL_HEADER, LOCAL_HOST + okapiPort);
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID);
-    okapiHeaders.put(OKAPI_TOKEN_HEADER, TOKEN);
-
-    kafkaConfig = KafkaConfig.builder()
-      .kafkaHost(System.getProperty(KAFKA_HOST_PROP_NAME))
-      .kafkaPort(System.getProperty(KAFKA_PORT_PROP_NAME))
-      .envId(KAFKA_ENV)
-      .okapiUrl(LOCAL_HOST + okapiPort)
-      .build();
-
-    jobProfiles = createJobProfilesMap();
-    fileProcessor = new ParallelFileChunkingProcessor(Vertx.vertx(), kafkaConfig);
+    headers.put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port());
+    headers.put(OKAPI_TENANT_HEADER, TENANT);
+    headers.put(OKAPI_TOKEN_HEADER, TOKEN);
   }
 
   @Test
   public void shouldReadMarcBibAndSendAllChunks(TestContext context) {
-    readAndSendAllChunks(context);
+    readAndSendAllChunks(context, DataType.MARC);
   }
 
-  private void readAndSendAllChunks(TestContext context) {
-    // given
+  private void readAndSendAllChunks(TestContext context, DataType marcAuthority) {
+    /* given */
     Async async = context.async();
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_MARC_RAW);
+    String stubSourcePath = StringUtils.EMPTY;
 
-    FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
-    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
+    String jobExecutionId = UUID.randomUUID().toString();
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(marcAuthority)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
-    // when
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+
+    // We need +1 additional request to post the last chunk with total records number
+    int expectedRequestsNumber = CHUNKS_NUMBER + 1;
+
+    /* when */
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
 
-    // then
+    /* then */
     future.onComplete(ar -> {
       assertTrue(ar.succeeded());
-      assertDataFromKafka(fileStorageService, CONTENT_TYPE_RAW, TENANT_ID_TEST_MARC_RAW);
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      Assert.assertEquals(expectedRequestsNumber, requests.size());
+
+      int actualTotalRecordsNumber = 0;
+      int actualLastChunkRecordsCounter = 0;
+      for (LoggedRequest loggedRequest : requests) {
+        RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
+        assertSame(MARC_RAW, rawRecordsDto.getRecordsMetadata().getContentType());
+        actualTotalRecordsNumber += rawRecordsDto.getInitialRecords().size();
+        if (rawRecordsDto.getRecordsMetadata().getLast()) {
+          actualLastChunkRecordsCounter = rawRecordsDto.getRecordsMetadata().getCounter();
+        }
+      }
+      Assert.assertEquals(expectedRequestsNumber, requests.size());
+      Assert.assertEquals(RECORDS_NUMBER, actualLastChunkRecordsCounter);
+      Assert.assertEquals(RECORDS_NUMBER, actualTotalRecordsNumber);
       async.complete();
     });
   }
 
   @Test
-  public void shouldErrorOnJobProfileAsNull(TestContext context) {
-    // given
+  public void shouldReadAndStopSendingChunksOnServerError(TestContext context) {
+    /* given */
     Async async = context.async();
-    FileDefinition fileDefinition = createFileDefinition();
-    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileDefinition, null, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
-    // then
+    String stubSourcePath = StringUtils.EMPTY;
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+    /* then */
     future.onComplete(ar -> {
       assertTrue(ar.failed());
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      assertFalse(requests.isEmpty());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldErrorOnNull(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, null, null, null);
+    /* then */
+    future.onComplete(ar -> {
+      assertTrue(ar.failed());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldErrorOnNull2(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+    String jobExecutionId = UUID.randomUUID().toString();
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, null);
+    /* then */
+    future.onComplete(ar -> {
+      assertTrue(ar.failed());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldErrorOnNull3(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, null, null);
+
+    /* then */
+    future.onComplete(ar -> {
+      assertTrue(ar.failed());
+      async.complete();
+    });
+  }
+
+
+  @Test
+  public void shouldReadAndStopSendingChunksOnServerError2(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
+    future.onComplete(ar -> {
+      assertTrue(ar.failed());
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      assertFalse(requests.isEmpty());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReadAndError(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
+    future.onComplete(ar -> {
+      assertTrue(ar.failed());
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      assertFalse(requests.isEmpty());
       async.complete();
     });
   }
 
   @Test
   public void shouldErrorIfJobProfileInfoWithoutDataType(TestContext context) {
-    // given
+    /* given */
     Async async = context.async();
-    FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(EMPTY_TYPE_JOB_PROFILE);
-    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
+    String stubSourcePath = StringUtils.EMPTY;
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+    String jobExecutionId = UUID.randomUUID().toString();
 
-    // then
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
     future.onComplete(ar -> {
       assertTrue(ar.failed());
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      assertTrue(requests.isEmpty());
       async.complete();
     });
   }
 
   @Test
   public void shouldErrorIfJobProfileInfoWithoutDataType2(TestContext context) {
-    // given
+    /* given */
     Async async = context.async();
-    FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(EDI_FACT_JOB_PROFILE);
-    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
+    String stubSourcePath = StringUtils.EMPTY;
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+    String jobExecutionId = UUID.randomUUID().toString();
 
-    // then
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.EDIFACT)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
     future.onComplete(ar -> {
       assertTrue(ar.failed());
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      assertTrue(requests.isEmpty());
       async.complete();
     });
   }
 
   @Test
   public void shouldReadJsonArrayFileAndSendAllChunks(TestContext context) {
-    // given
+    /* given */
     Async async = context.async();
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_MARC_JSON);
+    String stubSourcePath = StringUtils.EMPTY;
 
-    FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
-    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_2);
+    String jobExecutionId = UUID.randomUUID().toString();
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
 
-    // then
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_3));
+
+    // We need +1 additional request to post the last chunk with total records number
+    int expectedRequestsNumber = CHUNKS_NUMBER + 1;
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
     future.onComplete(ar -> {
       assertTrue(ar.succeeded());
-      assertDataFromKafka(fileStorageService, CONTENT_TYPE_JSON, TENANT_ID_TEST_MARC_JSON);
-      async.complete();
-    });
-  }
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      Assert.assertEquals(expectedRequestsNumber, requests.size());
 
-  @Test
-  public void shouldReadXmlArrayFileAndSendAllChunks(TestContext context) {
-    // given
-    Async async = context.async();
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_MARC_XML);
-
-    FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
-    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_4);
-
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
-
-    // then
-    future.onComplete(ar -> {
-      assertTrue(ar.succeeded());
-      assertDataFromKafka(fileStorageService, CONTENT_TYPE_XML, TENANT_ID_TEST_MARC_XML);
+      int actualTotalRecordsNumber = 0;
+      int actualLastChunkRecordsCounter = 0;
+      for (LoggedRequest loggedRequest : requests) {
+        RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
+        assertSame(MARC_JSON, rawRecordsDto.getRecordsMetadata().getContentType());
+        actualTotalRecordsNumber += rawRecordsDto.getInitialRecords().size();
+        if (rawRecordsDto.getRecordsMetadata().getLast()) {
+          actualLastChunkRecordsCounter = rawRecordsDto.getRecordsMetadata().getCounter();
+        }
+      }
+      Assert.assertEquals(expectedRequestsNumber, requests.size());
+      Assert.assertEquals(RECORDS_NUMBER, actualLastChunkRecordsCounter);
+      Assert.assertEquals(RECORDS_NUMBER, actualTotalRecordsNumber);
       async.complete();
     });
   }
 
   @Test
   public void shouldReturnErrorOnMalformedFile(TestContext context) {
-    // given
+    /* given */
     Async async = context.async();
-    FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
-    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_3);
+    String stubSourcePath = StringUtils.EMPTY;
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+    String jobExecutionId = UUID.randomUUID().toString();
 
-    // then
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_4));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
     future.onComplete(ar -> {
       assertTrue(ar.failed());
       async.complete();
@@ -247,18 +447,78 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   }
 
   @Test
-  public void shouldReturnErrorOnMalformedXmlFile(TestContext context) {
-    // given
+  public void shouldReadXmlArrayFileAndSendAllChunks(TestContext context) {
+    /* given */
     Async async = context.async();
-    FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
-    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_5);
+    String stubSourcePath = StringUtils.EMPTY;
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+    String jobExecutionId = UUID.randomUUID().toString();
 
-    // then
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_5));
+
+    // We need +1 additional request to post the last chunk with total records number
+    int expectedRequestsNumber = CHUNKS_NUMBER + 1;
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
+    future.onComplete(ar -> {
+      assertTrue(ar.succeeded());
+      List<LoggedRequest> requests = WireMock.findAll(RequestPatternBuilder.allRequests());
+      Assert.assertEquals(expectedRequestsNumber, requests.size());
+
+      int actualTotalRecordsNumber = 0;
+      int actualLastChunkRecordsCounter = 0;
+      for (LoggedRequest loggedRequest : requests) {
+        RawRecordsDto rawRecordsDto = new JsonObject(loggedRequest.getBodyAsString()).mapTo(RawRecordsDto.class);
+        assertSame(MARC_XML, rawRecordsDto.getRecordsMetadata().getContentType());
+        actualTotalRecordsNumber += rawRecordsDto.getInitialRecords().size();
+        if (rawRecordsDto.getRecordsMetadata().getLast()) {
+          actualLastChunkRecordsCounter = rawRecordsDto.getRecordsMetadata().getCounter();
+        }
+      }
+      Assert.assertEquals(expectedRequestsNumber, requests.size());
+      Assert.assertEquals(RECORDS_NUMBER, actualLastChunkRecordsCounter);
+      Assert.assertEquals(RECORDS_NUMBER, actualTotalRecordsNumber);
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReturnErrorOnMalformedXmlFile(TestContext context) {
+    /* given */
+    Async async = context.async();
+    String stubSourcePath = StringUtils.EMPTY;
+
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_6));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
     future.onComplete(ar -> {
       assertTrue(ar.failed());
       async.complete();
@@ -267,80 +527,32 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
   @Test
   public void shouldReturnErrorOnInvalidMrcFile(TestContext context) {
-    // given
+    /* given */
     Async async = context.async();
-    FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
-    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_6);
+    String stubSourcePath = StringUtils.EMPTY;
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+    String jobExecutionId = UUID.randomUUID().toString();
 
-    // then
+    FileDefinition fileDefinition = new FileDefinition()
+      .withSourcePath(stubSourcePath)
+      .withJobExecutionId(jobExecutionId);
+    JobProfileInfo jobProfile = new JobProfileInfo()
+      .withId(UUID.randomUUID().toString())
+      .withDataType(JobProfileInfo.DataType.MARC)
+      .withName("MARC profile");
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(headers, vertx);
+
+    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    when(fileStorageService.getFile(anyString())).thenReturn(new File(SOURCE_PATH_7));
+
+    /* when */
+    Future<Void> future = fileProcessor.processFile(fileDefinition, jobProfile, fileStorageService, okapiConnectionParams);
+
+    /* then */
     future.onComplete(ar -> {
       assertTrue(ar.failed());
       async.complete();
     });
   }
 
-  private FileDefinition createFileDefinition() {
-    String stubSourcePath = StringUtils.EMPTY;
-    String jobExecutionId = UUID.randomUUID().toString();
-    return new FileDefinition()
-      .withSourcePath(stubSourcePath)
-      .withJobExecutionId(jobExecutionId);
-  }
-
-  private FileStorageService createFileStorageServiceMock(String filePath) {
-    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
-    when(fileStorageService.getFile(anyString())).thenReturn(new File(filePath));
-    return fileStorageService;
-  }
-
-  private Map<String, JobProfileInfo> createJobProfilesMap() {
-    Map<String, JobProfileInfo> profiles = new HashMap<>();
-
-    JobProfileInfo marcJobProfileValue = new JobProfileInfo()
-      .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC)
-      .withName(JOB_PROFILE_NAME);
-    JobProfileInfo ediFactJobProfileValue = new JobProfileInfo()
-      .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.EDIFACT)
-      .withName(JOB_PROFILE_NAME);
-    JobProfileInfo emptyTypeJobProfileValue = new JobProfileInfo()
-      .withId(UUID.randomUUID().toString())
-      .withName(JOB_PROFILE_NAME);
-    profiles.put(MARC_TYPE_JOB_PROFILE, marcJobProfileValue);
-    profiles.put(EDI_FACT_JOB_PROFILE, ediFactJobProfileValue);
-    profiles.put(EMPTY_TYPE_JOB_PROFILE, emptyTypeJobProfileValue);
-
-    return profiles;
-  }
-
-  private void assertDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId) {
-    String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
-      KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_RAW_RECORDS_CHUNK_READ.value());
-    List<String> observedValues = null;
-    try {
-      observedValues = cluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-        .observeFor(60, TimeUnit.SECONDS)
-        .build());
-    } catch (InterruptedException e) {
-      LOGGER.error(EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA, e.getMessage());
-    }
-    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
-    RawRecordsDto rawRecordsDto = null;
-    try {
-      rawRecordsDto = new JsonObject(ZIPArchiver.unzip(obtainedEvent.getEventPayload())).mapTo(RawRecordsDto.class);
-    } catch (IOException e) {
-      LOGGER.error(EXCEPTION_OCCURRED_WHILE_UNZIPPING_EVENT_PAYLOAD, e.getMessage());
-    }
-    verify(fileStorageService, times(1)).getFile(any());
-
-    Assert.assertNotNull(rawRecordsDto);
-    Assert.assertEquals(Integer.valueOf(RECORDS_NUMBER), rawRecordsDto.getRecordsMetadata().getTotal());
-    Assert.assertEquals(contentType, rawRecordsDto.getRecordsMetadata().getContentType().value());
-  }
 }

@@ -62,6 +62,7 @@ public abstract class AbstractRestTest {
   protected static RequestSpecification specUpload;
   private static final String KAFKA_HOST = "KAFKA_HOST";
   private static final String KAFKA_PORT = "KAFKA_PORT";
+  private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
@@ -136,6 +137,7 @@ public abstract class AbstractRestTest {
 
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    System.setProperty(KAFKA_MAX_REQUEST_SIZE, "1048576");
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
 
     port = NetworkUtils.nextFreePort();

@@ -27,6 +27,8 @@ public class ApplicationConfig {
   private String okapiUrl;
   @Value("${REPLICATION_FACTOR:1}")
   private int replicationFactor;
+  @Value("${MAX_REQUEST_SIZE:1048576}")
+  private int maxRequestSize;
   @Value("${ENV:folio}")
   private String envId;
 
@@ -38,8 +40,9 @@ public class ApplicationConfig {
       .kafkaPort(kafkaPort)
       .okapiUrl(okapiUrl)
       .replicationFactor(replicationFactor)
+      .maxRequestSize(maxRequestSize)
       .build();
-    LOGGER.debug("kafkaConfig: " + kafkaConfig);
+    LOGGER.debug("kafkaConfig: {}", kafkaConfig);
 
     return kafkaConfig;
   }

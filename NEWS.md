@@ -1,6 +1,6 @@
 ## 2021-08-02 v2.1.2
 * [MODDATAIMP-459](https://issues.folio.org/browse/MODDATAIMP-459) EDIFACT files with CAPS file extensions do not import
-* [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages
+* [MODDATAIMP-514](https://issues.folio.org/browse/MODDATAIMP-514) Add support for max.request.size configuration for Kafka messages
 
 ## 2021-06-25 v2.1.1
 * [MODDATAIMP-464](https://issues.folio.org/browse/MODDATAIMP-464) Change dataType to have have common type for MARC related subtypes

@@ -1,23 +1,19 @@
 package org.folio.service.upload;
 
-import org.folio.okapi.common.GenericCompositeFuture;
-
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-
+import io.vertx.ext.web.handler.HttpException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import io.vertx.ext.web.handler.impl.HttpStatusException;
-
 import org.folio.HttpStatus;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.impl.util.BufferMapper;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
@@ -40,7 +36,6 @@ import org.springframework.stereotype.Service;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.NotFoundException;
-
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
@@ -159,7 +154,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
           promise.complete(true);
         } else {
           LOGGER.error("Error updating status of JobExecution with id {}. Status message: {}", jobExecutionId, response.result().statusMessage());
-          promise.fail(new HttpStatusException(response.result().statusCode(), "Error updating status of JobExecution"));
+          promise.fail(new HttpException(response.result().statusCode(), "Error updating status of JobExecution"));
         }
       });
     } catch (Exception e) {
@@ -265,7 +260,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       client.postChangeManagerJobExecutions(initJobExecutionsRqDto, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
           LOGGER.error("Error creating new JobExecution for UploadDefinition with id {}. Status message: {}", definition.getId(), response.result().statusMessage());
-          promise.fail(new HttpStatusException(response.result().statusCode(), "Error creating new JobExecution"));
+          promise.fail(new HttpException(response.result().statusCode(), "Error creating new JobExecution"));
         } else {
           JsonObject responseBody = response.result().bodyAsJsonObject();
           JsonArray jobExecutions = responseBody.getJsonArray("jobExecutions");

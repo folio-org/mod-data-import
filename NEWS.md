@@ -1,6 +1,7 @@
 ## 2021-07-30 v2.1.0
 * [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages
-
+* [MODDATAIMP-511](https://issues.folio.org/browse/MODDATAIMP-511) Upgrade to RAML Module Builder 33.x
+* 
 ## 2021-07-29 v2.1.1
 * [MODDATAIMP-459](https://issues.folio.org/browse/MODDATAIMP-459) EDIFACT files with CAPS file extensions do not import
 

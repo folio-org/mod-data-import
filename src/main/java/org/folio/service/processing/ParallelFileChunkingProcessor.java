@@ -1,23 +1,19 @@
 package org.folio.service.processing;
 
-import org.folio.okapi.common.GenericCompositeFuture;
-
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-
+import io.vertx.ext.web.handler.HttpException;
+import io.vertx.kafka.client.producer.KafkaProducer;
+import org.apache.commons.collections4.list.UnmodifiableList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import io.vertx.ext.web.handler.impl.HttpStatusException;
-import io.vertx.kafka.client.producer.KafkaProducer;
-
-import org.apache.commons.collections4.list.UnmodifiableList;
 import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecution;
@@ -243,7 +239,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_OK.toInt()) {
           LOGGER.error("Error updating job profile for JobExecution {}. StatusCode: {}", jobId, response.result().statusMessage());
-          promise.fail(new HttpStatusException(response.result().statusCode(), "Error updating JobExecution"));
+          promise.fail(new HttpException(response.result().statusCode(), "Error updating JobExecution"));
         } else {
           LOGGER.info("Job profile for job {} successfully updated.", jobId);
           promise.complete();

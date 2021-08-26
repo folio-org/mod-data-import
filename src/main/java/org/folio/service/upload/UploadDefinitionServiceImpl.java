@@ -16,17 +16,8 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.impl.util.BufferMapper;
-import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.File;
-import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
-import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.JobExecutionCollection;
-import org.folio.rest.jaxrs.model.Metadata;
-import org.folio.rest.jaxrs.model.StatusDto;
-import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.fileextension.FileExtensionServiceImpl;
 import org.folio.service.storage.FileStorageServiceBuilder;
@@ -314,15 +305,15 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<List<JobExecution>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
+  public Future<List<JobExecutionDto>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
     if (!uploadDefinition.getFileDefinitions().isEmpty()) {
       return getJobExecutionById(uploadDefinition.getMetaJobExecutionId(), params)
         .compose(jobExecution -> {
           if (JobExecution.SubordinationType.PARENT_MULTIPLE.equals(jobExecution.getSubordinationType())) {
             return getChildrenJobExecutions(jobExecution.getId(), params)
-              .map(JobExecutionCollection::getJobExecutions);
+              .map(JobExecutionDtoCollection::getJobExecutions);
           } else {
-            return Future.succeededFuture(Collections.singletonList(jobExecution));
+            return Future.succeededFuture(Collections.singletonList(convertToJobExecutionDto(jobExecution)));
           }
         });
     } else {
@@ -330,14 +321,14 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     }
   }
 
-  private Future<JobExecutionCollection> getChildrenJobExecutions(String jobExecutionParentId, OkapiConnectionParams params) {
-    Promise<JobExecutionCollection> promise = Promise.promise();
+  private Future<JobExecutionDtoCollection> getChildrenJobExecutions(String jobExecutionParentId, OkapiConnectionParams params) {
+    Promise<JobExecutionDtoCollection> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {
       client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, null, 0, response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           Buffer responseAsBuffer = response.result().bodyAsBuffer();
-          promise.handle(BufferMapper.mapBufferContentToEntity(responseAsBuffer, JobExecutionCollection.class));
+          promise.handle(BufferMapper.mapBufferContentToEntity(responseAsBuffer, JobExecutionDtoCollection.class));
         } else {
           String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
           LOGGER.error(errorMessage);
@@ -389,16 +380,16 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       .updateBlocking(uploadDefinitionId, definition -> Future.succeededFuture(definition.withStatus(status)), tenantId);
   }
 
-  private boolean canDeleteUploadDefinition(List<JobExecution> jobExecutions) {
+  private boolean canDeleteUploadDefinition(List<JobExecutionDto> jobExecutions) {
     return jobExecutions.stream().filter(jobExecution ->
-      JobExecution.Status.NEW.equals(jobExecution.getStatus()) ||
-        JobExecution.Status.FILE_UPLOADED.equals(jobExecution.getStatus()) ||
-        JobExecution.Status.DISCARDED.equals(jobExecution.getStatus())).count() == jobExecutions.size();
+      JobExecutionDto.Status.NEW.equals(jobExecution.getStatus()) ||
+        JobExecutionDto.Status.FILE_UPLOADED.equals(jobExecution.getStatus()) ||
+        JobExecutionDto.Status.DISCARDED.equals(jobExecution.getStatus())).count() == jobExecutions.size();
   }
 
-  private Future<Boolean> updateJobExecutionStatuses(List<JobExecution> jobExecutions, StatusDto status, OkapiConnectionParams params) {
+  private Future<Boolean> updateJobExecutionStatuses(List<JobExecutionDto> jobExecutions, StatusDto status, OkapiConnectionParams params) {
     List<Future<Boolean>> futures = new ArrayList<>();
-    for (JobExecution jobExecution : jobExecutions) {
+    for (JobExecutionDto jobExecution : jobExecutions) {
       futures.add(updateJobExecutionStatus(jobExecution.getId(), status, params));
     }
     return GenericCompositeFuture.all(futures).map(Future::succeeded);
@@ -412,4 +403,28 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return GenericCompositeFuture.all(futures).map(Future::succeeded);
   }
 
+  private JobExecutionDto convertToJobExecutionDto(JobExecution jobExecution) {
+    JobExecutionDto result = new JobExecutionDto();
+    result.setId(jobExecution.getId());
+    result.setHrId(jobExecution.getHrId());
+    result.setParentJobId(jobExecution.getParentJobId());
+    result.setSubordinationType(Optional.ofNullable(jobExecution.getSubordinationType())
+     .map(type -> JobExecutionDto.SubordinationType.fromValue(type.value())).orElse(null));
+    result.setJobProfileInfo(jobExecution.getJobProfileInfo());
+    result.setSourcePath(jobExecution.getSourcePath());
+    result.setFileName(jobExecution.getFileName());
+    result.setRunBy(jobExecution.getRunBy());
+    result.setProgress(jobExecution.getProgress());
+    result.setStartedDate(jobExecution.getStartedDate());
+    result.setCompletedDate(jobExecution.getCompletedDate());
+    result.setStatus(Optional.ofNullable(jobExecution.getStatus())
+      .map(status -> JobExecutionDto.Status.fromValue(status.value())).orElse(null));
+    result.setUiStatus(Optional.ofNullable(jobExecution.getUiStatus())
+      .map(uiStatus -> JobExecutionDto.UiStatus.fromValue(uiStatus.value())).orElse(null));
+    result.setErrorStatus(Optional.ofNullable(jobExecution.getErrorStatus())
+      .map(errorStatus -> JobExecutionDto.ErrorStatus.fromValue(errorStatus.value())).orElse(null));
+    result.setUserId(jobExecution.getUserId());
+
+    return result;
+  }
 }

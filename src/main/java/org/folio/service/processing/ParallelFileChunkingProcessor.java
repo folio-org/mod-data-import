@@ -15,12 +15,7 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
-import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.JobProfileInfo;
-import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
-import org.folio.rest.jaxrs.model.StatusDto;
-import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.service.processing.kafka.SourceReaderReadStreamWrapper;
 import org.folio.service.processing.kafka.WriteStreamWrapper;
 import org.folio.service.processing.reader.RecordsReaderException;
@@ -207,10 +202,10 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params     parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobsProfile(List<JobExecution> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
+  private Future<Void> updateJobsProfile(List<JobExecutionDto> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Promise<Void> promise = Promise.promise();
     List<Future<Void>> updateJobProfileFutures = new ArrayList<>(jobs.size());
-    for (JobExecution job : jobs) {
+    for (JobExecutionDto job : jobs) {
       updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
     }
     GenericCompositeFuture.all(updateJobProfileFutures).onComplete(updatedJobsProfileAr -> {

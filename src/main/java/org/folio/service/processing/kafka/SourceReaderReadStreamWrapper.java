@@ -25,7 +25,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
-import static org.folio.service.util.Util.constructModuleName;
+import static org.folio.service.util.EventHandlingUtil.constructModuleName;
 
 public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<String, String>> {
   private static final Logger LOGGER = LogManager.getLogger();

@@ -17,12 +17,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
-import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.JobExecutionCollection;
-import org.folio.rest.jaxrs.model.JobProfileInfo;
-import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.jaxrs.model.TenantJob;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.PomReader;
@@ -76,13 +71,13 @@ public abstract class AbstractRestTest {
         .put("personal", new JsonObject().put("firstName", "DIKU").put("lastName", "ADMINISTRATOR"))))
     .put("totalRecords", 1);
 
-  private JobExecution jobExecution = new JobExecution()
+  private JobExecutionDto jobExecution = new JobExecutionDto()
     .withId(UUID.randomUUID().toString())
     .withHrId(1000)
     .withParentJobId(UUID.randomUUID().toString())
-    .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE)
-    .withStatus(JobExecution.Status.NEW)
-    .withUiStatus(JobExecution.UiStatus.INITIALIZATION)
+    .withSubordinationType(JobExecutionDto.SubordinationType.PARENT_SINGLE)
+    .withStatus(JobExecutionDto.Status.NEW)
+    .withUiStatus(JobExecutionDto.UiStatus.INITIALIZATION)
     .withSourcePath("CornellFOLIOExemplars_Bibs.mrc")
     .withJobProfileInfo(new JobProfileInfo()
       .withName("Marc jobs profile")
@@ -90,9 +85,9 @@ public abstract class AbstractRestTest {
       .withId(UUID.randomUUID().toString()))
     .withUserId(UUID.randomUUID().toString());
 
-  private JobExecutionCollection childrenJobExecutions = new JobExecutionCollection()
-    .withJobExecutions(Arrays.asList(jobExecution.withId(UUID.randomUUID().toString()).withSubordinationType(JobExecution.SubordinationType.CHILD),
-      jobExecution.withId(UUID.randomUUID().toString()).withSubordinationType(JobExecution.SubordinationType.CHILD)))
+  private JobExecutionDtoCollection childrenJobExecutions = new JobExecutionDtoCollection()
+    .withJobExecutions(Arrays.asList(jobExecution.withId(UUID.randomUUID().toString()).withSubordinationType(JobExecutionDto.SubordinationType.CHILD),
+      jobExecution.withId(UUID.randomUUID().toString()).withSubordinationType(JobExecutionDto.SubordinationType.CHILD)))
     .withTotalRecords(2);
 
   private JsonObject config = new JsonObject().put("totalRecords", 1)

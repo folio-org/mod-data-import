@@ -5,6 +5,8 @@ import org.folio.rest.tools.utils.ModuleName;
 
 public final class Util {
 
+  private Util(){}
+
   public static String constructModuleName() {
     return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
       ModuleName.getModuleVersion());

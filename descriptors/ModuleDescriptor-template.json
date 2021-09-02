@@ -194,7 +194,7 @@
           "methods": ["POST"],
           "pathPattern": "/data-import/fileExtensions",
           "permissionsRequired": ["data-import.fileExtensions.post"],
-          "modulePermissions": ["users.item.get"]
+          "modulePermissions": ["users.collection.get"]
         },
         {
           "methods": ["GET"],

@@ -206,7 +206,7 @@
           "methods": ["PUT"],
           "pathPattern": "/data-import/fileExtensions/{id}",
           "permissionsRequired": ["data-import.fileExtensions.put"],
-          "modulePermissions": ["users.item.get"]
+          "modulePermissions": ["users.collection.get"]
         },
         {
           "methods": ["DELETE"],

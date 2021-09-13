@@ -77,11 +77,11 @@ public class LocalFileStorageService extends AbstractFileStorageService {
         fs.deleteBlocking(filePath);
         promise.complete(true);
       } else {
-        LOGGER.warn("Couldn't detect the file with id {} in the storage", fileDefinition.getId());
+        LOGGER.trace("Couldn't detect the file with id {} in the storage", fileDefinition.getId());
         promise.complete(false);
       }
     } catch (Exception e) {
-      LOGGER.error("Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
+      LOGGER.warn("Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
       promise.complete(false);
     }
     return promise.future();

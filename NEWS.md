@@ -1,6 +1,6 @@
 ## 2021-08-25 v2.2.0
 * [MODSOURMAN-550](https://issues.folio.org/browse/MODSOURMAN-550) Reduce BE response payload for DI Landing Page to increase performance
-
+* [MODDATAIMP-480](https://issues.folio.org/browse/MODDATAIMP-480) Suppress harmless errors from Data Import logs
 ## 2021-07-30 v2.1.0
 * [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages
 * [MODDATAIMP-511](https://issues.folio.org/browse/MODDATAIMP-511) Upgrade to RAML Module Builder 33.x

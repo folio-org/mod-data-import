@@ -72,10 +72,16 @@ public class LocalFileStorageService extends AbstractFileStorageService {
   public Future<Boolean> deleteFile(FileDefinition fileDefinition) {
     Promise<Boolean> promise = Promise.promise();
     try {
-      fs.deleteBlocking(fileDefinition.getSourcePath());
-      promise.complete(true);
+      String filePath = fileDefinition.getSourcePath();
+      if (fs.existsBlocking(filePath)) {
+        fs.deleteBlocking(filePath);
+        promise.complete(true);
+      } else {
+        LOGGER.trace("Couldn't detect the file with id {} in the storage", fileDefinition.getId());
+        promise.complete(false);
+      }
     } catch (Exception e) {
-      LOGGER.error("Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
+      LOGGER.warn("Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
       promise.complete(false);
     }
     return promise.future();

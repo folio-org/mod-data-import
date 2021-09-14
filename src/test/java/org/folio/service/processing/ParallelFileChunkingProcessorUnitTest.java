@@ -3,7 +3,6 @@ package org.folio.service.processing;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -14,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -28,7 +26,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -333,12 +330,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       LOGGER.error(EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA, e.getMessage());
     }
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
-    RawRecordsDto rawRecordsDto = null;
-    try {
-      rawRecordsDto = new JsonObject(ZIPArchiver.unzip(obtainedEvent.getEventPayload())).mapTo(RawRecordsDto.class);
-    } catch (IOException e) {
-      LOGGER.error(EXCEPTION_OCCURRED_WHILE_UNZIPPING_EVENT_PAYLOAD, e.getMessage());
-    }
+    RawRecordsDto rawRecordsDto = Json.decodeValue(obtainedEvent.getEventPayload(), RawRecordsDto.class);
     verify(fileStorageService, times(1)).getFile(any());
 
     Assert.assertNotNull(rawRecordsDto);

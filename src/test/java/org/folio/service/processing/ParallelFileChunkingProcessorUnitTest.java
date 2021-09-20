@@ -73,7 +73,6 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private static final String KAFKA_PORT_PROP_NAME = "KAFKA_PORT";
   private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
   public static final String EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA = "Exception occurred while getting recorders from kafka {}";
-  public static final String EXCEPTION_OCCURRED_WHILE_UNZIPPING_EVENT_PAYLOAD = "Exception occurred while unzipping event payload {}";
 
   private static final int RECORDS_NUMBER = 62;
   private static final Logger LOGGER = LogManager.getLogger();
@@ -122,7 +121,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // then
     future.onComplete(ar -> {
-      assertTrue(ar.succeeded());
+      context.assertTrue(ar.succeeded());
       assertDataFromKafka(fileStorageService, CONTENT_TYPE_RAW, TENANT_ID_TEST_MARC_RAW);
       async.complete();
     });
@@ -198,7 +197,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // then
     future.onComplete(ar -> {
-      assertTrue(ar.succeeded());
+      context.assertTrue(ar.succeeded());
       assertDataFromKafka(fileStorageService, CONTENT_TYPE_JSON, TENANT_ID_TEST_MARC_JSON);
       async.complete();
     });
@@ -220,7 +219,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // then
     future.onComplete(ar -> {
-      assertTrue(ar.succeeded());
+      context.assertTrue(ar.succeeded());
       assertDataFromKafka(fileStorageService, CONTENT_TYPE_XML, TENANT_ID_TEST_MARC_XML);
       async.complete();
     });

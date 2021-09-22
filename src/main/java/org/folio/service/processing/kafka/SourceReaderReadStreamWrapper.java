@@ -4,12 +4,13 @@ import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.streams.ReadStream;
-import io.vertx.core.streams.impl.InboundBuffer;
-import io.vertx.kafka.client.producer.KafkaHeader;
-import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import io.vertx.core.streams.ReadStream;
+import io.vertx.core.streams.impl.InboundBuffer;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
@@ -20,6 +21,7 @@ import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.folio.service.processing.reader.SourceReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -27,7 +29,7 @@ import java.util.stream.Collectors;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
 import static org.folio.service.util.EventHandlingUtil.constructModuleName;
 
-public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<String, String>> {
+public class SourceReaderReadStreamWrapper implements ReadStream<ProducerRecord<String, String>> {
   private static final Logger LOGGER = LogManager.getLogger();
 
   private static final String END_SENTINEL = "EOF";
@@ -36,19 +38,19 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   private final SourceReader reader;
   private final String jobExecutionId;
   private final int totalRecordsInFile;
-  private final List<KafkaHeader> kafkaHeaders;
+  private final List<Header> kafkaHeaders;
   private final String tenantId;
   private final int maxDistributionNum;
   private final String topicName;
 
-  private final InboundBuffer<KafkaProducerRecord<String, String>> queue;
+  private final InboundBuffer<ProducerRecord<String, String>> queue;
 
   private int recordsCounter = 0;
   private int messageCounter = 0;
 
   private Handler<Throwable> exceptionHandler;
   private Handler<Void> endHandler;
-  private Handler<KafkaProducerRecord<String, String>> handler;
+  private Handler<ProducerRecord<String, String>> handler;
 
   private boolean closed;
 
@@ -64,7 +66,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
       .getHeaders()
       .entries()
       .stream()
-      .map(e -> KafkaHeader.header(e.getKey(), e.getValue()))
+      .map(e -> new RecordHeader(e.getKey(), e.getValue().getBytes()))
       .collect(Collectors.toList());
 
     this.queue = new InboundBuffer<>(vertx.getOrCreateContext(), 0);
@@ -72,7 +74,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     queue.handler(record -> {
       handleNextChunk(record);
 
-      if (record.headers().stream().anyMatch(h -> END_SENTINEL.equals(h.key()))) {
+      if (record.headers().lastHeader(END_SENTINEL) != null) {
         handleEnd();
       }
     });
@@ -83,14 +85,14 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   }
 
   @Override
-  public ReadStream<KafkaProducerRecord<String, String>> exceptionHandler(Handler<Throwable> exceptionHandler) {
+  public ReadStream<ProducerRecord<String, String>> exceptionHandler(Handler<Throwable> exceptionHandler) {
     check();
     this.exceptionHandler = exceptionHandler;
     return this;
   }
 
   @Override
-  public ReadStream<KafkaProducerRecord<String, String>> handler(@Nullable Handler<KafkaProducerRecord<String, String>> handler) {
+  public ReadStream<ProducerRecord<String, String>> handler(@Nullable Handler<ProducerRecord<String, String>> handler) {
     check();
     if (closed) {
       return this;
@@ -105,14 +107,14 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   }
 
   @Override
-  public ReadStream<KafkaProducerRecord<String, String>> pause() {
+  public ReadStream<ProducerRecord<String, String>> pause() {
     check();
     queue.pause();
     return this;
   }
 
   @Override
-  public ReadStream<KafkaProducerRecord<String, String>> resume() {
+  public ReadStream<ProducerRecord<String, String>> resume() {
     check();
     if (!closed) {
       queue.resume();
@@ -121,13 +123,13 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   }
 
   @Override
-  public ReadStream<KafkaProducerRecord<String, String>> fetch(long amount) {
+  public ReadStream<ProducerRecord<String, String>> fetch(long amount) {
     queue.fetch(amount);
     return this;
   }
 
   @Override
-  public ReadStream<KafkaProducerRecord<String, String>> endHandler(@Nullable Handler<Void> endHandler) {
+  public ReadStream<ProducerRecord<String, String>> endHandler(@Nullable Handler<Void> endHandler) {
     check();
     this.endHandler = endHandler;
     return this;
@@ -165,7 +167,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
               .withTotal(totalRecordsInFile));
         }
 
-        KafkaProducerRecord<String, String> kafkaProducerRecord = createKafkaProducerRecord(chunk);
+        ProducerRecord<String, String> kafkaProducerRecord = createProducerRecord(chunk);
         boolean canWrite = queue.write(kafkaProducerRecord);
         LOGGER.debug("Next chunk has been written to the queue. Key: {}", kafkaProducerRecord.key());
         if (canWrite && notEof && !closed) {
@@ -178,7 +180,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     });
   }
 
-  private KafkaProducerRecord<String, String> createKafkaProducerRecord(RawRecordsDto chunk) throws IOException {
+  private ProducerRecord<String, String> createProducerRecord(RawRecordsDto chunk) throws IOException {
     String correlationId = UUID.randomUUID().toString();
     Event event = new Event()
       .withId(correlationId)
@@ -192,18 +194,16 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     int chunkNumber = ++messageCounter;
     String key = String.valueOf(chunkNumber % maxDistributionNum);
 
-    KafkaProducerRecord<String, String> record =
-      KafkaProducerRecord.create(topicName, key, Json.encode(event));
-
-    record.addHeaders(kafkaHeaders);
-
-    record.addHeader("jobExecutionId", jobExecutionId);
-    record.addHeader("correlationId", correlationId);
-    record.addHeader("chunkNumber", String.valueOf(chunkNumber));
-
+    List<Header> headers = new ArrayList<>(kafkaHeaders);
+    headers.add(new RecordHeader("jobExecutionId", jobExecutionId.getBytes()));
+    headers.add(new RecordHeader("correlationId", correlationId.getBytes()));
+    headers.add(new RecordHeader("chunkNumber", String.valueOf(chunkNumber).getBytes()));
     if (chunk.getRecordsMetadata().getLast()) {
-      record.addHeader(END_SENTINEL, "true");
+      headers.add(new RecordHeader(END_SENTINEL, "true".getBytes()));
     }
+
+    ProducerRecord<String, String> record = new ProducerRecord<>(topicName, null,
+       key, Json.encode(event), headers);
 
     LOGGER.debug("Next chunk has been created: correlationId: {} chunkNumber: {}", correlationId, chunkNumber);
     return record;
@@ -219,8 +219,8 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     }
   }
 
-  private void handleNextChunk(KafkaProducerRecord<String, String> packedChunk) {
-    Handler<KafkaProducerRecord<String, String>> handler;
+  private void handleNextChunk(ProducerRecord<String, String> packedChunk) {
+    Handler<ProducerRecord<String, String>> handler;
     synchronized (this) {
       handler = this.handler;
     }

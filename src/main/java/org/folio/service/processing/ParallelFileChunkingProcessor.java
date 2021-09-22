@@ -1,23 +1,24 @@
 package org.folio.service.processing;
 
+import org.folio.okapi.common.GenericCompositeFuture;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.handler.HttpException;
-import io.vertx.kafka.client.producer.KafkaProducer;
-import org.apache.commons.collections4.list.UnmodifiableList;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import io.vertx.ext.web.handler.HttpException;
+import org.apache.commons.collections4.list.UnmodifiableList;
 import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.*;
 import org.folio.service.processing.kafka.SourceReaderReadStreamWrapper;
-import org.folio.service.processing.kafka.WriteStreamWrapper;
+import org.folio.service.processing.kafka.SpringKafkaWriteStream;
 import org.folio.service.processing.reader.RecordsReaderException;
 import org.folio.service.processing.reader.SourceReader;
 import org.folio.service.processing.reader.SourceReaderBuilder;
@@ -25,6 +26,7 @@ import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
+import org.springframework.kafka.core.KafkaTemplate;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -49,14 +51,17 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   private Vertx vertx;
 
-  private KafkaConfig kafkaConfig;
+  private KafkaTemplate<String, String> kafkaTemplate;
+
+  private String envId;
 
   public ParallelFileChunkingProcessor() {
   }
 
-  public ParallelFileChunkingProcessor(Vertx vertx, KafkaConfig kafkaConfig) {
+  public ParallelFileChunkingProcessor(Vertx vertx, KafkaTemplate<String, String> kafkaTemplate, String envId) {
     this.vertx = vertx;
-    this.kafkaConfig = kafkaConfig;
+    this.kafkaTemplate = kafkaTemplate;
+    this.envId = envId;
   }
 
   @Override
@@ -128,7 +133,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                                      OkapiConnectionParams params) {
     String eventType = DI_RAW_RECORDS_CHUNK_READ.value();
 
-    String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
+    String topicName = KafkaTopicNameHelper.formatTopicName(envId,
       KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(), eventType);
 
     File file = fileStorageService.getFile(fileDefinition.getSourcePath());
@@ -159,14 +164,11 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     readStreamWrapper.pause();
 
     LOGGER.debug("Starting to send event to Kafka... jobProfile: {}, eventType: {}", jobProfile, eventType);
-    KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx,
-      eventType + "_Producer", kafkaConfig.getProducerProps());
-    readStreamWrapper.pipeTo(new WriteStreamWrapper(producer), ar -> {
+
+    readStreamWrapper.pipeTo(new SpringKafkaWriteStream(kafkaTemplate, vertx.getOrCreateContext()), ar -> {
       boolean succeeded = ar.succeeded();
       LOGGER.info("Sending event to Kafka finished. ar.succeeded(): {} jobProfile: {}, eventType: {}",
         succeeded, jobProfile, eventType);
-      LOGGER.debug("Closing KafkaProducer jobProfile: {}", jobProfile);
-      producer.end(par -> LOGGER.debug("KafkaProducer has been closed jobProfile: {}", jobProfile));
       processFilePromise.handle(ar);
     });
 

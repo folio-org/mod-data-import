@@ -61,6 +61,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   private static final String DEFINITION_PATH = "/data-import/uploadDefinitions";
   private static final String FILE_PATH = "/files";
   private static final String PROCESS_FILE_IMPORT_PATH = "/processFiles";
+  public static final String ENV_ID = "FOLIO";
   private String uploadDefIdForTest1;
   private String uploadDefIdForTest2;
   private String uploadDefIdForTest3;
@@ -774,7 +775,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     async.complete();
     async = context.async();
 
-    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null);
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null, "FOLIO");
     fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
     async.complete();
     async = context.async();
@@ -841,7 +842,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     async.complete();
     async = context.async();
 
-    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null);
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null, ENV_ID);
     fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
     async.complete();
     async = context.async();

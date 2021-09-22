@@ -9,6 +9,8 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import org.apache.commons.lang.StringUtils;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -26,6 +28,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -102,7 +107,25 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       .build();
 
     jobProfiles = createJobProfilesMap();
-    fileProcessor = new ParallelFileChunkingProcessor(Vertx.vertx(), kafkaConfig);
+    fileProcessor = new ParallelFileChunkingProcessor(Vertx.vertx(), kafkaTemplate(), KAFKA_ENV);
+  }
+
+  private ProducerFactory<String, String> producerFactory() {
+    Map<String, Object> configProps = new HashMap<>();
+    configProps.put(
+      ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+      System.getProperty(KAFKA_HOST_PROP_NAME) + ":" + System.getProperty(KAFKA_PORT_PROP_NAME));
+    configProps.put(
+      ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+      StringSerializer.class);
+    configProps.put(
+      ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+      StringSerializer.class);
+    return new DefaultKafkaProducerFactory<>(configProps);
+  }
+
+  public KafkaTemplate<String, String> kafkaTemplate() {
+    return new KafkaTemplate<>(producerFactory());
   }
 
   @Test

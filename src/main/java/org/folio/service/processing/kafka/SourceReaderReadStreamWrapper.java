@@ -183,7 +183,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     Event event = new Event()
       .withId(correlationId)
       .withEventType(DI_RAW_RECORDS_CHUNK_READ.value())
-      .withEventPayload(ZIPArchiver.zip(Json.encode(chunk)))
+      .withEventPayload(Json.encode(chunk))
       .withEventMetadata(new EventMetadata()
         .withTenantId(tenantId)
         .withEventTTL(1)

@@ -165,8 +165,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       boolean succeeded = ar.succeeded();
       LOGGER.info("Sending event to Kafka finished. ar.succeeded(): {} jobProfile: {}, eventType: {}",
         succeeded, jobProfile, eventType);
-      LOGGER.debug("Closing KafkaProducer jobProfile: {}", jobProfile);
-      producer.end(par -> LOGGER.debug("KafkaProducer has been closed jobProfile: {}", jobProfile));
+      producer.end(par -> producer.close());
       processFilePromise.handle(ar);
     });
 

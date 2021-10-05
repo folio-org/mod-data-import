@@ -1,3 +1,6 @@
+## 2021-10-05 v2.1.3
+* [MODDATAIMP-465](https://issues.folio.org/browse/MODDATAIMP-465) Fix memory leaks - close Vertx Kafka producers
+
 ## 2021-08-02 v2.1.2
 * [MODDATAIMP-459](https://issues.folio.org/browse/MODDATAIMP-459) EDIFACT files with CAPS file extensions do not import
 * [MODDATAIMP-514](https://issues.folio.org/browse/MODDATAIMP-514) Add support for max.request.size configuration for Kafka messages

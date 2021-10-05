@@ -178,14 +178,14 @@
             "invoice-storage.invoice-lines.item.post",
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
-            "invoices.acquisitions-units-assignments.assign",
             "acquisitions-units.units.collection.get",
             "acquisitions-units.memberships.collection.get",
             "orders.po-lines.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post",
             "orders.po-lines.collection.get"
-          ]
+          ],
+          "permissionsDesired": ["invoices.acquisitions-units-assignments.assign"]
         },
         {
           "methods": ["GET"],

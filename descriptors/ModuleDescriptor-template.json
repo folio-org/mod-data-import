@@ -183,7 +183,8 @@
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post",
             "orders.po-lines.collection.get"
-          ]
+          ],
+          "permissionsDesired": ["invoices.acquisitions-units-assignments.assign"]
         },
         {
           "methods": ["GET"],

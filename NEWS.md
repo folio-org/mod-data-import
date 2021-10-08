@@ -1,3 +1,6 @@
+## 2021-10-08 v2.1.4
+* [MODDATAIMP-561](https://issues.folio.org/browse/MODDATAIMP-561) Add permission for acquisitions units assignments
+
 ## 2021-10-05 v2.1.3
 * [MODDATAIMP-465](https://issues.folio.org/browse/MODDATAIMP-465) Fix memory leaks - close Vertx Kafka producers
 

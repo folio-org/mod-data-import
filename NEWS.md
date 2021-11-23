@@ -1,3 +1,6 @@
+## 2021-XX-XX v2.2.0
+* [MODDATAIMP-491](https://issues.folio.org/browse/MODDATAIMP-491) Improve logging to be able to trace the path of each record and file_chunks
+
 ## 2021-07-30 v2.1.0
 * [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages
 

@@ -72,8 +72,8 @@ curl -w '\n' -X POST -D - \
     }
   },
   "jobProfileInfo": {
-    "id": "c8f98545-898c-4f48-a494-3ab6736a3243",
-    "name": "Default job profile",
+    "id": "e34d7b92-9b83-11eb-a8b3-0242ac130003",
+    "name": "Default - Create instance and SRS MARC Bib",
     "dataType": "MARC"
   }
 }

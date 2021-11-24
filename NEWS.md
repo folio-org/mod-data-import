@@ -1,14 +1,21 @@
-## 2021-XX-XX v2.2.0
+## 2021-10-06 v2.2.0
+* [MODSOURMAN-550](https://issues.folio.org/browse/MODSOURMAN-550) Reduce BE response payload for DI Landing Page to increase performance
+* [MODDATAIMP-480](https://issues.folio.org/browse/MODDATAIMP-480) Suppress harmless errors from Data Import logs
+* [MODDATAIMP-548](https://issues.folio.org/browse/MODDATAIMP-548) Provide system properties to set records chunk size for each record type and marc format
+* [MODDATAIMP-511](https://issues.folio.org/browse/MODDATAIMP-511) Upgrade to RAML Module Builder 33.x
 * [MODDATAIMP-491](https://issues.folio.org/browse/MODDATAIMP-491) Improve logging to be able to trace the path of each record and file_chunks
 
-## 2021-07-30 v2.1.0
-* [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages
 
-## 2021-07-29 v2.1.1
+## 2021-10-05 v2.1.3
+* [MODDATAIMP-465](https://issues.folio.org/browse/MODDATAIMP-465) Fix memory leaks - close Vertx Kafka producers
+
+## 2021-08-02 v2.1.2
 * [MODDATAIMP-459](https://issues.folio.org/browse/MODDATAIMP-459) EDIFACT files with CAPS file extensions do not import
+* [MODDATAIMP-514](https://issues.folio.org/browse/MODDATAIMP-514) Add support for max.request.size configuration for Kafka messages
 
-## 2021-07-15 v2.1.0
-* [MODDATAIMP-483](https://issues.folio.org/browse/MODDATAIMP-483) Increase test coverage for mod-data-import
+## 2021-06-25 v2.1.1
+* [MODDATAIMP-464](https://issues.folio.org/browse/MODDATAIMP-464) Change dataType to have have common type for MARC related subtypes
+* Update data-import-processing-core dependency to v3.1.2 
 
 ## 2021-06-17 v2.1.0
 * [MODDATAIMP-433](https://issues.folio.org/browse/MODDATAIMP-433) Store MARC Authority Records

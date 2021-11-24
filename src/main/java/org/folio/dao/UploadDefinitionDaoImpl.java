@@ -194,7 +194,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   private String getFilterByStatus(Status status, Date date) {
-    String queryFilterTemplate = "WHERE %s.jsonb ->> 'status' = '%s' OR TO_TIMESTAMP(%s.jsonb -> 'metadata' ->> 'updatedDate', 'YYYY-MM-DD HH24:MI:SS') <= '%s'";
+    String queryFilterTemplate = "WHERE %s.jsonb ->> 'status' = '%s' OR TO_TIMESTAMP(%s.jsonb -> 'metadata' ->> 'updatedDate', 'YYYY-MM-DD\"T\"HH24:MI:SS') <= '%s'";
     return String.format(queryFilterTemplate, UPLOAD_DEFINITION_TABLE, status.toString(), UPLOAD_DEFINITION_TABLE, dateFormatter.format(date));
   }
 }

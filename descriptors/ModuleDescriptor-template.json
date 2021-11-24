@@ -123,6 +123,7 @@
           "modulePermissions": [
             "change-manager.jobexecutions.get",
             "change-manager.jobexecutions.put",
+            "mapping-metadata.get",
             "source-storage.snapshots.get",
             "source-storage.snapshots.put",
             "users.collection.get",
@@ -165,6 +166,10 @@
             "inventory-storage.instances.item.post",
             "inventory-storage.instances.item.put",
             "inventory-storage.preceding-succeeding-titles.item.post",
+            "inventory-storage.preceding-succeeding-titles.collection.get",
+            "inventory-storage.preceding-succeeding-titles.item.get",
+            "inventory-storage.preceding-succeeding-titles.item.put",
+            "inventory-storage.preceding-succeeding-titles.item.delete",
             "converter-storage.field-protection-settings.get",
             "converter-storage.jobprofilesnapshots.get",
             "invoice-storage.invoices.item.post",
@@ -183,7 +188,8 @@
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post",
             "orders.po-lines.collection.get"
-          ]
+          ],
+          "permissionsDesired": ["invoices.acquisitions-units-assignments.assign"]
         },
         {
           "methods": ["GET"],
@@ -194,7 +200,7 @@
           "methods": ["POST"],
           "pathPattern": "/data-import/fileExtensions",
           "permissionsRequired": ["data-import.fileExtensions.post"],
-          "modulePermissions": ["users.item.get"]
+          "modulePermissions": ["users.collection.get"]
         },
         {
           "methods": ["GET"],
@@ -205,7 +211,7 @@
           "methods": ["PUT"],
           "pathPattern": "/data-import/fileExtensions/{id}",
           "permissionsRequired": ["data-import.fileExtensions.put"],
-          "modulePermissions": ["users.item.get"]
+          "modulePermissions": ["users.collection.get"]
         },
         {
           "methods": ["DELETE"],

@@ -3,7 +3,6 @@ package org.folio.service.processing;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -14,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -28,7 +26,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +73,6 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private static final String KAFKA_PORT_PROP_NAME = "KAFKA_PORT";
   private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
   public static final String EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA = "Exception occurred while getting recorders from kafka {}";
-  public static final String EXCEPTION_OCCURRED_WHILE_UNZIPPING_EVENT_PAYLOAD = "Exception occurred while unzipping event payload {}";
 
   private static final int RECORDS_NUMBER = 62;
   private static final Logger LOGGER = LogManager.getLogger();
@@ -125,7 +121,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // then
     future.onComplete(ar -> {
-      assertTrue(ar.succeeded());
+      context.assertTrue(ar.succeeded());
       assertDataFromKafka(fileStorageService, CONTENT_TYPE_RAW, TENANT_ID_TEST_MARC_RAW);
       async.complete();
     });
@@ -201,7 +197,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // then
     future.onComplete(ar -> {
-      assertTrue(ar.succeeded());
+      context.assertTrue(ar.succeeded());
       assertDataFromKafka(fileStorageService, CONTENT_TYPE_JSON, TENANT_ID_TEST_MARC_JSON);
       async.complete();
     });
@@ -223,7 +219,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // then
     future.onComplete(ar -> {
-      assertTrue(ar.succeeded());
+      context.assertTrue(ar.succeeded());
       assertDataFromKafka(fileStorageService, CONTENT_TYPE_XML, TENANT_ID_TEST_MARC_XML);
       async.complete();
     });
@@ -333,12 +329,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       LOGGER.error(EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA, e.getMessage());
     }
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
-    RawRecordsDto rawRecordsDto = null;
-    try {
-      rawRecordsDto = new JsonObject(ZIPArchiver.unzip(obtainedEvent.getEventPayload())).mapTo(RawRecordsDto.class);
-    } catch (IOException e) {
-      LOGGER.error(EXCEPTION_OCCURRED_WHILE_UNZIPPING_EVENT_PAYLOAD, e.getMessage());
-    }
+    RawRecordsDto rawRecordsDto = Json.decodeValue(obtainedEvent.getEventPayload(), RawRecordsDto.class);
     verify(fileStorageService, times(1)).getFile(any());
 
     Assert.assertNotNull(rawRecordsDto);

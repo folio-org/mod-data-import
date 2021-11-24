@@ -4,12 +4,12 @@ import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.impl.InboundBuffer;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
@@ -18,7 +18,6 @@ import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.folio.service.processing.reader.SourceReader;
-import org.folio.util.pubsub.PubSubClientUtils;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,6 +25,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
+import static org.folio.service.util.EventHandlingUtil.constructModuleName;
 
 public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<String, String>> {
   private static final Logger LOGGER = LogManager.getLogger();
@@ -183,11 +183,11 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     Event event = new Event()
       .withId(chunkId)
       .withEventType(DI_RAW_RECORDS_CHUNK_READ.value())
-      .withEventPayload(ZIPArchiver.zip(Json.encode(chunk)))
+      .withEventPayload(Json.encode(chunk))
       .withEventMetadata(new EventMetadata()
         .withTenantId(tenantId)
         .withEventTTL(1)
-        .withPublishedBy(PubSubClientUtils.constructModuleName()));
+        .withPublishedBy(constructModuleName()));
 
     int chunkNumber = ++messageCounter;
     String key = String.valueOf(chunkNumber % maxDistributionNum);

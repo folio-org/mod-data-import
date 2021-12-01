@@ -3,6 +3,8 @@
 * [MODDATAIMP-480](https://issues.folio.org/browse/MODDATAIMP-480) Suppress harmless errors from Data Import logs
 * [MODDATAIMP-548](https://issues.folio.org/browse/MODDATAIMP-548) Provide system properties to set records chunk size for each record type and marc format
 * [MODDATAIMP-511](https://issues.folio.org/browse/MODDATAIMP-511) Upgrade to RAML Module Builder 33.x
+* [MODDATAIMP-491](https://issues.folio.org/browse/MODDATAIMP-491) Improve logging to be able to trace the path of each record and file_chunks
+
 
 ## 2021-10-05 v2.1.3
 * [MODDATAIMP-465](https://issues.folio.org/browse/MODDATAIMP-465) Fix memory leaks - close Vertx Kafka producers

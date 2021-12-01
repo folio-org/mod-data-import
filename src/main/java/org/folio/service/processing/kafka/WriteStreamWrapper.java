@@ -72,19 +72,19 @@ public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<Strin
   }
 
   private void logChunkProcessingResult(List<KafkaHeader> headers, AsyncResult<Void> ar) {
-    String correlationId = null;
+    String chunkId = null;
     String chunkNumber = null;
     for (KafkaHeader h : headers) {
-      if ("correlationId".equals(h.key())) {
-        correlationId = h.value().toString();
+      if ("chunkId".equals(h.key())) {
+        chunkId = h.value().toString();
       } else if ("chunkNumber".equals(h.key())) {
         chunkNumber = h.value().toString();
       }
     }
     if (ar.succeeded()) {
-      LOGGER.debug("Next chunk has been written: correlationId: {} chunkNumber: {}", correlationId, chunkNumber);
+      LOGGER.debug("Next chunk has been written: chunkId: {} chunkNumber: {}", chunkId, chunkNumber);
     } else {
-      LOGGER.error("Next chunk has failed with errors correlationId: {} chunkNumber: {}", correlationId, chunkNumber, ar.cause());
+      LOGGER.error("Next chunk has failed with errors chunkId: {} chunkNumber: {}", chunkId, chunkNumber, ar.cause());
     }
   }
 }

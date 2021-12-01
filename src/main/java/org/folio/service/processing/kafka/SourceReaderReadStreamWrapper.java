@@ -179,9 +179,9 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   }
 
   private KafkaProducerRecord<String, String> createKafkaProducerRecord(RawRecordsDto chunk) throws IOException {
-    String correlationId = UUID.randomUUID().toString();
+    String chunkId = UUID.randomUUID().toString();
     Event event = new Event()
-      .withId(correlationId)
+      .withId(chunkId)
       .withEventType(DI_RAW_RECORDS_CHUNK_READ.value())
       .withEventPayload(Json.encode(chunk))
       .withEventMetadata(new EventMetadata()
@@ -198,14 +198,14 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     record.addHeaders(kafkaHeaders);
 
     record.addHeader("jobExecutionId", jobExecutionId);
-    record.addHeader("correlationId", correlationId);
+    record.addHeader("chunkId", chunkId);
     record.addHeader("chunkNumber", String.valueOf(chunkNumber));
 
     if (chunk.getRecordsMetadata().getLast()) {
       record.addHeader(END_SENTINEL, "true");
     }
 
-    LOGGER.debug("Next chunk has been created: correlationId: {} chunkNumber: {}", correlationId, chunkNumber);
+    LOGGER.debug("Next chunk has been created: chunkId: {} chunkNumber: {}", chunkId, chunkNumber);
     return record;
   }
 

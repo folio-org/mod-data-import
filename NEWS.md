@@ -1,4 +1,4 @@
-## 2021-12-xx v2.2.1
+## 2021-12-15 v2.2.1
 * [MODDATAIMP-598](https://issues.folio.org/browse/MODDATAIMP-598) Log4j (CVE-2021-44228) vulnerability correction
 
 ## 2021-10-06 v2.2.0

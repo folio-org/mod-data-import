@@ -1,3 +1,6 @@
+## 2021-12-xx v2.1.5
+* [MODDATAIMP-599](https://issues.folio.org/browse/MODDATAIMP-599) Log4j vulnerability correction
+
 ## 2021-10-08 v2.1.4
 * [MODDATAIMP-561](https://issues.folio.org/browse/MODDATAIMP-561) Add permission for acquisitions units assignments
 

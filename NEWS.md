@@ -1,4 +1,4 @@
-## 2021-12-xx v2.1.5
+## 2021-12-16 v2.1.5
 * [MODDATAIMP-599](https://issues.folio.org/browse/MODDATAIMP-599) Log4j vulnerability correction
 
 ## 2021-10-08 v2.1.4

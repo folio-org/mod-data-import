@@ -23,7 +23,7 @@ public class SourceReaderBuilder {
   private static final int MARC_RAW_CHUNK_SIZE = Integer.parseInt(System.getProperty(MARC_RAW_CHUNK_SIZE_KEY, "50"));
   private static final int MARC_JSON_CHUNK_SIZE = Integer.parseInt(System.getProperty(MARC_JSON_CHUNK_SIZE_KEY, "50"));
   private static final int MARC_XML_CHUNK_SIZE = Integer.parseInt(System.getProperty(MARC_XML_CHUNK_SIZE_KEY, "10"));
-  private static final int EDIFACT_CHUNK_SIZE = Integer.parseInt(System.getProperty(EDIFACT_CHUNK_SIZE_KEY, "50"));
+  private static final int EDIFACT_CHUNK_SIZE = Integer.parseInt(System.getProperty(EDIFACT_CHUNK_SIZE_KEY, "10"));
 
   private SourceReaderBuilder() {
   }

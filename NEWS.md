@@ -1,5 +1,5 @@
 ## 2022-03-03 v2.3.0
-* Update RMB to v33.2.3
+* Update RMB to v33.2.6
 * [MODDATAIMP-468](https://issues.folio.org/browse/MODDATAIMP-468) Update source-manager-job-executions interface 2.3 to 3.0
 * [MODDATAIMP-494](https://issues.folio.org/browse/MODDATAIMP-494) Improve logging
 

@@ -14,8 +14,8 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>33.2.3</raml-module-builder.version>
-    <vertx.version>4.2.2</vertx.version>
+    <raml-module-builder.version>33.2.6</raml-module-builder.version>
+    <vertx.version>4.2.5</vertx.version>
     <junit.version>4.13.1</junit.version>
     <rest-assured.version>4.3.1</rest-assured.version>
     <marc4j.version>2.9.1</marc4j.version>
@@ -26,8 +26,6 @@
     <sonar.exclusions>**/ApplicationConfig.java</sonar.exclusions>
     <lombok.version>1.18.12</lombok.version>
     <kafkaclients.version>3.1.0</kafkaclients.version>
-    <jackson.version>2.12.6</jackson.version>
-    <jackson-databind.version>2.12.6</jackson-databind.version>
   </properties>
 
   <dependencyManagement>
@@ -130,22 +128,18 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
-      <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>${jackson-databind.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
-      <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
       <artifactId>jackson-module-jaxb-annotations</artifactId>
-      <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.github.tomakehurst</groupId>

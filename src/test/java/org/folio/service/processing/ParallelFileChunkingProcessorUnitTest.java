@@ -322,7 +322,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_RAW_RECORDS_CHUNK_READ.value());
     List<String> observedValues = null;
     try {
-      observedValues = cluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
         .observeFor(60, TimeUnit.SECONDS)
         .build());
     } catch (InterruptedException e) {

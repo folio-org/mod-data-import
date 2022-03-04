@@ -18,8 +18,6 @@
     <vertx.version>4.2.2</vertx.version>
     <junit.version>4.13.1</junit.version>
     <rest-assured.version>4.3.1</rest-assured.version>
-    <jackson.version>2.10.5.1</jackson.version>
-    <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
     <marc4j.version>2.9.1</marc4j.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -27,6 +25,9 @@
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <sonar.exclusions>**/ApplicationConfig.java</sonar.exclusions>
     <lombok.version>1.18.12</lombok.version>
+    <kafkaclients.version>3.1.0</kafkaclients.version>
+    <jackson.version>2.12.6</jackson.version>
+    <jackson-databind.version>2.12.6</jackson-databind.version>
   </properties>
 
   <dependencyManagement>
@@ -116,16 +117,6 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-kafka-client</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.kafka</groupId>
-          <artifactId>kafka-clients</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
       <version>3.3.0</version>
@@ -138,13 +129,23 @@
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
+      <version>${jackson-databind.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
       <artifactId>jackson-module-jaxb-annotations</artifactId>
-      <version>${jackson.jaxb.version}</version>
+      <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.github.tomakehurst</groupId>
@@ -209,7 +210,7 @@
     <dependency>
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka-clients</artifactId>
-      <version>3.1.0</version>
+      <version>${kafkaclients.version}</version>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
@@ -220,7 +221,7 @@
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
       <artifactId>kafka-junit</artifactId>
-      <version>2.5.0</version>
+      <version>${kafkaclients.version}</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>

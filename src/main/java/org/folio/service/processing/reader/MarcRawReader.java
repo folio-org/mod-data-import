@@ -6,6 +6,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
+import org.marc4j.MarcException;
 import org.marc4j.MarcPermissiveStreamReader;
 import org.marc4j.MarcStreamWriter;
 import org.marc4j.marc.Record;
@@ -48,7 +49,14 @@ public class MarcRawReader implements SourceReader {
   public List<InitialRecord> next() {
     RecordsBuffer recordsBuffer = new RecordsBuffer(this.chunkSize);
     while (this.reader.hasNext()) {
-      Record rawRecord = this.reader.next();
+      Record rawRecord;
+      try {
+        rawRecord = this.reader.next();
+      } catch (MarcException e) {
+        LOGGER.error("Something happened when getting next raw record", e);
+        throw new RecordsReaderException(e);
+      }
+
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       MarcStreamWriter streamWriter = new MarcStreamWriter(bos, CHARSET.name());
       streamWriter.write(rawRecord);

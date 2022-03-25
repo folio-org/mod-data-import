@@ -256,15 +256,16 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   }
 
   private void sendDiErrorForJob(String jobExecutionId, OkapiConnectionParams okapiParams, String errorMsg) {
+    HashMap<String, String> contextItems = new HashMap();
+    contextItems.put("ERROR", errorMsg);
+
     DataImportEventPayload errorPayload = new DataImportEventPayload()
       .withEventType(DI_ERROR.value())
       .withJobExecutionId(jobExecutionId)
       .withOkapiUrl(okapiParams.getOkapiUrl())
       .withTenant(okapiParams.getTenantId())
       .withToken(okapiParams.getToken())
-      .withContext(new HashMap<>() {{
-        put("ERROR", errorMsg);
-      }});
+      .withContext(contextItems);
 
     sendEventToKafka(okapiParams.getTenantId(), Json.encode(errorPayload), DI_ERROR.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null)
       .onFailure(th -> LOGGER.error("Error publishing DI_ERROR event for jobExecutionId: {}", errorPayload.getJobExecutionId(), th));

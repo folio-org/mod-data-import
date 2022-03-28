@@ -33,15 +33,21 @@ public final class EventHandlingUtil {
   /**
    * Prepares and sends event with payload to kafka
    *
-   * @param tenantId     tenant id
+   * @param tenantId tenant id
    * @param eventPayload eventPayload in String representation
-   * @param eventType    eventType
+   * @param eventType eventType
    * @param kafkaHeaders kafka headers
-   * @param kafkaConfig  kafka config
+   * @param kafkaConfig kafka config
    * @return completed future with true if event was sent successfully
    */
-  public static Future<Boolean> sendEventToKafka(String tenantId, String eventPayload, String eventType,
-                                                 List<KafkaHeader> kafkaHeaders, KafkaConfig kafkaConfig, String key) {
+  public static Future<Boolean> sendEventToKafka(
+      String tenantId,
+      String eventPayload,
+      String eventType,
+      List<KafkaHeader> kafkaHeaders,
+      KafkaConfig kafkaConfig,
+      String key,
+      Vertx vertx) {
     LOGGER.debug("Starting to send event to Kafka for eventType: {}", eventType);
     Event event = createEvent(eventPayload, eventType, tenantId);
 
@@ -56,7 +62,7 @@ public final class EventHandlingUtil {
 
     String producerName = eventType + "_Producer";
     KafkaProducer<String, String> producer =
-      KafkaProducer.createShared(Vertx.currentContext().owner(), producerName, kafkaConfig.getProducerProps());
+      KafkaProducer.createShared(vertx, producerName, kafkaConfig.getProducerProps());
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {

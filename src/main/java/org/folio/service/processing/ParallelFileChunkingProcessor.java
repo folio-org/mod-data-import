@@ -105,9 +105,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         processFile(fileDefinition, jobProfile, fileStorageService, params).onComplete(par -> {
             if (par.failed()) {
               LOGGER.error("File was processed with errors {}. Cause: {}", fileDefinition.getSourcePath(), par.cause());
-
-              sendDiErrorForJob(fileDefinition.getJobExecutionId(), params, par.cause().getMessage());
-
               uploadDefinitionService.updateJobExecutionStatus(
                 fileDefinition.getJobExecutionId(),
                 new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
@@ -150,6 +147,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         String errorMessage = "File is empty or content is invalid!";
         LOGGER.error(errorMessage);
         processFilePromise.fail(errorMessage);
+        sendDiErrorForJob(fileDefinition.getJobExecutionId(), params, errorMessage);
         return processFilePromise.future();
       }
       reader = SourceReaderBuilder.build(file, jobProfile);
@@ -157,6 +155,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
       LOGGER.error(errorMessage);
       processFilePromise.fail(errorMessage);
+      sendDiErrorForJob(fileDefinition.getJobExecutionId(), params, errorMessage);
       return processFilePromise.future();
     }
 
@@ -265,7 +264,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       .withToken(okapiParams.getToken())
       .withContext(contextItems);
 
-    sendEventToKafka(okapiParams.getTenantId(), Json.encode(errorPayload), DI_ERROR.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null)
+    sendEventToKafka(okapiParams.getTenantId(), Json.encode(errorPayload), DI_ERROR.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
       .onFailure(th -> LOGGER.error("Error publishing DI_ERROR event for jobExecutionId: {}", errorPayload.getJobExecutionId(), th));
   }
 

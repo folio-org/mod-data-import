@@ -4,7 +4,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
@@ -15,7 +14,6 @@ import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.utils.PomReaderUtil;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
-import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.tools.utils.ModuleName;
 
 import java.util.List;

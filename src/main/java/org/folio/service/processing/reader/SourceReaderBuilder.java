@@ -6,8 +6,6 @@ import org.folio.rest.jaxrs.model.JobProfileInfo;
 import java.io.File;
 
 import static java.util.Optional.ofNullable;
-import static org.folio.service.processing.reader.EdifactReader.EDIFACT_EDI_EXTENSION;
-import static org.folio.service.processing.reader.EdifactReader.EDIFACT_INV_EXTENSION;
 import static org.folio.service.processing.reader.MarcJsonReader.JSON_EXTENSION;
 import static org.folio.service.processing.reader.MarcXmlReader.XML_EXTENSION;
 

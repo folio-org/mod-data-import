@@ -14,10 +14,7 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.rest.AbstractRestTest;
-import org.folio.rest.jaxrs.model.Event;
-import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.JobProfileInfo;
-import org.folio.rest.jaxrs.model.RawRecordsDto;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.service.storage.FileStorageService;
 import org.junit.Assert;
 import org.junit.Before;
@@ -35,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,6 +52,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private static final String TENANT_ID_TEST_MARC_RAW = "diku_marc_raw";
   private static final String TENANT_ID_TEST_MARC_JSON = "diku_marc_json";
   private static final String TENANT_ID_TEST_MARC_XML = "diku_marc_xml";
+  private static final String TENANT_ID_TEST_EDI_RAW = "diku_edifact_raw";
 
   private static final String SOURCE_PATH_1 = "src/test/resources/CornellFOLIOExemplars.mrc";
   private static final String SOURCE_PATH_2 = "src/test/resources/ChalmersFOLIOExamples.json";
@@ -61,7 +60,9 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private static final String SOURCE_PATH_4 = "src/test/resources/UChicago_SampleBibs.xml";
   private static final String SOURCE_PATH_5 = "src/test/resources/invalidUChicago_SampleBibs.xml";
   private static final String SOURCE_PATH_6 = "src/test/resources/invalidMarcFile.mrc";
+  private static final String SOURCE_PATH_7 = "src/test/resources/edifact/274812_WSHEIN_STO.txt";
   private static final String CONTENT_TYPE_RAW = "MARC_RAW";
+  private static final String EDI_CONTENT_TYPE_RAW = "EDIFACT_RAW";
   private static final String CONTENT_TYPE_JSON = "MARC_JSON";
   private static final String CONTENT_TYPE_XML = "MARC_XML";
   private static final String MARC_TYPE_JOB_PROFILE = "marcJobProfile";
@@ -282,6 +283,50 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     });
   }
 
+  @Test
+  public void readTXTfileWithEDIFACTJobProfile(TestContext context) {
+    // given
+    Async async = context.async();
+    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_EDI_RAW);
+
+    FileDefinition fileDefinition = createFileDefinition();
+    JobProfileInfo jobProfile = jobProfiles.get(EDI_FACT_JOB_PROFILE);
+    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_7);
+
+    // when
+    Future<Void> future = fileProcessor
+      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+
+    // then
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+      assertDataFromKafka(fileStorageService, EDI_CONTENT_TYPE_RAW, TENANT_ID_TEST_EDI_RAW, 1);
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReturnErrorWhenReadEdifactTXTfileWithMARCJobProfile(TestContext context) {
+    // given
+    Async async = context.async();
+    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_EDI_RAW);
+
+    FileDefinition fileDefinition = createFileDefinition();
+    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
+    FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_7);
+
+    // when
+    Future<Void> future = fileProcessor
+      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+
+    // then
+    future.onComplete(ar -> {
+      context.assertFalse(ar.succeeded());
+      assertErrorFromKafka(fileStorageService, TENANT_ID_TEST_EDI_RAW, "Can not initialize reader");
+      async.complete();
+    });
+  }
+
   private FileDefinition createFileDefinition() {
     String stubSourcePath = StringUtils.EMPTY;
     String jobExecutionId = UUID.randomUUID().toString();
@@ -318,6 +363,10 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   }
 
   private void assertDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId) {
+    assertDataFromKafka(fileStorageService, contentType, tenantId, RECORDS_NUMBER);
+  }
+
+  private void assertDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId, int recordNumber) {
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_RAW_RECORDS_CHUNK_READ.value());
     List<String> observedValues = null;
@@ -333,7 +382,30 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     verify(fileStorageService, times(1)).getFile(any());
 
     Assert.assertNotNull(rawRecordsDto);
-    Assert.assertEquals(Integer.valueOf(RECORDS_NUMBER), rawRecordsDto.getRecordsMetadata().getTotal());
+    Assert.assertEquals(Integer.valueOf(recordNumber), rawRecordsDto.getRecordsMetadata().getTotal());
     Assert.assertEquals(contentType, rawRecordsDto.getRecordsMetadata().getContentType().value());
+  }
+
+  private void assertErrorFromKafka(FileStorageService fileStorageService, String tenantId, String errorMessage) {
+    String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
+      KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_ERROR.value());
+    List<String> observedValues = null;
+    try {
+      observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+        .observeFor(60, TimeUnit.SECONDS)
+        .build());
+    } catch (InterruptedException e) {
+      LOGGER.error(EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA, e.getMessage());
+    }
+    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
+    DataImportEventPayload dataImportEventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
+
+    verify(fileStorageService, times(1)).getFile(any());
+
+    Assert.assertNotNull(dataImportEventPayload);
+    Assert.assertEquals(DI_ERROR.value(), dataImportEventPayload.getEventType());
+    String error = dataImportEventPayload.getContext().get("ERROR");
+    Assert.assertNotNull(error);
+    Assert.assertTrue(error.contains(errorMessage));
   }
 }

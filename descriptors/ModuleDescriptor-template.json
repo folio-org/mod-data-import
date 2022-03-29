@@ -143,6 +143,7 @@
             "inventory-storage.instance-relationship-types.collection.get",
             "inventory-storage.holdings-types.collection.get",
             "inventory-storage.holdings-note-types.collection.get",
+            "inventory-storage.holdings-sources.collection.get",
             "inventory-storage.ill-policies.collection.get",
             "inventory-storage.call-number-types.collection.get",
             "inventory-storage.statistical-codes.collection.get",

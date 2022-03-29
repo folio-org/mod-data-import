@@ -71,6 +71,7 @@ public final class EventHandlingUtil {
       } else {
         Throwable cause = war.cause();
         LOGGER.error("{} write error for event {}:", producerName, eventType, cause);
+        promise.fail(cause);
       }
     });
     return promise.future();

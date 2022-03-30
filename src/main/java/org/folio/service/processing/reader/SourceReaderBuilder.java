@@ -4,6 +4,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 
 import java.io.File;
+import java.util.Objects;
 
 import static java.util.Optional.ofNullable;
 import static org.folio.service.processing.reader.MarcJsonReader.JSON_EXTENSION;
@@ -46,10 +47,10 @@ public class SourceReaderBuilder {
   }
 
   private static boolean isEdifact(JobProfileInfo jobProfile) {
-    return jobProfile != null && (jobProfile.getDataType() == JobProfileInfo.DataType.EDIFACT);
+    return Objects.nonNull(jobProfile) && (jobProfile.getDataType() == JobProfileInfo.DataType.EDIFACT);
   }
 
   private static boolean isMarc(JobProfileInfo jobProfile) {
-    return jobProfile != null && jobProfile.getDataType() == JobProfileInfo.DataType.MARC;
+    return Objects.nonNull(jobProfile) && jobProfile.getDataType() == JobProfileInfo.DataType.MARC;
   }
 }

@@ -7,6 +7,7 @@ import io.vertx.core.json.Json;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.kafka.KafkaConfig;
@@ -78,7 +79,7 @@ public final class EventHandlingUtil {
   }
 
   private static void logSendingSucceeded(String eventType, String chunkId, String recordId) {
-    if (recordId == null) {
+    if (StringUtils.isBlank(recordId)) {
       LOGGER.info("Event with type: {} and chunkId: {} was sent to kafka", eventType, chunkId);
     } else {
       LOGGER.info("Event with type: {} and recordId: {} was sent to kafka", eventType, recordId);

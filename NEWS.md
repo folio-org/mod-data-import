@@ -1,6 +1,10 @@
 ## 2022-03-26 v2.4.1
 * [MODDATAIMP-661](https://issues.folio.org/browse/MODDATAIMP-661) Add permissions to import MARC Authority records
 
+## 2022-xx-xx v2.5.0-SNAPSHOT
+* [MODDATAIMP-472](https://issues.folio.org/browse/MODDATAIMP-472) EDIFACT files with txt file extensions do not import
+
+
 ## 2022-03-03 v2.4.0
 * Update RMB to v33.2.6
 * [MODDATAIMP-468](https://issues.folio.org/browse/MODDATAIMP-468) Update source-manager-job-executions interface 2.3 to 3.0

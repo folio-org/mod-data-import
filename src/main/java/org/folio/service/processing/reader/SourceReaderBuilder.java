@@ -4,10 +4,9 @@ import org.apache.commons.io.FilenameUtils;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 
 import java.io.File;
+import java.util.Objects;
 
 import static java.util.Optional.ofNullable;
-import static org.folio.service.processing.reader.EdifactReader.EDIFACT_EDI_EXTENSION;
-import static org.folio.service.processing.reader.EdifactReader.EDIFACT_INV_EXTENSION;
 import static org.folio.service.processing.reader.MarcJsonReader.JSON_EXTENSION;
 import static org.folio.service.processing.reader.MarcXmlReader.XML_EXTENSION;
 
@@ -40,19 +39,18 @@ public class SourceReaderBuilder {
       } else {
         sourceReader = new MarcRawReader(file, MARC_RAW_CHUNK_SIZE);
       }
-    } else if (isEdifact(extension, jobProfile)) {
+    } else if (isEdifact(jobProfile)) {
       sourceReader = new EdifactReader(file, EDIFACT_CHUNK_SIZE);
     }
 
     return ofNullable(sourceReader).orElseThrow(() -> new UnsupportedOperationException("Unsupported file format"));
   }
 
-  private static boolean isEdifact(String extension, JobProfileInfo jobProfile) {
-    return ((jobProfile.getDataType() == JobProfileInfo.DataType.EDIFACT)
-      && (EDIFACT_EDI_EXTENSION.equalsIgnoreCase(extension) || EDIFACT_INV_EXTENSION.equalsIgnoreCase(extension)));
+  private static boolean isEdifact(JobProfileInfo jobProfile) {
+    return Objects.nonNull(jobProfile) && (jobProfile.getDataType() == JobProfileInfo.DataType.EDIFACT);
   }
 
   private static boolean isMarc(JobProfileInfo jobProfile) {
-    return jobProfile != null && jobProfile.getDataType() == JobProfileInfo.DataType.MARC;
+    return Objects.nonNull(jobProfile) && jobProfile.getDataType() == JobProfileInfo.DataType.MARC;
   }
 }

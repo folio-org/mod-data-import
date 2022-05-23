@@ -18,7 +18,13 @@ import io.vertx.ext.unit.TestContext;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
+import org.folio.rest.jaxrs.model.JobExecution;
+import org.folio.rest.jaxrs.model.JobExecutionDto;
+import org.folio.rest.jaxrs.model.JobExecutionDtoCollection;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.ModuleName;
@@ -26,7 +32,6 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Rule;
 
 import java.net.URLEncoder;
@@ -37,7 +42,7 @@ import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 
@@ -116,8 +121,7 @@ public abstract class AbstractRestTest {
     .withJobExecutions(Arrays.asList(new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars_Bibs(1).mrc"),
       new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars.mrc")));
 
-  @ClassRule
-  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
+  public static EmbeddedKafkaCluster kafkaCluster;
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -129,7 +133,9 @@ public abstract class AbstractRestTest {
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
-    String[] hostAndPort = cluster.getBrokerList().split(":");
+    kafkaCluster = provisionWith(defaultClusterConfig());
+    kafkaCluster.start();
+    String[] hostAndPort = kafkaCluster.getBrokerList().split(":");
 
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
@@ -204,7 +210,7 @@ public abstract class AbstractRestTest {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopPostgresTester();
       }
-      cluster.close();
+      kafkaCluster.close();
       async.complete();
     }));
   }

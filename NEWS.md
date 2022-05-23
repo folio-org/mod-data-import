@@ -1,10 +1,21 @@
+## 2022-xx-xx v2.5.0-SNAPSHOT
+* [MODDATAIMP-472](https://issues.folio.org/browse/MODDATAIMP-472) EDIFACT files with txt file extensions do not import
+
+
+## 2022-03-03 v2.4.0
+* Update RMB to v33.2.6
+* [MODDATAIMP-468](https://issues.folio.org/browse/MODDATAIMP-468) Update source-manager-job-executions interface 2.3 to 3.0
+* [MODDATAIMP-494](https://issues.folio.org/browse/MODDATAIMP-494) Improve logging
+
+## 2021-12-15 v2.2.1
+* [MODDATAIMP-598](https://issues.folio.org/browse/MODDATAIMP-598) Log4j (CVE-2021-44228) vulnerability correction
+
 ## 2021-10-06 v2.2.0
 * [MODSOURMAN-550](https://issues.folio.org/browse/MODSOURMAN-550) Reduce BE response payload for DI Landing Page to increase performance
 * [MODDATAIMP-480](https://issues.folio.org/browse/MODDATAIMP-480) Suppress harmless errors from Data Import logs
 * [MODDATAIMP-548](https://issues.folio.org/browse/MODDATAIMP-548) Provide system properties to set records chunk size for each record type and marc format
 * [MODDATAIMP-511](https://issues.folio.org/browse/MODDATAIMP-511) Upgrade to RAML Module Builder 33.x
 * [MODDATAIMP-491](https://issues.folio.org/browse/MODDATAIMP-491) Improve logging to be able to trace the path of each record and file_chunks
-
 
 ## 2021-10-05 v2.1.3
 * [MODDATAIMP-465](https://issues.folio.org/browse/MODDATAIMP-465) Fix memory leaks - close Vertx Kafka producers

@@ -3,6 +3,7 @@ package org.folio.service.processing;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.handler.HttpException;
 import io.vertx.kafka.client.producer.KafkaProducer;
@@ -12,10 +13,17 @@ import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
+import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.JobExecutionDto;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
+import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
+import org.folio.rest.jaxrs.model.StatusDto;
+import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.service.processing.kafka.SourceReaderReadStreamWrapper;
 import org.folio.service.processing.kafka.WriteStreamWrapper;
 import org.folio.service.processing.reader.RecordsReaderException;
@@ -32,9 +40,11 @@ import java.util.HashMap;
 import java.util.List;
 
 import static io.vertx.core.Future.succeededFuture;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
 import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
+import static org.folio.service.util.EventHandlingUtil.sendEventToKafka;
 
 /**
  * Processing files in parallel threads, one thread per one file.
@@ -143,6 +153,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         String errorMessage = "File is empty or content is invalid!";
         LOGGER.error(errorMessage);
         processFilePromise.fail(errorMessage);
+        sendDiErrorForJob(fileDefinition.getJobExecutionId(), params, errorMessage);
         return processFilePromise.future();
       }
       reader = SourceReaderBuilder.build(file, jobProfile);
@@ -150,6 +161,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
       LOGGER.error(errorMessage);
       processFilePromise.fail(errorMessage);
+      sendDiErrorForJob(fileDefinition.getJobExecutionId(), params, errorMessage);
       return processFilePromise.future();
     }
 
@@ -244,6 +256,22 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       promise.fail(e);
     }
     return promise.future();
+  }
+
+  private void sendDiErrorForJob(String jobExecutionId, OkapiConnectionParams okapiParams, String errorMsg) {
+    HashMap<String, String> contextItems = new HashMap();
+    contextItems.put("ERROR", errorMsg);
+
+    DataImportEventPayload errorPayload = new DataImportEventPayload()
+      .withEventType(DI_ERROR.value())
+      .withJobExecutionId(jobExecutionId)
+      .withOkapiUrl(okapiParams.getOkapiUrl())
+      .withTenant(okapiParams.getTenantId())
+      .withToken(okapiParams.getToken())
+      .withContext(contextItems);
+
+    sendEventToKafka(okapiParams.getTenantId(), Json.encode(errorPayload), DI_ERROR.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
+      .onFailure(th -> LOGGER.error("Error publishing DI_ERROR event for jobExecutionId: {}", errorPayload.getJobExecutionId(), th));
   }
 
 }

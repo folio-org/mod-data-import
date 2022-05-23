@@ -187,7 +187,8 @@
             "orders.po-lines.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post",
-            "orders.po-lines.collection.get"
+            "orders.po-lines.collection.get",
+            "source-storage.records.get"
           ],
           "permissionsDesired": ["invoices.acquisitions-units-assignments.assign"]
         },

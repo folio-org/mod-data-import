@@ -6,21 +6,20 @@ import io.vertx.core.json.Json;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import lombok.SneakyThrows;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import org.apache.commons.lang.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
+import org.folio.rest.jaxrs.model.DataImportInitConfig;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.service.storage.FileStorageService;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,11 +32,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INITIALIZATION_STARTED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -77,10 +79,9 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private static final String KAFKA_HOST_PROP_NAME = "KAFKA_HOST";
   private static final String KAFKA_PORT_PROP_NAME = "KAFKA_PORT";
   private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
-  public static final String EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA = "Exception occurred while getting recorders from kafka {}";
 
   private static final int RECORDS_NUMBER = 62;
-  private static final Logger LOGGER = LogManager.getLogger();
+
   private final Map<String, String> okapiHeaders = new HashMap<>();
   private final Vertx vertx = Vertx.vertx();
   private ParallelFileChunkingProcessor fileProcessor;
@@ -127,7 +128,8 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     // then
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
-      assertDataFromKafka(fileStorageService, CONTENT_TYPE_RAW, TENANT_ID_TEST_MARC_RAW);
+      assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_MARC_RAW, RECORDS_NUMBER);
+      assertRawChunkDataFromKafka(fileStorageService, CONTENT_TYPE_RAW, TENANT_ID_TEST_MARC_RAW);
       async.complete();
     });
   }
@@ -203,7 +205,8 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     // then
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
-      assertDataFromKafka(fileStorageService, CONTENT_TYPE_JSON, TENANT_ID_TEST_MARC_JSON);
+      assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_MARC_JSON, RECORDS_NUMBER);
+      assertRawChunkDataFromKafka(fileStorageService, CONTENT_TYPE_JSON, TENANT_ID_TEST_MARC_JSON);
       async.complete();
     });
   }
@@ -225,7 +228,8 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     // then
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
-      assertDataFromKafka(fileStorageService, CONTENT_TYPE_XML, TENANT_ID_TEST_MARC_XML);
+      assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_MARC_XML, RECORDS_NUMBER);
+      assertRawChunkDataFromKafka(fileStorageService, CONTENT_TYPE_XML, TENANT_ID_TEST_MARC_XML);
       async.complete();
     });
   }
@@ -304,7 +308,8 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     // then
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
-      assertDataFromKafka(fileStorageService, EDI_CONTENT_TYPE_RAW, TENANT_ID_TEST_EDI_RAW, 1);
+      assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_EDI_RAW, 1);
+      assertRawChunkDataFromKafka(fileStorageService, EDI_CONTENT_TYPE_RAW, TENANT_ID_TEST_EDI_RAW, 1);
       async.complete();
     });
   }
@@ -366,50 +371,63 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     return profiles;
   }
 
-  private void assertDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId) {
-    assertDataFromKafka(fileStorageService, contentType, tenantId, RECORDS_NUMBER);
+  @SneakyThrows
+  private void assertInitializationDataFromKafka(String jobExecutionId, String tenantId, int recordNumber) {
+    String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
+      KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_INITIALIZATION_STARTED.value());
+
+    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .observeFor(60, TimeUnit.SECONDS)
+      .build());
+
+    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
+    DataImportInitConfig initConfig = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportInitConfig.class);
+
+    assertNotNull(initConfig);
+    assertEquals(Integer.valueOf(recordNumber), initConfig.getTotalRecords());
+    assertEquals(jobExecutionId, initConfig.getJobExecutionId());
   }
 
-  private void assertDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId, int recordNumber) {
+  private void assertRawChunkDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId) {
+    assertRawChunkDataFromKafka(fileStorageService, contentType, tenantId, RECORDS_NUMBER);
+  }
+
+  @SneakyThrows
+  private void assertRawChunkDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId, int recordNumber) {
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_RAW_RECORDS_CHUNK_READ.value());
-    List<String> observedValues = null;
-    try {
-      observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+
+    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
         .observeFor(60, TimeUnit.SECONDS)
         .build());
-    } catch (InterruptedException e) {
-      LOGGER.error(EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA, e.getMessage());
-    }
+
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     RawRecordsDto rawRecordsDto = Json.decodeValue(obtainedEvent.getEventPayload(), RawRecordsDto.class);
     verify(fileStorageService, times(1)).getFile(any());
 
-    Assert.assertNotNull(rawRecordsDto);
-    Assert.assertEquals(Integer.valueOf(recordNumber), rawRecordsDto.getRecordsMetadata().getTotal());
-    Assert.assertEquals(contentType, rawRecordsDto.getRecordsMetadata().getContentType().value());
+    assertNotNull(rawRecordsDto);
+    assertEquals(Integer.valueOf(recordNumber), rawRecordsDto.getRecordsMetadata().getTotal());
+    assertEquals(contentType, rawRecordsDto.getRecordsMetadata().getContentType().value());
   }
 
+  @SneakyThrows
   private void assertErrorFromKafka(FileStorageService fileStorageService, String tenantId, String errorMessage) {
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_ERROR.value());
-    List<String> observedValues = null;
-    try {
-      observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+
+    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
         .observeFor(60, TimeUnit.SECONDS)
         .build());
-    } catch (InterruptedException e) {
-      LOGGER.error(EXCEPTION_OCCURRED_WHILE_GETTING_RECORDERS_FROM_KAFKA, e.getMessage());
-    }
+
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload dataImportEventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
 
     verify(fileStorageService, times(1)).getFile(any());
 
-    Assert.assertNotNull(dataImportEventPayload);
-    Assert.assertEquals(DI_ERROR.value(), dataImportEventPayload.getEventType());
+    assertNotNull(dataImportEventPayload);
+    assertEquals(DI_ERROR.value(), dataImportEventPayload.getEventType());
     String error = dataImportEventPayload.getContext().get("ERROR");
-    Assert.assertNotNull(error);
-    Assert.assertTrue(error.contains(errorMessage));
+    assertNotNull(error);
+    assertTrue(error.contains(errorMessage));
   }
 }

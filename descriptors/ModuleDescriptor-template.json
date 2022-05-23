@@ -124,6 +124,7 @@
             "change-manager.jobexecutions.get",
             "change-manager.jobexecutions.put",
             "mapping-metadata.get",
+            "source-storage.records.get",
             "source-storage.snapshots.get",
             "source-storage.snapshots.put",
             "users.collection.get",

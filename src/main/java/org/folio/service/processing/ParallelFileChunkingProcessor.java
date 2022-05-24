@@ -17,13 +17,14 @@ import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
+import org.folio.rest.jaxrs.model.DataImportEventPayload;
+import org.folio.rest.jaxrs.model.DataImportInitConfig;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobExecutionDto;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.service.processing.kafka.SourceReaderReadStreamWrapper;
 import org.folio.service.processing.kafka.WriteStreamWrapper;
 import org.folio.service.processing.reader.RecordsReaderException;
@@ -40,11 +41,12 @@ import java.util.HashMap;
 import java.util.List;
 
 import static io.vertx.core.Future.succeededFuture;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
 import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
 import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
 import static org.folio.service.util.EventHandlingUtil.sendEventToKafka;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INITIALIZATION_STARTED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
 
 /**
  * Processing files in parallel threads, one thread per one file.
@@ -165,6 +167,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       return processFilePromise.future();
     }
 
+    sendDiInitializationForJob(fileDefinition.getJobExecutionId(), totalRecords, params);
+
     SourceReaderReadStreamWrapper readStreamWrapper = new SourceReaderReadStreamWrapper(
       vertx, reader, fileDefinition.getJobExecutionId(), totalRecords,
       params, 100, topicName);
@@ -258,8 +262,17 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     return promise.future();
   }
 
+  private void sendDiInitializationForJob(String jobExecutionId, int totalRecordsCount, OkapiConnectionParams okapiParams) {
+    DataImportInitConfig initConfig = new DataImportInitConfig();
+    initConfig.setJobExecutionId(jobExecutionId);
+    initConfig.setTotalRecords(totalRecordsCount);
+
+    sendEventToKafka(okapiParams.getTenantId(), Json.encode(initConfig), DI_INITIALIZATION_STARTED.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
+      .onFailure(th -> LOGGER.error("Error publishing DI_INITIALIZATION_STARTED event for jobExecutionId: {}", jobExecutionId, th));
+  }
+
   private void sendDiErrorForJob(String jobExecutionId, OkapiConnectionParams okapiParams, String errorMsg) {
-    HashMap<String, String> contextItems = new HashMap();
+    HashMap<String, String> contextItems = new HashMap<>();
     contextItems.put("ERROR", errorMsg);
 
     DataImportEventPayload errorPayload = new DataImportEventPayload()

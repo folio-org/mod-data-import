@@ -1,5 +1,6 @@
 ## 2022-xx-xx v2.5.0-SNAPSHOT
 * [MODDATAIMP-472](https://issues.folio.org/browse/MODDATAIMP-472) EDIFACT files with txt file extensions do not import
+* [MODDATAIMP-646](https://issues.folio.org/browse/MODDATAIMP-646) Logs show incorrectly formatted request id
 
 
 ## 2022-03-03 v2.4.0

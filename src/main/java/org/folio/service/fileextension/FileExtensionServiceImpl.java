@@ -161,9 +161,9 @@ public class FileExtensionServiceImpl implements FileExtensionService {
 
   @Override
   public Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension, String tenantId) {
-    StringBuilder query = new StringBuilder("extension=" + fileExtension.getExtension().trim());
+    StringBuilder query = new StringBuilder("extension==" + fileExtension.getExtension().trim());
     if (fileExtension.getId() != null) {
-      query.append(" AND id=\"\" NOT id=")
+      query.append(" AND id <> ")
         .append(fileExtension.getId());
     }
     return fileExtensionDao.getFileExtensions(query.toString(), 0, 1, tenantId)

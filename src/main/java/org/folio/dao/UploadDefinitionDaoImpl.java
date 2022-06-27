@@ -42,7 +42,7 @@ import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
-  private static final String UPLOAD_DEFINITION_ID_FIELD = "'id'";
+  private static final String UPLOAD_DEFINITION_ID_FIELD = "id";
   private static final String STATUS_FIELD = "'status'";
   private static final String METADATA_FIELD = "'metadata'";
   private static final String UPDATED_DATE_FIELD = "'updatedDate'";
@@ -143,8 +143,8 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   public Future<Optional<UploadDefinition>> getUploadDefinitionById(String id, String tenantId) {
     Promise<Results<UploadDefinition>> promise = Promise.promise();
     try {
-      Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id);
-      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), true, promise);
+      Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id).setJSONB(false);
+      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), false, promise);
     } catch (Exception e) {
       LOGGER.error("Error during get UploadDefinition by ID from view", e);
       promise.fail(e);

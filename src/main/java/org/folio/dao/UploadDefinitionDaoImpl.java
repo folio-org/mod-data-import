@@ -36,13 +36,17 @@ import java.util.TimeZone;
 
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
+import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 
 @Repository
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
-  private static final String UPLOAD_DEFINITION_ID_FIELD = "'id'";
-  public static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss";
+  private static final String UPLOAD_DEFINITION_ID_FIELD = "id";
+  private static final String STATUS_FIELD = "'status'";
+  private static final String METADATA_FIELD = "'metadata'";
+  private static final String UPDATED_DATE_FIELD = "'updatedDate'";
+  private static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSX";
 
   private static final Logger LOGGER = LogManager.getLogger();
   private SimpleDateFormat dateFormatter;
@@ -139,8 +143,8 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   public Future<Optional<UploadDefinition>> getUploadDefinitionById(String id, String tenantId) {
     Promise<Results<UploadDefinition>> promise = Promise.promise();
     try {
-      Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id);
-      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), true, promise);
+      Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id).setJSONB(false);
+      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), false, promise);
     } catch (Exception e) {
       LOGGER.error("Error during get UploadDefinition by ID from view", e);
       promise.fail(e);
@@ -181,9 +185,8 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   public Future<DefinitionCollection> getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(Status status, Date lastUpdateDate, int offset, int limit, String tenantId) {
     Promise<Results<UploadDefinition>> promise = Promise.promise();
     try {
-      String[] fieldList = {"*"};
-      String queryFilter = getFilterByStatus(status, lastUpdateDate);
-      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, queryFilter, true, false, promise);
+      Criterion filter = getFilterByStatus(status, lastUpdateDate);
+      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, filter, true, promise);
     } catch (Exception e) {
       LOGGER.error("Error during getting UploadDefinitions by status and date", e);
       promise.fail(e);
@@ -193,8 +196,14 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       .withTotalRecords(uploadDefinitionResults.getResultInfo().getTotalRecords()));
   }
 
-  private String getFilterByStatus(Status status, Date date) {
-    String queryFilterTemplate = "WHERE %s.jsonb ->> 'status' = '%s' OR TO_TIMESTAMP(%s.jsonb -> 'metadata' ->> 'updatedDate', 'YYYY-MM-DD\"T\"HH24:MI:SS') <= '%s'";
-    return String.format(queryFilterTemplate, UPLOAD_DEFINITION_TABLE, status.toString(), UPLOAD_DEFINITION_TABLE, dateFormatter.format(date));
+  private Criterion getFilterByStatus(Status status, Date date) {
+    Criteria updatedDateCriteria = new Criteria()
+      .addField(METADATA_FIELD)
+      .addField(UPDATED_DATE_FIELD)
+      .setOperation("<=")
+      .setVal(dateFormatter.format(date));
+
+    return new Criterion(constructCriteria(STATUS_FIELD, COMPLETED.value()))
+      .addCriterion(updatedDateCriteria, "OR");
   }
 }

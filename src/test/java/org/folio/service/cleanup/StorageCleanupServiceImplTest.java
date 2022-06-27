@@ -18,7 +18,6 @@ import org.folio.service.AbstractIntegrationTest;
 import org.folio.service.config.ApplicationTestConfig;
 import org.folio.spring.SpringContextUtil;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -115,9 +114,9 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
       Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
 
       future.onComplete(ar -> {
-        Assert.assertTrue(ar.succeeded());
-        Assert.assertTrue(ar.result());
-        Assert.assertFalse(testFile.exists());
+        context.assertTrue(ar.succeeded());
+        context.assertTrue(ar.result());
+        context.assertFalse(testFile.exists());
         async.complete();
       });
       return future;
@@ -135,9 +134,9 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
       Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
 
       future.onComplete(ar -> {
-        Assert.assertTrue(ar.succeeded());
-        Assert.assertTrue(ar.result());
-        Assert.assertFalse(testFile.exists());
+        context.assertTrue(ar.succeeded());
+        context.assertTrue(ar.result());
+        context.assertFalse(testFile.exists());
         async.complete();
       });
       return future;
@@ -152,9 +151,9 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
       Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
 
       future.onComplete(ar -> {
-        Assert.assertTrue(ar.succeeded());
-        Assert.assertFalse(ar.result());
-        Assert.assertTrue(testFile.exists());
+        context.assertTrue(ar.succeeded());
+        context.assertFalse(ar.result());
+        context.assertTrue(testFile.exists());
         async.complete();
       });
       return future;
@@ -172,7 +171,7 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
 
       future.onComplete(ar -> {
         context.assertTrue(ar.succeeded());
-        Assert.assertFalse(ar.result());
+        context.assertFalse(ar.result());
         async.complete();
       });
       return future;

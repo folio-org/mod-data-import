@@ -18,7 +18,7 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 
 ## Introduction
 
-mod-data-import is responsible for uploading files (see [(documentation for file uploading)](FileUploadApi.md)), initial handling and sending records for further processing. To initialise processing of a file user should choose a Job Profile - that information is crucial as it basically contains the instructions on what to do with the uploaded file. However, this process happens after file is uploaded and comes to mod-data-import as a separate request (see [(documentation for file processing)](FileProcessingApi.md).
+mod-data-import is responsible for uploading files (see [documentation for file uploading](FileUploadApi.md)), initial handling and sending records for further processing. To initialise processing of a file user should choose a Job Profile - that information is crucial as it basically contains the instructions on what to do with the uploaded file. However, this process happens after file is uploaded and comes to mod-data-import as a separate request (see [documentation for file processing](FileProcessingApi.md).
 
 ## Compiling
 
@@ -93,10 +93,12 @@ curl -w '\n' -X POST -D -   \
 ```
 
 ## Maximum upload file size and java heap memory setups
-Current implementation supports only storing of the file in a LOCAL_STORAGE (heap memory of the module). It has a couple of implications - firstly, the request for processing the file can be processed only by the same instance of the module, which prevents mod-data-import from scaling, and secondly, limits the file size that can be uploaded (current recommendation is that file cannot take more than 90% of the heap memory allocated for the module)
-mod-data-import provides the ability to upload a file of any size. The only limitation is related to the current implementation of the RMB and the size of the heap in the java process. Currently, before saving the file, it is read into memory, respectively, it is necessary to have the size of the java heap equal to the file size plus 10 percent.
+Current implementation supports only storing of the file in a LOCAL_STORAGE (heap memory of the module). It has a couple of implications:
+1. the request for processing the file can be processed only by the same instance of the module, which prevents mod-data-import from scaling 
+2. limits the file size that can be uploaded to the Java heap memory allocated to the module 
+It is necessary to have the size of the java heap equal to the expected max file size plus 10 percent.
 
-### Example
+#### Example
 | File Size | Java Heap size |
 |:---------:|:--------------:|
 |   256mb   |     270+ mb    |
@@ -105,7 +107,8 @@ mod-data-import provides the ability to upload a file of any size. The only limi
 
 ## Scalability
 
-External storage is required to make mod-data-import scalable. Implementation of the module has the possibility to read the configuration settings from mod-configuration. To allow multiple instance deployment, for every instance the same persistent volume must be mounted to the mount point defined by the value of _data.import.storage.path_ property.****
+External storage is required to make mod-data-import scalable. Implementation of the module has the possibility to read the configuration settings from mod-configuration.
+To allow multiple instance deployment, for every instance the same persistent volume must be mounted to the mount point defined by the value of ****_data.import.storage.path_ property.****
 
 ### Module properties to set up at mod-configuration
 
@@ -115,11 +118,13 @@ External storage is required to make mod-data-import scalable. Implementation of
 ## Interaction with Kafka
 
 All modules involved in data import (mod-data-import, mod-source-record-manager, mod-source-record-storage, mod-inventory, mod-invoice) are communicating via Kafka directly. Therefore, to enable data import Kafka should be set up properly and all the necessary parameters should be set for the modules.
+
 ** Properties that are required for mod-data-import to interact with Kafka:
 * KAFKA_HOST
 * KAFKA_PORT 
 * OKAPI_URL
 * ENV(unique env ID).
+
 After setup, it is good to check logs in all related modules for errors.
 
 ## System properties that can be adjusted for this module and default values

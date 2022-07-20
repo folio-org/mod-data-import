@@ -11,10 +11,14 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 * [Docker](#docker)
 * [Installing the module](#installing-the-module)
 * [Deploying the module](#deploying-the-module)
+* [Maximum upload file size and java heap memory setup](#maximum-upload-file-size-and-java-heap-memory-setups)  
+* [Scalability](#scalability)
+* [Interaction with Kafka](#interaction-with-kafka)
+* [Other system properties](#system-properties-that-can-be-adjusted-for-this-module-and-default-values)
 
 ## Introduction
 
-FOLIO data import module.
+mod-data-import is responsible for uploading files (see [(documentation for file uploading)](FileUploadApi.md)), initial handling and sending records for further processing. To initialise processing of a file user should choose a Job Profile - that information is crucial as it basically contains the instructions on what to do with the uploaded file. However, this process happens after file is uploaded and comes to mod-data-import as a separate request (see [(documentation for file processing)](FileProcessingApi.md).
 
 ## Compiling
 
@@ -87,28 +91,10 @@ curl -w '\n' -X POST -D -   \
     -d @target/TenantModuleDescriptor.json \
     http://localhost:9130/_/proxy/tenants/<tenant_name>/modules
 ```
-## Module properties to set up at mod-configuration
-
-* **_data.import.storage.type_** - type of data storage used for uploaded files. Default value is **LOCAL_STORAGE**. Other implementations for storage should be added.
-* **_data.import.storage.path_** - **path where uploaded file will be stored**
-
-****In case of multiple instance deployment, for every instance the same persistent volume must be mounted to the mount point defined by the value of _data.import.storage.path_ property.****
-
-## Interaction with Kafka
-
-
-There are several properties that should be set for modules that interact with Kafka: **KAFKA_HOST, KAFKA_PORT, OKAPI_URL, ENV**(unique env ID).
-After setup, it is good to check logs in all related modules for errors.
-
-**Environment variables** that can be adjusted for this module and default values:
-* "_file.processing.buffer.chunk.size_": 50
-
-#### Note
-**These variables are relevant for the **Iris** release. Module version: 2.0.0 (2.0.1, 2.0.2).**
-
 
 ## Maximum upload file size and java heap memory setups
-mod-data-import provides the ability to uplaod a file of any size. The only limitation is related to the current implementation of the RMB and the size of the heap in the java process. Currently, before saving the file, it is read into memory, respectively, it is necessary to have the size of the java heap equal to the file size plus 10 percent.
+Current implementation supports only storing of the file in a LOCAL_STORAGE (heap memory of the module). It has a couple of implications - firstly, the request for processing the file can be processed only by the same instance of the module, which prevents mod-data-import from scaling, and secondly, limits the file size that can be uploaded (current recommendation is that file cannot take more than 90% of the heap memory allocated for the module)
+mod-data-import provides the ability to upload a file of any size. The only limitation is related to the current implementation of the RMB and the size of the heap in the java process. Currently, before saving the file, it is read into memory, respectively, it is necessary to have the size of the java heap equal to the file size plus 10 percent.
 
 ### Example
 | File Size | Java Heap size |
@@ -116,6 +102,32 @@ mod-data-import provides the ability to uplaod a file of any size. The only limi
 |   256mb   |     270+ mb    |
 |   512mb   |     560+ mb    |
 |    1GB    |     1.1+ GB    |
+
+## Scalability
+
+External storage is required to make mod-data-import scalable. Implementation of the module has the possibility to read the configuration settings from mod-configuration. To allow multiple instance deployment, for every instance the same persistent volume must be mounted to the mount point defined by the value of _data.import.storage.path_ property.****
+
+### Module properties to set up at mod-configuration
+
+* **_data.import.storage.type_** - type of data storage used for uploaded files. Default value is **LOCAL_STORAGE**. Other implementations for storage should be added.
+* **_data.import.storage.path_** - **path where uploaded file will be stored**
+
+## Interaction with Kafka
+
+All modules involved in data import (mod-data-import, mod-source-record-manager, mod-source-record-storage, mod-inventory, mod-invoice) are communicating via Kafka directly. Therefore, to enable data import Kafka should be set up properly and all the necessary parameters should be set for the modules.
+** Properties that are required for mod-data-import to interact with Kafka:
+* KAFKA_HOST
+* KAFKA_PORT 
+* OKAPI_URL
+* ENV(unique env ID).
+After setup, it is good to check logs in all related modules for errors.
+
+## System properties that can be adjusted for this module and default values
+
+* "_file.processing.marc.raw.buffer.chunk.size_": 50 - applicable to MARC files in binary format
+* "_file.processing.marc.json.buffer.chunk.size_": 50 - applicable to json files with MARC data in json format
+* "_file.processing.marc.xml.buffer.chunk.size_": 10 - applicable to xml files with MARC data in xml format
+* "_file.processing.edifact.buffer.chunk.size_": 10 - applicable to EDIFACT files
 
 ## Issue tracker
 
@@ -131,13 +143,6 @@ Other [modules](https://dev.folio.org/source-code/#server-side).
 See project [MODDATAIMP](https://issues.folio.org/browse/MODDATAIMP) at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker).
 
 Other FOLIO Developer documentation is at [dev.folio.org](https://dev.folio.org/)
-
-## Secret button
-For now, file processing using UI can be initialized by secret button.
-Secret button sends a request to /data-import/uploadDefinitions/{id}/processFile with hardcoded default job profile, 
-which is being created in module converter-storage only if it is deployed in test mode.
-Information about how to run module converter-storage in test mode can be find by reference 
-in [Sample data section] (https://github.com/folio-org/mod-data-import-converter-storage#sample-data)
 
 ## Script to upload a batch of MARC records
 

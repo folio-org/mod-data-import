@@ -94,7 +94,7 @@ curl -w '\n' -X POST -D -   \
 
 ## Maximum upload file size and java heap memory setups
 
-Current implementation supports only storing of the file in a LOCAL_STORAGE (heap memory of the module). It has a couple of implications:
+Current implementation supports only storing of the file in a LOCAL_STORAGE (file system of the module). It has a couple of implications:
 1. the request for processing the file can be processed only by the same instance of the module, which prevents mod-data-import from scaling 
 2. file size that can be uploaded is limited to the java heap memory allocated to the module. 
 It is necessary to have the size of the java heap equal to the expected max file size plus 10 percent.

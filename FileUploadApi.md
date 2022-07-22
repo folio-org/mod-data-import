@@ -4,8 +4,8 @@
 
 This API is responsible for uploading files to storage. 
 **mod-data-import** module use uploaded files for parsing and importing files to storage and another FOLIO modules usage.
-File Upload API provides a ability to upload several files and store state of uploaded files. 
-A user can delete or add another one file from uploading session.
+File Upload API provides an ability to upload several files and store state of uploaded files. 
+A user can delete or add another file from uploading session.
 
 ## Entities
 

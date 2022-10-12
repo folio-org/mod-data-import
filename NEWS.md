@@ -1,6 +1,7 @@
 ## v2.6.0 IN-PROGRESS
 
-* [MODDATAIMP-709] (https://issues.folio.org/browse/MODDATAIMP-709) Supports users interface 15.0, 16.0
+* [MODDATAIMP-721](https://issues.folio.org/browse/MODDATAIMP-721) Upgrade RMB to v35.0.1
+* [MODDATAIMP-709](https://issues.folio.org/browse/MODDATAIMP-709) Supports users interface 15.0, 16.0
 
 ## 2022-07-05 v2.5.0
 * [MODDATAIMP-472](https://issues.folio.org/browse/MODDATAIMP-472) EDIFACT files with txt file extensions do not import

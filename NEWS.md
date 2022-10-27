@@ -1,3 +1,6 @@
+## 2022-xx-xx v2.7.0-SNAPSHOT
+* [MODDATAIMP-727](https://issues.folio.org/browse/MODDATAIMP-727) Upgrade Vertx to v4.3.4
+
 ## 2022-10-24 v2.6.0
 * [MODDATAIMP-721](https://issues.folio.org/browse/MODDATAIMP-721) Upgrade RMB to v35.0.1
 * [MODDATAIMP-709](https://issues.folio.org/browse/MODDATAIMP-709) Supports users interface 15.0, 16.0

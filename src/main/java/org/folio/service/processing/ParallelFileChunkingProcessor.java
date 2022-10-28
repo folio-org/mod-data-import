@@ -177,16 +177,19 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     LOGGER.debug("Starting to send event to Kafka... jobProfile: {}, eventType: {}", jobProfile, eventType);
     KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx,
       eventType + "_Producer", kafkaConfig.getProducerProps());
-    readStreamWrapper.pipeTo(new WriteStreamWrapper(producer), ar -> {
-      boolean succeeded = ar.succeeded();
-      LOGGER.info("Sending event to Kafka finished. ar.succeeded(): {} jobProfile: {}, eventType: {}",
-        succeeded, jobProfile, eventType);
-      producer.end(par -> producer.close());
-      processFilePromise.handle(ar);
-    });
-
+    readStreamWrapper.pipeTo(new WriteStreamWrapper(producer))
+      .<Void>mapEmpty()
+      .eventually(x -> producer.flush())
+      .eventually(x -> producer.close())
+      .onComplete(res -> {
+        if (res.succeeded()) {
+          LOGGER.info("Sending event to Kafka finished. jobProfile: {}, eventType: {}", jobProfile, eventType);
+        } else {
+          LOGGER.error("Error sending event to Kafka. jobProfile: {}, eventType: {}", jobProfile, eventType, res.cause());
+        }
+        processFilePromise.handle(res);
+      });
     return processFilePromise.future();
-
   }
 
   /**

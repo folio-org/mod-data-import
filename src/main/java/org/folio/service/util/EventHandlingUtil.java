@@ -64,17 +64,20 @@ public final class EventHandlingUtil {
     String producerName = eventType + "_Producer";
     KafkaProducer<String, String> producer =
       KafkaProducer.createShared(vertx, producerName, kafkaConfig.getProducerProps());
-    producer.write(record, war -> {
-      producer.end(ear -> producer.close());
-      if (war.succeeded()) {
-        logSendingSucceeded(eventType, chunkId, recordId);
-        promise.complete(true);
-      } else {
-        Throwable cause = war.cause();
-        LOGGER.error("{} write error for event {}:", producerName, eventType, cause);
-        promise.fail(cause);
-      }
-    });
+    producer.write(record)
+      .<Void>mapEmpty()
+      .eventually(x -> producer.flush())
+      .eventually(x -> producer.close())
+      .onComplete(war -> {
+        if (war.succeeded()) {
+          logSendingSucceeded(eventType, chunkId, recordId);
+          promise.complete(true);
+        } else {
+          Throwable cause = war.cause();
+          LOGGER.error("{} write error for event {}:", producerName, eventType, cause);
+          promise.fail(cause);
+        }
+      });
     return promise.future();
   }
 

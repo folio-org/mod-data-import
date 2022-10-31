@@ -1,3 +1,6 @@
+## 2022-10-31 v2.6.1
+* [MODDATAIMP-728](https://issues.folio.org/browse/MODDATAIMP-728) Set vertx version to 4.3.1
+
 ## 2022-10-24 v2.6.0
 * [MODDATAIMP-721](https://issues.folio.org/browse/MODDATAIMP-721) Upgrade RMB to v35.0.1
 * [MODDATAIMP-709](https://issues.folio.org/browse/MODDATAIMP-709) Supports users interface 15.0, 16.0

@@ -25,7 +25,8 @@
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <sonar.exclusions>**/ApplicationConfig.java</sonar.exclusions>
     <lombok.version>1.18.12</lombok.version>
-    <kafkaclients.version>3.1.0</kafkaclients.version>
+    <kafkaclients.version>3.2.3</kafkaclients.version>
+    <kafka-junit.version>3.2.2</kafka-junit.version>
   </properties>
 
   <dependencyManagement>
@@ -41,6 +42,13 @@
         <groupId>io.vertx</groupId>
         <artifactId>vertx-stack-depchain</artifactId>
         <version>${vertx.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-framework-bom</artifactId>
+        <version>5.3.23</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -76,6 +84,10 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.marc4j</groupId>
       <artifactId>marc4j</artifactId>
       <version>${marc4j.version}</version>
@@ -83,7 +95,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>1.4.1</version>
+      <version>1.7.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -171,14 +183,10 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>4.5.13</version>
-    </dependency>
-    <dependency>
       <groupId>pl.pragmatists</groupId>
       <artifactId>JUnitParams</artifactId>
       <version>1.1.1</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -215,7 +223,7 @@
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
       <artifactId>kafka-junit</artifactId>
-      <version>${kafkaclients.version}</version>
+      <version>${kafka-junit.version}</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>

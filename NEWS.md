@@ -1,3 +1,6 @@
+## 2022-11-03 v2.6.2
+* [MODDATAIMP-730](https://issues.folio.org/browse/MODDATAIMP-730) Spring 5.3, kafkaclients 3.2.3, folio-di-support 1.7.0
+
 ## 2022-10-31 v2.6.1
 * [MODDATAIMP-728](https://issues.folio.org/browse/MODDATAIMP-728) Set vertx version to 4.3.1
 

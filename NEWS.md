@@ -1,3 +1,6 @@
+## 2022-11-04 v2.5.1
+* [MODDATAIMP-732](https://issues.folio.org/browse/MODDATAIMP-732) Spring 5.2.22 fixing spring-beans Spring4Shell CVE-2022-22965
+
 ## 2022-07-05 v2.5.0
 * [MODDATAIMP-472](https://issues.folio.org/browse/MODDATAIMP-472) EDIFACT files with txt file extensions do not import
 * [MODDATAIMP-646](https://issues.folio.org/browse/MODDATAIMP-646) Logs show incorrectly formatted request id

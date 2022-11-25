@@ -9,6 +9,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.DataType;
 import org.folio.rest.jaxrs.model.FileExtension;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -318,7 +319,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .body(fileExtension_7)
       .when()
       .post(FILE_EXTENSION_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    MatcherAssert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
     FileExtension fileExtension = createResponse.body().as(FileExtension.class);
     async2.complete();
 

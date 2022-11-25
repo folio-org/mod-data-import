@@ -8,7 +8,7 @@
     },
     {
       "id": "users",
-      "version": "15.0"
+      "version": "15.0 16.0"
     }
   ],
   "provides": [
@@ -151,6 +151,7 @@
             "inventory-storage.statistical-code-types.collection.get",
             "inventory-storage.item-note-types.collection.get",
             "inventory-storage.authority-note-types.collection.get",
+            "inventory-storage.authority-source-files.collection.get",
             "inventory-storage.items.collection.get",
             "inventory-storage.items.item.post",
             "inventory-storage.items.item.put",

@@ -22,7 +22,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class ModTenantApiTest extends AbstractRestTest{
 
-  private static final String MODULE_TO_VERSION = "mod-data-import-1.0.0";
+  private static final String MODULE_TO_VERSION = "1.0.0";
   private static final String TENANT_URL = "/_/tenant";
 
   @ClassRule

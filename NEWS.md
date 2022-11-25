@@ -1,7 +1,15 @@
-## 2022-xx-xx v2.5.0-SNAPSHOT
+## 2022-xx-xx v2.7.0-SNAPSHOT
+* [MODDATAIMP-727](https://issues.folio.org/browse/MODDATAIMP-727) Upgrade Vertx to v4.3.4
+
+## 2022-10-24 v2.6.0
+* [MODDATAIMP-721](https://issues.folio.org/browse/MODDATAIMP-721) Upgrade RMB to v35.0.1
+* [MODDATAIMP-709](https://issues.folio.org/browse/MODDATAIMP-709) Supports users interface 15.0, 16.0
+* [MODDATAIMP-714](https://issues.folio.org/browse/MODDATAIMP-714) Assign each authority record to an Authority Source file list
+
+## 2022-07-05 v2.5.0
 * [MODDATAIMP-472](https://issues.folio.org/browse/MODDATAIMP-472) EDIFACT files with txt file extensions do not import
 * [MODDATAIMP-646](https://issues.folio.org/browse/MODDATAIMP-646) Logs show incorrectly formatted request id
-
+* [MODDATAIMP-696](https://issues.folio.org/browse/MODDATAIMP-696) Upgrade RMB to v34.1.0
 
 ## 2022-03-03 v2.4.0
 * Update RMB to v33.2.6

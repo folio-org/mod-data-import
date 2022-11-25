@@ -54,6 +54,7 @@ public abstract class AbstractRestTest {
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
   private static final String HTTP_PORT = "http.port";
+  public static final String TEST_MODULE_VERSION = "-1.0.0";
   protected static int port;
   private static String useExternalDatabase;
   private static Vertx vertx;
@@ -180,7 +181,7 @@ public abstract class AbstractRestTest {
     vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
       try {
         TenantAttributes tenantAttributes = new TenantAttributes();
-        tenantAttributes.setModuleTo(ModuleName.getModuleName());
+        tenantAttributes.setModuleTo(ModuleName.getModuleName() + TEST_MODULE_VERSION);
         tenantClient.postTenant(tenantAttributes, res2 -> {
           if (res2.result().statusCode() == 204) {
             return;

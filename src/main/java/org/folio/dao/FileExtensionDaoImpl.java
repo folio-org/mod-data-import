@@ -61,7 +61,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
       CQLWrapper cql = getCQLWrapper(FILE_EXTENSIONS_TABLE, query, limit, offset);
       pgClientFactory.createInstance(tenantId).get(FILE_EXTENSIONS_TABLE, FileExtension.class, fieldList, cql, true, false, promise);
     } catch (Exception e) {
-      LOGGER.error("Error while searching for FileExtensions", e);
+      LOGGER.warn("getFileExtensions:: Error while searching for FileExtensions", e);
       promise.fail(e);
     }
     return promise.future().map(results -> new FileExtensionCollection()
@@ -75,7 +75,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
     try {
       pgClientFactory.createInstance(tenantId).get(tableName, FileExtension.class, new Criterion(), true, false, promise);
     } catch (Exception e) {
-      LOGGER.error("Error while searching for FileExtensions", e);
+      LOGGER.warn("getAllFileExtensionsFromTable:: Error while searching for FileExtensions", e);
       promise.fail(e);
     }
     return promise.future().map(results -> new FileExtensionCollection()
@@ -94,7 +94,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
       Criteria crit = constructCriteria(fieldName, fieldValue);
       pgClientFactory.createInstance(tenantId).get(FILE_EXTENSIONS_TABLE, FileExtension.class, new Criterion(crit), true, false, promise);
     } catch (Exception e) {
-      LOGGER.error("Error querying FileExtensions by {}", fieldName, e);
+      LOGGER.warn("getFileExtensionByField:: Error querying FileExtensions by {}", fieldName, e);
       promise.fail(e);
     }
     return promise.future()
@@ -113,6 +113,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<String> addFileExtension(FileExtension fileExtension, String tenantId) {
+    LOGGER.trace("addFileExtension:: adding file extension {} for tenant {}", fileExtension.getId(), tenantId);
     Promise<String> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).save(FILE_EXTENSIONS_TABLE, fileExtension.getId(), fileExtension, promise);
     return promise.future();
@@ -125,18 +126,18 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
       Criteria idCrit = constructCriteria(ID_FIELD, fileExtension.getId());
       pgClientFactory.createInstance(tenantId).update(FILE_EXTENSIONS_TABLE, fileExtension, new Criterion(idCrit), true, updateResult -> {
         if (updateResult.failed()) {
-          LOGGER.error("Could not update fileExtension with id {}", fileExtension.getId(), updateResult.cause());
+          LOGGER.warn("updateFileExtension:: Could not update fileExtension with id {}", fileExtension.getId(), updateResult.cause());
           promise.fail(updateResult.cause());
         } else if (updateResult.result().rowCount() != 1) {
           String errorMessage = format("FileExtension with id '%s' was not found", fileExtension.getId());
-          LOGGER.error(errorMessage);
+          LOGGER.warn(errorMessage);
           promise.fail(new NotFoundException(errorMessage));
         } else {
           promise.complete(fileExtension);
         }
       });
     } catch (Exception e) {
-      LOGGER.error("Error updating fileExtension", e);
+      LOGGER.warn("updateFileExtension:: Error updating fileExtension", e);
       promise.fail(e);
     }
     return promise.future();
@@ -208,7 +209,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
             promise.complete(r.result()));
         } else {
           client.rollbackTx(tx.future(), rollback -> {
-            LOGGER.error("Error during coping file extensions from default table to the main", r.cause());
+            LOGGER.warn("copyExtensionsFromDefault:: Error during coping file extensions from default table to the main", r.cause());
             promise.fail(r.cause());
           });
         }

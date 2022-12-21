@@ -56,9 +56,9 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
             .reduce((a, b) -> a && b)
             .orElse(false);
           if (isFilesDeleted) {
-            LOGGER.info("File storage cleaning has been successfully completed");
+            LOGGER.info("cleanStorage:: File storage cleaning has been successfully completed");
           } else {
-            LOGGER.info("Files have not been removed because files which satisfy search condition does not exist");
+            LOGGER.info("cleanStorage:: Files have not been removed because files which satisfy search condition does not exist");
           }
           promise.complete(isFilesDeleted);
           return promise.future();

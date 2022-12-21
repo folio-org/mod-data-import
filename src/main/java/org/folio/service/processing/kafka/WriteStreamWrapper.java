@@ -82,9 +82,9 @@ public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<Strin
       }
     }
     if (ar.succeeded()) {
-      LOGGER.debug("Next chunk has been written: chunkId: {} chunkNumber: {}", chunkId, chunkNumber);
+      LOGGER.debug("logChunkProcessingResult:: Next chunk has been written: chunkId: {} chunkNumber: {}", chunkId, chunkNumber);
     } else {
-      LOGGER.error("Next chunk has failed with errors chunkId: {} chunkNumber: {}", chunkId, chunkNumber, ar.cause());
+      LOGGER.warn("logChunkProcessingResult:: Next chunk has failed with errors chunkId: {} chunkNumber: {}", chunkId, chunkNumber, ar.cause());
     }
   }
 }

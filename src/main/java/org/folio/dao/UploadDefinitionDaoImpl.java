@@ -115,7 +115,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
             promise.complete(onUpdate.result()));
         } else {
           client.rollbackTx(tx.future(), r -> {
-            LOGGER.error(rollbackMessage, onUpdate.cause());
+            LOGGER.warn(rollbackMessage, onUpdate.cause());
             promise.fail(onUpdate.cause());
           });
         }
@@ -131,7 +131,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       CQLWrapper cql = getCQLWrapper(UPLOAD_DEFINITION_TABLE, query, limit, offset);
       pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, fieldList, cql, true, false, promise);
     } catch (Exception e) {
-      LOGGER.error("Error during getting UploadDefinitions from view", e);
+      LOGGER.warn("getUploadDefinitions:: Error during getting UploadDefinitions from view", e);
       promise.fail(e);
     }
     return promise.future().map(uploadDefinitionResults -> new DefinitionCollection()
@@ -146,7 +146,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id).setJSONB(false);
       pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), false, promise);
     } catch (Exception e) {
-      LOGGER.error("Error during get UploadDefinition by ID from view", e);
+      LOGGER.warn("getUploadDefinitionById:: Error during get UploadDefinition by ID from view", e);
       promise.fail(e);
     }
     return promise.future()
@@ -156,6 +156,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   @Override
   public Future<String> addUploadDefinition(UploadDefinition uploadDefinition, String tenantId) {
+    LOGGER.trace("addUploadDefinition:: adding upload definition {} for tenant {}", uploadDefinition.getId(), tenantId);
     Promise<String> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).save(UPLOAD_DEFINITION_TABLE, uploadDefinition.getId(), uploadDefinition, promise);
     return promise.future();
@@ -168,7 +169,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + uploadDefinition.getId());
       pgClientFactory.createInstance(tenantId).update(tx, UPLOAD_DEFINITION_TABLE, uploadDefinition, filter, true, promise);
     } catch (Exception e) {
-      LOGGER.error("Error during updating UploadDefinition by ID", e);
+      LOGGER.warn("updateUploadDefinition:: Error during updating UploadDefinition by ID", e);
       promise.fail(e);
     }
     return promise.future().map(uploadDefinition);
@@ -188,7 +189,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       Criterion filter = getFilterByStatus(status, lastUpdateDate);
       pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, filter, true, promise);
     } catch (Exception e) {
-      LOGGER.error("Error during getting UploadDefinitions by status and date", e);
+      LOGGER.warn("getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen:: Error during getting UploadDefinitions by status and date", e);
       promise.fail(e);
     }
     return promise.future().map(uploadDefinitionResults -> new DefinitionCollection()

@@ -73,6 +73,7 @@ public class DataImportImpl implements DataImport {
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
+        LOGGER.debug("postDataImportUploadDefinitions:: uploadDefinitionId {}, tenantId {}", entity.getId(), tenantId);
         uploadDefinitionService.checkNewUploadDefinition(entity, tenantId).onComplete(errors -> {
           if (errors.failed()) {
             LOGGER.warn(UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE, errors.cause());
@@ -89,6 +90,7 @@ public class DataImportImpl implements DataImport {
           }
         });
       } catch (Exception e) {
+        LOGGER.warn("postDataImportUploadDefinitions:: Cannot create upload definition with id {}", entity.getId(), e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -99,6 +101,7 @@ public class DataImportImpl implements DataImport {
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
+        LOGGER.debug("getDataImportUploadDefinitions:: query {}", query);
         String preparedQuery = addCreatedByConditionToCqlQuery(query, okapiHeaders);
         uploadDefinitionService.getUploadDefinitions(preparedQuery, offset, limit, tenantId)
           .map(GetDataImportUploadDefinitionsResponse::respond200WithApplicationJson)
@@ -106,6 +109,7 @@ public class DataImportImpl implements DataImport {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
+        LOGGER.warn("getDataImportUploadDefinitions:: Cannot get upload definitions by query {}", query, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -118,6 +122,7 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         entity.setId(uploadDefinitionId);
+        LOGGER.debug("putDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
         uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef ->
           // just update UploadDefinition without FileDefinition changes
           Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
@@ -126,6 +131,7 @@ public class DataImportImpl implements DataImport {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
+        LOGGER.warn("putDataImportUploadDefinitionsByUploadDefinitionId:: Cannot update upload definition by id {}", uploadDefinitionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -136,6 +142,7 @@ public class DataImportImpl implements DataImport {
                                                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
+        LOGGER.debug("deleteDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
         uploadDefinitionService.deleteUploadDefinition(uploadDefinitionId, params)
           .map(deleted -> (Response) DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.respond204())
@@ -155,6 +162,7 @@ public class DataImportImpl implements DataImport {
                                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
+        LOGGER.debug("getDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
         uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId, tenantId)
           .map(optionalDefinition -> optionalDefinition.orElseThrow(() ->
             new NotFoundException(String.format("Upload Definition with id '%s' not found", uploadDefinitionId))))
@@ -163,6 +171,7 @@ public class DataImportImpl implements DataImport {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
+        LOGGER.warn("getDataImportUploadDefinitionsByUploadDefinitionId:: Cannot get upload definitions by id {}", uploadDefinitionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -174,12 +183,14 @@ public class DataImportImpl implements DataImport {
                                                                        Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
+        LOGGER.debug("postDataImportUploadDefinitionsFilesByUploadDefinitionId:: uploadDefinitionId {}, fileDefinitionId {}", uploadDefinitionId, entity.getId());
         uploadDefinitionService.addFileDefinitionToUpload(entity, tenantId)
           .map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdResponse::respond201WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
+        LOGGER.warn("postDataImportUploadDefinitionsFilesByUploadDefinitionId:: Cannot create upload definitions files by uploadDefinitionId {}", uploadDefinitionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -189,6 +200,7 @@ public class DataImportImpl implements DataImport {
   public void deleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId(String uploadDefinitionId, String fileId, Map<String, String> okapiHeaders,
                                                                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
+      LOGGER.debug("deleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: fileId {}, uploadDefinitionId {}", fileId, uploadDefinitionId);
       OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
       vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId, params)
         .map(deleted -> (Response) DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204())
@@ -208,6 +220,7 @@ public class DataImportImpl implements DataImport {
                                                                                 InputStream entity, Map<String, String> okapiHeaders,
                                                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
+      LOGGER.debug("postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: uploadDefinitionId {}, fileId {}", uploadDefinitionId, fileId);
       Future<Response> responseFuture;
       OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
       if (okapiHeaders.get(STREAM_ABORT) == null) {
@@ -234,6 +247,7 @@ public class DataImportImpl implements DataImport {
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler);
     } catch (Exception e) {
+      LOGGER.warn("postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: Cannot create upload definitions files by uploadDefinitionId {} and fileId {}", uploadDefinitionId, fileId);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
     }
   }
@@ -256,6 +270,7 @@ public class DataImportImpl implements DataImport {
           .map(Response.class::cast)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
+        LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Cannot upload definitions process files by uploadDefinitionId {}", uploadDefinitionId);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -266,6 +281,7 @@ public class DataImportImpl implements DataImport {
                                           Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
+        LOGGER.debug("getDataImportFileExtensions:: query {}", query);
         fileExtensionService.getFileExtensions(query, offset, limit, tenantId)
           .map(GetDataImportFileExtensionsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -283,6 +299,7 @@ public class DataImportImpl implements DataImport {
                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
+        LOGGER.debug("postDataImportFileExtensions:: fileExtension {}", entity.getExtension());
         validateFileExtension(entity).onComplete(errors -> {
           if (errors.failed()) {
             LOGGER.warn(FILE_EXTENSION_VALIDATE_ERROR_MESSAGE, errors.cause());
@@ -309,6 +326,7 @@ public class DataImportImpl implements DataImport {
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
+        LOGGER.debug("getDataImportFileExtensionsById:: fileExtensionId {}", id);
         fileExtensionService.getFileExtensionById(id, tenantId)
           .map(optionalFileExtension -> optionalFileExtension.orElseThrow(() ->
             new NotFoundException(String.format("FileExtension with id '%s' was not found", id))))
@@ -328,6 +346,7 @@ public class DataImportImpl implements DataImport {
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
+        LOGGER.debug("putDataImportFileExtensionsById:: fileExtensionId {}", id);
         validateFileExtension(entity).onComplete(errors -> {
           entity.setId(id);
           if (errors.failed()) {
@@ -354,6 +373,7 @@ public class DataImportImpl implements DataImport {
                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
+        LOGGER.debug("deleteDataImportFileExtensionsById:: fileExtensionId {}", id);
         fileExtensionService.deleteFileExtension(id, tenantId)
           .map(deleted -> deleted ?
             DeleteDataImportFileExtensionsByIdResponse.respond204() :
@@ -374,6 +394,7 @@ public class DataImportImpl implements DataImport {
                                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
+        LOGGER.debug("postDataImportFileExtensionsRestoreDefault:: tenantId {}", tenantId);
         fileExtensionService.restoreFileExtensions(tenantId)
           .map(defaultCollection -> (Response) PostDataImportFileExtensionsRestoreDefaultResponse
             .respond200WithApplicationJson(defaultCollection))
@@ -391,6 +412,7 @@ public class DataImportImpl implements DataImport {
                                      Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
+        LOGGER.debug("getDataImportDataTypes:: getting data import types");
         fileExtensionService.getDataTypes()
           .map(GetDataImportDataTypesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

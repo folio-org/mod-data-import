@@ -156,7 +156,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   @Override
   public Future<String> addUploadDefinition(UploadDefinition uploadDefinition, String tenantId) {
-    LOGGER.trace("addUploadDefinition:: adding upload definition {} for tenant {}", uploadDefinition.getId(), tenantId);
+    LOGGER.debug("addUploadDefinition:: adding upload definition {} for tenant {}", uploadDefinition.getId(), tenantId);
     Promise<String> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).save(UPLOAD_DEFINITION_TABLE, uploadDefinition.getId(), uploadDefinition, promise);
     return promise.future();
@@ -164,6 +164,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   @Override
   public Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition, String tenantId) {
+    LOGGER.debug("updateUploadDefinition:: updating upload definition with id {} for tenant {}", uploadDefinition.getId(), tenantId);
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + uploadDefinition.getId());
@@ -177,6 +178,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   @Override
   public Future<Boolean> deleteUploadDefinition(String id, String tenantId) {
+    LOGGER.debug("deleteUploadDefinition:: delete upload definition with id {} for tenant {}", id, tenantId);
     Promise<RowSet<Row>> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).delete(UPLOAD_DEFINITION_TABLE, id, promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);

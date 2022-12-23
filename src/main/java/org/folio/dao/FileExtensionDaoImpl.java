@@ -113,7 +113,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<String> addFileExtension(FileExtension fileExtension, String tenantId) {
-    LOGGER.trace("addFileExtension:: adding file extension {} for tenant {}", fileExtension.getId(), tenantId);
+    LOGGER.debug("addFileExtension:: adding file extension {} for tenant {}", fileExtension.getId(), tenantId);
     Promise<String> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).save(FILE_EXTENSIONS_TABLE, fileExtension.getId(), fileExtension, promise);
     return promise.future();
@@ -121,6 +121,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<FileExtension> updateFileExtension(FileExtension fileExtension, String tenantId) {
+    LOGGER.debug("updateFileExtension:: update file extension with id {} for tenant {}", fileExtension.getId(), tenantId);
     Promise<FileExtension> promise = Promise.promise();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, fileExtension.getId());
@@ -145,6 +146,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<Boolean> deleteFileExtension(String id, String tenantId) {
+    LOGGER.debug("deleteFileExtension:: delete file extension with id {} for tenant {}", id, tenantId);
     Promise<RowSet<Row>> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).delete(FILE_EXTENSIONS_TABLE, id, promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);

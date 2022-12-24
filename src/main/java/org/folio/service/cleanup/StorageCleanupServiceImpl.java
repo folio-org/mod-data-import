@@ -40,6 +40,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
 
   @Override
   public Future<Boolean> cleanStorage(OkapiConnectionParams params) {
+    LOGGER.debug("cleanStorage:: cleaning storage");
     Promise<Boolean> promise = Promise.promise();
 
     return FileStorageServiceBuilder.build(vertx, params.getTenantId(), params)

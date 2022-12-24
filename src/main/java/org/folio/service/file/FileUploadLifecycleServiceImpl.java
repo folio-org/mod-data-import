@@ -91,6 +91,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
 
   @Override
   public Future<FileDefinition> saveFileChunk(String fileId, UploadDefinition uploadDefinition, byte[] data, OkapiConnectionParams params) {
+    LOGGER.debug("saveFileChunk:: fileId {}", fileId);
     Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDefinition, fileId);
     if (optionalFileDefinition.isPresent()) {
       FileDefinition fileDefinition = optionalFileDefinition.get();
@@ -104,6 +105,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
 
   @Override
   public Future<Boolean> deleteFile(String id, String uploadDefinitionId, OkapiConnectionParams params) {
+    LOGGER.debug("deleteFile:: fileId {}, uploadDefinitionId {}", id, uploadDefinitionId);
     return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDefinition -> {
       Promise<UploadDefinition> promise = Promise.promise();
       List<FileDefinition> definitionList = uploadDefinition.getFileDefinitions();

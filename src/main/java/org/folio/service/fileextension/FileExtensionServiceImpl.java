@@ -117,6 +117,7 @@ public class FileExtensionServiceImpl implements FileExtensionService {
    * @return Future with found UserInfo
    */
   private Future<UserInfo> lookupUser(String userId, OkapiConnectionParams params) {
+    LOGGER.debug("lookupUser:: userId {}", userId);
     Promise<UserInfo> promise = Promise.promise();
     RestUtil.doRequest(params, GET_USER_URL + userId, HttpMethod.GET, null)
       .onComplete(getUserResult -> {

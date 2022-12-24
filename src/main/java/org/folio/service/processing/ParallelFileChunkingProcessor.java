@@ -106,7 +106,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                             FileStorageService fileStorageService,
                             UploadDefinition uploadDefinition,
                             OkapiConnectionParams params) {
-
+    LOGGER.debug("processFiles:: jobProfileId {}", jobProfile.getId());
     List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
     for (FileDefinition fileDefinition : fileDefinitions) {
       vertx.runOnContext(v ->
@@ -138,6 +138,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                                      JobProfileInfo jobProfile,
                                      FileStorageService fileStorageService,
                                      OkapiConnectionParams params) {
+    LOGGER.debug("processFiles:: jobProfileId {}", jobProfile.getId());
     String eventType = DI_RAW_RECORDS_CHUNK_READ.value();
 
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),

@@ -40,6 +40,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
 
   @Override
   public Future<Boolean> cleanStorage(OkapiConnectionParams params) {
+    LOGGER.debug("cleanStorage:: cleaning storage");
     Promise<Boolean> promise = Promise.promise();
 
     return FileStorageServiceBuilder.build(vertx, params.getTenantId(), params)
@@ -56,9 +57,9 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
             .reduce((a, b) -> a && b)
             .orElse(false);
           if (isFilesDeleted) {
-            LOGGER.info("File storage cleaning has been successfully completed");
+            LOGGER.info("cleanStorage:: File storage cleaning has been successfully completed");
           } else {
-            LOGGER.info("Files have not been removed because files which satisfy search condition does not exist");
+            LOGGER.info("cleanStorage:: Files have not been removed because files which satisfy search condition does not exist");
           }
           promise.complete(isFilesDeleted);
           return promise.future();
@@ -73,6 +74,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
   }
 
   private Future<CompositeFuture> deleteFilesByUploadDefinitions(FileStorageService fileStorageService, List<UploadDefinition> uploadDefinitions) {
+    LOGGER.debug("deleteFilesByUploadDefinitions:: delete files");
     List<Future<Boolean>> deleteFilesFutures = new ArrayList<>();
     uploadDefinitions.stream()
       .flatMap(uploadDefinition -> uploadDefinition.getFileDefinitions().stream())

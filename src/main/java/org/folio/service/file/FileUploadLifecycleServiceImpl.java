@@ -60,7 +60,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
         promise.complete(uploadDef);
       } else {
         String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
-        LOGGER.error(errorMessage);
+        LOGGER.warn(errorMessage);
         promise.fail(new NotFoundException(errorMessage));
       }
       return promise.future();
@@ -69,6 +69,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
 
   @Override
   public Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, OkapiConnectionParams params) {
+    LOGGER.debug("afterFileSave:: fileDefinition.jobExecutionId {}", fileDefinition.getJobExecutionId());
     Promise<UploadDefinition> promise = Promise.promise();
     uploadDefinitionService.updateBlocking(fileDefinition.getUploadDefinitionId(), definition -> {
       Promise<UploadDefinition> updatePromise = Promise.promise();
@@ -78,7 +79,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
       uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
         .onComplete(booleanAsyncResult -> {
           if (booleanAsyncResult.failed()) {
-            LOGGER.error("Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
+            LOGGER.warn("afterFileSave:: Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
               fileDefinition.getJobExecutionId(), fileDefinition.getId(), booleanAsyncResult.cause());
           }
         });
@@ -91,19 +92,21 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
 
   @Override
   public Future<FileDefinition> saveFileChunk(String fileId, UploadDefinition uploadDefinition, byte[] data, OkapiConnectionParams params) {
+    LOGGER.debug("saveFileChunk:: fileId {}", fileId);
     Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDefinition, fileId);
     if (optionalFileDefinition.isPresent()) {
       FileDefinition fileDefinition = optionalFileDefinition.get();
       return getStorage(params).compose(service -> service.saveFile(data, fileDefinition, params));
     } else {
       String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
-      LOGGER.error(errorMessage);
+      LOGGER.warn(errorMessage);
       return Future.failedFuture(new NotFoundException(errorMessage));
     }
   }
 
   @Override
   public Future<Boolean> deleteFile(String id, String uploadDefinitionId, OkapiConnectionParams params) {
+    LOGGER.debug("deleteFile:: fileId {}, uploadDefinitionId {}", id, uploadDefinitionId);
     return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDefinition -> {
       Promise<UploadDefinition> promise = Promise.promise();
       List<FileDefinition> definitionList = uploadDefinition.getFileDefinitions();
@@ -121,8 +124,8 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
               uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
                 .onComplete(updateStatusResult -> {
                   if (updateStatusResult.failed()) {
-                    LOGGER.error(
-                      "Couldn't update JobExecution status with id {} to DISCARDED after file with id {} was deleted",
+                    LOGGER.warn(
+                      "deleteFile:: Couldn't update JobExecution status with id {} to DISCARDED after file with id {} was deleted",
                       fileDefinition.getJobExecutionId(), id, updateStatusResult.cause());
                   }
                 });
@@ -132,7 +135,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
           });
       } else {
         String errorMessage = String.format("FileDefinition with id %s was not fount", id);
-        LOGGER.error(errorMessage);
+        LOGGER.warn(errorMessage);
         promise.fail(errorMessage);
       }
       return promise.future();

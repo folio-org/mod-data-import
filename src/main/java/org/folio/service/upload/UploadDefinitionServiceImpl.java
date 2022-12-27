@@ -110,7 +110,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
                 .compose(result -> {
                   updateJobExecutionStatuses(jobExecutionList, new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
                     .otherwise(throwable -> {
-                      LOGGER.error("Couldn't update JobExecution status to DISCARDED after UploadDefinition {} was deleted", id, throwable);
+                      LOGGER.warn("deleteUploadDefinition:: Couldn't update JobExecution status to DISCARDED after UploadDefinition {} was deleted", id, throwable);
                       return result;
                     });
                   return Future.succeededFuture(result);
@@ -144,7 +144,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           promise.complete(true);
         } else {
-          LOGGER.error("Error updating status of JobExecution with id {}. Status message: {}", jobExecutionId, response.result().statusMessage());
+          LOGGER.warn("updateJobExecutionStatus:: Error updating status of JobExecution with id {}. Status message: {}", jobExecutionId, response.result().statusMessage());
           promise.fail(new HttpException(response.result().statusCode(), "Error updating status of JobExecution"));
         }
       });
@@ -250,7 +250,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     try {
       client.postChangeManagerJobExecutions(initJobExecutionsRqDto, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
-          LOGGER.error("Error creating new JobExecution for UploadDefinition with id {}. Status message: {}", definition.getId(), response.result().statusMessage());
+          LOGGER.warn("createJobExecutions:: Error creating new JobExecution for UploadDefinition with id {}. Status message: {}", definition.getId(), response.result().statusMessage());
           promise.fail(new HttpException(response.result().statusCode(), "Error creating new JobExecution"));
         } else {
           JsonObject responseBody = response.result().bodyAsJsonObject();
@@ -290,12 +290,12 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Promise<UploadDefinition> promise = Promise.promise();
     if (definition.getMetaJobExecutionId() == null || definition.getMetaJobExecutionId().isEmpty()) {
       promise.fail(new BadRequestException());
-      LOGGER.error("Cant save Upload Definition without MetaJobExecutionId");
+      LOGGER.warn("checkUploadDefinitionBeforeSave:: Cant save Upload Definition without MetaJobExecutionId");
       return promise.future();
     }
     for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
       if (fileDefinition.getJobExecutionId() == null || fileDefinition.getJobExecutionId().isEmpty()) {
-        LOGGER.error("Cant save File Definition without JobExecutionId");
+        LOGGER.warn("checkUploadDefinitionBeforeSave:: Cant save File Definition without JobExecutionId");
         promise.fail(new BadRequestException());
         return promise.future();
       }
@@ -331,7 +331,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
           promise.handle(BufferMapper.mapBufferContentToEntity(responseAsBuffer, JobExecutionDtoCollection.class));
         } else {
           String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
-          LOGGER.error(errorMessage);
+          LOGGER.warn(errorMessage);
           promise.fail(errorMessage);
         }
       });
@@ -351,7 +351,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
           promise.handle(BufferMapper.mapBufferContentToEntity(responseAsBuffer, JobExecution.class));
         } else {
           String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
-          LOGGER.error(errorMessage);
+          LOGGER.warn(errorMessage);
           promise.fail(errorMessage);
         }
       });

@@ -35,7 +35,6 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   private static final String DEFAULT_FILE_EXTENSIONS_TABLE = "default_file_extensions";
   private static final String ID_FIELD = "'id'";
-  private static final String EXTENSION_FIELD = "'extension'";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -61,7 +60,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
       CQLWrapper cql = getCQLWrapper(FILE_EXTENSIONS_TABLE, query, limit, offset);
       pgClientFactory.createInstance(tenantId).get(FILE_EXTENSIONS_TABLE, FileExtension.class, fieldList, cql, true, false, promise);
     } catch (Exception e) {
-      LOGGER.error("Error while searching for FileExtensions", e);
+      LOGGER.warn("getFileExtensions:: Error while searching for FileExtensions", e);
       promise.fail(e);
     }
     return promise.future().map(results -> new FileExtensionCollection()
@@ -75,7 +74,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
     try {
       pgClientFactory.createInstance(tenantId).get(tableName, FileExtension.class, new Criterion(), true, false, promise);
     } catch (Exception e) {
-      LOGGER.error("Error while searching for FileExtensions", e);
+      LOGGER.warn("getAllFileExtensionsFromTable:: Error while searching for FileExtensions", e);
       promise.fail(e);
     }
     return promise.future().map(results -> new FileExtensionCollection()
@@ -94,7 +93,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
       Criteria crit = constructCriteria(fieldName, fieldValue);
       pgClientFactory.createInstance(tenantId).get(FILE_EXTENSIONS_TABLE, FileExtension.class, new Criterion(crit), true, false, promise);
     } catch (Exception e) {
-      LOGGER.error("Error querying FileExtensions by {}", fieldName, e);
+      LOGGER.warn("getFileExtensionByField:: Error querying FileExtensions by {}", fieldName, e);
       promise.fail(e);
     }
     return promise.future()
@@ -113,6 +112,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<String> addFileExtension(FileExtension fileExtension, String tenantId) {
+    LOGGER.debug("addFileExtension:: adding file extension {} for tenant {}", fileExtension.getId(), tenantId);
     Promise<String> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).save(FILE_EXTENSIONS_TABLE, fileExtension.getId(), fileExtension, promise);
     return promise.future();
@@ -120,23 +120,24 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<FileExtension> updateFileExtension(FileExtension fileExtension, String tenantId) {
+    LOGGER.debug("updateFileExtension:: update file extension with id {} for tenant {}", fileExtension.getId(), tenantId);
     Promise<FileExtension> promise = Promise.promise();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, fileExtension.getId());
       pgClientFactory.createInstance(tenantId).update(FILE_EXTENSIONS_TABLE, fileExtension, new Criterion(idCrit), true, updateResult -> {
         if (updateResult.failed()) {
-          LOGGER.error("Could not update fileExtension with id {}", fileExtension.getId(), updateResult.cause());
+          LOGGER.warn("updateFileExtension:: Could not update fileExtension with id {}", fileExtension.getId(), updateResult.cause());
           promise.fail(updateResult.cause());
         } else if (updateResult.result().rowCount() != 1) {
-          String errorMessage = format("FileExtension with id '%s' was not found", fileExtension.getId());
-          LOGGER.error(errorMessage);
+          String errorMessage = format("updateFileExtension:: FileExtension with id '%s' was not found", fileExtension.getId());
+          LOGGER.warn(errorMessage);
           promise.fail(new NotFoundException(errorMessage));
         } else {
           promise.complete(fileExtension);
         }
       });
     } catch (Exception e) {
-      LOGGER.error("Error updating fileExtension", e);
+      LOGGER.warn("updateFileExtension:: Error updating fileExtension", e);
       promise.fail(e);
     }
     return promise.future();
@@ -144,6 +145,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<Boolean> deleteFileExtension(String id, String tenantId) {
+    LOGGER.debug("deleteFileExtension:: delete file extension with id {} for tenant {}", id, tenantId);
     Promise<RowSet<Row>> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).delete(FILE_EXTENSIONS_TABLE, id, promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
@@ -151,6 +153,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<FileExtensionCollection> restoreFileExtensions(String tenantId) {
+    LOGGER.debug("restoreFileExtensions:: restore file extension for tenant {}", tenantId);
     PostgresClient client = pgClientFactory.createInstance(tenantId);
     Promise<FileExtensionCollection> promise = Promise.promise();
     Promise<SQLConnection> tx = Promise.promise();
@@ -182,6 +185,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   }
 
   private Future<RowSet<Row>> copyExtensionsFromDefault(Future<SQLConnection> tx, String tenantId) {
+    LOGGER.debug("copyExtensionsFromDefault:: copy extensions from default for tenant {}", tenantId);
     String moduleName = PostgresClient.getModuleName();
     Promise<RowSet<Row>> promise = Promise.promise();
     StringBuilder sqlScript = new StringBuilder("INSERT INTO ")
@@ -208,7 +212,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
             promise.complete(r.result()));
         } else {
           client.rollbackTx(tx.future(), rollback -> {
-            LOGGER.error("Error during coping file extensions from default table to the main", r.cause());
+            LOGGER.warn("copyExtensionsFromDefault:: Error during coping file extensions from default table to the main", r.cause());
             promise.fail(r.cause());
           });
         }

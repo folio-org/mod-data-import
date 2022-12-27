@@ -166,12 +166,12 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
 
         KafkaProducerRecord<String, String> kafkaProducerRecord = createKafkaProducerRecord(chunk);
         boolean canWrite = queue.write(kafkaProducerRecord);
-        LOGGER.debug("Next chunk has been written to the queue. Key: {}", kafkaProducerRecord.key());
+        LOGGER.debug("doReadInternal:: Next chunk has been written to the queue. Key: {}", kafkaProducerRecord.key());
         if (canWrite && notEof && !closed) {
           doReadInternal();
         }
       } catch (Exception e) {
-        LOGGER.error(e);
+        LOGGER.warn(e);
         handleException(e);
       }
     });
@@ -203,7 +203,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
       record.addHeader(END_SENTINEL, "true");
     }
 
-    LOGGER.debug("Next chunk has been created: chunkId: {} chunkNumber: {}", chunk.getId(), chunkNumber);
+    LOGGER.debug("createKafkaProducerRecord:: Next chunk has been created: chunkId: {} chunkNumber: {}", chunk.getId(), chunkNumber);
     return record;
   }
 
@@ -230,7 +230,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   private void handleEnd() {
     closed = true;
 
-    LOGGER.debug("End handler. Processing completed: {}", this);
+    LOGGER.debug("handleEnd:: End handler. Processing completed: {}", this);
 
     Handler<Void> endHandler;
     synchronized (this) {
@@ -246,7 +246,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     if (exceptionHandler != null && t instanceof Exception) {
       exceptionHandler.handle(t);
     } else {
-      LOGGER.error("Unhandled exception:", t);
+      LOGGER.warn("handleException:: Unhandled exception:", t);
     }
   }
 

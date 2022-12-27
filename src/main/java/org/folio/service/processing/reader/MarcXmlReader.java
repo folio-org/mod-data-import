@@ -37,7 +37,7 @@ public class MarcXmlReader implements SourceReader {
       // https://github.com/dom4j/dom4j/releases/tag/version-2.1.3
       this.document = SAXReader.createDefault().read(file);
     } catch (DocumentException e) {
-      LOGGER.error("Can not read the xml file: {}", file, e);
+      LOGGER.warn("MarcXmlReader:: Can not read the xml file: {}", file, e);
       throw new RecordsReaderException(e);
     }
     this.iterator = document.getRootElement().elementIterator();

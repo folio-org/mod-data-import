@@ -37,7 +37,7 @@ public class MarcJsonReader implements SourceReader {
     try {
       this.reader = new JsonReader(new InputStreamReader(FileUtils.openInputStream(file)));
     } catch (IOException e) {
-      LOGGER.error("Cannot initialize reader", e);
+      LOGGER.warn("MarcJsonReader:: Cannot initialize reader", e);
       throw new RecordsReaderException(e);
     }
   }
@@ -58,7 +58,7 @@ public class MarcJsonReader implements SourceReader {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("Error reading next record", e);
+      LOGGER.warn("next:: Error reading next record", e);
       throw new RecordsReaderException(e);
     }
     return recordsBuffer.getRecords();
@@ -73,7 +73,7 @@ public class MarcJsonReader implements SourceReader {
       }
       return hasNext;
     } catch (IOException e) {
-      LOGGER.error("Error checking for the next record", e);
+      LOGGER.warn("hasNext:: Error checking for the next record", e);
       throw new RecordsReaderException(e);
     }
   }

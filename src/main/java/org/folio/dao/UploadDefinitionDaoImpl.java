@@ -85,7 +85,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator, String tenantId) {
     PostgresClient client = pgClientFactory.createInstance(tenantId);
     Promise<UploadDefinition> promise = Promise.promise();
-    String rollbackMessage = "Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId;
+    String rollbackMessage = "updateBlocking:: Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId;
     Promise<SQLConnection> tx = Promise.promise();
     Future.succeededFuture()
       .compose(v -> {

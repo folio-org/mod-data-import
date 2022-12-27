@@ -35,7 +35,6 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   private static final String DEFAULT_FILE_EXTENSIONS_TABLE = "default_file_extensions";
   private static final String ID_FIELD = "'id'";
-  private static final String EXTENSION_FIELD = "'extension'";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -130,7 +129,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
           LOGGER.warn("updateFileExtension:: Could not update fileExtension with id {}", fileExtension.getId(), updateResult.cause());
           promise.fail(updateResult.cause());
         } else if (updateResult.result().rowCount() != 1) {
-          String errorMessage = format("FileExtension with id '%s' was not found", fileExtension.getId());
+          String errorMessage = format("updateFileExtension:: FileExtension with id '%s' was not found", fileExtension.getId());
           LOGGER.warn(errorMessage);
           promise.fail(new NotFoundException(errorMessage));
         } else {
@@ -154,6 +153,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<FileExtensionCollection> restoreFileExtensions(String tenantId) {
+    LOGGER.debug("restoreFileExtensions:: restore file extension for tenant {}", tenantId);
     PostgresClient client = pgClientFactory.createInstance(tenantId);
     Promise<FileExtensionCollection> promise = Promise.promise();
     Promise<SQLConnection> tx = Promise.promise();
@@ -185,6 +185,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   }
 
   private Future<RowSet<Row>> copyExtensionsFromDefault(Future<SQLConnection> tx, String tenantId) {
+    LOGGER.debug("copyExtensionsFromDefault:: copy extensions from default for tenant {}", tenantId);
     String moduleName = PostgresClient.getModuleName();
     Promise<RowSet<Row>> promise = Promise.promise();
     StringBuilder sqlScript = new StringBuilder("INSERT INTO ")

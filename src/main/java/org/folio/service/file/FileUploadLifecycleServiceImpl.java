@@ -69,6 +69,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
 
   @Override
   public Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, OkapiConnectionParams params) {
+    LOGGER.debug("afterFileSave:: fileDefinition.jobExecutionId {}", fileDefinition.getJobExecutionId());
     Promise<UploadDefinition> promise = Promise.promise();
     uploadDefinitionService.updateBlocking(fileDefinition.getUploadDefinitionId(), definition -> {
       Promise<UploadDefinition> updatePromise = Promise.promise();

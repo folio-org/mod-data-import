@@ -74,6 +74,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
   }
 
   private Future<CompositeFuture> deleteFilesByUploadDefinitions(FileStorageService fileStorageService, List<UploadDefinition> uploadDefinitions) {
+    LOGGER.debug("deleteFilesByUploadDefinitions:: delete files");
     List<Future<Boolean>> deleteFilesFutures = new ArrayList<>();
     uploadDefinitions.stream()
       .flatMap(uploadDefinition -> uploadDefinition.getFileDefinitions().stream())

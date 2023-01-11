@@ -194,9 +194,30 @@
             "orders.po-lines.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post",
-            "orders.po-lines.collection.get"
+            "orders.po-lines.collection.get",
+            "modperms.orders.item.post",
+            "modperms.orders.item.put",
+            "orders-storage.purchase-orders.item.get",
+            "orders-storage.po-line-number.get",
+            "orders-storage.po-lines.collection.get",
+            "orders-storage.po-lines.item.post",
+            "orders-storage.alerts.item.post",
+            "orders-storage.reporting-codes.item.post",
+            "configuration.entries.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get",
+            "inventory-storage.identifier-types.collection.get",
+            "isbn-utils.convert-to-13.get",
+            "finance-storage.budget-expense-classes.collection.get"
           ],
-          "permissionsDesired": ["invoices.acquisitions-units-assignments.assign"]
+          "permissionsDesired": [
+            "invoices.acquisitions-units-assignments.assign",
+            "orders.acquisitions-units-assignments.assign",
+            "orders.acquisitions-units-assignments.manage",
+            "orders.item.approve",
+            "orders.item.reopen",
+            "orders.item.unopen"
+          ]
         },
         {
           "methods": ["GET"],

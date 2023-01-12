@@ -47,21 +47,21 @@ public class LocalFileStorageService extends AbstractFileStorageService {
                 fileDefinition.setSourcePath(path);
                 b.complete();
               } catch (Exception e) {
-                LOGGER.error("Error during save file source data to the local system's storage. FileId: {}", fileId, e);
+                LOGGER.warn("saveFile:: Error during save file source data to the local system's storage. FileId: {}", fileId, e);
                 b.fail(e);
               }
             },
             r -> {
               if (r.failed()) {
-                LOGGER.error("Error during calculating path for file save. FileId: {}", fileId, r.cause());
+                LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, r.cause());
                 promise.fail(r.cause());
               } else {
-                LOGGER.debug("File part was saved to the storage. FileId: {}", fileId);
+                LOGGER.warn("saveFile:: File part was saved to the storage. FileId: {}", fileId);
                 promise.complete(fileDefinition);
               }
             });
         } else {
-          LOGGER.error("Error during calculating path for file save. FileId: {}", fileId, pathReply.cause());
+          LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, pathReply.cause());
           promise.fail(new BadRequestException(pathReply.cause()));
         }
       });
@@ -77,11 +77,11 @@ public class LocalFileStorageService extends AbstractFileStorageService {
         fs.deleteBlocking(filePath);
         promise.complete(true);
       } else {
-        LOGGER.trace("Couldn't detect the file with id {} in the storage", fileDefinition.getId());
+        LOGGER.trace("deleteFile:: Couldn't detect the file with id {} in the storage", fileDefinition.getId());
         promise.complete(false);
       }
     } catch (Exception e) {
-      LOGGER.warn("Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
+      LOGGER.warn("deleteFile:: Couldn't delete the file with id {} from the storage", fileDefinition.getId(), e);
       promise.complete(false);
     }
     return promise.future();

@@ -49,7 +49,7 @@ public final class EventHandlingUtil {
       KafkaConfig kafkaConfig,
       String key,
       Vertx vertx) {
-    LOGGER.debug("Starting to send event to Kafka for eventType: {}", eventType);
+    LOGGER.debug("sendEventToKafka:: Starting to send event to Kafka for eventType: {}", eventType);
     Event event = createEvent(eventPayload, eventType, tenantId);
 
     String topicName = createTopicName(eventType, tenantId, kafkaConfig);
@@ -64,25 +64,28 @@ public final class EventHandlingUtil {
     String producerName = eventType + "_Producer";
     KafkaProducer<String, String> producer =
       KafkaProducer.createShared(vertx, producerName, kafkaConfig.getProducerProps());
-    producer.write(record, war -> {
-      producer.end(ear -> producer.close());
-      if (war.succeeded()) {
-        logSendingSucceeded(eventType, chunkId, recordId);
-        promise.complete(true);
-      } else {
-        Throwable cause = war.cause();
-        LOGGER.error("{} write error for event {}:", producerName, eventType, cause);
-        promise.fail(cause);
-      }
-    });
+    producer.write(record)
+      .<Void>mapEmpty()
+      .eventually(x -> producer.flush())
+      .eventually(x -> producer.close())
+      .onComplete(war -> {
+        if (war.succeeded()) {
+          logSendingSucceeded(eventType, chunkId, recordId);
+          promise.complete(true);
+        } else {
+          Throwable cause = war.cause();
+          LOGGER.warn("{} write error for event {}:", producerName, eventType, cause);
+          promise.fail(cause);
+        }
+      });
     return promise.future();
   }
 
   private static void logSendingSucceeded(String eventType, String chunkId, String recordId) {
     if (StringUtils.isBlank(recordId)) {
-      LOGGER.info("Event with type: {} and chunkId: {} was sent to kafka", eventType, chunkId);
+      LOGGER.info("logSendingSucceeded:: Event with type: {} and chunkId: {} was sent to kafka", eventType, chunkId);
     } else {
-      LOGGER.info("Event with type: {} and recordId: {} was sent to kafka", eventType, recordId);
+      LOGGER.info("logSendingSucceeded:: Event with type: {} and recordId: {} was sent to kafka", eventType, recordId);
     }
   }
 

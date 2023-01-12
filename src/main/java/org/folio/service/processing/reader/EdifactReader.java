@@ -53,10 +53,10 @@ public class EdifactReader implements SourceReader {
         segmentIterator = segmentsStream.iterator();
       }
     } catch (IOException e) {
-      LOGGER.error("Error during handling the file: {}", file.getName(), e);
+      LOGGER.warn("EdifactReader:: Error during handling the file: {}", file.getName(), e);
       throw new RecordsReaderException(e);
     } catch (EDIStreamException e) {
-      LOGGER.error("Can not initialize reader. Cause: {}", e.getMessage());
+      LOGGER.warn("EdifactReader:: Can not initialize reader. Cause: {}", e.getMessage());
       throw new RecordsReaderException(e);
     }
   }

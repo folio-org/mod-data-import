@@ -8,7 +8,7 @@
     },
     {
       "id": "users",
-      "version": "15.0"
+      "version": "15.0 16.0"
     }
   ],
   "provides": [
@@ -151,6 +151,7 @@
             "inventory-storage.statistical-code-types.collection.get",
             "inventory-storage.item-note-types.collection.get",
             "inventory-storage.authority-note-types.collection.get",
+            "inventory-storage.authority-source-files.collection.get",
             "inventory-storage.items.collection.get",
             "inventory-storage.items.item.post",
             "inventory-storage.items.item.put",
@@ -192,9 +193,18 @@
             "acquisitions-units.units.collection.get",
             "acquisitions-units.memberships.collection.get",
             "orders.po-lines.item.get",
+            "orders.po-lines.collection.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post",
-            "orders.po-lines.collection.get",
+            "finance.exchange-rate.item.get",
+            "finance.expense-classes.collection.get",
+            "finance.funds.budget.item.get",
+            "finance.fiscal-years.item.get",
+            "finance.ledgers.collection.get",
+            "finance.transactions.collection.get",
+            "finance-storage.budgets.collection.get",
+            "finance-storage.budget-expense-classes.collection.get",
+            "finance-storage.fiscal-years.item.get",
             "modperms.orders.item.post",
             "modperms.orders.item.put",
             "orders-storage.purchase-orders.item.get",
@@ -206,9 +216,7 @@
             "configuration.entries.collection.get",
             "acquisitions-units-storage.units.collection.get",
             "acquisitions-units-storage.memberships.collection.get",
-            "inventory-storage.identifier-types.collection.get",
-            "isbn-utils.convert-to-13.get",
-            "finance-storage.budget-expense-classes.collection.get"
+            "isbn-utils.convert-to-13.get"
           ],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.assign",

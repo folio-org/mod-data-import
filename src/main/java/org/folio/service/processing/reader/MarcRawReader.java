@@ -40,7 +40,7 @@ public class MarcRawReader implements SourceReader {
       this.reader = new MarcPermissiveStreamReader(FileUtils.openInputStream(file), true, true);
     } catch (IOException e) {
       String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
-      LOGGER.error(errorMessage);
+      LOGGER.warn(errorMessage);
       throw new IllegalArgumentException(errorMessage);
     }
   }
@@ -53,7 +53,7 @@ public class MarcRawReader implements SourceReader {
       try {
         rawRecord = this.reader.next();
       } catch (MarcException e) {
-        LOGGER.error("Something happened when getting next raw record", e);
+        LOGGER.warn("next:: Something happened when getting next raw record", e);
         throw new RecordsReaderException(e);
       }
 
@@ -64,7 +64,7 @@ public class MarcRawReader implements SourceReader {
       try {
         recordsBuffer.add(new InitialRecord().withRecord(bos.toString(CHARSET.name())).withOrder(recordsCounter.getAndIncrement()));
       } catch (UnsupportedEncodingException e) {
-        LOGGER.error("Error during reading MARC record. Record will be skipped.", e);
+        LOGGER.warn("next:: Error during reading MARC record. Record will be skipped.", e);
       }
       if (recordsBuffer.isFull()) {
         return recordsBuffer.getRecords();

@@ -11,7 +11,6 @@ import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.jaxrs.model.InitialRecord;
@@ -19,7 +18,6 @@ import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.folio.service.processing.reader.SourceReader;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -158,6 +156,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
 
         } else {
           chunk = new RawRecordsDto()
+            .withId(UUID.randomUUID().toString())
             .withRecordsMetadata(new RecordsMetadata()
               .withContentType(reader.getContentType())
               .withCounter(recordsCounter)
@@ -167,21 +166,20 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
 
         KafkaProducerRecord<String, String> kafkaProducerRecord = createKafkaProducerRecord(chunk);
         boolean canWrite = queue.write(kafkaProducerRecord);
-        LOGGER.debug("Next chunk has been written to the queue. Key: {}", kafkaProducerRecord.key());
+        LOGGER.debug("doReadInternal:: Next chunk has been written to the queue. Key: {}", kafkaProducerRecord.key());
         if (canWrite && notEof && !closed) {
           doReadInternal();
         }
       } catch (Exception e) {
-        LOGGER.error(e);
+        LOGGER.warn(e);
         handleException(e);
       }
     });
   }
 
-  private KafkaProducerRecord<String, String> createKafkaProducerRecord(RawRecordsDto chunk) throws IOException {
-    String chunkId = UUID.randomUUID().toString();
+  private KafkaProducerRecord<String, String> createKafkaProducerRecord(RawRecordsDto chunk) {
     Event event = new Event()
-      .withId(chunkId)
+      .withId(chunk.getId())
       .withEventType(DI_RAW_RECORDS_CHUNK_READ.value())
       .withEventPayload(Json.encode(chunk))
       .withEventMetadata(new EventMetadata()
@@ -198,14 +196,14 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     record.addHeaders(kafkaHeaders);
 
     record.addHeader("jobExecutionId", jobExecutionId);
-    record.addHeader("chunkId", chunkId);
+    record.addHeader("chunkId", chunk.getId());
     record.addHeader("chunkNumber", String.valueOf(chunkNumber));
 
     if (chunk.getRecordsMetadata().getLast()) {
       record.addHeader(END_SENTINEL, "true");
     }
 
-    LOGGER.debug("Next chunk has been created: chunkId: {} chunkNumber: {}", chunkId, chunkNumber);
+    LOGGER.debug("createKafkaProducerRecord:: Next chunk has been created: chunkId: {} chunkNumber: {}", chunk.getId(), chunkNumber);
     return record;
   }
 
@@ -232,7 +230,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   private void handleEnd() {
     closed = true;
 
-    LOGGER.debug("End handler. Processing completed: {}", this);
+    LOGGER.debug("handleEnd:: End handler. Processing completed: {}", this);
 
     Handler<Void> endHandler;
     synchronized (this) {
@@ -248,7 +246,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     if (exceptionHandler != null && t instanceof Exception) {
       exceptionHandler.handle(t);
     } else {
-      LOGGER.error("Unhandled exception:", t);
+      LOGGER.warn("handleException:: Unhandled exception:", t);
     }
   }
 

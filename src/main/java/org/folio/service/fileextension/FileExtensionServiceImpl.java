@@ -117,6 +117,7 @@ public class FileExtensionServiceImpl implements FileExtensionService {
    * @return Future with found UserInfo
    */
   private Future<UserInfo> lookupUser(String userId, OkapiConnectionParams params) {
+    LOGGER.debug("lookupUser:: userId {}", userId);
     Promise<UserInfo> promise = Promise.promise();
     RestUtil.doRequest(params, GET_USER_URL + userId, HttpMethod.GET, null)
       .onComplete(getUserResult -> {
@@ -128,11 +129,11 @@ public class FileExtensionServiceImpl implements FileExtensionService {
             int recordCount = response.getInteger("totalRecords");
             if (recordCount > 1) {
               String errorMessage = "There are more then one user by requested user id : " + userId;
-              LOGGER.error(errorMessage);
+              LOGGER.warn(errorMessage);
               promise.fail(errorMessage);
             } else if (recordCount == 0) {
               String errorMessage = "No user found by user id :" + userId;
-              LOGGER.error(errorMessage);
+              LOGGER.warn(errorMessage);
               promise.fail(errorMessage);
             } else {
               JsonObject jsonUser = response.getJsonArray("users").getJsonObject(0);
@@ -161,9 +162,9 @@ public class FileExtensionServiceImpl implements FileExtensionService {
 
   @Override
   public Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension, String tenantId) {
-    StringBuilder query = new StringBuilder("extension=" + fileExtension.getExtension().trim());
+    StringBuilder query = new StringBuilder("extension==" + fileExtension.getExtension().trim());
     if (fileExtension.getId() != null) {
-      query.append(" AND id=\"\" NOT id=")
+      query.append(" AND id <> ")
         .append(fileExtension.getId());
     }
     return fileExtensionDao.getFileExtensions(query.toString(), 0, 1, tenantId)

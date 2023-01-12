@@ -89,7 +89,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
             definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
             params.getTenantId());
           return succeededFuture();
-        }).onFailure(e -> LOGGER.error("Can`t process file. Cause: {}", e.getMessage()));
+        }).onFailure(e -> LOGGER.warn("process:: Can`t process file. Cause: {}", e.getMessage()));
   }
 
   /**
@@ -106,19 +106,18 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                             FileStorageService fileStorageService,
                             UploadDefinition uploadDefinition,
                             OkapiConnectionParams params) {
-
     List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
     for (FileDefinition fileDefinition : fileDefinitions) {
       vertx.runOnContext(v ->
         processFile(fileDefinition, jobProfile, fileStorageService, params).onComplete(par -> {
             if (par.failed()) {
-              LOGGER.error("File was processed with errors {}. Cause: {}", fileDefinition.getSourcePath(), par.cause());
+              LOGGER.warn("processFiles:: File was processed with errors {}. Cause: {}", fileDefinition.getSourcePath(), par.cause());
               uploadDefinitionService.updateJobExecutionStatus(
                 fileDefinition.getJobExecutionId(),
                 new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
                 params);
             } else {
-              LOGGER.info("File {} successfully processed.", fileDefinition.getSourcePath());
+              LOGGER.info("processFiles:: File {} successfully processed.", fileDefinition.getSourcePath());
             }
           }
         ));
@@ -153,7 +152,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       totalRecords = countTotalRecordsInFile(file, jobProfile);
       if (totalRecords == 0) {
         String errorMessage = "File is empty or content is invalid!";
-        LOGGER.error(errorMessage);
+        LOGGER.warn(errorMessage);
         processFilePromise.fail(errorMessage);
         sendDiErrorForJob(fileDefinition.getJobExecutionId(), params, errorMessage);
         return processFilePromise.future();
@@ -161,7 +160,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       reader = SourceReaderBuilder.build(file, jobProfile);
     } catch (RecordsReaderException | UnsupportedOperationException e) {
       String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
-      LOGGER.error(errorMessage);
+      LOGGER.warn(errorMessage);
       processFilePromise.fail(errorMessage);
       sendDiErrorForJob(fileDefinition.getJobExecutionId(), params, errorMessage);
       return processFilePromise.future();
@@ -174,19 +173,22 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       params, 100, topicName);
     readStreamWrapper.pause();
 
-    LOGGER.debug("Starting to send event to Kafka... jobProfile: {}, eventType: {}", jobProfile, eventType);
+    LOGGER.debug("processFile:: Starting to send event to Kafka... jobProfile: {}, eventType: {}", jobProfile, eventType);
     KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx,
       eventType + "_Producer", kafkaConfig.getProducerProps());
-    readStreamWrapper.pipeTo(new WriteStreamWrapper(producer), ar -> {
-      boolean succeeded = ar.succeeded();
-      LOGGER.info("Sending event to Kafka finished. ar.succeeded(): {} jobProfile: {}, eventType: {}",
-        succeeded, jobProfile, eventType);
-      producer.end(par -> producer.close());
-      processFilePromise.handle(ar);
-    });
-
+    readStreamWrapper.pipeTo(new WriteStreamWrapper(producer))
+      .<Void>mapEmpty()
+      .eventually(x -> producer.flush())
+      .eventually(x -> producer.close())
+      .onComplete(res -> {
+        if (res.succeeded()) {
+          LOGGER.info("processFile:: Sending event to Kafka finished. jobProfile: {}, eventType: {}", jobProfile, eventType);
+        } else {
+          LOGGER.warn("processFile:: Error sending event to Kafka. jobProfile: {}, eventType: {}", jobProfile, eventType, res.cause());
+        }
+        processFilePromise.handle(res);
+      });
     return processFilePromise.future();
-
   }
 
   /**
@@ -227,7 +229,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       if (updatedJobsProfileAr.failed()) {
         promise.fail(updatedJobsProfileAr.cause());
       } else {
-        LOGGER.info("All the child jobs have been updated by job profile, parent job {}", jobs.get(0).getParentJobId());
+        LOGGER.info("updateJobsProfile:: All the child jobs have been updated by job profile, parent job {}", jobs.get(0).getParentJobId());
         promise.complete();
       }
     });
@@ -248,15 +250,15 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     try {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_OK.toInt()) {
-          LOGGER.error("Error updating job profile for JobExecution {}. StatusCode: {}", jobId, response.result().statusMessage());
+          LOGGER.warn("updateJobProfile:: Error updating job profile for JobExecution {}. StatusCode: {}", jobId, response.result().statusMessage());
           promise.fail(new HttpException(response.result().statusCode(), "Error updating JobExecution"));
         } else {
-          LOGGER.info("Job profile for job {} successfully updated.", jobId);
+          LOGGER.info("updateJobProfile:: Job profile for job {} successfully updated.", jobId);
           promise.complete();
         }
       });
     } catch (Exception e) {
-      LOGGER.error("Couldn't update jobProfile for JobExecution with id {}", jobId, e);
+      LOGGER.warn("updateJobProfile:: Couldn't update jobProfile for JobExecution with id {}", jobId, e);
       promise.fail(e);
     }
     return promise.future();
@@ -268,7 +270,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     initConfig.setTotalRecords(totalRecordsCount);
 
     sendEventToKafka(okapiParams.getTenantId(), Json.encode(initConfig), DI_INITIALIZATION_STARTED.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
-      .onFailure(th -> LOGGER.error("Error publishing DI_INITIALIZATION_STARTED event for jobExecutionId: {}", jobExecutionId, th));
+      .onFailure(th -> LOGGER.warn("sendDiInitializationForJob:: Error publishing DI_INITIALIZATION_STARTED event for jobExecutionId: {}", jobExecutionId, th));
   }
 
   private void sendDiErrorForJob(String jobExecutionId, OkapiConnectionParams okapiParams, String errorMsg) {
@@ -284,7 +286,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       .withContext(contextItems);
 
     sendEventToKafka(okapiParams.getTenantId(), Json.encode(errorPayload), DI_ERROR.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
-      .onFailure(th -> LOGGER.error("Error publishing DI_ERROR event for jobExecutionId: {}", errorPayload.getJobExecutionId(), th));
+      .onFailure(th -> LOGGER.warn("sendDiErrorForJob:: Error publishing DI_ERROR event for jobExecutionId: {}", errorPayload.getJobExecutionId(), th));
   }
 
 }

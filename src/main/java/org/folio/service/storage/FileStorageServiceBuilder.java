@@ -35,7 +35,7 @@ public class FileStorageServiceBuilder {
     Promise<FileStorageService> promise = Promise.promise();
     ConfigurationUtil.getPropertyByCode(SERVICE_STORAGE_PROPERTY_CODE, params).onComplete(result -> {
       if (result.failed() || result.result() == null || result.result().isEmpty()) {
-        LOGGER.warn("Request to mod-configuration was failed or property for lookup service is not define. Try to use default Local Storage!");
+        LOGGER.warn("Request to mod-configuration failed or property for lookup service was not defined. Local Storage will be used");
         promise.complete(new LocalFileStorageService(vertx, tenantId));
         return;
       }

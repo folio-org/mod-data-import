@@ -216,7 +216,9 @@
             "configuration.entries.collection.get",
             "acquisitions-units-storage.units.collection.get",
             "acquisitions-units-storage.memberships.collection.get",
-            "isbn-utils.convert-to-13.get"
+            "isbn-utils.convert-to-13.get",
+            "instance-authority-links.instances.collection.get",
+            "instance-authority-links.instances.collection.put"
           ],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.assign",

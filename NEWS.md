@@ -1,5 +1,15 @@
-## 2022-xx-xx v2.7.0-SNAPSHOT
-* [MODDATAIMP-727](https://issues.folio.org/browse/MODDATAIMP-727) Upgrade Vertx to v4.3.4
+## 2023-02-24 v2.7.0
+* [MODDATAIMP-727](https://issues.folio.org/browse/MODDATAIMP-727) Upgrade Vertx to v4.3.4. Fix "Producer closed while send in progress"
+* [MODDATAIMP-724](https://issues.folio.org/browse/MODDATAIMP-724) Logging improvement - Configuration
+* [MODDATAIMP-730](https://issues.folio.org/browse/MODDATAIMP-730) Upgrade dependency kafkaclients v3.2.3, folio-di-support v1.7.0, Spring v5.3
+* [FAT-3397](https://issues.folio.org/browse/FAT-3397) Put actual chunk id to kafka headers to correlate log messages for particular chunk
+* [MODDATAIMP-736](https://issues.folio.org/browse/MODDATAIMP-736) Adjust logging configuration for MOD-DI to display datetime in a proper format
+* [MODDATAIMP-641](https://issues.folio.org/browse/MODDATAIMP-641) Logging improvement
+* [MODDATAIMP-757](https://issues.folio.org/browse/MODDATAIMP-757) Add missed permissions for invoice data import flow
+* [MODDATAIMP-758](https://issues.folio.org/browse/MODDATAIMP-758) Improve logging (hide SQL requests)
+* [MODDATAIMP-768](https://issues.folio.org/browse/MODDATAIMP-768) Update permissions for links update
+* [MODDATAIMP-750](https://issues.folio.org/browse/MODDATAIMP-750) Update util dependencies
+* [MODDICORE-306](https://issues.folio.org/browse/MODDICORE-306) Upgrade data-import-processing-core dependency to v4.0.1
 
 ## 2022-10-24 v2.6.0
 * [MODDATAIMP-721](https://issues.folio.org/browse/MODDATAIMP-721) Upgrade RMB to v35.0.1

@@ -1,3 +1,6 @@
+## 2023-03-xo v2.7.1-SNAPSHOT
+* [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Update data-import-util library to v1.11.0
+
 ## 2023-02-24 v2.7.0
 * [MODDATAIMP-727](https://issues.folio.org/browse/MODDATAIMP-727) Upgrade Vertx to v4.3.4. Fix "Producer closed while send in progress"
 * [MODDATAIMP-724](https://issues.folio.org/browse/MODDATAIMP-724) Logging improvement - Configuration

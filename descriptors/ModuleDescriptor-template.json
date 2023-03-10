@@ -213,6 +213,8 @@
             "orders-storage.po-lines.item.post",
             "orders-storage.alerts.item.post",
             "orders-storage.reporting-codes.item.post",
+            "orders-storage.configuration.prefixes.collection.get",
+            "orders-storage.configuration.suffixes.collection.get",
             "configuration.entries.collection.get",
             "acquisitions-units-storage.units.collection.get",
             "acquisitions-units-storage.memberships.collection.get",

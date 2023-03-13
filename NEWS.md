@@ -1,5 +1,7 @@
-## 2023-03-xo v2.7.1-SNAPSHOT
-* [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Update data-import-util library to v1.11.0
+## 2023-03-13 v2.7.1
+* [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Update data-import-util library to v1.11.0 ([MODDATAIMP-785](https://issues.folio.org/browse/MODDATAIMP-785))
+* [KAFKAWRAP-35](https://issues.folio.org/browse/KAFKAWRAP-35) Update folio-kafka-wrapper library to v2.7.1 ([KAFKAWRAP-34](https://issues.folio.org/browse/KAFKAWRAP-34))
+* [MODDATAIMP-791](https://issues.folio.org/browse/MODDATAIMP-791) Adjust module permissions for DI wrt PO prefixes and suffixes
 
 ## 2023-02-24 v2.7.0
 * [MODDATAIMP-727](https://issues.folio.org/browse/MODDATAIMP-727) Upgrade Vertx to v4.3.4. Fix "Producer closed while send in progress"

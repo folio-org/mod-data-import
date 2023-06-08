@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-
 @Service
 public class MinioStorageServiceImpl implements MinioStorageService {
 
@@ -26,14 +25,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
   public Future<FileUploadInfo> getFileUploadUrl(String upLoadFileName, String tenantId) {
     Promise<FileUploadInfo> promise = Promise.promise();
     var client = folioS3ClientFactory.getFolioS3Client();
-    //var key = buildPrefix(tenantId) + "/" + upLoadFileName;
-    var key =  upLoadFileName;
-
-   /*
-   if (!StringUtils.hasText(bucket)) {
-       throw new Exception("Bucket not found");
-    }
-    */
+    var key = buildKey(tenantId, upLoadFileName);
 
     vertx.executeBlocking(blockingFuture -> {
       String url = null;
@@ -59,7 +51,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
 
   }
 
-  private String buildPrefix(String tenantId) {
-    return tenantId ;
+  private String buildKey(String tenantId, String fileName) {
+    String format = String.format("%s/%d-%s", tenantId, System.currentTimeMillis(), fileName);
+    return format;
   }
 }

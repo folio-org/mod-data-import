@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "file upload info json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "url": {
+      "description": "presigned url to be used for direct s3 upload",
+      "type": "string"
+    },
+    "key": {
+      "description": "Key for file upload on S3 storage",
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "key"
+  ]
+}

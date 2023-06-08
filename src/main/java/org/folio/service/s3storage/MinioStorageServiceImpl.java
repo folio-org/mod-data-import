@@ -4,7 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import lombok.SneakyThrows;
-import org.folio.rest.jaxrs.model.UserInfo;
+import org.folio.rest.jaxrs.model.FileUploadInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,8 +23,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
   private String bucket;
 
   @SneakyThrows
-  public Future<UserInfo> getFileUploadUrl(String upLoadFileName, String tenantId) {
-    Promise<UserInfo> promise = Promise.promise();
+  public Future<FileUploadInfo> getFileUploadUrl(String upLoadFileName, String tenantId) {
+    Promise<FileUploadInfo> promise = Promise.promise();
     var client = folioS3ClientFactory.getFolioS3Client();
     //var key = buildPrefix(tenantId) + "/" + upLoadFileName;
     var key =  upLoadFileName;
@@ -48,9 +48,10 @@ public class MinioStorageServiceImpl implements MinioStorageService {
         promise.fail(asyncResult.cause());
       } else {
         String url = (String) asyncResult.result();
-        UserInfo user = new UserInfo();
-        user.setUserName(url);
-        promise.complete(user);
+        FileUploadInfo fileUpload = new FileUploadInfo();
+        fileUpload.setUrl(url);
+        fileUpload.setKey(key);
+        promise.complete(fileUpload);
       }
     });
 

@@ -74,7 +74,7 @@ public class MinioStorageServiceTest {
       assertEquals("Presigned URL is returned", "url", fileInfo.getUrl());
       assertTrue(
         "Key format is correct",
-        fileInfo.getKey().matches("test-tenant/\\d*-test-file")
+        fileInfo.getKey().matches("^test-tenant/\\d*-test-file$")
       );
       async.complete();
     });

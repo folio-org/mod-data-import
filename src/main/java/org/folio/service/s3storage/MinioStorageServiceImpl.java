@@ -50,7 +50,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
         if (asyncResult.failed()) {
           promise.fail(asyncResult.cause());
         } else {
-          String url = (String) asyncResult.result();
+          String url = asyncResult.result();
           FileUploadInfo fileUpload = new FileUploadInfo();
           fileUpload.setUrl(url);
           fileUpload.setKey(key);

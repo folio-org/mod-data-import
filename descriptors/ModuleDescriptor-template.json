@@ -267,6 +267,11 @@
           "methods": ["GET"],
           "pathPattern": "/data-import/dataTypes",
           "permissionsRequired": ["data-import.datatypes.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import/uploadUrl",
+          "permissionsRequired": ["data-import.uploadUrl.get"]
         }
       ]
     },
@@ -357,11 +362,17 @@
       "description": "Get DataTypes"
     },
     {
+      "permissionName": "data-import.uploadUrl.get",
+      "displayName": "Data Import - get S3 upload URL",
+      "description": "Get S3 upload URL"
+    },
+    {
       "permissionName": "data-import.upload.all",
       "displayName": "Data Import File Upload - all permissions",
       "description": "Entire set of permissions needed to use file uploads",
       "subPermissions": [
         "data-import.upload.file.post",
+        "data-import.uploadUrl.get",
         "data-import.uploaddefinitions.post",
         "data-import.uploaddefinitions.get",
         "data-import.uploaddefinitions.put",

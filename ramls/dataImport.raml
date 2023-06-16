@@ -29,6 +29,7 @@ types:
   dataTypeCollection: !include raml-storage/schemas/mod-data-import/dataTypeCollection.json
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
   dataImportInitConfig: !include raml-storage/schemas/common/dataImportInitConfig.json
+  fileUploadInfo: !include fileUploadInfo.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -243,6 +244,28 @@ resourceTypes:
           body:
             application/json:
               type: dataTypeCollection
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+  /uploadUrl:
+    get:
+      description: Get an upload url
+      queryParameters:
+        fileName:
+          description: "fileName parameter"
+          required: true
+      responses:
+        200:
+          body:
+            application/json:
+              type: fileUploadInfo
         400:
           description: "Bad request"
           body:

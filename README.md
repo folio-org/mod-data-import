@@ -117,6 +117,19 @@ To allow multiple instance deployment, for every instance the same persistent vo
 * **_data.import.storage.type_** - type of data storage used for uploaded files. Default value is **LOCAL_STORAGE**. Other implementations for storage should be added.
 * **_data.import.storage.path_** - **path where uploaded file will be stored**
 
+## Interaction with AWS S3/Minio
+
+This module uses S3-compatible storage as part of the file upload process.  The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
+
+| Name                    | Description                                                                |
+|-------------------------|----------------------------------------------------------------------------|
+| `AWS_URL`               | URL of S3-compatible storage, e.g. `http://127.0.0.1:9000/`                |
+| `AWS_REGION`            | S3 region                                                                  |
+| `AWS_BUCKET`            | Bucket to store and retrieve data                                          |
+| `AWS_ACCESS_KEY_ID`     | S3 access key                                                              |
+| `AWS_SECRET_ACCESS_KEY` | S3 secret key                                                              |
+| `AWS_SDK`               | If AWS S3 is being used (should be `"true"` if so and `"false"` otherwise) |
+
 ## Interaction with Kafka
 
 All modules involved in data import (mod-data-import, mod-source-record-manager, mod-source-record-storage, mod-inventory, mod-invoice) are communicating via Kafka directly. Therefore, to enable data import Kafka should be set up properly and all the necessary parameters should be set for the modules.

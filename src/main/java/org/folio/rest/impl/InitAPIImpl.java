@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 public class InitAPIImpl implements InitAPI {
 
-  private static String MODULE_GLOBAL_SCHEMA = "dataImportGlobal";
+  private static String MODULE_GLOBAL_SCHEMA = "data_import_global";
   @Autowired
   private KafkaConfig kafkaConfig;
 

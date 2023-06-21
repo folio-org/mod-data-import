@@ -66,7 +66,7 @@ public abstract class AbstractRestTest {
   public static final String TEST_MODULE_VERSION = "-1.0.0";
   protected static int port;
   private static String useExternalDatabase;
-  protected static Vertx vertx;
+  private static Vertx vertx;
   protected static final String TENANT_ID = "diku";
   protected static final String TOKEN = "token";
   protected static RequestSpecification spec;

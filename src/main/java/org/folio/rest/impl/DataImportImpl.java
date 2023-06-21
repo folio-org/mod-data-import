@@ -447,13 +447,13 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportUploadUrlContinue(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
+  public void getDataImportUploadUrlSubsequent(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        LOGGER.debug("getDataImportUploadUrlContinue:: getting continued upload url");
+        LOGGER.debug("getDataImportUploadUrlSubsequent:: getting subsequent upload url");
         minioStorageService.getFileUploadPartUrl(key, uploadId, partNumber)
-          .map(GetDataImportUploadUrlContinueResponse::respond200WithApplicationJson)
+          .map(GetDataImportUploadUrlSubsequentResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

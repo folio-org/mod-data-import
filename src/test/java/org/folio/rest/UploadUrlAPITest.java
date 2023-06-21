@@ -20,7 +20,7 @@ public class UploadUrlAPITest extends AbstractRestTest {
 
   private static final String UPLOAD_URL_PATH = "/data-import/uploadUrl";
   private static final String UPLOAD_URL_CONTINUE_PATH =
-    "/data-import/uploadUrl/continue";
+    "/data-import/uploadUrl/subsequent";
 
   @Before
   public void setUp() {
@@ -49,7 +49,7 @@ public class UploadUrlAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void testSuccessfulLaterRequest() {
+  public void testSuccessfulSubsequentRequest() {
     RestAssured
       .given()
       .spec(spec)

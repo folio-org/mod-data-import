@@ -275,7 +275,7 @@
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/data-import/uploadUrl/continue",
+          "pathPattern": "/data-import/uploadUrl/subsequent",
           "permissionsRequired": ["data-import.uploadUrl.get"]
         }
       ]

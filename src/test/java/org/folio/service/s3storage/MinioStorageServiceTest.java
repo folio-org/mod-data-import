@@ -209,11 +209,7 @@ public class MinioStorageServiceTest {
         "upload-id",
         fileInfo.getUploadId()
       );
-      assertEquals(
-        "Key did not change is correct",
-        fileInfo.getKey(),
-        "test-key"
-      );
+      assertEquals("Key did not change", "test-key", fileInfo.getKey());
       async.complete();
     });
   }

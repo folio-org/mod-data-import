@@ -37,9 +37,7 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_OK)
       .body(
         "url",
-        matchesRegex(
-          "^http://127\\.0\\.0\\.1:\\d+/test-bucket/diku/\\d+-test-name\\?.*&partNumber=1.*$"
-        )
+        matchesRegex("/test-bucket/diku/\\d+-test-name\\?.*&partNumber=1.*$")
       )
       .body("key", matchesRegex("^diku/\\d+-test-name$"))
       .body("uploadId", notNullValue());
@@ -59,9 +57,7 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_OK)
       .body(
         "url",
-        matchesRegex(
-          "^http://127\\.0\\.0\\.1:\\d+/test-bucket/diku/\\d+-test-name\\?.*&partNumber=5.*$"
-        )
+        matchesRegex("/test-bucket/diku/1234-test-name\\?.*&partNumber=5.*$")
       )
       .body("key", is(equalTo("diku/1234-test-name")))
       .body("uploadId", is(equalTo("upload-id-here")));

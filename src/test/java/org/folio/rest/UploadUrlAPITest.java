@@ -1,5 +1,7 @@
 package org.folio.rest;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.matchesRegex;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -15,6 +17,8 @@ import org.mockito.MockitoAnnotations;
 public class UploadUrlAPITest extends AbstractRestTest {
 
   private static final String UPLOAD_URL_PATH = "/data-import/uploadUrl";
+  private static final String UPLOAD_URL_CONTINUE_PATH =
+    "/data-import/uploadUrl/continue";
 
   @Before
   public void setUp() {
@@ -22,7 +26,7 @@ public class UploadUrlAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void testSuccessfulRequest() {
+  public void testSuccessfulFirstRequest() {
     RestAssured
       .given()
       .spec(spec)
@@ -34,10 +38,32 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .body(
         "url",
         matchesRegex(
-          "^http://127\\.0\\.0\\.1:9000/test-bucket/diku/\\d+-test-name\\?X.+$"
+          "^http://127\\.0\\.0\\.1:\\d+/test-bucket/diku/\\d+-test-name\\?.*&partNumber=1.*$"
         )
       )
       .body("key", matchesRegex("^diku/\\d+-test-name$"))
       .body("uploadId", notNullValue());
+  }
+
+  @Test
+  public void testSuccessfulLaterRequest() {
+    RestAssured
+      .given()
+      .spec(spec)
+      .when()
+      .queryParam("key", "diku/1234-test-name")
+      .queryParam("uploadId", "upload-id-here")
+      .queryParam("partNumber", "5")
+      .get(UPLOAD_URL_CONTINUE_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body(
+        "url",
+        matchesRegex(
+          "^http://127\\.0\\.0\\.1:\\d+/test-bucket/diku/\\d+-test-name\\?.*&partNumber=5.*$"
+        )
+      )
+      .body("key", is(equalTo("diku/1234-test-name")))
+      .body("uploadId", is(equalTo("upload-id-here")));
   }
 }

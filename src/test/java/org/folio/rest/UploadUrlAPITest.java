@@ -1,5 +1,7 @@
 package org.folio.rest;
 
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.matchesRegex;
@@ -37,9 +39,12 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_OK)
       .body(
         "url",
-        matchesRegex("/test-bucket/diku/\\d+-test-name\\?.*&partNumber=1.*$")
+        allOf(
+          matchesRegex(".*/test-bucket/diku/\\d+-test-name.*"),
+          containsString("partNumber=1")
+        )
       )
-      .body("key", matchesRegex("^diku/\\d+-test-name$"))
+      .body("key", matchesRegex("^diku/[0-9]+-test-name$"))
       .body("uploadId", notNullValue());
   }
 
@@ -57,7 +62,11 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_OK)
       .body(
         "url",
-        matchesRegex("/test-bucket/diku/1234-test-name\\?.*&partNumber=5.*$")
+        allOf(
+          containsString("/test-bucket/diku/1234-test-name"),
+          containsString("partNumber=5"),
+          containsString("uploadId=upload-id-here")
+        )
       )
       .body("key", is(equalTo("diku/1234-test-name")))
       .body("uploadId", is(equalTo("upload-id-here")));

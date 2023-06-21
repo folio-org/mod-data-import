@@ -1,6 +1,5 @@
 package org.folio.service.s3storage;
 
-import io.minio.http.Method;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -27,24 +26,54 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     this.vertx = vertx;
   }
 
-  public Future<FileUploadInfo> getFileUploadUrl(
+  public Future<FileUploadInfo> getFileUploadFirstPartUrl(
     String uploadFileName,
     String tenantId
   ) {
-    Promise<FileUploadInfo> promise = Promise.promise();
+    Promise<String> uploadIdPromise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
     String key = buildKey(tenantId, uploadFileName);
 
     vertx.executeBlocking(
       (Promise<String> blockingFuture) -> {
-        String url = null;
         try {
-          url = client.getPresignedUrl(key, Method.PUT);
+          blockingFuture.complete(client.initiateMultipartUpload(key));
         } catch (S3ClientException e) {
           blockingFuture.fail(e);
         }
-        blockingFuture.complete(url);
+      },
+      (AsyncResult<String> asyncResult) -> {
+        if (asyncResult.failed()) {
+          uploadIdPromise.fail(asyncResult.cause());
+        } else {
+          uploadIdPromise.complete(asyncResult.result());
+        }
+      }
+    );
+
+    return uploadIdPromise
+      .future()
+      .compose(outcome -> getFileUploadPartUrl(key, outcome, 1));
+  }
+
+  public Future<FileUploadInfo> getFileUploadPartUrl(
+    String key,
+    String uploadId,
+    int partNumber
+  ) {
+    Promise<FileUploadInfo> promise = Promise.promise();
+    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
+
+    vertx.executeBlocking(
+      (Promise<String> blockingFuture) -> {
+        try {
+          blockingFuture.complete(
+            client.getPresignedMultipartUploadUrl(key, uploadId, partNumber)
+          );
+        } catch (S3ClientException e) {
+          blockingFuture.fail(e);
+        }
       },
       (AsyncResult<String> asyncResult) -> {
         if (asyncResult.failed()) {
@@ -54,6 +83,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
           FileUploadInfo fileUpload = new FileUploadInfo();
           fileUpload.setUrl(url);
           fileUpload.setKey(key);
+          fileUpload.setUploadId(uploadId);
           promise.complete(fileUpload);
         }
       }

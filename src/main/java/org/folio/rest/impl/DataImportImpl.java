@@ -434,8 +434,26 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug("getDataImportUploadUrl:: getting upload url");
-        minioStorageService.getFileUploadUrl(fileName, tenantId)
+        minioStorageService.getFileUploadFirstPartUrl(fileName, tenantId)
           .map(GetDataImportUploadUrlResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOGGER.warn("getDataImportUploadUrl:: Failed to get upload url", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void getDataImportUploadUrlContinue(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        LOGGER.debug("getDataImportUploadUrlContinue:: getting continued upload url");
+        minioStorageService.getFileUploadPartUrl(key, uploadId, partNumber)
+          .map(GetDataImportUploadUrlContinueResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

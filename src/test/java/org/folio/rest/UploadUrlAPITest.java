@@ -1,6 +1,7 @@
 package org.folio.rest;
 
 import static org.hamcrest.Matchers.matchesRegex;
+import static org.hamcrest.Matchers.notNullValue;
 
 import io.restassured.RestAssured;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -36,6 +37,7 @@ public class UploadUrlAPITest extends AbstractRestTest {
           "^http://127\\.0\\.0\\.1:9000/test-bucket/diku/\\d+-test-name\\?X.+$"
         )
       )
-      .body("key", matchesRegex("^diku/\\d+-test-name$"));
+      .body("key", matchesRegex("^diku/\\d+-test-name$"))
+      .body("uploadId", notNullValue());
   }
 }

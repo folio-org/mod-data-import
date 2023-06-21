@@ -256,11 +256,41 @@ resourceTypes:
               example: "Internal server error"
   /uploadUrl:
     get:
-      description: Get an upload url
+      description: Get a presigned upload url for the first part of a file
       queryParameters:
         fileName:
-          description: "fileName parameter"
+          description: "The name of the file that will be uploaded"
           required: true
+      responses:
+        200:
+          body:
+            application/json:
+              type: fileUploadInfo
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+  /uploadUrl/continue:
+    get:
+      description: Get a presigned upload url for later parts of a file
+      queryParameters:
+        key:
+          description: "The key that will be uploaded to on S3"
+          required: true
+        uploadId:
+          description: "The upload ID"
+          required: true
+        partNumber:
+          description: "The part number, postitive integers beginning at two (part 1 is uploaded with /uploadUrl)"
+          required: true
+          type: integer
+          minimum: 2
       responses:
         200:
           body:

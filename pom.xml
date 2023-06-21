@@ -122,9 +122,9 @@
       <version>2.6</version>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
+      <groupId>com.github.folio-org</groupId>
       <artifactId>folio-s3-client</artifactId>
-      <version>${folio-s3-client.version}</version>
+      <version>FOLS3CL-13-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -588,6 +588,10 @@
       <id>folio-nexus</id>
       <name>FOLIO Maven Repository</name>
       <url>https://repository.folio.org/repository/maven-folio</url>
+    </repository>
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://www.jitpack.io</url>
     </repository>
   </repositories>
 

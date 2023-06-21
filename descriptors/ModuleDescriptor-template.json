@@ -272,6 +272,11 @@
           "methods": ["GET"],
           "pathPattern": "/data-import/uploadUrl",
           "permissionsRequired": ["data-import.uploadUrl.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import/uploadUrl/continue",
+          "permissionsRequired": ["data-import.uploadUrl.get"]
         }
       ]
     },

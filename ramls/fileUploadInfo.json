@@ -11,10 +11,11 @@
     "key": {
       "description": "Key for file upload on S3 storage",
       "type": "string"
+    },
+    "uploadId": {
+      "description": "Multipart upload ID",
+      "type": "string"
     }
   },
-  "required": [
-    "url",
-    "key"
-  ]
+  "required": ["url", "key", "uploadId"]
 }

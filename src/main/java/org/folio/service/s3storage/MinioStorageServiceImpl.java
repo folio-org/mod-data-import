@@ -4,16 +4,18 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-@Log4j2
 @Service
 public class MinioStorageServiceImpl implements MinioStorageService {
+
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private FolioS3ClientFactory folioS3ClientFactory;
 
@@ -41,7 +43,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
       (Promise<String> blockingFuture) -> {
         try {
           String uploadId = client.initiateMultipartUpload(key);
-          log.info("Created upload ID {} for key {}", uploadId, key);
+          LOGGER.info("Created upload ID {} for key {}", uploadId, key);
           blockingFuture.complete(uploadId);
         } catch (S3ClientException e) {
           blockingFuture.fail(e);
@@ -72,6 +74,12 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     vertx.executeBlocking(
       (Promise<String> blockingFuture) -> {
         try {
+          LOGGER.info(
+            "Getting presigned URL for part {} of key {}/upload ID {}",
+            partNumber,
+            key,
+            uploadId
+          );
           blockingFuture.complete(
             client.getPresignedMultipartUploadUrl(key, uploadId, partNumber)
           );

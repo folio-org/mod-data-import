@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 
-import io.minio.http.Method;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
@@ -50,28 +49,49 @@ public class MinioStorageServiceTest {
   }
 
   @Test
-  public void testSuccessful(TestContext context) {
+  public void testFirstPartSuccessful(TestContext context) {
     Async async = context.async();
 
     Mockito
-      .when(folioS3Client.getPresignedUrl(anyString(), eq(Method.PUT)))
-      .thenReturn("url");
+      .when(folioS3Client.initiateMultipartUpload(anyString()))
+      .thenReturn("upload-id");
+    Mockito
+      .when(
+        folioS3Client.getPresignedMultipartUploadUrl(
+          anyString(),
+          eq("upload-id"),
+          eq(1)
+        )
+      )
+      .thenReturn("upload-url");
 
-    Future<FileUploadInfo> result = minioStorageService.getFileUploadUrl(
+    Future<FileUploadInfo> result = minioStorageService.getFileUploadFirstPartUrl(
       "test-file",
       "test-tenant"
     );
 
-    result.onFailure(_err -> context.fail("getFileUploadUrl should not fail"));
+    result.onFailure(_err ->
+      context.fail("getFileUploadFirstPartUrl should not fail")
+    );
     result.onSuccess(fileInfo -> {
-      Mockito.verify(folioS3ClientFactory, times(1)).getFolioS3Client();
       Mockito
         .verify(folioS3Client, times(1))
-        .getPresignedUrl(fileInfo.getKey(), Method.PUT);
-      Mockito.verifyNoMoreInteractions(folioS3ClientFactory);
+        .initiateMultipartUpload(fileInfo.getKey());
+      Mockito
+        .verify(folioS3Client, times(1))
+        .getPresignedMultipartUploadUrl(fileInfo.getKey(), "upload-id", 1);
       Mockito.verifyNoMoreInteractions(folioS3Client);
 
-      assertEquals("Presigned URL is returned", "url", fileInfo.getUrl());
+      assertEquals(
+        "Presigned URL is returned",
+        "upload-url",
+        fileInfo.getUrl()
+      );
+      assertEquals(
+        "Upload ID is returned",
+        "upload-id",
+        fileInfo.getUploadId()
+      );
       assertTrue(
         "Key format is correct",
         fileInfo.getKey().matches("^test-tenant/\\d*-test-file$")
@@ -81,30 +101,115 @@ public class MinioStorageServiceTest {
   }
 
   @Test
-  public void testFailure(TestContext context) {
+  public void testFirstPartFailure(TestContext context) {
     Async async = context.async();
 
     S3ClientException exception = new S3ClientException("test exception");
 
     Mockito
-      .when(folioS3Client.getPresignedUrl(anyString(), eq(Method.PUT)))
+      .when(folioS3Client.initiateMultipartUpload(anyString()))
       .thenThrow(exception);
 
-    Future<FileUploadInfo> result = minioStorageService.getFileUploadUrl(
+    Future<FileUploadInfo> result = minioStorageService.getFileUploadFirstPartUrl(
       "test-file",
       "test-tenant"
     );
 
-    result.onSuccess(_result -> context.fail("getFileUploadUrl should fail"));
+    result.onSuccess(_result ->
+      context.fail("getFileUploadFirstPartUrl should fail")
+    );
     result.onFailure(err -> {
-      Mockito.verify(folioS3ClientFactory, times(1)).getFolioS3Client();
       Mockito
         .verify(folioS3Client, times(1))
-        .getPresignedUrl(anyString(), eq(Method.PUT));
-      Mockito.verifyNoMoreInteractions(folioS3ClientFactory);
+        .initiateMultipartUpload(anyString());
       Mockito.verifyNoMoreInteractions(folioS3Client);
 
-      assertSame("Fails with getPresignedUrl exception", exception, err);
+      assertSame("Fails with correct exception", exception, err);
+      async.complete();
+    });
+  }
+
+  @Test
+  public void testFirstPartNestedFailure(TestContext context) {
+    Async async = context.async();
+
+    S3ClientException exception = new S3ClientException("test exception");
+
+    Mockito
+      .when(folioS3Client.initiateMultipartUpload(anyString()))
+      .thenReturn("upload-id");
+    Mockito
+      .when(
+        folioS3Client.getPresignedMultipartUploadUrl(
+          anyString(),
+          eq("upload-id"),
+          eq(1)
+        )
+      )
+      .thenThrow(exception);
+
+    Future<FileUploadInfo> result = minioStorageService.getFileUploadFirstPartUrl(
+      "test-file",
+      "test-tenant"
+    );
+
+    result.onSuccess(_result ->
+      context.fail("getFileUploadFirstPartUrl should fail")
+    );
+    result.onFailure(err -> {
+      Mockito
+        .verify(folioS3Client, times(1))
+        .initiateMultipartUpload(anyString());
+      Mockito
+        .verify(folioS3Client, times(1))
+        .getPresignedMultipartUploadUrl(anyString(), eq("upload-id"), eq(1));
+      Mockito.verifyNoMoreInteractions(folioS3Client);
+
+      assertSame("Fails with correct exception", exception, err);
+      async.complete();
+    });
+  }
+
+  @Test
+  public void testLaterPartSuccessful(TestContext context) {
+    Async async = context.async();
+
+    Mockito
+      .when(
+        folioS3Client.getPresignedMultipartUploadUrl(
+          "test-key",
+          "upload-id",
+          100
+        )
+      )
+      .thenReturn("upload-url-100");
+
+    Future<FileUploadInfo> result = minioStorageService.getFileUploadPartUrl(
+      "test-key",
+      "upload-id",
+      100
+    );
+
+    result.onFailure(_err ->
+      context.fail("getFileUploadPartUrl should not fail")
+    );
+    result.onSuccess(fileInfo -> {
+      Mockito
+        .verify(folioS3Client, times(1))
+        .getPresignedMultipartUploadUrl(fileInfo.getKey(), "upload-id", 100);
+      Mockito.verifyNoMoreInteractions(folioS3Client);
+
+      assertEquals(
+        "Presigned URL is returned",
+        "upload-url-100",
+        fileInfo.getUrl()
+      );
+      assertEquals(
+        "Upload ID is returned",
+        "upload-id",
+        fileInfo.getUploadId()
+      );
+      assertEquals("Key did not change", "test-key", fileInfo.getKey());
       async.complete();
     });
   }

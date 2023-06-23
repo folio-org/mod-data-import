@@ -10,6 +10,8 @@ documentation:
     content: API for uploading source records and processing them
 
 types:
+  dataImportQueueItem: !include raml-storage/schemas/mod-data-import/dataImportQueueItem.json
+  dataImportQueueItemCollection: !include raml-storage/schemas/mod-data-import/dataImportQueueItemCollection.json
   error: !include raml-storage/raml-util/schemas/error.schema
   errors: !include raml-storage/raml-util/schemas/errors.schema
   fileDefinition: !include raml-storage/schemas/mod-data-import/fileDefinition.json
@@ -29,6 +31,7 @@ types:
   dataTypeCollection: !include raml-storage/schemas/mod-data-import/dataTypeCollection.json
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
   dataImportInitConfig: !include raml-storage/schemas/common/dataImportInitConfig.json
+
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml

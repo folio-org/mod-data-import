@@ -7,7 +7,7 @@ import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
 
 import io.vertx.core.Future;
 
-public interface DataImportFileQueueItemDao {
+public interface DataImportQueueItemDao {
 
   
   

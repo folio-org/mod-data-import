@@ -22,6 +22,7 @@ import io.vertx.core.Vertx;
 
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.Tuple;
 
 @Repository
 public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
@@ -32,18 +33,17 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static final String QUEUE_ITEM_TABLE = "queue_items";
   private static final String GET_ALL_SQL = "SELECT * FROM %s.%s";
   private static final String GET_BY_ID_SQL = "SELECT * FROM %s.%s WHERE id = $1";
-  private static final String INSERT_SQL = "INSERT INTO %s.%s (id, descriptor) VALUES ($1, $2)";
+  private static final String INSERT_SQL = "INSERT INTO %s.%s (id, jobExecutionId,uploadDefinitionId,size,originalSize,filePath,timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7)";
   private static final String UPDATE_BY_ID_SQL = "UPDATE %s.%s SET descriptor = $1 WHERE id = $2";
   private static final String DELETE_BY_ID_SQL = "DELETE FROM %s.%s WHERE id = $1";
   
   @Autowired
   private PostgresClientFactory pgClientFactory;
   
-  public DataImportQueueItemDaoImpl(Vertx vertx) {
+  public DataImportQueueItemDaoImpl() {
     super();
-    pgClientFactory = new PostgresClientFactory(vertx);
   }
-  
+ 
   @Override
   public Future<DataImportQueueItemCollection> getQueueItem(String query, int offset, int limit) {
     Promise<RowSet<Row>> promise = Promise.promise();
@@ -62,14 +62,19 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
 
   @Override
   public Future<Optional<DataImportQueueItem>> getQueueItemById(String id) {
-    // TODO Auto-generated method stub
+   
     return null;
   }
 
   @Override
   public Future<String> addQueueItem(DataImportQueueItem dataImportQueueItem) {
-    // TODO Auto-generated method stub
-    return null;
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String preparedQuery = format(INSERT_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE );
+    pgClientFactory.getInstance().execute(preparedQuery,  Tuple.of(dataImportQueueItem.getId(),
+        dataImportQueueItem.getJobExecutionId(),dataImportQueueItem.getUploadDefinitionId(),
+        dataImportQueueItem.getSize(), dataImportQueueItem.getOriginalSize(),dataImportQueueItem.getFilePath(),
+        dataImportQueueItem.getTimestamp()),promise);
+    return promise.future().map(updateResult -> dataImportQueueItem.getId());
   }
 
   @Override

@@ -53,15 +53,11 @@ public class DataImportQueueDaoTest {
   @Test
   public void shouldAddQueueItem(TestContext context) {
     // given
-    doAnswer(
-      new Answer<Void>() {
-        public Void answer(InvocationOnMock invocation) {
-          Promise<RowSet<Row>> promise = invocation.getArgument(2);
-          promise.complete(new LocalRowSet(1));
-          return null;
-        }
-      }
-    )
+    doAnswer((InvocationOnMock invocation) -> {
+        Promise<RowSet<Row>> promise = invocation.getArgument(2);
+        promise.complete(new LocalRowSet(1));
+        return null;
+      })
       .when(postgresClient)
       .execute(
         anyString(),

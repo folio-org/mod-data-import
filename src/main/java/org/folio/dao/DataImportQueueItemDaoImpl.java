@@ -48,10 +48,9 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   public Future<DataImportQueueItemCollection> getQueueItem(String query, int offset, int limit) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
-     
       String preparedQuery = format(GET_ALL_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE);
       pgClientFactory.getInstance().select(preparedQuery, promise);
-      return promise.future().map(this::mapResultSetToQueueItemList);
+    
       
     } catch (Exception e) {
       LOGGER.warn("getDataImportQueueItem:: Error while searching for DataImportQueueItem", e);
@@ -63,7 +62,17 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   @Override
   public Future<Optional<DataImportQueueItem>> getQueueItemById(String id) {
    
-    return null;
+    Promise<RowSet<Row>> promise = Promise.promise();
+    try {
+      String preparedQuery = format(GET_BY_ID_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE);
+      pgClientFactory.getInstance().select(preparedQuery, promise);
+      
+    } catch (Exception e) {
+      LOGGER.warn("getDataImportQueueItem:: Error while searching for DataImportQueueItem", e);
+      promise.fail(e);
+    }
+    return promise.future().map(resultSet -> resultSet.rowCount() == 0 ? Optional.empty()
+        : Optional.of(mapRowJsonToQueueItem(resultSet.iterator().next())));
   }
 
   @Override

@@ -50,8 +50,6 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     try {
       String preparedQuery = format(GET_ALL_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE);
       pgClientFactory.getInstance().select(preparedQuery, promise);
-    
-      
     } catch (Exception e) {
       LOGGER.warn("getDataImportQueueItem:: Error while searching for DataImportQueueItem", e);
       promise.fail(e);
@@ -100,7 +98,6 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private DataImportQueueItem mapRowJsonToQueueItem(Row rowAsJson) {
     DataImportQueueItem queueItem = new DataImportQueueItem();
     queueItem.setId(rowAsJson.getString("id"));
- 
     queueItem.setJobExecutionId(rowAsJson.getString("jobExeutionId"));
     queueItem.setUploadDefinitionId(rowAsJson.getString("uploadDefinitionId"));
     queueItem.setFilePath(rowAsJson.getString("filePath"));
@@ -111,7 +108,6 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   }
 
   private DataImportQueueItemCollection mapResultSetToQueueItemList(RowSet<Row> resultSet) {
-    
     DataImportQueueItemCollection result = new DataImportQueueItemCollection();
         result.setDataImportQueueItems(Stream.generate(resultSet.iterator()::next)
       .limit(resultSet.size())

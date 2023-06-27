@@ -54,7 +54,7 @@ public interface DataImportQueueItemDao {
    * @param id       DataImportQueueItem id
    * @return future with true if succeeded
    */
-  Future<Boolean> deleteDataImportQueueItem(String id);
+  Future<Void> deleteDataImportQueueItem(String id);
 
 
 

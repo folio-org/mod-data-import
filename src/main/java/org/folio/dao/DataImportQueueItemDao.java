@@ -19,7 +19,7 @@ public interface DataImportQueueItemDao {
    * @param limit    limit of records for pagination
    * @return future with {@link DataImportQueueItemCollection}
    */
-  Future<DataImportQueueItemCollection> getQueueItem(String query, int offset, int limit);
+  Future<DataImportQueueItemCollection> getQueueItems(String query, int offset, int limit);
 
   /**
    * Searches for {@link DataImportQueueItem} by id

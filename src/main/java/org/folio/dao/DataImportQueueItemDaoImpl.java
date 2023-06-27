@@ -47,7 +47,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   }
  
   @Override
-  public Future<DataImportQueueItemCollection> getQueueItem(String query, int offset, int limit) {
+  public Future<DataImportQueueItemCollection> getQueueItems(String query, int offset, int limit) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       String preparedQuery = format(GET_ALL_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE);
@@ -109,10 +109,12 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   public Future<Void> deleteDataImportQueueItem(String id) {
    
     String query = format(DELETE_BY_ID_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE);
-    return pgClientFactory.getInstance().execute(query, Tuple.of(id)).flatMap(result -> {
-      if (result.rowCount() == 1) {
-        return Future.succeededFuture();
-      }
+    return pgClientFactory.getInstance()
+      .execute(query, Tuple.of(id))
+      .flatMap(result -> {
+        if (result.rowCount() == 1) {
+          return Future.succeededFuture();
+        }
         String message = format("Error deleting Queue Item with event id '%s'", id);
         NotFoundException notFoundException = new NotFoundException(message);
         LOGGER.error(message, notFoundException);

@@ -51,44 +51,121 @@ public class DataImportQueueDaoTest {
   }
 
   @Test
+  public void shouldGetQueueItem(TestContext context) {
+    // given
+    doAnswer((InvocationOnMock invocation) -> {
+      Promise<RowSet<Row>> promise = invocation.getArgument(2);
+      promise.complete(new LocalRowSet(5));
+      return null;
+    }).when(postgresClient)
+      .execute(anyString(), any(Tuple.class), ArgumentMatchers.<Promise<RowSet<Row>>>any());
+
+    // when
+    String query = "size > 1";
+    queueItemDaoImpl.getQueueItems(query,0, 6)
+      // then
+      .onComplete(context.asyncAssertSuccess(x -> {
+        verify(postgresClient, times(1)).execute(anyString(), any(Tuple.class), ArgumentMatchers.<Promise<RowSet<Row>>>any());
+        verifyNoMoreInteractions(postgresClient);
+      }));
+  }
+  
+  @Test
   public void shouldAddQueueItem(TestContext context) {
     // given
     doAnswer((InvocationOnMock invocation) -> {
-        Promise<RowSet<Row>> promise = invocation.getArgument(2);
-        promise.complete(new LocalRowSet(1));
-        return null;
-      })
-      .when(postgresClient)
-      .execute(
-        anyString(),
-        any(Tuple.class),
-        ArgumentMatchers.<Promise<RowSet<Row>>>any()
-      );
+      Promise<RowSet<Row>> promise = invocation.getArgument(2);
+      promise.complete(new LocalRowSet(1));
+      return null;
+    }).when(postgresClient)
+      .execute(anyString(), any(Tuple.class), ArgumentMatchers.<Promise<RowSet<Row>>>any());
 
     // when
     DataImportQueueItem queueItem = new DataImportQueueItem();
     queueItem.setFilePath("test/file/path");
     storedItemUUID = UUID.randomUUID();
     queueItem.setId(storedItemUUID.toString());
-    queueItem.setUploadDefinitionId(UUID.randomUUID().toString());
-    queueItem.setJobExecutionId(UUID.randomUUID().toString());
+    queueItem.setUploadDefinitionId(UUID.randomUUID()
+      .toString());
+    queueItem.setJobExecutionId(UUID.randomUUID()
+      .toString());
     queueItem.setSize(1000);
     queueItem.setOriginalSize(5000);
     DateTime now = new DateTime();
     queueItem.setTimestamp(now.toString());
-    queueItemDaoImpl
-      .addQueueItem(queueItem)
+    queueItemDaoImpl.addQueueItem(queueItem)
       // then
-      .onComplete(
-        context.asyncAssertSuccess(x -> {
-          verify(postgresClient, times(1))
-            .execute(
-              anyString(),
-              any(Tuple.class),
-              ArgumentMatchers.<Promise<RowSet<Row>>>any()
-            );
-          verifyNoMoreInteractions(postgresClient);
-        })
-      );
+      .onComplete(context.asyncAssertSuccess(x -> {
+        verify(postgresClient, times(1)).execute(anyString(), any(Tuple.class), ArgumentMatchers.<Promise<RowSet<Row>>>any());
+        verifyNoMoreInteractions(postgresClient);
+      }));
+  }
+
+  @Test
+  public void shouldGetQueueItemById(TestContext context) {
+    // given
+    doAnswer((InvocationOnMock invocation) -> {
+      Promise<RowSet<Row>> promise = invocation.getArgument(2);
+      promise.complete(new LocalRowSet(3));
+      return null;
+    }).when(postgresClient)
+      .select(anyString(), any(Tuple.class), ArgumentMatchers.<Promise<RowSet<Row>>>any());
+
+    // when
+    queueItemDaoImpl.getQueueItemById("sdfasdfasdf")
+      // then
+      .onComplete(context.asyncAssertSuccess(x -> {
+        verify(postgresClient, times(1)).select(anyString(), any(Tuple.class), ArgumentMatchers.<Promise<RowSet<Row>>>any());
+        verifyNoMoreInteractions(postgresClient);
+      }));
+  }
+
+  @Test
+  public void shouldUpdateQueueItemById(TestContext context) {
+    // given
+    doAnswer((InvocationOnMock invocation) -> {
+      Promise<RowSet<Row>> promise = invocation.getArgument(2);
+      promise.complete(new LocalRowSet(1));
+      return null;
+    }).when(postgresClient)
+      .execute(anyString(), any(Tuple.class), ArgumentMatchers.<Promise<RowSet<Row>>>any());
+
+    // when
+    DataImportQueueItem queueItem = new DataImportQueueItem();
+    queueItem.setFilePath("test/file/path");
+    storedItemUUID = UUID.randomUUID();
+    queueItem.setId(storedItemUUID.toString());
+    queueItem.setUploadDefinitionId(UUID.randomUUID()
+      .toString());
+    queueItem.setJobExecutionId(UUID.randomUUID()
+      .toString());
+    queueItem.setSize(1000);
+    queueItem.setOriginalSize(5000);
+    DateTime now = new DateTime();
+    queueItem.setTimestamp(now.toString());
+    queueItemDaoImpl.updateDataImportQueueItem(queueItem)
+      // then
+      .onComplete(context.asyncAssertSuccess(x -> {
+        verify(postgresClient, times(1)).execute(anyString(), any(Tuple.class), ArgumentMatchers.<Promise<RowSet<Row>>>any());
+        verifyNoMoreInteractions(postgresClient);
+      }));
+  }
+  @Test
+  public void shouldDeleteQueueItemById(TestContext context) {
+    // given
+    doAnswer((InvocationOnMock invocation) -> {
+      Promise<RowSet<Row>> promise = invocation.getArgument(1);
+      promise.complete(new LocalRowSet(1));
+      return null;
+    }).when(postgresClient)
+      .execute(anyString(), any(Tuple.class));
+
+    // when
+    queueItemDaoImpl.deleteDataImportQueueItem("afsdfasdf")
+      // then
+      .onComplete(context.asyncAssertSuccess(x -> {
+        verify(postgresClient, times(1)).execute(anyString(), any(Tuple.class));
+        verifyNoMoreInteractions(postgresClient);
+      }));
   }
 }

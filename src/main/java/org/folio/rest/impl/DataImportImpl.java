@@ -25,6 +25,7 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
+import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +58,9 @@ public class DataImportImpl implements DataImport {
   private FileUploadLifecycleService fileService;
   @Autowired
   private FileExtensionService fileExtensionService;
+
+  @Autowired
+  private MinioStorageService minioStorageService;
 
   private final FileProcessor fileProcessor;
   private Future<UploadDefinition> fileUploadStateFuture;
@@ -420,6 +424,46 @@ public class DataImportImpl implements DataImport {
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOGGER.warn("getDataImportDataTypes:: Failed to get all data types", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void getDataImportUploadUrl(String fileName, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        LOGGER.debug("getDataImportUploadUrl:: getting upload url for filename {}", fileName);
+        minioStorageService.getFileUploadFirstPartUrl(fileName, tenantId)
+          .map(GetDataImportUploadUrlResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOGGER.warn("getDataImportUploadUrl:: Failed to get upload url", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void getDataImportUploadUrlSubsequent(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        LOGGER.debug(
+          "getDataImportUploadUrlSubsequent:: getting subsequent upload url, part #{} of key {} (upload ID {})",
+          partNumber,
+          key,
+          uploadId
+        );
+        minioStorageService.getFileUploadPartUrl(key, uploadId, partNumber)
+          .map(GetDataImportUploadUrlSubsequentResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOGGER.warn("getDataImportUploadUrl:: Failed to get upload url", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

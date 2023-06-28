@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
 
 @Configuration
 @ComponentScan(basePackages = {
@@ -15,7 +16,10 @@ import org.springframework.context.annotation.Configuration;
   "org.folio.service.file",
   "org.folio.service.fileextension",
   "org.folio.service.upload",
-  "org.folio.service.cleanup"})
+  "org.folio.service.cleanup",
+  "org.folio.service.s3storage"
+})
+@PropertySource("classpath:minio.properties")
 public class ApplicationConfig {
   private static final Logger LOGGER = LogManager.getLogger();
 

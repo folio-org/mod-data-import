@@ -15,6 +15,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import lombok.extern.log4j.Log4j2;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.client.TenantClient;
@@ -29,10 +30,16 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.s3.client.S3ClientFactory;
+import org.folio.s3.client.S3ClientProperties;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -49,6 +56,8 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 /**
  * Abstract test for the REST API testing needs.
  */
+@Log4j2
+@Testcontainers
 public abstract class AbstractRestTest {
 
   private static final String FILE_EXTENSIONS_TABLE = "file_extensions";
@@ -68,6 +77,7 @@ public abstract class AbstractRestTest {
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
+  private static final String MINIO_BUCKET = "test-bucket";
 
   private static final String GET_USER_URL = "/users?query=id==";
 
@@ -124,6 +134,12 @@ public abstract class AbstractRestTest {
 
   public static EmbeddedKafkaCluster kafkaCluster;
 
+  @Container
+  private static final LocalStackContainer localStackContainer = new LocalStackContainer(
+    DockerImageName.parse("localstack/localstack:0.11.3")
+  )
+    .withServices(LocalStackContainer.Service.S3);
+
   @Rule
   public WireMockRule mockServer = new WireMockRule(
     WireMockConfiguration.wireMockConfig()
@@ -134,6 +150,8 @@ public abstract class AbstractRestTest {
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
+
+    log.info("Starting Kafka...");
     kafkaCluster = provisionWith(defaultClusterConfig());
     kafkaCluster.start();
     String[] hostAndPort = kafkaCluster.getBrokerList().split(":");
@@ -142,6 +160,27 @@ public abstract class AbstractRestTest {
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(KAFKA_MAX_REQUEST_SIZE, "1048576");
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
+
+    log.info("Starting LocalStack/S3...");
+    localStackContainer.start();
+    log.info(localStackContainer.getEndpoint().toString());
+    System.setProperty("minio.endpoint", localStackContainer.getEndpoint().toString());
+    System.setProperty("minio.region", localStackContainer.getRegion());
+    System.setProperty("minio.accessKey", localStackContainer.getAccessKey());
+    System.setProperty("minio.secretKey", localStackContainer.getSecretKey());
+    System.setProperty("minio.bucket", MINIO_BUCKET);
+    System.setProperty("minio.awsSdk", "false");
+    S3ClientFactory.getS3Client(
+      S3ClientProperties
+        .builder()
+        .endpoint(localStackContainer.getEndpoint().toString())
+        .accessKey(localStackContainer.getAccessKey())
+        .secretKey(localStackContainer.getSecretKey())
+        .bucket(MINIO_BUCKET)
+        .awsSdk(false)
+        .region(localStackContainer.getRegion())
+        .build()
+    ).createBucketIfNotExists();
 
     port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;

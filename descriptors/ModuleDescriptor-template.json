@@ -267,6 +267,16 @@
           "methods": ["GET"],
           "pathPattern": "/data-import/dataTypes",
           "permissionsRequired": ["data-import.datatypes.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import/uploadUrl",
+          "permissionsRequired": ["data-import.uploadUrl.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import/uploadUrl/subsequent",
+          "permissionsRequired": ["data-import.uploadUrl.get"]
         }
       ]
     },
@@ -357,11 +367,17 @@
       "description": "Get DataTypes"
     },
     {
+      "permissionName": "data-import.uploadUrl.get",
+      "displayName": "Data Import - get S3 upload URL",
+      "description": "Get S3 upload URL"
+    },
+    {
       "permissionName": "data-import.upload.all",
       "displayName": "Data Import File Upload - all permissions",
       "description": "Entire set of permissions needed to use file uploads",
       "subPermissions": [
         "data-import.upload.file.post",
+        "data-import.uploadUrl.get",
         "data-import.uploaddefinitions.post",
         "data-import.uploaddefinitions.get",
         "data-import.uploaddefinitions.put",
@@ -400,7 +416,13 @@
       { "name": "DB_CHARSET", "value": "UTF-8" },
       { "name": "DB_MAXPOOLSIZE", "value": "5" },
       { "name": "KAFKA_HOST", "value": "10.0.2.15"},
-      { "name": "KAFKA_PORT", "value": "9092"}
+      { "name": "KAFKA_PORT", "value": "9092"},
+      { "name": "AWS_URL", "value": "http://127.0.0.1:9000/" },
+      { "name": "AWS_REGION", "value": "" },
+      { "name": "AWS_BUCKET", "value": "example-bucket" },
+      { "name": "AWS_ACCESS_KEY_ID", "value": "AKIAIOSFODNN7EXAMPLE" },
+      { "name": "AWS_SECRET_ACCESS_KEY", "value": "wJalrXUtnFEMI/K7MDENG/EXAMPLEKEY" },
+      { "name": "AWS_SDK", "value": "false" }
     ]
   }
 }

@@ -45,11 +45,11 @@ public class ScoreUtils {
     @Min(0) int upperReference
   ) {
     // we must add 1 to the value to avoid taking the log of 0
-    double upperLog = Math.log(upperReference + 1);
-    double valueLog = Math.log(value + 1);
+    double upperLog = Math.log(upperReference + 1.0);
+    double valueLog = Math.log(value + 1.0);
 
     double proportion = valueLog / upperLog;
-    double scoreRange = upperScore - lowerScore;
+    double scoreRange = (double) upperScore - lowerScore;
 
     return lowerScore + (proportion * scoreRange);
   }

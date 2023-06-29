@@ -1,17 +1,12 @@
 package org.folio.service.processing.ranking;
 
 import java.time.Instant;
-import lombok.AllArgsConstructor;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 /**
  * Service for ranking queue items based on their age
  */
-@Component
-@AllArgsConstructor(onConstructor_ = @Autowired)
 public class QueueItemAgeRanker implements QueueItemRanker {
 
   private static final int SECONDS_PER_MINUTE = 60;

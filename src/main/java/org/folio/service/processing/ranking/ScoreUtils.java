@@ -1,10 +1,14 @@
 package org.folio.service.processing.ranking;
 
 import javax.validation.constraints.Min;
-import lombok.experimental.UtilityClass;
 
-@UtilityClass
 public class ScoreUtils {
+
+  private ScoreUtils() {
+    throw new UnsupportedOperationException(
+      "Cannot instantiate utility class."
+    );
+  }
 
   /**
    * Calculate the logarithm-based score for a given value [0,inf).

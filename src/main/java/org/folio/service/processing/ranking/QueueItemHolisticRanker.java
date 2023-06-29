@@ -13,8 +13,11 @@ public class QueueItemHolisticRanker implements QueueItemRanker {
   @Autowired
   private QueueItemAgeRanker ageRanker;
 
+  @Autowired
+  private QueueItemSizeRanker sizeRanker;
+
   @Override
   public double score(DataImportQueueItem queueItem) {
-    return ageRanker.score(queueItem);
+    return ageRanker.score(queueItem) + sizeRanker.score(queueItem);
   }
 }

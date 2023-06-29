@@ -13,8 +13,8 @@ public class QueueItemAgeRanker implements QueueItemRanker {
 
   private static final int SECONDS_PER_MINUTE = 60;
 
-  // we default to zeroes since, if the env variables are not present, we
-  // should not score on age
+  // we default to zeroes since, if the env variables are not present,
+  // then we should not score on this metric
   @Value("${SCORE_AGE_NEWEST:0}")
   private int scoreAgeNewest;
 

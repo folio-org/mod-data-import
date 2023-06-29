@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * Service for ranking queue items based on all of their properties
  */
-public class QueueItemHolisticRanker implements QueueItemRankerService {
+public class QueueItemHolisticRanker implements QueueItemRanker {
 
   @Autowired
   private QueueItemAgeRanker ageRanker;

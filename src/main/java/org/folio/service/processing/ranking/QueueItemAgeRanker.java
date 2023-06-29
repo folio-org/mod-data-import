@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 /**
  * Service for ranking queue items based on their age
  */
-public class QueueItemAgeRanker implements QueueItemRankerService {
+public class QueueItemAgeRanker implements QueueItemRanker {
+
+  private static final int SECONDS_PER_MINUTE = 60;
 
   // we default to zeroes since, if the env variables are not present, we
   // should not score on age
@@ -17,8 +19,8 @@ public class QueueItemAgeRanker implements QueueItemRankerService {
   @Value("${SCORE_AGE_OLDEST:0}")
   private int scoreAgeOldest;
 
-  @Value("${SCORE_AGE_EXTREME_THRESHOLD:0}")
-  private int scoreAgeExtremeThreshold;
+  @Value("${SCORE_AGE_EXTREME_THRESHOLD_MINUTES:0}")
+  private int scoreAgeExtremeThresholdMinutes;
 
   @Value("${SCORE_AGE_EXTREME_VALUE:0}")
   private int scoreAgeExtremeValue;
@@ -28,13 +30,14 @@ public class QueueItemAgeRanker implements QueueItemRankerService {
     Instant createdAt = Instant.parse(queueItem.getTimestamp());
     Instant now = Instant.now();
 
-    long age = now.getEpochSecond() - createdAt.getEpochSecond();
+    long age =
+      (now.getEpochSecond() - createdAt.getEpochSecond()) / SECONDS_PER_MINUTE;
 
     return ScoreUtils.calculateBoundedLogarithmicScore(
       age,
       scoreAgeNewest,
       scoreAgeOldest,
-      scoreAgeExtremeThreshold,
+      scoreAgeExtremeThresholdMinutes,
       scoreAgeExtremeValue
     );
   }

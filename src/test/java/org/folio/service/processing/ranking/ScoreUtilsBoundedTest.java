@@ -18,7 +18,7 @@ public class ScoreUtilsBoundedTest {
 
   private static final int LOWER_SCORE = 0;
   private static final int UPPER_SCORE = 5;
-  private static final int THRESHOLD = 31;
+  private static final int THRESHOLD = 32;
   private static final int THRESHOLD_SCORE = -1;
 
   private static final double EPSILON = 0.0000001;
@@ -36,8 +36,8 @@ public class ScoreUtilsBoundedTest {
       new Object[] { 2, 3, 1, 2 },
       new Object[] { 4, 7, 2, 3 },
       new Object[] { 8, 15, 3, 4 },
-      new Object[] { 16, 30, 4, 5 },
-      new Object[] { 31, 100, -1, -1 }
+      new Object[] { 16, 31, 4, 5 },
+      new Object[] { 32, 100, -1, -1 }
     );
   }
 

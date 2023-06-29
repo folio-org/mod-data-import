@@ -63,7 +63,7 @@ public class ScoreUtils {
    * it should be given the utmost priority and bypass the traditional
    * calculation.
    *
-   * For example, if we expect {@code value} to be from 0-31 (threshold=31),
+   * For example, if we expect {@code value} to be from 0-31 (threshold=32),
    * {@value lowerScore=0}, {@value upperScore=5}, and
    * {@code upperThresholdScore=100}:
    *
@@ -74,7 +74,7 @@ public class ScoreUtils {
    * [4,7]    | (2, 3]
    * [8,15]   | (3, 4]
    * [16,31]  | (4, 5]
-   * (31,inf) | 100
+   * [32,inf) | 100
    * ...
    * </pre>
    *
@@ -106,7 +106,7 @@ public class ScoreUtils {
       value,
       lowerScore,
       upperScore,
-      upperThreshold
+      upperThreshold - 1
     );
   }
 

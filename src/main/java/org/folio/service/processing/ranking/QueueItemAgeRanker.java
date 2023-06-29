@@ -3,10 +3,12 @@ package org.folio.service.processing.ranking;
 import java.time.Instant;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 /**
  * Service for ranking queue items based on their age
  */
+@Component
 public class QueueItemAgeRanker implements QueueItemRanker {
 
   private static final int SECONDS_PER_MINUTE = 60;

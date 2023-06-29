@@ -39,7 +39,7 @@ public class ScoreUtils {
    * @return the logarithm-based score for the given value
    */
   public static double calculateUnboundedLogarithmicScore(
-    @Min(0) int value,
+    @Min(0) long value,
     int lowerScore,
     int upperScore,
     @Min(0) int upperReference
@@ -55,8 +55,8 @@ public class ScoreUtils {
   }
 
   /**
-   * Calculate the logarithm-based score for a given value [0,inf), with a
-   * fallback to prevent this value from getting "too large".
+   * Calculate the logarithm-based score for a given value [0,inf), with an
+   * "escape hatch" to prevent this value from getting "too large".
    *
    * An example usage of this could be for a job's age: we want to increase
    * the score as the job ages, however, if it exceeds a given amount of time,
@@ -92,7 +92,7 @@ public class ScoreUtils {
    * @return the bounded logarithm-based score for the given value
    */
   public static double calculateBoundedLogarithmicScore(
-    @Min(0) int value,
+    @Min(0) long value,
     int lowerScore,
     int upperScore,
     @Min(0) int upperThreshold,

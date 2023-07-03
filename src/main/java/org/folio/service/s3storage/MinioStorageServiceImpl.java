@@ -12,6 +12,8 @@ import org.folio.s3.exception.S3ClientException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.InputStream;
+
 @Service
 public class MinioStorageServiceImpl implements MinioStorageService {
 
@@ -102,6 +104,33 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     );
 
     return promise.future();
+  }
+
+  public Future<InputStream> readFile(
+    String key
+  ) {
+    Promise<InputStream> inStreamPromise = Promise.promise();
+    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
+
+    vertx.executeBlocking(
+      (Promise<InputStream> blockingFuture) -> {
+        try {
+          LOGGER.info("Created input stream to read remote file for key {}", key);
+          InputStream inStream = client.read(key);
+          blockingFuture.complete(inStream);
+        } catch (S3ClientException e) {
+          blockingFuture.fail(e);
+        }
+      },
+      (AsyncResult<InputStream> asyncResult) -> {
+        if (asyncResult.failed()) {
+          inStreamPromise.fail(asyncResult.cause());
+        } else {
+          inStreamPromise.complete(asyncResult.result());
+        }
+      }
+    );
+    return inStreamPromise.future();
   }
 
   private static String buildKey(String tenantId, String fileName) {

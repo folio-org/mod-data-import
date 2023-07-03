@@ -30,6 +30,7 @@ types:
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
   dataImportInitConfig: !include raml-storage/schemas/common/dataImportInitConfig.json
   fileUploadInfo: !include fileUploadInfo.json
+  startJobReqDto: !include startJobReqDto.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -301,6 +302,31 @@ resourceTypes:
           body:
             text/plain:
               example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+  /startJob:
+    post:
+      displayName: Starts Data Import Processing for a job
+      description: Starts the processing for the uploaded file
+      is: [validate]
+      body:
+        application/json:
+          type: startJobReqDto
+      responses:
+        204:
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        422:
+          description: "Unprocessable Entity"
+          body:
+            application/json:
+              type: errors
         500:
           description: "Internal server error"
           body:

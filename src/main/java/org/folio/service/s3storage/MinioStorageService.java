@@ -4,6 +4,8 @@ import io.vertx.core.Future;
 import javax.validation.constraints.NotNull;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 
+import java.io.InputStream;
+
 public interface MinioStorageService {
   /**
    * Gets upload url and key for a file upload
@@ -45,5 +47,15 @@ public interface MinioStorageService {
     String key,
     @NotNull String uploadId,
     int partNumber
+  );
+
+  /**
+   * Opens a file on S3, returns an input stream to read from the remote file
+   *
+   * @param key - the key to access the file on S3 storage, as generated with
+   * @return InputStream - a new input stream with file content
+   */
+   Future<InputStream> readFile(
+    String key
   );
 }

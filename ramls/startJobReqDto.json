@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Start Job request DTO json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "key": {
+      "description": "Key for file that is on S3 storage",
+      "type": "string"
+    }
+  },
+  "required": ["key"]
+}

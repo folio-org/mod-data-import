@@ -21,10 +21,12 @@ import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
+import org.folio.rest.jaxrs.model.StartJobReqDto;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
+import org.folio.service.s3processing.MarcRawSplitter;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
@@ -32,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -61,6 +64,9 @@ public class DataImportImpl implements DataImport {
 
   @Autowired
   private MinioStorageService minioStorageService;
+
+  @Autowired
+  private MarcRawSplitter marcRawSplitter;
 
   private final FileProcessor fileProcessor;
   private Future<UploadDefinition> fileUploadStateFuture;
@@ -464,6 +470,38 @@ public class DataImportImpl implements DataImport {
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOGGER.warn("getDataImportUploadUrl:: Failed to get upload url", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  public void postDataImportStartJob(StartJobReqDto startJobReqDto, Map<String,String> okapiHeaders,Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext){
+    vertxContext.runOnContext(v -> {
+      try {
+        LOGGER.debug("postDataImportStartJob:: starting import job for s3 key");
+
+        minioStorageService.readFile(startJobReqDto.getKey()).onComplete(
+          inStream -> {
+
+            if (inStream.failed()) {
+              asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream.cause())));
+            } else if (inStream.succeeded()) {
+              try {
+                LOGGER.debug("postDataImportStartJob:: calling method to count records");
+
+                Future<Integer> numRecords = marcRawSplitter.countRecordsInFile(inStream.result());
+
+                LOGGER.debug("Number of records in file {}", numRecords.result());
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+
+            }
+          }
+        );
+
+      } catch (Exception e) {
+        LOGGER.warn("postDataImportStartJob:: Failed to start job", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

@@ -4,6 +4,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
@@ -61,6 +62,9 @@ public class DataImportImpl implements DataImport {
 
   @Autowired
   private MinioStorageService minioStorageService;
+  
+  @Autowired
+  private boolean splitFileProcess;
 
   private final FileProcessor fileProcessor;
   private Future<UploadDefinition> fileUploadStateFuture;
@@ -468,7 +472,20 @@ public class DataImportImpl implements DataImport {
       }
     });
   }
-
+  
+  @Override
+  public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      Promise<Boolean> splitconfigpromise = Promise.promise();
+      splitconfigpromise.complete(this.splitFileProcess);
+      splitconfigpromise.future()
+      .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
+      .map(Response.class::cast)
+      .onComplete(asyncResultHandler); 
+    });
+    
+  }
   /**
    * Validate {@link FileExtension} before save or update
    *
@@ -516,4 +533,6 @@ public class DataImportImpl implements DataImport {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
   }
+
+
 }

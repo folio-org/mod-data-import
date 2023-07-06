@@ -7,10 +7,15 @@ import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.service.s3storage.MinioStorageService;
+import org.folio.service.s3storage.RemoteStorageByteWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -69,16 +74,19 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
       }
     );
     return integerPromise.future();
+
   }
 
   public Future<List<SplitPart>> splitFile(String key, InputStream inStream, int numRecordsPerFile) {
     Promise<List<SplitPart>> partsPromise = Promise.promise();
 
-    /*
     vertx.executeBlocking(
       (Promise<List<SplitPart>> blockingFuture) -> {
-        FileOutputStream out = null;
-        BufferedOutputStream bufferedOutputStream = null;
+
+        RemoteStorageByteWriter partFileWriter = null;
+        List<SplitPart> partsList = new ArrayList<>();
+        SplitPart part = null;
+
         try {
           byte[] byteBuffer = new byte[BUFFER_SIZE];
           int numberOfBytes;
@@ -89,33 +97,34 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
 
           while ( (numberOfBytes = inStream.read(byteBuffer, 0, BUFFER_SIZE) ) > 0)
           {
-            BufferInfo bufferInfo = new BufferInfo(byteBuffer, numberOfBytes);
+            BufferInfo bufferInfo = new BufferInfo(byteBuffer, numberOfBytes, RECORD_TERMINATOR);
 
             if (needNewSplitFile) {
               ++partNumber;
-              String outfile = infile + partNumber;
-              out = new FileOutputStream(outfile);
-              bufferedOutputStream = new BufferedOutputStream(out);
+              String partKey = buildPartKey(key, partNumber);
+              partFileWriter = minioStorageService.writer(partKey);
+              part = new SplitPart(partNumber, key);
               needNewSplitFile = false;
             }
 
-            if (bufferInfo.getNumRecordsInBuffer() == 0) {
+            if (bufferInfo.getNumCompleteRecordsInBuffer() == 0) {
               // No ending records are in buffer -- write complete buffer out to new file
-              bufferedOutputStream.write(byteBuffer, 0, numberOfBytes);
+              //bufferedOutputStream.write(byteBuffer, 0, numberOfBytes);
+              partFileWriter.write(byteBuffer, 0, numberOfBytes);
             } else {
               int recordsNeeded = numRecordsPerFile - numRecordsInFile;
-              if (recordsNeeded > bufferInfo.getNumRecordsInBuffer()) {
+              if (recordsNeeded > bufferInfo.getNumCompleteRecordsInBuffer()) {
                 // Write all records from buffer including any partial records
                 // More Records will need to be added from next chunk
-                bufferedOutputStream.write(byteBuffer, 0, numberOfBytes);
-                numRecordsInFile+= bufferInfo.getNumRecordsInBuffer();
+                partFileWriter.write(byteBuffer, 0, numberOfBytes);
+                numRecordsInFile+= bufferInfo.getNumCompleteRecordsInBuffer();
                 // Need to get more records from the next buffer
               } else  {
                 // recordsNeeded <= num_marc_records_in_buffer
-                bufferedOutputStream.write(byteBuffer, 0, bufferInfo.getRecordTerminatorPosition(recordsNeeded) + 1);
-                bufferedOutputStream.close();
+                partFileWriter.write(byteBuffer, 0, bufferInfo.getRecordTerminatorPosition(recordsNeeded) + 1);
+                partFileWriter.close();
 
-                int fullRecordsToWrite = bufferInfo.getNumRecordsInBuffer() - recordsNeeded;
+                int fullRecordsToWrite = bufferInfo.getNumCompleteRecordsInBuffer() - recordsNeeded;
 
                 int bufferPosition = 0;
                 if (fullRecordsToWrite > 0) {
@@ -130,10 +139,10 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                 // Any Partial record(s) in buffer need to go into the next file
                 if ((bufferPosition < numberOfBytes)&&(bufferPosition != -1)) {
                   ++partNumber;
-                  String outfile = infile + partNumber;
-                  out = new FileOutputStream(outfile);
-                  bufferedOutputStream = new BufferedOutputStream(out);
-                  bufferedOutputStream.write(byteBuffer, bufferPosition, numberOfBytes - bufferPosition);
+                  String outfile = buildPartKey(key, partNumber);
+
+                  partFileWriter = minioStorageService.writer(outfile);
+                  partFileWriter.write(byteBuffer, bufferPosition, numberOfBytes - bufferPosition);
                   numRecordsInFile = fullRecordsToWrite;
                   needNewSplitFile = false;
                 }
@@ -141,6 +150,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
             }
 
           }
+          blockingFuture.complete(partsList);
         } catch (FileNotFoundException e) {
           blockingFuture.fail(e);
         } catch (IOException e) {
@@ -148,7 +158,8 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
         } finally {
           try {
             inStream.close();
-            bufferedOutputStream.close();
+            partFileWriter.close();
+            //bufferedOutputStream.close();
           } catch (IOException e) {
             blockingFuture.fail(e);
           }
@@ -164,11 +175,27 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
       }
     );
     return partsPromise.future();
-
-     */
-    return null;
   }
 
+  private static String buildPartKey(String key, int partNumber) {
+    // 1K.mrc part number = 1 - returns 1K_1.mrc
+    String[] keyNameParts = key.split("\\.");
 
+    if (keyNameParts.length > 1) {
+      String partUpdate = String.format(
+        "%s_%s",
+        keyNameParts[keyNameParts.length - 2] ,
+        partNumber
+      );
+
+      keyNameParts[keyNameParts.length - 2] = partUpdate;
+      return String.join(".", keyNameParts);
+    }
+    return String.format(
+      "%s_%s",
+      key,
+      partNumber
+    );
+  }
 
 }

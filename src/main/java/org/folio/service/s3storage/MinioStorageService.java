@@ -52,10 +52,14 @@ public interface MinioStorageService {
   /**
    * Opens a file on S3, returns an input stream to read from the remote file
    *
-   * @param key - the key to access the file on S3 storage, as generated with
+   * @param key - the key to access the file on S3 storage
    * @return InputStream - a new input stream with file content
    */
    Future<InputStream> readFile(
     String key
   );
+
+    RemoteStorageByteWriter writer(String path);
+
+    String write(String path, InputStream is);
 }

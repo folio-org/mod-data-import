@@ -19,6 +19,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
+  private static final int DEFAULT_CHAR_BUFFER_SIZE = 8192;
+
   private FolioS3ClientFactory folioS3ClientFactory;
 
   private Vertx vertx;
@@ -131,6 +133,17 @@ public class MinioStorageServiceImpl implements MinioStorageService {
       }
     );
     return inStreamPromise.future();
+  }
+
+  public RemoteStorageByteWriter writer(String path) {
+    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
+    return new RemoteStorageByteWriter(path, DEFAULT_CHAR_BUFFER_SIZE, client);
+  }
+
+
+  public String write(String path, InputStream is) {
+    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
+    return client.write(path, is);
   }
 
   private static String buildKey(String tenantId, String fileName) {

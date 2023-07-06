@@ -50,6 +50,7 @@ public class FolioS3ClientFactory {
         .secretKey(secretKey)
         .bucket(bucket)
         .awsSdk(awsSdk)
+        .forcePathStyle(true)
         .region(region)
         .build()
     );

@@ -27,6 +27,7 @@ import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
 import org.folio.service.s3processing.MarcRawSplitter;
+import org.folio.service.s3processing.SplitPart;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
@@ -34,11 +35,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
@@ -489,10 +493,12 @@ public class DataImportImpl implements DataImport {
               try {
                 LOGGER.debug("postDataImportStartJob:: calling method to count records");
 
-                Future<Integer> numRecords = marcRawSplitter.countRecordsInFile(inStream.result());
+                //Future<Integer> numRecords = marcRawSplitter.countRecordsInFile(inStream.result());
 
-                LOGGER.debug("Number of records in file {}", numRecords.result());
-              } catch (IOException e) {
+                //Future<Integer> numRecords = marcRawSplitter.countRecordsInFile(inStream.result());
+                Future<List<SplitPart>> parts = marcRawSplitter.splitFile(startJobReqDto.getKey(), inStream.result(), 250);
+                //LOGGER.debug("Number of records in file {}", numRecords.result());
+              } catch (Exception e) {
                 throw new RuntimeException(e);
               }
 

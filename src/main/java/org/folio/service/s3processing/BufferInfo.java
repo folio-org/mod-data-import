@@ -5,24 +5,24 @@ import java.util.List;
 public class BufferInfo {
 
   private List<Integer> RecordTerminatorPositions;
-  private int numRecordsInBuffer;
+  private int numCompleteRecordsInBuffer;
   private boolean partialRecordInBuffer;
   private int partialRecordPosition;
   private int bufferSize;
 
-  public BufferInfo(byte[] byteBuffer, int numberOfBytes) {
+  public BufferInfo(byte[] byteBuffer, int numberOfBytes, byte recordTerminatorCharacter) {
 
     // Get end record indicators in the buffer
     RecordTerminatorPositions = new ArrayList<>();
 
     for (int i = 0; i < numberOfBytes; i++) {
-      if (byteBuffer[i] == (byte) 29) {
+      if (byteBuffer[i] == (byte) recordTerminatorCharacter) {
         RecordTerminatorPositions.add(i);
       }
     }
 
     bufferSize = numberOfBytes;
-    numRecordsInBuffer = RecordTerminatorPositions.size();
+    numCompleteRecordsInBuffer = RecordTerminatorPositions.size();
     int lastRecordEndPosition = RecordTerminatorPositions.get(RecordTerminatorPositions.size() - 1);
     partialRecordPosition = lastRecordEndPosition + 1;
 
@@ -33,8 +33,8 @@ public class BufferInfo {
 
   }
 
-  public int getNumRecordsInBuffer() {
-    return numRecordsInBuffer;
+  public int getNumCompleteRecordsInBuffer() {
+    return numCompleteRecordsInBuffer;
   }
 
   public boolean isPartialRecordInBuffer() {

@@ -33,4 +33,9 @@ public class PostgresClientFactory {
   public PostgresClient createInstance(String tenantId) {
     return PostgresClient.getInstance(vertx, tenantId);
   }
+
+  public PostgresClient getInstance() {
+    return PostgresClient.getInstance(vertx);
+  }
+
 }

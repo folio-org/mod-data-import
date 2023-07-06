@@ -12,20 +12,16 @@ public interface DataImportQueueItemDao {
   
   
   /**
-   * Searches for {@link DataImportQueueItem} in database
+   * Get all {@link DataImportQueueItem} in database
    *
-   * @param query    query from URL
-   * @param offset   starting index in a list of results
-   * @param limit    limit of records for pagination
    * @return future with {@link DataImportQueueItemCollection}
    */
-  Future<DataImportQueueItemCollection> getQueueItems(String query, int offset, int limit);
+  Future<DataImportQueueItemCollection> getAllQueueItems();
 
   /**
    * Searches for {@link DataImportQueueItem} by id
    *
    * @param id       DataImportQueueItem id
-   * @param tenantId tenant id tenant id
    * @return future with optional {@link DataImportQueueItem}
    */
   Future<Optional<DataImportQueueItem>>getQueueItemById(String id);

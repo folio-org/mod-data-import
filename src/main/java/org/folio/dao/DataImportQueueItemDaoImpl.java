@@ -45,7 +45,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   }
  
   @Override
-  public Future<DataImportQueueItemCollection> getQueueItems(String query, int offset, int limit) {
+  public Future<DataImportQueueItemCollection> getAllQueueItems() {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       String preparedQuery = format(GET_ALL_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE);
@@ -95,7 +95,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           dataImportQueueItem.getTimestamp()),
          promise);
     } catch (Exception e) {
-      LOGGER.error("Error updating queue Item %s", dataImportQueueItem.getId(), e);
+      LOGGER.error("Error updating queue Item %s", dataImportQueueItem.getId());
       promise.fail(e);
     }
     return promise.future().compose(updateResult -> updateResult.rowCount() == 1

@@ -20,8 +20,6 @@ import org.springframework.stereotype.Repository;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
@@ -31,7 +29,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
 
   private static final Logger LOGGER = LogManager.getLogger();
   
-  private static String MODULE_GLOBAL_SCHEMA = "data_import_global";
+  private static final String MODULE_GLOBAL_SCHEMA = "data_import_global";
   private static final String QUEUE_ITEM_TABLE = "queue_items";
   private static final String GET_ALL_SQL = "SELECT * FROM %s.%s";
   private static final String GET_BY_ID_SQL = "SELECT * FROM %s.%s WHERE id = $1";
@@ -97,7 +95,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           dataImportQueueItem.getTimestamp()),
          promise);
     } catch (Exception e) {
-      LOGGER.error("Error updating queue Item ", dataImportQueueItem, e);
+      LOGGER.error("Error updating queue Item %s", dataImportQueueItem.getId(), e);
       promise.fail(e);
     }
     return promise.future().compose(updateResult -> updateResult.rowCount() == 1

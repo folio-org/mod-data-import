@@ -74,9 +74,8 @@ public class DataImportQueueDaoTest {
       .select(anyString(), ArgumentMatchers.<Promise<RowSet<Row>>>any());
 
     // when
-    String query = "size > 1";
     queueItemDaoImpl
-      .getQueueItems(query, 0, 6)
+      .getAllQueueItems()
       // then
       .onComplete(
         context.asyncAssertSuccess(x -> {

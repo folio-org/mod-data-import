@@ -483,25 +483,47 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug("postDataImportStartJob:: starting import job for s3 key");
-
+        LOGGER.debug("postDataImportStartJob:: calling method to read file from S3");
         minioStorageService.readFile(startJobReqDto.getKey()).onComplete(
           inStream -> {
-
             if (inStream.failed()) {
               asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream.cause())));
             } else if (inStream.succeeded()) {
-              try {
                 LOGGER.debug("postDataImportStartJob:: calling method to count records");
+              try {
+                marcRawSplitter.countRecordsInFile(inStream.result()).onComplete(
+                  recordCount -> {
+                    if (recordCount.failed()) {
+                      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(recordCount.cause())));
+                    } else if (recordCount.succeeded()) {
+                      LOGGER.debug("postDataImportStartJob:: record count = {}", recordCount.result());
 
-                //Future<Integer> numRecords = marcRawSplitter.countRecordsInFile(inStream.result());
-
-                //Future<Integer> numRecords = marcRawSplitter.countRecordsInFile(inStream.result());
-                Future<List<SplitPart>> parts = marcRawSplitter.splitFile(startJobReqDto.getKey(), inStream.result(), 250);
-                //LOGGER.debug("Number of records in file {}", numRecords.result());
-              } catch (Exception e) {
-                throw new RuntimeException(e);
+                      LOGGER.debug("postDataImportStartJob:: calling method to split file");
+                      // Read file again - try ad rewind
+                      minioStorageService.readFile(startJobReqDto.getKey()).onComplete(
+                        inStream2 -> {
+                          if (inStream2.failed()) {
+                            asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream2.cause())));
+                          } else if (inStream2.succeeded()) {
+                            marcRawSplitter.splitFile(startJobReqDto.getKey(), inStream2.result(), 250).onComplete(
+                              splitResult -> {
+                                if (splitResult.failed()) {
+                                  asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(splitResult.cause())));
+                                } else if (splitResult.succeeded()) {
+                                  asyncResultHandler.handle(Future.succeededFuture(Response.status(204).build()));
+                                }
+                              }
+                            );
+                          }
+                        }
+                      );
+                    }
+                  }
+                );
+              } catch (IOException e) {
+                LOGGER.warn("postDataImportStartJob:: Failed to start job", e);
+                asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
               }
-
             }
           }
         );

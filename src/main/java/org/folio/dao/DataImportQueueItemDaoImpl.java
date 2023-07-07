@@ -57,7 +57,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
       pgClientFactory.getInstance().select(preparedQuery, promise);
     } catch (Exception e) {
       LOGGER.warn(
-        "getDataImportQueueItem:: Error while searching for DataImportQueueItem",
+        "getDataImportQueueItem:: Error while searching for all DataImportQueueItems",
         e
       );
       promise.fail(e);
@@ -79,7 +79,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
         .select(preparedQuery, Tuple.of(false), promise);
     } catch (Exception e) {
       LOGGER.warn(
-        "getDataImportQueueItem:: Error while searching for DataImportQueueItem",
+        "getDataImportQueueItem:: Error while searching for waiting DataImportQueueItems",
         e
       );
       promise.fail(e);
@@ -101,7 +101,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
         .select(preparedQuery, Tuple.of(true), promise);
     } catch (Exception e) {
       LOGGER.warn(
-        "getDataImportQueueItem:: Error while searching for DataImportQueueItem",
+        "getDataImportQueueItem:: Error while searching for in progress DataImportQueueItems",
         e
       );
       promise.fail(e);
@@ -123,7 +123,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
         .select(preparedQuery, Tuple.of(id), promise);
     } catch (Exception e) {
       LOGGER.warn(
-        "getDataImportQueueItem:: Error while searching for DataImportQueueItem",
+        "getDataImportQueueItem:: Error while searching for DataImportQueueItem by ID",
         e
       );
       promise.fail(e);

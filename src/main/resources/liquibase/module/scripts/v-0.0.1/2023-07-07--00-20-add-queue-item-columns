@@ -1,0 +1,12 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+  <changeSet id="2023-07-07--00-20-add-queue-item-columns" author="ncovercash">
+    <addColumn tableName="dataImportQueueItems">
+      <column name="tenant" type="text" />
+      <column name="partNumber" type="int" />
+      <column name="processing" type="boolean" defaultValueBoolean="false" />
+    </addColumn>
+  </changeSet>
+</databaseChangeLog>

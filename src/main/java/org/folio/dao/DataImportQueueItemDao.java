@@ -1,16 +1,11 @@
 package org.folio.dao;
 
+import io.vertx.core.Future;
 import java.util.Optional;
-
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
 
-import io.vertx.core.Future;
-
 public interface DataImportQueueItemDao {
-
-  
-  
   /**
    * Get all {@link DataImportQueueItem} in database
    *
@@ -19,14 +14,26 @@ public interface DataImportQueueItemDao {
   Future<DataImportQueueItemCollection> getAllQueueItems();
 
   /**
+   * Get all {@link DataImportQueueItem} in database where processing=false
+   *
+   * @return future with {@link DataImportQueueItemCollection}
+   */
+  Future<DataImportQueueItemCollection> getAllWaitingQueueItems();
+
+  /**
+   * Get all {@link DataImportQueueItem} in database where processing=true
+   *
+   * @return future with {@link DataImportQueueItemCollection}
+   */
+  Future<DataImportQueueItemCollection> getAllInProgressQueueItems();
+
+  /**
    * Searches for {@link DataImportQueueItem} by id
    *
    * @param id       DataImportQueueItem id
    * @return future with optional {@link DataImportQueueItem}
    */
-  Future<Optional<DataImportQueueItem>>getQueueItemById(String id);
-
-
+  Future<Optional<DataImportQueueItem>> getQueueItemById(String id);
 
   /**
    * Saves {@link DataImportQueueItem} to database
@@ -42,7 +49,9 @@ public interface DataImportQueueItemDao {
    * @param fileExtension FileExtension to update
    * @return future with {@link DataImportQueueItem}
    */
-  Future<DataImportQueueItem> updateDataImportQueueItem(DataImportQueueItem dataImportQueueItem);
+  Future<DataImportQueueItem> updateDataImportQueueItem(
+    DataImportQueueItem dataImportQueueItem
+  );
 
   /**
    * Deletes {@link DataImportQueueItem} from database
@@ -51,8 +60,4 @@ public interface DataImportQueueItemDao {
    * @return future with true if succeeded
    */
   Future<Void> deleteDataImportQueueItem(String id);
-
-
-
 }
-

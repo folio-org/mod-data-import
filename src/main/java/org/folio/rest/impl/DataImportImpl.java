@@ -505,11 +505,13 @@ public class DataImportImpl implements DataImport {
                           if (inStream2.failed()) {
                             asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream2.cause())));
                           } else if (inStream2.succeeded()) {
-                            marcRawSplitter.splitFile(startJobReqDto.getKey(), inStream2.result(), 250).onComplete(
+                            marcRawSplitter.splitFile(startJobReqDto.getKey(), inStream2.result(), 1000).onComplete(
                               splitResult -> {
                                 if (splitResult.failed()) {
                                   asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(splitResult.cause())));
                                 } else if (splitResult.succeeded()) {
+                                  Map<Integer, SplitPart> resultMap = splitResult.result();
+                                  LOGGER.debug("postDataImportStartJob:: split result {}", resultMap.size());
                                   asyncResultHandler.handle(Future.succeededFuture(Response.status(204).build()));
                                 }
                               }

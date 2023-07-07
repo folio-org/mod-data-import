@@ -16,7 +16,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class MarcRawSplitterImpl implements MarcRawSplitter {
@@ -52,6 +54,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                 ++numRecords;
               }
           } while (numberOfBytes >= 0);
+
           blockingFuture.complete(numRecords);
         } catch (Exception ex) {
           blockingFuture.fail(ex);
@@ -77,14 +80,15 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
 
   }
 
-  public Future<List<SplitPart>> splitFile(String key, InputStream inStream, int numRecordsPerFile) {
-    Promise<List<SplitPart>> partsPromise = Promise.promise();
+  public Future<Map<Integer, SplitPart>> splitFile(String key, InputStream inStream, int numRecordsPerFile) {
+    Promise<Map<Integer, SplitPart>> partsPromise = Promise.promise();
 
     vertx.executeBlocking(
-      (Promise<List<SplitPart>> blockingFuture) -> {
+      (Promise<Map<Integer, SplitPart>> blockingFuture) -> {
 
         RemoteStorageByteWriter partFileWriter = null;
-        List<SplitPart> partsList = new ArrayList<>();
+
+        Map<Integer, SplitPart> partsList = new HashMap<>();
         SplitPart part = null;
 
         try {
@@ -92,8 +96,8 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
           int numberOfBytes;
           boolean needNewSplitFile = true;
           int partNumber = 0;
-
           int numRecordsInFile = 0;
+          int totalRecordsWritten = 0;
 
           while ( (numberOfBytes = inStream.read(byteBuffer, 0, BUFFER_SIZE) ) > 0)
           {
@@ -109,7 +113,6 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
 
             if (bufferInfo.getNumCompleteRecordsInBuffer() == 0) {
               // No ending records are in buffer -- write complete buffer out to new file
-              //bufferedOutputStream.write(byteBuffer, 0, numberOfBytes);
               partFileWriter.write(byteBuffer, 0, numberOfBytes);
             } else {
               int recordsNeeded = numRecordsPerFile - numRecordsInFile;
@@ -118,11 +121,21 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                 // More Records will need to be added from next chunk
                 partFileWriter.write(byteBuffer, 0, numberOfBytes);
                 numRecordsInFile+= bufferInfo.getNumCompleteRecordsInBuffer();
-                // Need to get more records from the next buffer
               } else  {
                 // recordsNeeded <= num_marc_records_in_buffer
                 partFileWriter.write(byteBuffer, 0, bufferInfo.getRecordTerminatorPosition(recordsNeeded) + 1);
                 partFileWriter.close();
+                part.setNumRecords(numRecordsInFile);
+                part.setBeginRecord(totalRecordsWritten+1);
+                part.setEndRecord(totalRecordsWritten+numRecordsInFile);
+                partsList.put(part.getPartNumber(), part);
+                totalRecordsWritten += numRecordsInFile;
+                LOGGER.info("splitFile:: File number {} successfully processed.", part.getPartNumber());
+                LOGGER.info("splitFile:: number of records in file. {}", part.getNumRecords());
+                LOGGER.info("splitFile:: beginning record.{}", part.getBeginRecord());
+                LOGGER.info("splitFile:: ending record {}", part.getEndRecord());
+                LOGGER.info("splitFile:: s3 key {}", part.getS3Key());
+
 
                 int fullRecordsToWrite = bufferInfo.getNumCompleteRecordsInBuffer() - recordsNeeded;
 
@@ -142,6 +155,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                   String outfile = buildPartKey(key, partNumber);
 
                   partFileWriter = minioStorageService.writer(outfile);
+                  part = new SplitPart(partNumber, key);
                   partFileWriter.write(byteBuffer, bufferPosition, numberOfBytes - bufferPosition);
                   numRecordsInFile = fullRecordsToWrite;
                   needNewSplitFile = false;
@@ -159,14 +173,13 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
           try {
             inStream.close();
             partFileWriter.close();
-            //bufferedOutputStream.close();
           } catch (IOException e) {
             blockingFuture.fail(e);
           }
         }
       },
       (
-        AsyncResult<List<SplitPart>> asyncResult) -> {
+        AsyncResult<Map<Integer, SplitPart>> asyncResult) -> {
         if (asyncResult.failed()) {
           partsPromise.fail(asyncResult.cause());
         } else {

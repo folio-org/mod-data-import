@@ -23,8 +23,12 @@ public class BufferInfo {
 
     bufferSize = numberOfBytes;
     numCompleteRecordsInBuffer = RecordTerminatorPositions.size();
-    int lastRecordEndPosition = RecordTerminatorPositions.get(RecordTerminatorPositions.size() - 1);
-    partialRecordPosition = lastRecordEndPosition + 1;
+    if (numCompleteRecordsInBuffer > 0) {
+      int lastRecordEndPosition = RecordTerminatorPositions.get(RecordTerminatorPositions.size() - 1);
+      partialRecordPosition = lastRecordEndPosition + 1;
+    } else {
+      partialRecordPosition = 0;
+    }
 
     partialRecordInBuffer = partialRecordPosition < numberOfBytes;
     if (!partialRecordInBuffer) {

@@ -6,8 +6,8 @@ public class SplitPart {
     this.partNumber = partNumber;
   }
 
-  public void setS3Key(String s3Key) {
-    this.s3Key = s3Key;
+  public void setS3Key(String Key) {
+    this.key = Key;
   }
 
   public void setBeginRecord(int beginRecord) {
@@ -27,7 +27,7 @@ public class SplitPart {
   }
 
   public String getS3Key() {
-    return s3Key;
+    return key;
   }
 
   public int getBeginRecord() {
@@ -44,7 +44,7 @@ public class SplitPart {
 
   private int partNumber;
 
-  private String s3Key;
+  private String key;
 
   private int beginRecord;
 
@@ -53,5 +53,7 @@ public class SplitPart {
   private int numRecords;
 
   public SplitPart(int partNumber, String key) {
+    this.partNumber = partNumber;
+    this.key = key;
   }
 }

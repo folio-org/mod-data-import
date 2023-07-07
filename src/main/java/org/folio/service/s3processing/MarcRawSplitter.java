@@ -5,10 +5,11 @@ import io.vertx.core.Future;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 
 public interface MarcRawSplitter {
 
   Future<Integer> countRecordsInFile(InputStream inStream) throws IOException;
 
-  Future<List<SplitPart>> splitFile(String key, InputStream inStream, int numRecordsPerFile);
+  Future<Map<Integer, SplitPart>> splitFile(String key, InputStream inStream, int numRecordsPerFile);
 }

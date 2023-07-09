@@ -4,6 +4,7 @@ import java.util.List;
 
 public class BufferInfo {
 
+  private static final int NOT_FOUND = -1;
   private List<Integer> RecordTerminatorPositions;
   private int numCompleteRecordsInBuffer;
   private boolean partialRecordInBuffer;
@@ -16,25 +17,23 @@ public class BufferInfo {
     RecordTerminatorPositions = new ArrayList<>();
 
     for (int i = 0; i < numberOfBytes; i++) {
-      if (byteBuffer[i] == (byte) recordTerminatorCharacter) {
+      if (byteBuffer[i] == recordTerminatorCharacter) {
         RecordTerminatorPositions.add(i);
       }
     }
-
+    partialRecordPosition = NOT_FOUND;
     bufferSize = numberOfBytes;
     numCompleteRecordsInBuffer = RecordTerminatorPositions.size();
     if (numCompleteRecordsInBuffer > 0) {
-      int lastRecordEndPosition = RecordTerminatorPositions.get(RecordTerminatorPositions.size() - 1);
-      partialRecordPosition = lastRecordEndPosition + 1;
+      int lastRecordEndPosition = getRecordTerminatorPosition(numCompleteRecordsInBuffer);
+      if (lastRecordEndPosition < (numberOfBytes - 1)) {
+        partialRecordPosition = lastRecordEndPosition + 1;
+      }
     } else {
       partialRecordPosition = 0;
     }
 
-    partialRecordInBuffer = partialRecordPosition < numberOfBytes;
-    if (!partialRecordInBuffer) {
-      partialRecordPosition = -1;
-    }
-
+    partialRecordInBuffer = partialRecordPosition != NOT_FOUND;
   }
 
   public int getNumCompleteRecordsInBuffer() {
@@ -55,6 +54,10 @@ public class BufferInfo {
 
   public int getRecordTerminatorPosition(int recordNumber) {
     return RecordTerminatorPositions.get(recordNumber - 1);
+  }
+
+  public int getRecordStartPosition(int recordNumber) {
+    return RecordTerminatorPositions.get(recordNumber - 2) + 1;
   }
 }
 

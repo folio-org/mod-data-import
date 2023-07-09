@@ -50,7 +50,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
           do {
             numberOfBytes = inStream.read(byteBuffer, offset, BUFFER_SIZE);
             for (int i =0; i < numberOfBytes ; i++)
-              if (byteBuffer[i] == (byte) RECORD_TERMINATOR) {
+              if (byteBuffer[i] == RECORD_TERMINATOR) {
                 ++numRecords;
               }
           } while (numberOfBytes >= 0);
@@ -87,12 +87,12 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
       (Promise<Map<Integer, SplitPart>> blockingFuture) -> {
 
         RemoteStorageByteWriter partFileWriter = null;
-
         Map<Integer, SplitPart> partsList = new HashMap<>();
         SplitPart part = null;
 
         try {
           byte[] byteBuffer = new byte[BUFFER_SIZE];
+
           int numberOfBytes;
           boolean needNewSplitFile = true;
           int partNumber = 0;
@@ -107,7 +107,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
               ++partNumber;
               String partKey = buildPartKey(key, partNumber);
               partFileWriter = minioStorageService.writer(partKey);
-              part = new SplitPart(partNumber, key);
+              part = new SplitPart(partNumber, partKey);
               needNewSplitFile = false;
             }
 
@@ -125,39 +125,45 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                 // recordsNeeded <= num_marc_records_in_buffer
                 partFileWriter.write(byteBuffer, 0, bufferInfo.getRecordTerminatorPosition(recordsNeeded) + 1);
                 partFileWriter.close();
+
+                numRecordsInFile += recordsNeeded;
                 part.setNumRecords(numRecordsInFile);
                 part.setBeginRecord(totalRecordsWritten+1);
                 part.setEndRecord(totalRecordsWritten+numRecordsInFile);
                 partsList.put(part.getPartNumber(), part);
+
                 totalRecordsWritten += numRecordsInFile;
-                LOGGER.info("splitFile:: File number {} successfully processed.", part.getPartNumber());
-                LOGGER.info("splitFile:: number of records in file. {}", part.getNumRecords());
-                LOGGER.info("splitFile:: beginning record.{}", part.getBeginRecord());
-                LOGGER.info("splitFile:: ending record {}", part.getEndRecord());
-                LOGGER.info("splitFile:: s3 key {}", part.getS3Key());
 
+                LOGGER.info("splitFile:: File number {} - number of records {}, beginning record {}, ending record {}, key {}.",
+                  part.getPartNumber(),
+                  part.getNumRecords(),
+                  part.getBeginRecord(),
+                  part.getEndRecord(),
+                  part.getS3Key());
 
-                int fullRecordsToWrite = bufferInfo.getNumCompleteRecordsInBuffer() - recordsNeeded;
-
-                int bufferPosition = 0;
-                if (fullRecordsToWrite > 0) {
-                  bufferPosition = bufferInfo.getRecordTerminatorPosition(recordsNeeded) + 1;
-                } else {
-                  bufferPosition = bufferInfo.getPartialRecordPosition();
-                }
+                needNewSplitFile = true;
                 numRecordsInFile = 0;
+
+                // Prepping for the next file
+                int fullRecordsInBuffer = bufferInfo.getNumCompleteRecordsInBuffer() - recordsNeeded;
+                int bufferPosition = bufferInfo.getRecordTerminatorPosition(recordsNeeded) + 1;
 
                 // Determine what is left in the buffer
                 // it could be part of a record or multiple records + part of a record
                 // Any Partial record(s) in buffer need to go into the next file
-                if ((bufferPosition < numberOfBytes)&&(bufferPosition != -1)) {
+                LOGGER.info("fullRecordsInBuffer {}", fullRecordsInBuffer);
+                LOGGER.info("bufferPosition {}", bufferPosition);
+                LOGGER.info("numberOfBytes {}", numberOfBytes);
+                LOGGER.info("numRecordsInFile {}", numRecordsInFile);
+                if (bufferPosition < numberOfBytes) {
                   ++partNumber;
                   String outfile = buildPartKey(key, partNumber);
 
                   partFileWriter = minioStorageService.writer(outfile);
-                  part = new SplitPart(partNumber, key);
+                  part = new SplitPart(partNumber, outfile);
                   partFileWriter.write(byteBuffer, bufferPosition, numberOfBytes - bufferPosition);
-                  numRecordsInFile = fullRecordsToWrite;
+                  // assumes we are writing all remaining records in the buffer to the next file
+                  numRecordsInFile = fullRecordsInBuffer;
                   needNewSplitFile = false;
                 }
               }
@@ -191,7 +197,6 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
   }
 
   private static String buildPartKey(String key, int partNumber) {
-    // 1K.mrc part number = 1 - returns 1K_1.mrc
     String[] keyNameParts = key.split("\\.");
 
     if (keyNameParts.length > 1) {
@@ -200,7 +205,6 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
         keyNameParts[keyNameParts.length - 2] ,
         partNumber
       );
-
       keyNameParts[keyNameParts.length - 2] = partUpdate;
       return String.join(".", keyNameParts);
     }

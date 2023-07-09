@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class MarcRawSplitterImpl implements MarcRawSplitter {
@@ -90,6 +91,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
         Map<Integer, SplitPart> partsList = new HashMap<>();
         SplitPart part = null;
 
+        long begin = System.nanoTime();
         try {
           byte[] byteBuffer = new byte[BUFFER_SIZE];
 
@@ -151,13 +153,13 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                 // Determine what is left in the buffer
                 // it could be part of a record or multiple records + part of a record
                 // Any Partial record(s) in buffer need to go into the next file
-                LOGGER.info("fullRecordsInBuffer {}, bufferPosition {}, numberOfBytes {}, numRecordsInFile {}", 
+                LOGGER.info("fullRecordsInBuffer {}, bufferPosition {}, numberOfBytes {}, numRecordsInFile {}",
                   fullRecordsInBuffer,
                   bufferPosition,
                   numberOfBytes,
                   numRecordsInFile
                   );
-                  
+
                 if (bufferPosition < numberOfBytes) {
                   ++partNumber;
                   String outfile = buildPartKey(key, partNumber);
@@ -173,6 +175,10 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
             }
 
           }
+          long end = System.nanoTime();
+          long time = end-begin;
+          LOGGER.info("Time to split key {} into {} parts nanoseconds = {} seconds = {}", key, partNumber, time, TimeUnit.SECONDS.convert(time, TimeUnit.NANOSECONDS));
+
           blockingFuture.complete(partsList);
         } catch (FileNotFoundException e) {
           blockingFuture.fail(e);

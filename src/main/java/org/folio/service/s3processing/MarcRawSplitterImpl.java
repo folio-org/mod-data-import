@@ -151,10 +151,13 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                 // Determine what is left in the buffer
                 // it could be part of a record or multiple records + part of a record
                 // Any Partial record(s) in buffer need to go into the next file
-                LOGGER.info("fullRecordsInBuffer {}", fullRecordsInBuffer);
-                LOGGER.info("bufferPosition {}", bufferPosition);
-                LOGGER.info("numberOfBytes {}", numberOfBytes);
-                LOGGER.info("numRecordsInFile {}", numRecordsInFile);
+                LOGGER.info("fullRecordsInBuffer {}, bufferPosition {}, numberOfBytes {}, numRecordsInFile {}", 
+                  fullRecordsInBuffer,
+                  bufferPosition,
+                  numberOfBytes,
+                  numRecordsInFile
+                  );
+                  
                 if (bufferPosition < numberOfBytes) {
                   ++partNumber;
                   String outfile = buildPartKey(key, partNumber);

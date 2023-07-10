@@ -30,6 +30,7 @@ import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
@@ -63,7 +64,7 @@ public class DataImportImpl implements DataImport {
   @Autowired
   private MinioStorageService minioStorageService;
   
-  @Autowired
+  @Value("${splitFileProcess:false}")
   private boolean splitFileProcess;
 
   private final FileProcessor fileProcessor;

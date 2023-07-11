@@ -20,6 +20,7 @@ import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
+import org.folio.rest.jaxrs.model.SplitStatus;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
@@ -478,8 +479,10 @@ public class DataImportImpl implements DataImport {
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      Promise<Boolean> splitconfigpromise = Promise.promise();
-      splitconfigpromise.complete(this.splitFileProcess);
+      Promise<SplitStatus> splitconfigpromise = Promise.promise();
+      SplitStatus response = new SplitStatus();
+      response.setSplitStatus(this.splitFileProcess);
+      splitconfigpromise.complete(response);
       splitconfigpromise.future()
       .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
       .map(Response.class::cast)

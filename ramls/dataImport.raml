@@ -32,7 +32,7 @@ types:
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
   dataImportInitConfig: !include raml-storage/schemas/common/dataImportInitConfig.json
   fileUploadInfo: !include fileUploadInfo.json
-
+  splitStatus: !include raml-storage/schemas/dto/splitStatus.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -317,7 +317,8 @@ resourceTypes:
         200:
           body:
             application/json:
-              type: boolean
+              type: splitStatus
+    
         400:
           description: "Bad request"
           body:

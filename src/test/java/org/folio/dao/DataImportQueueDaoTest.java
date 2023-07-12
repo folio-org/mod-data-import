@@ -15,22 +15,18 @@ import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
-import java.sql.ResultSet;
-import java.util.Arrays;
+import io.vertx.sqlclient.impl.ArrayTuple;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.helpers.LocalRowDesc;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.joda.time.DateTime;
 import org.junit.Before;
@@ -63,7 +59,7 @@ public class DataImportQueueDaoTest {
   }
 
   @Test
-  public void shouldGetQueueItem(TestContext context) {
+  public void shouldGetAllQueueItems(TestContext context) {
     // given
     doAnswer((InvocationOnMock invocation) -> {
         Promise<RowSet<Row>> promise = invocation.getArgument(1);
@@ -166,6 +162,80 @@ public class DataImportQueueDaoTest {
         async.complete();
       })
       .onSuccess(er -> context.fail("Provided ID should not exist."));
+  }
+
+  @Test
+  public void shouldGetWaitingQueueItems(TestContext context) {
+    // given
+    doAnswer((InvocationOnMock invocation) -> {
+        Promise<RowSet<Row>> promise = invocation.getArgument(2);
+        promise.complete(new LocalRowSet(3));
+        ArrayTuple tuple = invocation.getArgument(1);
+        assertThat(tuple.size(), is(1));
+        assertThat(tuple.getBoolean(0), is(false));
+        return null;
+      })
+      .when(postgresClient)
+      .select(
+        anyString(),
+        any(Tuple.class),
+        ArgumentMatchers.<Promise<RowSet<Row>>>any()
+      );
+
+    // when
+    queueItemDaoImpl
+      .getAllWaitingQueueItems()
+      // then
+      .onComplete(
+        context.asyncAssertSuccess(x -> {
+          verify(postgresClient, times(1))
+            .select(
+              startsWith(
+                "SELECT * FROM data_import_global.queue_items WHERE processing = "
+              ),
+              any(Tuple.class),
+              ArgumentMatchers.<Promise<RowSet<Row>>>any()
+            );
+          verifyNoMoreInteractions(postgresClient);
+        })
+      );
+  }
+
+  @Test
+  public void shouldGetInProgressQueueItems(TestContext context) {
+    // given
+    doAnswer((InvocationOnMock invocation) -> {
+        Promise<RowSet<Row>> promise = invocation.getArgument(2);
+        promise.complete(new LocalRowSet(3));
+        ArrayTuple tuple = invocation.getArgument(1);
+        assertThat(tuple.size(), is(1));
+        assertThat(tuple.getBoolean(0), is(true));
+        return null;
+      })
+      .when(postgresClient)
+      .select(
+        anyString(),
+        any(Tuple.class),
+        ArgumentMatchers.<Promise<RowSet<Row>>>any()
+      );
+
+    // when
+    queueItemDaoImpl
+      .getAllInProgressQueueItems()
+      // then
+      .onComplete(
+        context.asyncAssertSuccess(x -> {
+          verify(postgresClient, times(1))
+            .select(
+              startsWith(
+                "SELECT * FROM data_import_global.queue_items WHERE processing = "
+              ),
+              any(Tuple.class),
+              ArgumentMatchers.<Promise<RowSet<Row>>>any()
+            );
+          verifyNoMoreInteractions(postgresClient);
+        })
+      );
   }
 
   @Test

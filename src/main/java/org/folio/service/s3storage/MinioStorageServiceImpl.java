@@ -135,15 +135,9 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     return inStreamPromise.future();
   }
 
-  public RemoteStorageByteWriter writer(String path) {
+  public S3StorageWriter writer(String key) {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
-    return new RemoteStorageByteWriter(path, DEFAULT_CHAR_BUFFER_SIZE, client);
-  }
-
-
-  public String write(String path, InputStream is) {
-    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
-    return client.write(path, is);
+    return new S3StorageWriter(key, DEFAULT_CHAR_BUFFER_SIZE, client);
   }
 
   private static String buildKey(String tenantId, String fileName) {

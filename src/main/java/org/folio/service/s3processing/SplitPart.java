@@ -2,14 +2,6 @@ package org.folio.service.s3processing;
 
 public class SplitPart {
 
-  public void setPartNumber(int partNumber) {
-    this.partNumber = partNumber;
-  }
-
-  public void setS3Key(String Key) {
-    this.key = Key;
-  }
-
   public void setBeginRecord(int beginRecord) {
     this.beginRecord = beginRecord;
   }
@@ -26,7 +18,7 @@ public class SplitPart {
     return partNumber;
   }
 
-  public String getS3Key() {
+  public String getKey() {
     return key;
   }
 

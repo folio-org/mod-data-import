@@ -1,15 +1,17 @@
 package org.folio.service.s3storage;
 
-import java.io.*;
-import java.nio.file.Files;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
 
-public class RemoteStorageByteWriter {
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+
+public class S3StorageWriter implements StorageWriter {
 
     private final File tmp;
     private final String path;
@@ -17,7 +19,7 @@ public class RemoteStorageByteWriter {
     private final BufferedOutputStream bufferedOutputStream;
     private final FolioS3Client s3Client;
 
-    public RemoteStorageByteWriter(String path, int size, FolioS3Client s3Client) {
+    public S3StorageWriter(String path, int size, FolioS3Client s3Client) {
       try {
         this.s3Client = s3Client;
         this.path = path;

@@ -7,22 +7,19 @@ import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.service.s3storage.MinioStorageService;
-import org.folio.service.s3storage.RemoteStorageByteWriter;
+import org.folio.service.s3storage.S3StorageWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Service
-public class MarcRawSplitterImpl implements MarcRawSplitter {
+public class MarcRawSplitterServiceImpl implements MarcRawSplitterService {
 
   private static final int BUFFER_SIZE = 8192;
 
@@ -31,12 +28,21 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
   private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
-  private MinioStorageService minioStorageService;
+  private static MinioStorageService minioStorageService;
 
   @Autowired
   private Vertx vertx;
 
-  public Future<Integer> countRecordsInFile(InputStream inStream) throws IOException {
+
+  public MarcRawSplitterServiceImpl(
+    Vertx vertx,
+    MinioStorageService minioStorageService
+  ) {
+    this.vertx = vertx;
+    this.minioStorageService = minioStorageService;
+  }
+
+  public Future<Integer> countRecordsInFile(InputStream inStream) {
 
     Promise<Integer> integerPromise = Promise.promise();
 
@@ -45,12 +51,12 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
         try {
           byte[] byteBuffer = new byte[BUFFER_SIZE];
           int numberOfBytes;
-          int numRecords=0;
+          int numRecords = 0;
 
           int offset = 0;
           do {
             numberOfBytes = inStream.read(byteBuffer, offset, BUFFER_SIZE);
-            for (int i =0; i < numberOfBytes ; i++)
+            for (int i = 0; i < numberOfBytes; i++)
               if (byteBuffer[i] == RECORD_TERMINATOR) {
                 ++numRecords;
               }
@@ -59,8 +65,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
           blockingFuture.complete(numRecords);
         } catch (Exception ex) {
           blockingFuture.fail(ex);
-        }
-        finally {
+        } finally {
           try {
             inStream.close();
           } catch (IOException e) {
@@ -87,7 +92,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
     vertx.executeBlocking(
       (Promise<Map<Integer, SplitPart>> blockingFuture) -> {
 
-        RemoteStorageByteWriter partFileWriter = null;
+        S3StorageWriter partFileWriter = null;
         Map<Integer, SplitPart> partsList = new HashMap<>();
         SplitPart part = null;
 
@@ -101,8 +106,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
           int numRecordsInFile = 0;
           int totalRecordsWritten = 0;
 
-          while ( (numberOfBytes = inStream.read(byteBuffer, 0, BUFFER_SIZE) ) > 0)
-          {
+          while ((numberOfBytes = inStream.read(byteBuffer, 0, BUFFER_SIZE)) > 0) {
             BufferInfo bufferInfo = new BufferInfo(byteBuffer, numberOfBytes, RECORD_TERMINATOR);
 
             if (needNewSplitFile) {
@@ -122,16 +126,16 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                 // Write all records from buffer including any partial records
                 // More Records will need to be added from next chunk
                 partFileWriter.write(byteBuffer, 0, numberOfBytes);
-                numRecordsInFile+= bufferInfo.getNumCompleteRecordsInBuffer();
-              } else  {
+                numRecordsInFile += bufferInfo.getNumCompleteRecordsInBuffer();
+              } else {
                 // recordsNeeded <= num_marc_records_in_buffer
                 partFileWriter.write(byteBuffer, 0, bufferInfo.getRecordTerminatorPosition(recordsNeeded) + 1);
                 partFileWriter.close();
 
                 numRecordsInFile += recordsNeeded;
                 part.setNumRecords(numRecordsInFile);
-                part.setBeginRecord(totalRecordsWritten+1);
-                part.setEndRecord(totalRecordsWritten+numRecordsInFile);
+                part.setBeginRecord(totalRecordsWritten + 1);
+                part.setEndRecord(totalRecordsWritten + numRecordsInFile);
                 partsList.put(part.getPartNumber(), part);
 
                 totalRecordsWritten += numRecordsInFile;
@@ -141,7 +145,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                   part.getNumRecords(),
                   part.getBeginRecord(),
                   part.getEndRecord(),
-                  part.getS3Key());
+                  part.getKey());
 
                 needNewSplitFile = true;
                 numRecordsInFile = 0;
@@ -158,7 +162,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
                   bufferPosition,
                   numberOfBytes,
                   numRecordsInFile
-                  );
+                );
 
                 if (bufferPosition < numberOfBytes) {
                   ++partNumber;
@@ -176,9 +180,8 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
 
           }
           long end = System.nanoTime();
-          long time = end-begin;
+          long time = end - begin;
           LOGGER.info("Time to split key {} into {} parts nanoseconds = {} seconds = {}", key, partNumber, time, TimeUnit.SECONDS.convert(time, TimeUnit.NANOSECONDS));
-
           blockingFuture.complete(partsList);
         } catch (FileNotFoundException e) {
           blockingFuture.fail(e);
@@ -211,7 +214,7 @@ public class MarcRawSplitterImpl implements MarcRawSplitter {
     if (keyNameParts.length > 1) {
       String partUpdate = String.format(
         "%s_%s",
-        keyNameParts[keyNameParts.length - 2] ,
+        keyNameParts[keyNameParts.length - 2],
         partNumber
       );
       keyNameParts[keyNameParts.length - 2] = partUpdate;

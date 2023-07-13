@@ -51,6 +51,7 @@ public interface MinioStorageService {
 
   /**
    * Opens a file on S3, returns an input stream to read from the remote file
+   * The calling method is responsible for closing the stream
    *
    * @param key - the key to access the file on S3 storage
    * @return InputStream - a new input stream with file content
@@ -59,7 +60,12 @@ public interface MinioStorageService {
     String key
   );
 
-    RemoteStorageByteWriter writer(String path);
+  /**
+   * Returns a writer used to write a file to S3
+   *
+   * @param key - the key to access the file on S3 storage
+   * @return RemoteStorageByteWriter
+   */
+    S3StorageWriter writer(String key);
 
-    String write(String path, InputStream is);
 }

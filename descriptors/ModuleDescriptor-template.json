@@ -422,7 +422,9 @@
       { "name": "AWS_BUCKET", "value": "example-bucket" },
       { "name": "AWS_ACCESS_KEY_ID", "value": "AKIAIOSFODNN7EXAMPLE" },
       { "name": "AWS_SECRET_ACCESS_KEY", "value": "wJalrXUtnFEMI/K7MDENG/EXAMPLEKEY" },
-      { "name": "AWS_SDK", "value": "false" }
+      { "name": "AWS_SDK", "value": "false" },
+      { "name": "S3_FORCEPATHSTYLE", "value": "false" },
+      { "name": "RECORDS_PER_SPLIT_FILE", "value": "1000" }
     ]
   }
 }

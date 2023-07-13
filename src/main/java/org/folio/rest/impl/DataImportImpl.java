@@ -1,48 +1,36 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.FileExtension;
-import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
-import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.resource.DataImport;
-import org.folio.rest.jaxrs.model.StartJobReqDto;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
-import org.folio.service.s3processing.MarcRawSplitter;
+import org.folio.service.s3processing.MarcRawSplitterService;
 import org.folio.service.s3processing.SplitPart;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
@@ -70,11 +58,14 @@ public class DataImportImpl implements DataImport {
   private MinioStorageService minioStorageService;
 
   @Autowired
-  private MarcRawSplitter marcRawSplitter;
+  private MarcRawSplitterService marcRawSplitterService;
 
   private final FileProcessor fileProcessor;
   private Future<UploadDefinition> fileUploadStateFuture;
   private final String tenantId;
+
+  @Value("${RECORDS_PER_SPLIT_FILE:1000}")
+  private int RECORDS_PER_SPLIT_FILE;
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -138,8 +129,8 @@ public class DataImportImpl implements DataImport {
         entity.setId(uploadDefinitionId);
         LOGGER.debug("putDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
         uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef ->
-          // just update UploadDefinition without FileDefinition changes
-          Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
+            // just update UploadDefinition without FileDefinition changes
+            Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
           .map(PutDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -458,7 +449,7 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void getDataImportUploadUrlSubsequent(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
-                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug(
@@ -479,7 +470,7 @@ public class DataImportImpl implements DataImport {
     });
   }
 
-  public void postDataImportStartJob(StartJobReqDto startJobReqDto, Map<String,String> okapiHeaders,Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext){
+  public void postDataImportStartJob(StartJobReqDto startJobReqDto, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug("postDataImportStartJob:: starting import job for s3 key");
@@ -489,43 +480,38 @@ public class DataImportImpl implements DataImport {
             if (inStream.failed()) {
               asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream.cause())));
             } else if (inStream.succeeded()) {
-                LOGGER.debug("postDataImportStartJob:: calling method to count records");
-              try {
-                marcRawSplitter.countRecordsInFile(inStream.result()).onComplete(
-                  recordCount -> {
-                    if (recordCount.failed()) {
-                      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(recordCount.cause())));
-                    } else if (recordCount.succeeded()) {
-                      LOGGER.debug("postDataImportStartJob:: record count = {}", recordCount.result());
+              LOGGER.debug("postDataImportStartJob:: calling method to count records");
+              marcRawSplitterService.countRecordsInFile(inStream.result()).onComplete(
+                recordCount -> {
+                  if (recordCount.failed()) {
+                    asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(recordCount.cause())));
+                  } else if (recordCount.succeeded()) {
+                    LOGGER.debug("postDataImportStartJob:: record count = {}", recordCount.result());
 
-                      LOGGER.debug("postDataImportStartJob:: calling method to split file");
-                      // Read file again - try ad rewind
-                      minioStorageService.readFile(startJobReqDto.getKey()).onComplete(
-                        inStream2 -> {
-                          if (inStream2.failed()) {
-                            asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream2.cause())));
-                          } else if (inStream2.succeeded()) {
-                            marcRawSplitter.splitFile(startJobReqDto.getKey(), inStream2.result(), 1000).onComplete(
-                              splitResult -> {
-                                if (splitResult.failed()) {
-                                  asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(splitResult.cause())));
-                                } else if (splitResult.succeeded()) {
-                                  Map<Integer, SplitPart> resultMap = splitResult.result();
-                                  LOGGER.debug("postDataImportStartJob:: split result {}", resultMap.size());
-                                  asyncResultHandler.handle(Future.succeededFuture(Response.status(204).build()));
-                                }
+                    LOGGER.debug("postDataImportStartJob:: calling method to split file");
+                    // Read file again - try ad rewind
+                    minioStorageService.readFile(startJobReqDto.getKey()).onComplete(
+                      inStream2 -> {
+                        if (inStream2.failed()) {
+                          asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream2.cause())));
+                        } else if (inStream2.succeeded()) {
+                          marcRawSplitterService.splitFile(startJobReqDto.getKey(), inStream2.result(), RECORDS_PER_SPLIT_FILE).onComplete(
+                            splitResult -> {
+                              if (splitResult.failed()) {
+                                asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(splitResult.cause())));
+                              } else if (splitResult.succeeded()) {
+                                Map<Integer, SplitPart> resultMap = splitResult.result();
+                                LOGGER.debug("postDataImportStartJob:: split result {}", resultMap.size());
+                                asyncResultHandler.handle(Future.succeededFuture(Response.status(204).build()));
                               }
-                            );
-                          }
+                            }
+                          );
                         }
-                      );
-                    }
+                      }
+                    );
                   }
-                );
-              } catch (IOException e) {
-                LOGGER.warn("postDataImportStartJob:: Failed to start job", e);
-                asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
-              }
+                }
+              );
             }
           }
         );

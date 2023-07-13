@@ -27,6 +27,9 @@ public class FolioS3ClientFactory {
   @Value("#{ T(Boolean).parseBoolean('${minio.awsSdk}')}")
   private boolean awsSdk;
 
+  @Value("#{ T(Boolean).parseBoolean('${minio.forcePathStyle}')}")
+  private boolean forcePathStyle;
+
   private FolioS3Client folioS3Client;
 
   public FolioS3ClientFactory() {
@@ -50,7 +53,7 @@ public class FolioS3ClientFactory {
         .secretKey(secretKey)
         .bucket(bucket)
         .awsSdk(awsSdk)
-        .forcePathStyle(true)
+        .forcePathStyle(forcePathStyle)
         .region(region)
         .build()
     );

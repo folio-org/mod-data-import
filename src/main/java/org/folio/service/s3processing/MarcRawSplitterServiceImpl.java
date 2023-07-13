@@ -6,12 +6,13 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.exception.FileCannotBeSplitException;
+import org.folio.exception.InvalidMarcFileException;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.s3storage.S3StorageWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -181,11 +182,15 @@ public class MarcRawSplitterServiceImpl implements MarcRawSplitterService {
           }
           long end = System.nanoTime();
           long time = end - begin;
+          if (totalRecordsWritten == 0) {
+            throw new InvalidMarcFileException(String.format("%s is not a valid marc file", key));
+          }
+          if (totalRecordsWritten <= numRecordsPerFile) {
+            throw new FileCannotBeSplitException(String.format("%s is smaller than %d", key, totalRecordsWritten));
+          }
           LOGGER.info("Time to split key {} into {} parts nanoseconds = {} seconds = {}", key, partNumber, time, TimeUnit.SECONDS.convert(time, TimeUnit.NANOSECONDS));
           blockingFuture.complete(partsList);
-        } catch (FileNotFoundException e) {
-          blockingFuture.fail(e);
-        } catch (IOException e) {
+        } catch (Exception e) {
           blockingFuture.fail(e);
         } finally {
           try {

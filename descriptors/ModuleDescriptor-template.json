@@ -16,6 +16,15 @@
       "id": "data-import",
       "version": "3.0",
       "handlers": [
+      	{
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/data-import/splitStatus",
+          "permissionsRequired": [
+            "data-import.splitconfig.get"
+          ]
+        },
         {
           "methods": [
             "POST"
@@ -301,6 +310,11 @@
     }
   ],
   "permissionSets": [
+  	{
+      "permissionName": "data-import.splitconfig.get",
+      "displayName": "Get the status of file splitting configuration",
+      "description": "Post Upload Definition"
+    },
     {
       "permissionName": "data-import.uploaddefinitions.post",
       "displayName": "Data Import - create new upload definition",

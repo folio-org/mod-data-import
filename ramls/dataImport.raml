@@ -10,6 +10,8 @@ documentation:
     content: API for uploading source records and processing them
 
 types:
+  dataImportQueueItem: !include raml-storage/schemas/mod-data-import/dataImportQueueItem.json
+  dataImportQueueItemCollection: !include raml-storage/schemas/mod-data-import/dataImportQueueItemCollection.json
   error: !include raml-storage/raml-util/schemas/error.schema
   errors: !include raml-storage/raml-util/schemas/errors.schema
   fileDefinition: !include raml-storage/schemas/mod-data-import/fileDefinition.json
@@ -31,6 +33,7 @@ types:
   dataImportInitConfig: !include raml-storage/schemas/common/dataImportInitConfig.json
   fileUploadInfo: !include fileUploadInfo.json
   startJobReqDto: !include startJobReqDto.json
+  splitStatus: !include raml-storage/schemas/dto/splitStatus.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -317,16 +320,26 @@ resourceTypes:
           type: startJobReqDto
       responses:
         204:
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
         422:
           description: "Unprocessable Entity"
           body:
             application/json:
               type: errors
+  /splitStatus:
+    get:
+      description: Get the server configuration of file splitting 
+      queryParameters:
+      responses:
+        200:
+          body:
+            application/json:
+              type: splitStatus
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+
         500:
           description: "Internal server error"
           body:

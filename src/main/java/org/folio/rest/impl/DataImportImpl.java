@@ -1,6 +1,11 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -11,7 +16,12 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.FileExtension;
+import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
+import org.folio.rest.jaxrs.model.SplitStatus;
+import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
@@ -56,6 +66,9 @@ public class DataImportImpl implements DataImport {
 
   @Autowired
   private MinioStorageService minioStorageService;
+  
+  @Value("${splitFileProcess:false}")
+  private boolean splitFileProcess;
 
   @Autowired
   private MarcRawSplitterService marcRawSplitterService;
@@ -523,6 +536,23 @@ public class DataImportImpl implements DataImport {
     });
   }
 
+  
+  @Override
+  public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      Promise<SplitStatus> splitconfigpromise = Promise.promise();
+      SplitStatus response = new SplitStatus();
+      response.setSplitStatus(this.splitFileProcess);
+      splitconfigpromise.complete(response);
+      splitconfigpromise.future()
+      .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
+      .map(Response.class::cast)
+      .onComplete(asyncResultHandler); 
+    });
+    
+  }
+
   /**
    * Validate {@link FileExtension} before save or update
    *
@@ -570,4 +600,6 @@ public class DataImportImpl implements DataImport {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
   }
+
+
 }

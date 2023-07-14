@@ -59,6 +59,18 @@
   </dependencyManagement>
 
   <dependencies>
+	<dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>folio-liquibase-util</artifactId>
+      <version>1.6.0</version>
+      <type>jar</type>
+      <exclusions>
+        <exclusion>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>

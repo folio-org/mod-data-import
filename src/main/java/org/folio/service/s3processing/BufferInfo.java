@@ -4,20 +4,20 @@ import java.util.List;
 
 public class BufferInfo {
 
-  private List<Integer> RecordTerminatorPositions;
+  private List<Integer> recordTerminatorPositions;
   private int numCompleteRecordsInBuffer;
 
   public BufferInfo(byte[] byteBuffer, int numberOfBytes, byte recordTerminatorCharacter) {
 
     // Get end record indicators in the buffer
-    RecordTerminatorPositions = new ArrayList<>();
+    recordTerminatorPositions = new ArrayList<>();
 
     for (int i = 0; i < numberOfBytes; i++) {
       if (byteBuffer[i] == recordTerminatorCharacter) {
-        RecordTerminatorPositions.add(i);
+        recordTerminatorPositions.add(i);
       }
     }
-    numCompleteRecordsInBuffer = RecordTerminatorPositions.size();
+    numCompleteRecordsInBuffer = recordTerminatorPositions.size();
   }
 
   public int getNumCompleteRecordsInBuffer() {
@@ -25,7 +25,7 @@ public class BufferInfo {
   }
 
   public int getRecordTerminatorPosition(int recordNumber) {
-    return RecordTerminatorPositions.get(recordNumber - 1);
+    return recordTerminatorPositions.get(recordNumber - 1);
   }
 
 }

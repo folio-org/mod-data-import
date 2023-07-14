@@ -19,8 +19,6 @@ public class MinioStorageServiceImpl implements MinioStorageService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private static final int DEFAULT_CHAR_BUFFER_SIZE = 8192;
-
   private FolioS3ClientFactory folioS3ClientFactory;
 
   private Vertx vertx;

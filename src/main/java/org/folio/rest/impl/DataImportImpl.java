@@ -21,6 +21,7 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.SplitStatus;
+import org.folio.rest.jaxrs.model.StartJobReqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
@@ -66,7 +67,7 @@ public class DataImportImpl implements DataImport {
 
   @Autowired
   private MinioStorageService minioStorageService;
-  
+
   @Value("${splitFileProcess:false}")
   private boolean splitFileProcess;
 
@@ -536,7 +537,7 @@ public class DataImportImpl implements DataImport {
     });
   }
 
-  
+
   @Override
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
@@ -548,9 +549,9 @@ public class DataImportImpl implements DataImport {
       splitconfigpromise.future()
       .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
       .map(Response.class::cast)
-      .onComplete(asyncResultHandler); 
+      .onComplete(asyncResultHandler);
     });
-    
+
   }
 
   /**

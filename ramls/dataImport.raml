@@ -311,19 +311,19 @@ resourceTypes:
               example: "Internal server error"
   /splitStatus:
     get:
-      description: Get the server configuration of file splitting
+      description: Get the server configuration of file splitting 
       queryParameters:
       responses:
         200:
           body:
             application/json:
               type: splitStatus
+    
         400:
           description: "Bad request"
           body:
             text/plain:
               example: "Bad request"
-
         500:
           description: "Internal server error"
           body:

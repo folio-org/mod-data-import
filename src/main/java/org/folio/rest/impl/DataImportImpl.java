@@ -7,10 +7,10 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
@@ -27,7 +27,6 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
-import org.folio.service.s3processing.MarcRawSplitterService;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
@@ -65,19 +64,13 @@ public class DataImportImpl implements DataImport {
 
   @Autowired
   private MinioStorageService minioStorageService;
-
+  
   @Value("${splitFileProcess:false}")
   private boolean splitFileProcess;
-
-  @Autowired
-  private MarcRawSplitterService marcRawSplitterService;
 
   private final FileProcessor fileProcessor;
   private Future<UploadDefinition> fileUploadStateFuture;
   private final String tenantId;
-
-  @Value("${RECORDS_PER_SPLIT_FILE:1000}")
-  private int recordsPerSplitFile;
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -141,8 +134,8 @@ public class DataImportImpl implements DataImport {
         entity.setId(uploadDefinitionId);
         LOGGER.debug("putDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
         uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef ->
-            // just update UploadDefinition without FileDefinition changes
-            Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
+          // just update UploadDefinition without FileDefinition changes
+          Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
           .map(PutDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -461,7 +454,7 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void getDataImportUploadUrlSubsequent(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
-                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug(
@@ -481,7 +474,7 @@ public class DataImportImpl implements DataImport {
       }
     });
   }
-
+  
   @Override
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
@@ -493,11 +486,10 @@ public class DataImportImpl implements DataImport {
       splitconfigpromise.future()
       .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
       .map(Response.class::cast)
-      .onComplete(asyncResultHandler);
+      .onComplete(asyncResultHandler); 
     });
-
+    
   }
-
   /**
    * Validate {@link FileExtension} before save or update
    *

@@ -137,7 +137,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
 
   public S3StorageWriter writer(String key) {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
-    return new S3StorageWriter(key, DEFAULT_CHAR_BUFFER_SIZE, client);
+    return new S3StorageWriter(key, client);
   }
 
   private static String buildKey(String tenantId, String fileName) {

@@ -79,7 +79,7 @@ public class DataImportImpl implements DataImport {
   private final String tenantId;
 
   @Value("${RECORDS_PER_SPLIT_FILE:1000}")
-  private int RECORDS_PER_SPLIT_FILE;
+  private int recordsPerSplitFile;
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -509,7 +509,7 @@ public class DataImportImpl implements DataImport {
                         if (inStream2.failed()) {
                           asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream2.cause())));
                         } else if (inStream2.succeeded()) {
-                          marcRawSplitterService.splitFile(startJobReqDto.getKey(), inStream2.result(), RECORDS_PER_SPLIT_FILE).onComplete(
+                          marcRawSplitterService.splitFile(startJobReqDto.getKey(), inStream2.result(), recordsPerSplitFile).onComplete(
                             splitResult -> {
                               if (splitResult.failed()) {
                                 asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(splitResult.cause())));

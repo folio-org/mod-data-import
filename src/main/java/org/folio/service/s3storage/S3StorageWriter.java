@@ -19,7 +19,7 @@ public class S3StorageWriter implements StorageWriter {
     private final BufferedOutputStream bufferedOutputStream;
     private final FolioS3Client s3Client;
 
-    public S3StorageWriter(String path, int size, FolioS3Client s3Client) {
+    public S3StorageWriter(String path, FolioS3Client s3Client) {
       try {
         this.s3Client = s3Client;
         this.path = path;

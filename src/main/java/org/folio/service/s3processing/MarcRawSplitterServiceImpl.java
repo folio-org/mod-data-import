@@ -29,7 +29,7 @@ public class MarcRawSplitterServiceImpl implements MarcRawSplitterService {
   private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
-  private static MinioStorageService minioStorageService;
+  private MinioStorageService minioStorageService;
 
   @Autowired
   private Vertx vertx;

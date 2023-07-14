@@ -32,7 +32,6 @@ types:
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
   dataImportInitConfig: !include raml-storage/schemas/common/dataImportInitConfig.json
   fileUploadInfo: !include fileUploadInfo.json
-  startJobReqDto: !include startJobReqDto.json
   splitStatus: !include raml-storage/schemas/dto/splitStatus.json
 
 traits:
@@ -310,24 +309,9 @@ resourceTypes:
           body:
             text/plain:
               example: "Internal server error"
-  /startJob:
-    post:
-      displayName: Starts Data Import Processing for a job
-      description: Starts the processing for the uploaded file
-      is: [validate]
-      body:
-        application/json:
-          type: startJobReqDto
-      responses:
-        204:
-        422:
-          description: "Unprocessable Entity"
-          body:
-            application/json:
-              type: errors
   /splitStatus:
     get:
-      description: Get the server configuration of file splitting 
+      description: Get the server configuration of file splitting
       queryParameters:
       responses:
         200:

@@ -21,7 +21,6 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.SplitStatus;
-import org.folio.rest.jaxrs.model.StartJobReqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
@@ -29,7 +28,6 @@ import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
 import org.folio.service.s3processing.MarcRawSplitterService;
-import org.folio.service.s3processing.SplitPart;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
@@ -483,60 +481,6 @@ public class DataImportImpl implements DataImport {
       }
     });
   }
-
-  public void postDataImportStartJob(StartJobReqDto startJobReqDto, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        LOGGER.debug("postDataImportStartJob:: starting import job for s3 key");
-        LOGGER.debug("postDataImportStartJob:: calling method to read file from S3");
-        minioStorageService.readFile(startJobReqDto.getKey()).onComplete(
-          inStream -> {
-            if (inStream.failed()) {
-              asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream.cause())));
-            } else if (inStream.succeeded()) {
-              LOGGER.debug("postDataImportStartJob:: calling method to count records");
-              marcRawSplitterService.countRecordsInFile(inStream.result()).onComplete(
-                recordCount -> {
-                  if (recordCount.failed()) {
-                    asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(recordCount.cause())));
-                  } else if (recordCount.succeeded()) {
-                    LOGGER.debug("postDataImportStartJob:: record count = {}", recordCount.result());
-
-                    LOGGER.debug("postDataImportStartJob:: calling method to split file");
-                    // Read file again - try ad rewind
-                    minioStorageService.readFile(startJobReqDto.getKey()).onComplete(
-                      inStream2 -> {
-                        if (inStream2.failed()) {
-                          asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(inStream2.cause())));
-                        } else if (inStream2.succeeded()) {
-                          marcRawSplitterService.splitFile(startJobReqDto.getKey(), inStream2.result(), recordsPerSplitFile).onComplete(
-                            splitResult -> {
-                              if (splitResult.failed()) {
-                                asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(splitResult.cause())));
-                              } else if (splitResult.succeeded()) {
-                                Map<Integer, SplitPart> resultMap = splitResult.result();
-                                LOGGER.debug("postDataImportStartJob:: split result {}", resultMap.size());
-                                asyncResultHandler.handle(Future.succeededFuture(Response.status(204).build()));
-                              }
-                            }
-                          );
-                        }
-                      }
-                    );
-                  }
-                }
-              );
-            }
-          }
-        );
-
-      } catch (Exception e) {
-        LOGGER.warn("postDataImportStartJob:: Failed to start job", e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
-      }
-    });
-  }
-
 
   @Override
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,

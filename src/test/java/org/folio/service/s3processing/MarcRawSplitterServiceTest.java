@@ -32,7 +32,11 @@ public class MarcRawSplitterServiceTest {
 
   private static final String VALID_MARC_SOURCE_PATH = "src/test/resources/100.mrc";
   private static final String INVALID_MARC_SOURCE_PATH = "src/test/resources/invalidMarcFile.mrc";
+
+  private static final String VALID_MARC_SOURCE_PATH_10 = "src/test/resources/10.mrc";
   private static final String VALID_MARC_KEY = "100.mrc";
+
+  private static final String VALID_MARC_KEY_10 = "10.mrc";
   private static final String INVALID_MARC_KEY = "invalidMarcFile.mrc";
 
   private static final int VALID_MARC_RECORD_COUNT = 100;
@@ -154,6 +158,27 @@ public class MarcRawSplitterServiceTest {
       context.fail("shouldSplitValidMarcFile should not fail")
     );
   }
+
+  @Test
+  public void shouldSplitValidMarcFileNoteExact(TestContext context) throws IOException {
+
+    Async async = context.async();
+    // given
+    BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(VALID_MARC_SOURCE_PATH_10));
+
+    // Stub out the writer methods
+    Mockito
+      .doNothing().when(partFileWriter).write(any(byte[].class), anyInt(), anyInt() );
+
+    Mockito
+      .doNothing().when(partFileWriter).close();
+
+    // when
+    Future<Map<Integer, SplitPart>> result = marcRawSplitterService.splitFile(VALID_MARC_SOURCE_PATH_10, inputStream, 3);
+
+
+  }
+
 
   @Test
   public void shouldThrowExceptionIfInvalidMarcFile(TestContext context) throws IOException {

@@ -88,7 +88,7 @@ public class MarcRawSplitterServiceImpl implements MarcRawSplitterService {
   }
 
 
-  public Future<Map<Integer, SplitPart>> splitFile(String key, InputStream inStream, int numRecordsPerFile)  {
+  public Future<Map<Integer, SplitPart>> splitFile(String key, InputStream inStream, int numRecordsPerFile) {
 
     Promise<Map<Integer, SplitPart>> partsPromise = Promise.promise();
 
@@ -100,71 +100,70 @@ public class MarcRawSplitterServiceImpl implements MarcRawSplitterService {
 
         long begin = System.nanoTime();
 
-        byte[] byteBuffer = new byte[BUFFER_SIZE];
-
-        ChunkPlanner planner = new ChunkPlanner(key, inStream, numRecordsPerFile);
-        ChunkPlan plan = null;
         try {
+          byte[] byteBuffer = new byte[BUFFER_SIZE];
+          inStream.mark(0);
+          ChunkPlanner planner = new ChunkPlanner(key, inStream, numRecordsPerFile);
+          ChunkPlan plan = null;
           plan = planner.planChunking();
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-        Map<Integer, ChunkPlanFile> chunkPlanFiles = plan.getChunkPlanFiles();
+          Map<Integer, ChunkPlanFile> chunkPlanFiles = plan.getChunkPlanFiles();
 
-        // Need to reset input stream since -- we are re-reading the file after the output has been planned
-        try {
+          // Need to reset input stream since -- we are re-reading the file after the output has been planned
+          // Issue stream cannot be reset here
           inStream.reset();
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
 
-        int bytesNeededForFile = 0;
+          for (int partNumber = 1; partNumber <= chunkPlanFiles.size(); partNumber++) {
 
-        for (int partNumber = 1; partNumber <= chunkPlanFiles.size(); partNumber++) {
+            ChunkPlanFile plannedFile = chunkPlanFiles.get(partNumber);
 
-          ChunkPlanFile plannedFile = chunkPlanFiles.get(partNumber);
+            // Create file
+            String partKey = buildPartKey(key, partNumber);
+            partFileWriter = minioStorageService.writer(partKey);
 
-          // Create file
-          String partKey = buildPartKey(key, partNumber);
-          partFileWriter = minioStorageService.writer(partKey);
+            // Read input Stream and write output stream - until all bytes needed for current split file have been written
+            int bytesWritten = 0;
+            int bytesToWrite = plannedFile.getEndPosition() - plannedFile.getStartPosition() + 1;
 
-          // Read input Stream and write output stream - until all bytes needed for current split file have been written
-          int bytesWritten = 0;
-          int bytesToWrite = plannedFile.getEndPosition() - plannedFile.getStartPosition() + 1;
-
-          while (bytesToWrite < bytesWritten) {
-            int readBufferSize = (bytesToWrite < BUFFER_SIZE) ? bytesToWrite : BUFFER_SIZE;
-            int numBytesInBuffer = 0;
-            try {
+            while (bytesWritten < bytesToWrite) {
+              int readBufferSize = (bytesToWrite < BUFFER_SIZE) ? bytesToWrite : BUFFER_SIZE;
+              int numBytesInBuffer = 0;
               numBytesInBuffer = inStream.read(byteBuffer, 0, readBufferSize);
-            } catch (IOException e) {
-              throw new RuntimeException(e);
+
+              partFileWriter.write(byteBuffer, 0, numBytesInBuffer);
+              bytesWritten += numBytesInBuffer;
             }
-            partFileWriter.write(byteBuffer, 0, numBytesInBuffer);
-            bytesWritten += numBytesInBuffer;
+            // Close file
+            partFileWriter.close();
+
+            part = new SplitPart(partNumber, partKey);
+            part.setNumRecords(plannedFile.getNumberOfRecords());
+            part.setBeginRecord(plannedFile.getStartRecord());
+            part.setEndRecord(plannedFile.getEndPosition());
+            partsList.put(part.getPartNumber(), part);
+
+            LOGGER.info("splitFile:: File number {} - number of records {}, beginning record {}, ending record {}, key {}.",
+              part.getPartNumber(),
+              part.getNumRecords(),
+              part.getBeginRecord(),
+              part.getEndRecord(),
+              part.getKey());
           }
-          // Close file
-          partFileWriter.close();
 
-          part = new SplitPart(partNumber, partKey);
-          part.setNumRecords(plannedFile.getNumberOfRecords());
-          part.setBeginRecord(plannedFile.getStartRecord());
-          part.setEndRecord(plannedFile.getEndPosition());
-          partsList.put(part.getPartNumber(), part);
+          long end = System.nanoTime();
+          long time = end - begin;
 
-          LOGGER.info("splitFile:: File number {} - number of records {}, beginning record {}, ending record {}, key {}.",
-            part.getPartNumber(),
-            part.getNumRecords(),
-            part.getBeginRecord(),
-            part.getEndRecord(),
-            part.getKey());
+          LOGGER.info("Time to split key {} into {} parts nanoseconds = {} seconds = {}", key, partsList.size(), time, TimeUnit.SECONDS.convert(time, TimeUnit.NANOSECONDS));
+          blockingFuture.complete(partsList);
+        } catch (Exception e) {
+          blockingFuture.fail(e);
+        } finally {
+          try {
+            inStream.close();
+            partFileWriter.close();
+          } catch (IOException e) {
+            blockingFuture.fail(e);
+          }
         }
-
-        long end = System.nanoTime();
-        long time = end - begin;
-
-        LOGGER.info("Time to split key {} into {} parts nanoseconds = {} seconds = {}", key, partsList.size(), time, TimeUnit.SECONDS.convert(time, TimeUnit.NANOSECONDS));
-        blockingFuture.complete(partsList);
       },
       (
         AsyncResult<Map<Integer, SplitPart>> asyncResult) -> {
@@ -177,6 +176,82 @@ public class MarcRawSplitterServiceImpl implements MarcRawSplitterService {
     );
     return partsPromise.future();
   }
+
+  public Map<Integer, SplitPart> splitFileImmediate(String key, InputStream inStream, int numRecordsPerFile) throws IOException {
+
+    S3StorageWriter partFileWriter = null;
+    Map<Integer, SplitPart> partsList = new HashMap<>();
+    SplitPart part = null;
+
+    long begin = System.nanoTime();
+
+    try {
+      byte[] byteBuffer = new byte[BUFFER_SIZE];
+      inStream.mark(0);
+      ChunkPlanner planner = new ChunkPlanner(key, inStream, numRecordsPerFile);
+      ChunkPlan plan = null;
+      plan = planner.planChunking();
+      Map<Integer, ChunkPlanFile> chunkPlanFiles = plan.getChunkPlanFiles();
+
+      // Need to reset input stream since -- we are re-reading the file after the output has been planned
+
+      inStream.reset();
+
+      for (int partNumber = 1; partNumber <= chunkPlanFiles.size(); partNumber++) {
+
+        ChunkPlanFile plannedFile = chunkPlanFiles.get(partNumber);
+
+        // Create file
+        String partKey = buildPartKey(key, partNumber);
+        partFileWriter = minioStorageService.writer(partKey);
+
+        // Read input Stream and write output stream - until all bytes needed for current split file have been written
+        int bytesWritten = 0;
+        int bytesToWrite = plannedFile.getEndPosition() - plannedFile.getStartPosition() + 1;
+
+        while (bytesWritten < bytesToWrite) {
+          int readBufferSize = (bytesToWrite < BUFFER_SIZE) ? bytesToWrite : BUFFER_SIZE;
+          int numBytesInBuffer = 0;
+          numBytesInBuffer = inStream.read(byteBuffer, 0, readBufferSize);
+
+          partFileWriter.write(byteBuffer, 0, numBytesInBuffer);
+          bytesWritten += numBytesInBuffer;
+        }
+        // Close file
+        partFileWriter.close();
+
+        part = new SplitPart(partNumber, partKey);
+        part.setNumRecords(plannedFile.getNumberOfRecords());
+        part.setBeginRecord(plannedFile.getStartRecord());
+        part.setEndRecord(plannedFile.getEndPosition());
+        partsList.put(part.getPartNumber(), part);
+
+        LOGGER.info("splitFile:: File number {} - number of records {}, beginning record {}, ending record {}, key {}.",
+          part.getPartNumber(),
+          part.getNumRecords(),
+          part.getBeginRecord(),
+          part.getEndRecord(),
+          part.getKey());
+      }
+
+      long end = System.nanoTime();
+      long time = end - begin;
+
+      LOGGER.info("Time to split key {} into {} parts nanoseconds = {} seconds = {}", key, partsList.size(), time, TimeUnit.SECONDS.convert(time, TimeUnit.NANOSECONDS));
+      return partsList;
+    } catch (Exception e) {
+      throw (e);
+    } finally {
+      try {
+        inStream.close();
+        partFileWriter.close();
+      } catch (IOException e) {
+        throw (e);
+      }
+    }
+
+  }
+
 
   private static String buildPartKey(String key, int partNumber) {
     String[] keyNameParts = key.split("\\.");

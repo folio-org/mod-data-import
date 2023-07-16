@@ -11,4 +11,6 @@ public interface MarcRawSplitterService {
   Future<Integer> countRecordsInFile(InputStream inStream);
 
   Future<Map<Integer, SplitPart>> splitFile(String key, InputStream inStream, int numRecordsPerFile);
+
+  Map<Integer, SplitPart> splitFileImmediate(String key, InputStream inStream, int numRecordsPerFile) throws IOException;
 }

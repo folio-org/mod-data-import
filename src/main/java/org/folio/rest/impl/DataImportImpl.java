@@ -1,32 +1,25 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
+import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.FileExtension;
-import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
-import org.folio.rest.jaxrs.model.SplitStatus;
-import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
+import org.folio.service.processing.split.FileSplitWriter;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
@@ -35,6 +28,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -64,7 +58,7 @@ public class DataImportImpl implements DataImport {
 
   @Autowired
   private MinioStorageService minioStorageService;
-  
+
   @Value("${splitFileProcess:false}")
   private boolean splitFileProcess;
 
@@ -474,7 +468,7 @@ public class DataImportImpl implements DataImport {
       }
     });
   }
-  
+
   @Override
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
@@ -486,9 +480,9 @@ public class DataImportImpl implements DataImport {
       splitconfigpromise.future()
       .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
       .map(Response.class::cast)
-      .onComplete(asyncResultHandler); 
+      .onComplete(asyncResultHandler);
     });
-    
+
   }
   /**
    * Validate {@link FileExtension} before save or update
@@ -536,6 +530,35 @@ public class DataImportImpl implements DataImport {
   private static String getJson(String strEncoded) {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
+  }
+
+  @Override
+  public void getDataImportTestFileSplit(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      var fileSystem = vertxContext.owner().fileSystem();
+      fileSystem
+        .open("c:\\temp\\500 records.mrc", new OpenOptions().setRead(true))
+        .onComplete(ar -> {
+          if (ar.succeeded()) {
+            AsyncFile file = ar.result();
+            try {
+              FileSplitWriter writer = new FileSplitWriter(vertxContext, "c:\\temp\\chunks", (byte) 0x1d, 501);
+              file.pipeTo(writer).onComplete(ar1 -> {
+                if (ar.succeeded()) {
+                  asyncResultHandler.handle(Future.succeededFuture("Dummy").map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
+                } else {
+                  asyncResultHandler.handle(Future.failedFuture(ar1.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+                }
+                System.out.println("File Split completed");
+              });
+            } catch (IOException e) {
+              asyncResultHandler.handle(Future.failedFuture(e));
+            }
+          } else {
+            asyncResultHandler.handle(Future.failedFuture(ar.cause()));
+          }
+        });
+    });
   }
 
 

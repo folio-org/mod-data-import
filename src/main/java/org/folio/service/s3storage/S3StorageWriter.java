@@ -11,7 +11,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 
-public class S3StorageWriter implements StorageWriter {
+public class S3StorageWriter {
 
     private final File tmp;
     private final String path;

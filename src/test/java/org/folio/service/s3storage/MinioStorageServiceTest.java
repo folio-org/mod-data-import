@@ -12,6 +12,7 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.apache.commons.io.IOUtils;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
@@ -22,10 +23,17 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+
 @RunWith(VertxUnitRunner.class)
 public class MinioStorageServiceTest {
 
   private final Vertx vertx = Vertx.vertx();
+
+  private static final String S3_FILE_KEY = "test-key";
 
   @Mock
   private FolioS3ClientFactory folioS3ClientFactory;
@@ -213,4 +221,66 @@ public class MinioStorageServiceTest {
       async.complete();
     });
   }
+
+  @Test
+  public void testReadFileSuccessful(TestContext context) {
+    Async async = context.async();
+
+    String testData = "Testing";
+    InputStream sampleDataStream = new ByteArrayInputStream(testData.getBytes(StandardCharsets.UTF_8));
+
+    Mockito
+      .doReturn(sampleDataStream)
+      .when(folioS3Client).read(S3_FILE_KEY);
+
+    Future<InputStream> result = minioStorageService.readFile(
+      S3_FILE_KEY);
+
+    result.onFailure(_err ->
+      context.fail("testReadFileSuccessful should not fail")
+    );
+    result.onSuccess(inStream -> {
+      Mockito
+        .verify(folioS3Client, times(1))
+        .read(S3_FILE_KEY);
+      Mockito.verifyNoMoreInteractions(folioS3Client);
+
+      try {
+        assertEquals(testData, IOUtils.toString(inStream, StandardCharsets.UTF_8));
+      } catch (IOException e) {
+        context.fail("testReadFileSuccessful should not fail");
+      }
+      async.complete();
+    });
+  }
+
+  @Test
+  public void testReadFileFailure(TestContext context) {
+    Async async = context.async();
+
+    S3ClientException exception = new S3ClientException("test exception");
+
+    Mockito
+      .doThrow(exception)
+      .when(folioS3Client).read(S3_FILE_KEY);
+
+    Future<InputStream> result = minioStorageService.readFile(
+      S3_FILE_KEY);
+
+    result.onSuccess(inStream -> {
+      context.fail("testReadFileFailure should fail");
+    });
+
+    result.onFailure(_err -> {
+      Mockito
+        .verify(folioS3Client, times(1))
+        .read(S3_FILE_KEY);
+      Mockito.verifyNoMoreInteractions(folioS3Client);
+      assertSame("Fails with correct exception", exception, _err);
+      async.complete();
+    });
+
+
+  }
+
 }

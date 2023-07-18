@@ -133,11 +133,31 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     return inStreamPromise.future();
   }
 
-  public S3StorageWriter writer(String key) {
-    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
-    return new S3StorageWriter(key, client);
-  }
+  public Future<String> write(String path, InputStream is) {
 
+    Promise<String> stringPromise = Promise.promise();
+    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
+
+    vertx.executeBlocking(
+      (Promise<String> blockingFuture) -> {
+        try {
+          LOGGER.info("Writing remote file for path {}", path);
+          String filePath = client.write(path, is);
+          blockingFuture.complete(filePath);
+        } catch (S3ClientException e) {
+          blockingFuture.fail(e);
+        }
+      },
+      (AsyncResult<String> asyncResult) -> {
+        if (asyncResult.failed()) {
+          stringPromise.fail(asyncResult.cause());
+        } else {
+          stringPromise.complete(asyncResult.result());
+        }
+      }
+    );
+    return stringPromise.future();
+  }
   private static String buildKey(String tenantId, String fileName) {
     return String.format(
       "%s/%d-%s",

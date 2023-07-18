@@ -60,12 +60,14 @@ public interface MinioStorageService {
     String key
   );
 
+
   /**
-   * Returns a writer used to write a file to S3
+   * Writes bytes to a file on S3-compatible storage
    *
-   * @param key - the key to access the file on S3 storage
-   * @return RemoteStorageByteWriter
+   * @param path the path to the file on S3-compatible storage
+   * @param is   the byte array with the bytes to write
+   * @return the path to the file
    */
-    S3StorageWriter writer(String key);
+  Future<String> write(String path, InputStream is);
 
 }

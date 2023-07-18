@@ -6,19 +6,15 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.service.s3storage.MinioStorageService;
-import org.folio.service.s3storage.S3StorageWriter;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-
-import static org.mockito.ArgumentMatchers.anyString;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcRawSplitterServiceTest {
@@ -42,18 +38,12 @@ public class MarcRawSplitterServiceTest {
   @Mock
   private MinioStorageService minioStorageService;
 
-  @Mock
-  private S3StorageWriter partFileWriter;
-
   @Before
   public void setUp(TestContext context)  {
     MockitoAnnotations.openMocks(this);
 
     this.marcRawSplitterService = new MarcRawSplitterServiceImpl(vertx, minioStorageService);
 
-    Mockito
-      .doReturn(partFileWriter)
-      .when(minioStorageService).writer(anyString());
   }
 
 

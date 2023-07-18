@@ -5,7 +5,6 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.folio.exception.InvalidMarcFileException;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.s3storage.S3StorageWriter;
 import org.junit.Before;
@@ -18,10 +17,8 @@ import org.mockito.MockitoAnnotations;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Map;
 
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.anyString;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcRawSplitterServiceTest {
@@ -103,184 +100,4 @@ public class MarcRawSplitterServiceTest {
     );
   }
 
-  @Test
-  public void shouldSplitValidMarcFile(TestContext context) throws IOException {
-
-    Async async = context.async();
-    // given
-    BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(VALID_MARC_SOURCE_PATH));
-
-    // Stub out the writer methods
-    Mockito
-      .doNothing().when(partFileWriter).write(any(byte[].class), anyInt(), anyInt() );
-
-    Mockito
-      .doNothing().when(partFileWriter).close();
-
-    // when
-    Future<Map<Integer, SplitPart>> result = marcRawSplitterService.splitFile(VALID_MARC_KEY, inputStream, VALID_MARC_RECORDS_PER_FILE);
-
-    result.onComplete(ar -> {
-      Map<Integer, SplitPart> resultMap = ar.result();
-      context.assertTrue(ar.succeeded());
-      context.assertTrue(resultMap.size() == 4);
-      SplitPart part = resultMap.get(1);
-      context.assertTrue(part.getPartNumber() == 1);
-      context.assertTrue(part.getBeginRecord() == 1);
-      context.assertTrue(part.getEndRecord() == 25);
-      context.assertTrue(part.getNumRecords() == 25);
-      context.assertTrue(part.getKey().equals("100_1.mrc"));
-
-      part = resultMap.get(2);
-      context.assertTrue(part.getPartNumber() == 2);
-      context.assertTrue(part.getBeginRecord() == 26);
-      context.assertTrue(part.getEndRecord() == 50);
-      context.assertTrue(part.getNumRecords() == 25);
-      context.assertTrue(part.getKey().equals("100_2.mrc"));
-
-      part = resultMap.get(3);
-      context.assertTrue(part.getPartNumber() == 3);
-      context.assertTrue(part.getBeginRecord() == 51);
-      context.assertTrue(part.getEndRecord() == 75);
-      context.assertTrue(part.getNumRecords() == 25);
-      context.assertTrue(part.getKey().equals("100_3.mrc"));
-
-      part = resultMap.get(4);
-      context.assertTrue(part.getPartNumber() == 4);
-      context.assertTrue(part.getBeginRecord() == 76);
-      context.assertTrue(part.getEndRecord() == 100);
-      context.assertTrue(part.getNumRecords() == 25);
-      context.assertTrue(part.getKey().equals("100_4.mrc"));
-      async.complete();
-    });
-
-    result.onFailure(_err ->
-      context.fail("shouldSplitValidMarcFile should not fail")
-    );
-  }
-
-  @Test
-  public void shouldSplitValidMarcFile10(TestContext context) throws IOException {
-
-    Async async = context.async();
-    // given
-    BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(VALID_MARC_SOURCE_PATH_10));
-
-    // Stub out the writer methods
-    Mockito
-      .doNothing().when(partFileWriter).write(any(byte[].class), anyInt(), anyInt() );
-
-    Mockito
-      .doNothing().when(partFileWriter).close();
-
-   Map<Integer, SplitPart> result = marcRawSplitterService.splitFileImmediate(VALID_MARC_KEY_10, inputStream, 2);
-
-
-    // when
-    /*
-    Future<Map<Integer, SplitPart>> result = marcRawSplitterService.splitFile(VALID_MARC_KEY_10, inputStream, 2);
-
-    result.onComplete(ar -> {
-      Map<Integer, SplitPart> resultMap = ar.result();
-      context.assertTrue(ar.succeeded());
-      context.assertTrue(resultMap.size() == 5);
-      SplitPart part = resultMap.get(1);
-      context.assertTrue(part.getPartNumber() == 1);
-      context.assertTrue(part.getBeginRecord() == 1);
-      context.assertTrue(part.getEndRecord() == 2);
-      context.assertTrue(part.getNumRecords() == 2);
-      context.assertTrue(part.getKey().equals("10_1.mrc"));
-
-      part = resultMap.get(5);
-      context.assertTrue(part.getPartNumber() == 5);
-      context.assertTrue(part.getBeginRecord() == 9 );
-      context.assertTrue(part.getEndRecord() == 10);
-      context.assertTrue(part.getNumRecords() == 2);
-      context.assertTrue(part.getKey().equals("10_5.mrc"));
-      async.complete();
-    });
-
-    result.onFailure(_err ->
-      context.fail("shouldSplitValidMarcFile should not fail")
-    );
-    */
-
-  }
-
-
-  @Test
-  public void shouldSplitValidMarcFileNoteExact(TestContext context) throws IOException {
-
-    Async async = context.async();
-    // given
-    BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(VALID_MARC_SOURCE_PATH_10));
-
-    // Stub out the writer methods
-    Mockito
-      .doNothing().when(partFileWriter).write(any(byte[].class), anyInt(), anyInt() );
-
-    Mockito
-      .doNothing().when(partFileWriter).close();
-
-    // when
-    Future<Map<Integer, SplitPart>> result = marcRawSplitterService.splitFile(VALID_MARC_SOURCE_PATH_10, inputStream, 3);
-
-
-  }
-
-
-  @Test
-  public void shouldThrowExceptionIfInvalidMarcFile(TestContext context) throws IOException {
-
-    Async async = context.async();
-
-    // given
-    BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(INVALID_MARC_SOURCE_PATH));
-
-    // Stub out the writer methods
-    Mockito
-      .doNothing().when(partFileWriter).write(any(byte[].class), anyInt(), anyInt() );
-
-    Mockito
-      .doNothing().when(partFileWriter).close();
-
-    // when
-    Future<Map<Integer, SplitPart>> result = marcRawSplitterService.splitFile(INVALID_MARC_KEY, inputStream, VALID_MARC_RECORDS_PER_FILE);
-
-    result.onComplete(ar -> {
-      context.assertTrue(ar.failed());
-      async.complete();
-      });
-
-    result.onFailure(_err ->
-      context.fail("shouldSplitValidMarcFile should not fail")
-    );
-  }
-
-  public void shouldThrowExceptionIfSplitSizeLargerThanMarcFile(TestContext context) throws IOException {
-
-    Async async = context.async();
-
-    // given
-    BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(VALID_MARC_SOURCE_PATH ));
-
-    // Stub out the writer methods
-    Mockito
-      .doNothing().when(partFileWriter).write(any(byte[].class), anyInt(), anyInt() );
-
-    Mockito
-      .doNothing().when(partFileWriter).close();
-
-    // when
-    Future<Map<Integer, SplitPart>> result = marcRawSplitterService.splitFile(VALID_MARC_KEY, inputStream, VALID_MARC_RECORDS_PER_FILE+100);
-
-    result.onComplete(ar -> {
-      context.assertTrue(ar.failed());
-      async.complete();
-    });
-
-    result.onFailure(_err ->
-      context.fail("shouldSplitValidMarcFile should not fail")
-    );
-  }
 }

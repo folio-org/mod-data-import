@@ -1,6 +1,12 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonObject;
@@ -13,7 +19,12 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.FileExtension;
+import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
+import org.folio.rest.jaxrs.model.SplitStatus;
+import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
@@ -128,8 +139,8 @@ public class DataImportImpl implements DataImport {
         entity.setId(uploadDefinitionId);
         LOGGER.debug("putDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
         uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef ->
-          // just update UploadDefinition without FileDefinition changes
-          Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
+            // just update UploadDefinition without FileDefinition changes
+            Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
           .map(PutDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -448,7 +459,7 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void getDataImportUploadUrlSubsequent(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
-                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug(
@@ -471,19 +482,20 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) {
+                                       Context vertxContext) {
     vertxContext.runOnContext(v -> {
       Promise<SplitStatus> splitconfigpromise = Promise.promise();
       SplitStatus response = new SplitStatus();
       response.setSplitStatus(this.splitFileProcess);
       splitconfigpromise.complete(response);
       splitconfigpromise.future()
-      .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
-      .map(Response.class::cast)
-      .onComplete(asyncResultHandler);
+        .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
+        .map(Response.class::cast)
+        .onComplete(asyncResultHandler);
     });
 
   }
+
   /**
    * Validate {@link FileExtension} before save or update
    *
@@ -542,24 +554,35 @@ public class DataImportImpl implements DataImport {
           if (ar.succeeded()) {
             AsyncFile file = ar.result();
             try {
-              FileSplitWriter writer = new FileSplitWriter(vertxContext, "c:\\temp\\chunks", (byte) 0x1d, 501);
+              Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
+              chunkUploadingCompositeFuturePromise.future().onComplete(chunkUploadingAsyncResult -> handleFileUploading(chunkUploadingAsyncResult, asyncResultHandler));
+
+              FileSplitWriter writer = new FileSplitWriter(vertxContext, chunkUploadingCompositeFuturePromise, "c:\\temp\\chunks", (byte) 0x1d, 7);
               file.pipeTo(writer).onComplete(ar1 -> {
-                if (ar.succeeded()) {
-                  asyncResultHandler.handle(Future.succeededFuture("Dummy").map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
-                } else {
-                  asyncResultHandler.handle(Future.failedFuture(ar1.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-                }
-                System.out.println("File Split completed");
+                System.out.println("File Split completed at this stage");
               });
             } catch (IOException e) {
-              asyncResultHandler.handle(Future.failedFuture(e));
+              asyncResultHandler.handle(Future.failedFuture(e).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
             }
           } else {
-            asyncResultHandler.handle(Future.failedFuture(ar.cause()));
+            asyncResultHandler.handle(Future.failedFuture(ar.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
           }
         });
     });
   }
 
-
+  private void handleFileUploading(AsyncResult<CompositeFuture> chunkUploadingAsyncResult, Handler<AsyncResult<Response>> asyncResultHandler) {
+    if (chunkUploadingAsyncResult.succeeded()) {
+      chunkUploadingAsyncResult.result().onComplete(ar -> {
+        if (ar.succeeded()) {
+          asyncResultHandler.handle(Future.succeededFuture("Dummy").map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
+          System.out.println("Chunk Files uploading completed at this stage");
+        } else {
+          asyncResultHandler.handle(Future.failedFuture(ar.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+        }
+      });
+    } else {
+      asyncResultHandler.handle(Future.failedFuture(chunkUploadingAsyncResult.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+    }
+  }
 }

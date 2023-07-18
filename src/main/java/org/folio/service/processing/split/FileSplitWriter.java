@@ -1,7 +1,12 @@
 package org.folio.service.processing.split;
 
 import io.vertx.codegen.annotations.Nullable;
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
 
@@ -9,6 +14,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 
@@ -17,6 +24,10 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private final String chunkFolder;
   private final byte recordTerminator;
   private final int maxRecordsPerChunk;
+
+  private final Promise<CompositeFuture> chunkUploadingCompositeFuturePromise;
+
+  private final List<Future> chunkProcessingFutures;
   private Handler<Throwable> exceptionHandler;
   private Handler<Void> drainHandler;
 
@@ -27,11 +38,15 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   private int chunkIndex = 0;
 
-  public FileSplitWriter(Context vertxContext, String chunkFolder, byte recordTerminator, int maxRecordsPerChunk) throws IOException {
+  public FileSplitWriter(Context vertxContext, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise, String chunkFolder, byte recordTerminator, int maxRecordsPerChunk) throws IOException {
     this.vertxContext = vertxContext;
+    this.chunkUploadingCompositeFuturePromise = chunkUploadingCompositeFuturePromise;
     this.chunkFolder = chunkFolder;
     this.recordTerminator = recordTerminator;
     this.maxRecordsPerChunk = maxRecordsPerChunk;
+
+    chunkProcessingFutures = new ArrayList<>();
+
     init();
   }
 
@@ -64,6 +79,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           if (exceptionHandler != null) {
             exceptionHandler.handle(e);
           }
+          chunkUploadingCompositeFuturePromise.fail(e);
           return;
         }
       }
@@ -96,6 +112,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         if (exceptionHandler != null) {
           exceptionHandler.handle(e);
         }
+        chunkUploadingCompositeFuturePromise.fail(e);
       }
     }
 
@@ -109,8 +126,10 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         uploadChunkAsync(currentChunkPath);
       }
       handler.handle(Future.succeededFuture());
+      chunkUploadingCompositeFuturePromise.complete(CompositeFuture.all(chunkProcessingFutures));
     } catch (IOException e) {
       handler.handle(Future.failedFuture(e));
+      chunkUploadingCompositeFuturePromise.fail(e);
     }
   }
 
@@ -135,6 +154,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     var path = Path.of(chunkFolder, fileName);
     currentChunkPath = path.toString();
     currentChunkStream = Files.newOutputStream(path, CREATE);
+    System.out.println(Thread.currentThread().getName() + ": nextChunk: " + currentChunkPath);
   }
 
   private void init() throws IOException {
@@ -142,17 +162,20 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   }
 
   private void uploadChunkAsync(String chunkPath) {
+    Promise<String> chunkPromise = Promise.promise();
+    chunkProcessingFutures.add(chunkPromise.future());
     vertxContext.executeBlocking(event -> {
 
       //TODO: implement chunk file uploading to S3 and
-      System.out.println(Thread.currentThread().getName() + " Uploading file:" + chunkPath);
+      System.out.println(Thread.currentThread().getName() + ": Uploading file:" + chunkPath);
       //Simply a file uploading simulation
       try {
-        Thread.sleep(1000);
+        Thread.sleep(2000);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        System.out.println(Thread.currentThread().getName() + " Uploading file: " + chunkPath + " InterruptedException");
+        System.out.println(Thread.currentThread().getName() + ": Uploading file: " + chunkPath + " InterruptedException");
         event.fail(e);
+        chunkPromise.fail(e);
         return;
       }
       //TODO: Once file uploading completed,
@@ -161,10 +184,12 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         Files.delete(Path.of(chunkPath));
       } catch (IOException e) {
         event.fail(e);
+        chunkPromise.fail(e);
         return;
       }
-      System.out.println(Thread.currentThread().getName() + " Uploading file: " + chunkPath + " Completed");
+      System.out.println(Thread.currentThread().getName() + ": Uploading file: " + chunkPath + " Completed");
       event.complete();
+      chunkPromise.complete(chunkPath);
     }, false);
   }
 }

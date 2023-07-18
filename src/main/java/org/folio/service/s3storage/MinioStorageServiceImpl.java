@@ -4,6 +4,10 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+
+import java.util.List;
+import java.util.UUID;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
@@ -103,7 +107,25 @@ public class MinioStorageServiceImpl implements MinioStorageService {
 
     return promise.future();
   }
+  public Future<Boolean> completeMultipartFileUpload(String path,String uploadId,List<String> partEtags ) {
+    Promise<Boolean> promise = Promise.promise();
+    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
+    vertx.executeBlocking(
+        (Promise<String> blockingFuture) -> {
+      try {
+        
+            client.completeMultipartUpload(path, uploadId, partEtags);
+            blockingFuture.complete();
+            promise.complete(true);
+      
+      } catch(Exception e) {
+        blockingFuture.fail(e);
+        promise.complete(false);
+      }
+    });
+    return promise.future();
+  }
   private static String buildKey(String tenantId, String fileName) {
     return String.format(
       "%s/%d-%s",

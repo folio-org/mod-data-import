@@ -1,14 +1,10 @@
 package org.folio.service.processing.split;
 
 import io.vertx.codegen.annotations.Nullable;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
+import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
+import org.folio.service.s3storage.MinioStorageService;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -20,8 +16,14 @@ import java.util.List;
 import static java.nio.file.StandardOpenOption.CREATE;
 
 public class FileSplitWriter implements WriteStream<Buffer> {
+
+  private MinioStorageService minioStorageService;
+
   private final Context vertxContext;
   private final String chunkFolder;
+
+  private final String key;
+
   private final byte recordTerminator;
   private final int maxRecordsPerChunk;
 
@@ -34,14 +36,18 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private OutputStream currentChunkStream;
   private String currentChunkPath;
 
+  private String currentChunkKey;
+
   private int recordCount = 0;
 
   private int chunkIndex = 0;
 
-  public FileSplitWriter(Context vertxContext, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise, String chunkFolder, byte recordTerminator, int maxRecordsPerChunk) throws IOException {
+  public FileSplitWriter(Context vertxContext, MinioStorageService minioStorageService, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise, String chunkFolder, String key, byte recordTerminator, int maxRecordsPerChunk) throws IOException {
     this.vertxContext = vertxContext;
+    this.minioStorageService = minioStorageService;
     this.chunkUploadingCompositeFuturePromise = chunkUploadingCompositeFuturePromise;
     this.chunkFolder = chunkFolder;
+    this.key = key;
     this.recordTerminator = recordTerminator;
     this.maxRecordsPerChunk = maxRecordsPerChunk;
 
@@ -99,7 +105,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         if (b == recordTerminator) {
           if (++recordCount == maxRecordsPerChunk) {
             currentChunkStream.close();
-            uploadChunkAsync(currentChunkPath);
+            uploadChunkAsync(currentChunkPath, currentChunkKey);
             currentChunkStream = null;
             recordCount = 0;
           }
@@ -123,7 +129,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     try {
       if (currentChunkStream != null) {
         currentChunkStream.close();
-        uploadChunkAsync(currentChunkPath);
+        uploadChunkAsync(currentChunkPath, currentChunkKey);
       }
       handler.handle(Future.succeededFuture());
       chunkUploadingCompositeFuturePromise.complete(CompositeFuture.all(chunkProcessingFutures));
@@ -150,9 +156,10 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   }
 
   private void nextChunk() throws IOException {
-    String fileName = "chunkFile." + chunkIndex++ + ".mrc";
+    String fileName = FileSplitUtilities.buildPartKey(key, chunkIndex++);
     var path = Path.of(chunkFolder, fileName);
     currentChunkPath = path.toString();
+    currentChunkKey = fileName;
     currentChunkStream = Files.newOutputStream(path, CREATE);
     System.out.println(Thread.currentThread().getName() + ": nextChunk: " + currentChunkPath);
   }
@@ -161,19 +168,26 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     nextChunk();
   }
 
-  private void uploadChunkAsync(String chunkPath) {
+  private void uploadChunkAsync(String chunkPath, String chunkKey) {
     Promise<String> chunkPromise = Promise.promise();
     chunkProcessingFutures.add(chunkPromise.future());
     vertxContext.executeBlocking(event -> {
 
-      //TODO: implement chunk file uploading to S3 and
-      System.out.println(Thread.currentThread().getName() + ": Uploading file:" + chunkPath);
-      //Simply a file uploading simulation
+      // chunk file uploading to S3
+      System.out.println(Thread.currentThread().getName() + ": Uploading file:" + chunkPath + ": key:" + chunkKey);
+      Path cp = Path.of(chunkPath);
       try {
-        Thread.sleep(2000);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        System.out.println(Thread.currentThread().getName() + ": Uploading file: " + chunkPath + " InterruptedException");
+        minioStorageService.write(chunkKey, Files.newInputStream(cp)).onComplete(s3Path -> {
+          if (s3Path.failed()) {
+            System.out.println(Thread.currentThread().getName() + ": Failed Uploading file: " + chunkPath);
+            chunkPromise.fail(s3Path.cause());
+          } else if (s3Path.succeeded()){
+            System.out.println(Thread.currentThread().getName() + ": Successfully Uploaded file: " + chunkPath);
+          }
+          }
+        );
+      } catch (IOException e) {
+        System.out.println(Thread.currentThread().getName() + ": Uploading file: " + chunkPath + " IOException");
         event.fail(e);
         chunkPromise.fail(e);
         return;
@@ -181,7 +195,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       //TODO: Once file uploading completed,
       // there could be a next async handler to do some DB calls or initiate a next step for chunk processing
       try {
-        Files.delete(Path.of(chunkPath));
+        Files.delete(cp);
       } catch (IOException e) {
         event.fail(e);
         chunkPromise.fail(e);

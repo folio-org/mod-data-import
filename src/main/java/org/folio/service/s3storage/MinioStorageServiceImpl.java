@@ -158,6 +158,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     );
     return stringPromise.future();
   }
+
   private static String buildKey(String tenantId, String fileName) {
     return String.format(
       "%s/%d-%s",

@@ -549,7 +549,7 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(v -> {
       var fileSystem = vertxContext.owner().fileSystem();
       fileSystem
-        .open("c:\\temp\\500 records.mrc", new OpenOptions().setRead(true))
+        .open("/Users/cgodfrey/Desktop/10.mrc", new OpenOptions().setRead(true))
         .onComplete(ar -> {
           if (ar.succeeded()) {
             AsyncFile file = ar.result();
@@ -557,7 +557,7 @@ public class DataImportImpl implements DataImport {
               Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
               chunkUploadingCompositeFuturePromise.future().onComplete(chunkUploadingAsyncResult -> handleFileUploading(chunkUploadingAsyncResult, asyncResultHandler));
 
-              FileSplitWriter writer = new FileSplitWriter(vertxContext, chunkUploadingCompositeFuturePromise, "c:\\temp\\chunks", (byte) 0x1d, 7);
+              FileSplitWriter writer = new FileSplitWriter(vertxContext, minioStorageService, chunkUploadingCompositeFuturePromise, "/Users/cgodfrey/0718/", "10.mrc", (byte) 0x1d, 7);
               file.pipeTo(writer).onComplete(ar1 -> {
                 System.out.println("File Split completed at this stage");
               });

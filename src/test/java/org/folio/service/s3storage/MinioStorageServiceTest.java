@@ -282,4 +282,66 @@ public class MinioStorageServiceTest {
 
   }
 
+  @Test
+  public void testWriteFileSuccessful(TestContext context) {
+    Async async = context.async();
+
+    String testData = "Testing";
+    InputStream sampleDataStream = new ByteArrayInputStream(testData.getBytes(StandardCharsets.UTF_8));
+
+    Mockito
+      .doReturn(S3_FILE_KEY)
+      .when(folioS3Client).write(S3_FILE_KEY, sampleDataStream);
+
+    Future<String> result = minioStorageService.write(
+      S3_FILE_KEY,
+      sampleDataStream);
+
+    result.onFailure(_err ->
+      context.fail("testWriteFileSuccessful should not fail")
+    );
+    result.onSuccess(path -> {
+      Mockito
+        .verify(folioS3Client, times(1))
+        .write(S3_FILE_KEY, sampleDataStream);
+      Mockito.verifyNoMoreInteractions(folioS3Client);
+
+      assertEquals(path, S3_FILE_KEY);
+
+      async.complete();
+    });
+  }
+
+  @Test
+  public void testWriteFileFailure(TestContext context) {
+    Async async = context.async();
+
+    String testData = "Testing";
+    InputStream sampleDataStream = new ByteArrayInputStream(testData.getBytes(StandardCharsets.UTF_8));
+
+    S3ClientException exception = new S3ClientException("test exception");
+
+    Mockito
+      .doThrow(exception)
+      .when(folioS3Client).write(S3_FILE_KEY, sampleDataStream);
+
+    Future<String> result = minioStorageService.write(
+      S3_FILE_KEY,
+      sampleDataStream);
+
+    result.onSuccess(inStream -> {
+      context.fail("testWriteFileFailure should fail");
+    });
+
+    result.onFailure(_err -> {
+      Mockito
+        .verify(folioS3Client, times(1))
+        .write(S3_FILE_KEY, sampleDataStream);
+      Mockito.verifyNoMoreInteractions(folioS3Client);
+      assertSame("Fails with correct exception", exception, _err);
+      async.complete();
+    });
+  }
+
+
 }

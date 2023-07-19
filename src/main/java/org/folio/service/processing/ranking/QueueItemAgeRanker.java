@@ -31,7 +31,7 @@ public class QueueItemAgeRanker implements QueueItemRanker {
   @Override
   public double score(
     DataImportQueueItem queueItem,
-    Map<String, Integer> tenantUsage
+    Map<String, Long> tenantUsage
   ) {
     Instant createdAt = Instant.parse(queueItem.getTimestamp());
     Instant now = Instant.now();

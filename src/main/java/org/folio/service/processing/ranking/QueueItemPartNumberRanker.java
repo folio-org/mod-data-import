@@ -26,7 +26,7 @@ public class QueueItemPartNumberRanker implements QueueItemRanker {
   @Override
   public double score(
     DataImportQueueItem queueItem,
-    Map<String, Integer> tenantUsage
+    Map<String, Long> tenantUsage
   ) {
     return ScoreUtils.calculateUnboundedLogarithmicScore(
       queueItem.getPartNumber(),

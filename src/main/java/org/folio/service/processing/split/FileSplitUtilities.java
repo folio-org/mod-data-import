@@ -2,7 +2,7 @@ package org.folio.service.processing.split;
 
 public class FileSplitUtilities {
 
-  private static final byte MARC_RECORD_TERMINATOR = (byte) 0x1d;
+  public static final byte MARC_RECORD_TERMINATOR = (byte) 0x1d;
 
   public static String buildPartKey(String key, int partNumber) {
     String[] keyNameParts = key.split("\\.");

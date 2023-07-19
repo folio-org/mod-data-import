@@ -18,6 +18,7 @@ import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
 import org.folio.service.processing.split.AsyncInputStream;
+import org.folio.service.processing.split.FileSplitUtilities;
 import org.folio.service.processing.split.FileSplitWriter;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
@@ -60,6 +61,9 @@ public class DataImportImpl implements DataImport {
 
   @Value("${splitFileProcess:false}")
   private boolean splitFileProcess;
+
+  @Value("${RECORDS_PER_SPLIT_FILE:1000}")
+  private int recordsPerSplitFile;
 
   private final FileProcessor fileProcessor;
   private Future<UploadDefinition> fileUploadStateFuture;
@@ -533,9 +537,9 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportTestFileSplit(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getDataImportTestFileSplit(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      minioStorageService.readFile("10.mrc").onComplete(
+      minioStorageService.readFile(key).onComplete(
         inStream -> {
           if (inStream.failed()) {
             asyncResultHandler.handle(Future.failedFuture(inStream.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
@@ -545,7 +549,7 @@ public class DataImportImpl implements DataImport {
               Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
               chunkUploadingCompositeFuturePromise.future().onComplete(chunkUploadingAsyncResult -> handleFileUploading(chunkUploadingAsyncResult, asyncResultHandler));
 
-              FileSplitWriter writer = new FileSplitWriter(vertxContext, minioStorageService, chunkUploadingCompositeFuturePromise, "/Users/cgodfrey/0718/", "10.mrc", (byte) 0x1d, 7);
+              FileSplitWriter writer = new FileSplitWriter(vertxContext, minioStorageService, chunkUploadingCompositeFuturePromise, "/Users/cgodfrey/data-import-local/", key, FileSplitUtilities.MARC_RECORD_TERMINATOR, recordsPerSplitFile);
               asyncInput.pipeTo(writer).onComplete(ar1 -> {
                 System.out.println("File Split completed at this stage");
               });

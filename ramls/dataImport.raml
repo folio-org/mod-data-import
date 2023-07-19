@@ -333,6 +333,9 @@ resourceTypes:
     get:
       description: Test File Split
       queryParameters:
+        key:
+          description: "The key of file on S3 to be split"
+          required: true
       responses:
         200:
           body:

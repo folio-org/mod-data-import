@@ -1,14 +1,6 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.file.AsyncFile;
-import io.vertx.core.file.OpenOptions;
+import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -19,17 +11,13 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.FileExtension;
-import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
-import org.folio.rest.jaxrs.model.SplitStatus;
-import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
+import org.folio.service.processing.split.AsyncInputStream;
 import org.folio.service.processing.split.FileSplitWriter;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
@@ -547,25 +535,25 @@ public class DataImportImpl implements DataImport {
   @Override
   public void getDataImportTestFileSplit(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      var fileSystem = vertxContext.owner().fileSystem();
-      fileSystem
-        .open("/Users/cgodfrey/Desktop/10.mrc", new OpenOptions().setRead(true))
-        .onComplete(ar -> {
-          if (ar.succeeded()) {
-            AsyncFile file = ar.result();
+      minioStorageService.readFile("10.mrc").onComplete(
+        inStream -> {
+          if (inStream.failed()) {
+            asyncResultHandler.handle(Future.failedFuture(inStream.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+          } else if (inStream.succeeded()) {
+            AsyncInputStream asyncInput = new AsyncInputStream(vertxContext.owner(),vertxContext, inStream.result());
             try {
               Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
               chunkUploadingCompositeFuturePromise.future().onComplete(chunkUploadingAsyncResult -> handleFileUploading(chunkUploadingAsyncResult, asyncResultHandler));
 
               FileSplitWriter writer = new FileSplitWriter(vertxContext, minioStorageService, chunkUploadingCompositeFuturePromise, "/Users/cgodfrey/0718/", "10.mrc", (byte) 0x1d, 7);
-              file.pipeTo(writer).onComplete(ar1 -> {
+              asyncInput.pipeTo(writer).onComplete(ar1 -> {
                 System.out.println("File Split completed at this stage");
               });
             } catch (IOException e) {
               asyncResultHandler.handle(Future.failedFuture(e).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
             }
           } else {
-            asyncResultHandler.handle(Future.failedFuture(ar.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+            asyncResultHandler.handle(Future.failedFuture(inStream.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
           }
         });
     });

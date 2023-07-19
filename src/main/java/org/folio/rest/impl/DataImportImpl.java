@@ -544,15 +544,14 @@ public class DataImportImpl implements DataImport {
           if (inStream.failed()) {
             asyncResultHandler.handle(Future.failedFuture(inStream.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
           } else if (inStream.succeeded()) {
-            AsyncInputStream asyncInput = new AsyncInputStream(vertxContext.owner(),vertxContext, inStream.result());
+            AsyncInputStream asyncInput = new AsyncInputStream(vertxContext.owner(), vertxContext, inStream.result());
             try {
               Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
               chunkUploadingCompositeFuturePromise.future().onComplete(chunkUploadingAsyncResult -> handleFileUploading(chunkUploadingAsyncResult, asyncResultHandler));
 
               FileSplitWriter writer = new FileSplitWriter(vertxContext, minioStorageService, chunkUploadingCompositeFuturePromise, "/Users/cgodfrey/data-import-local/", key, FileSplitUtilities.MARC_RECORD_TERMINATOR, recordsPerSplitFile);
-              asyncInput.pipeTo(writer).onComplete(ar1 -> {
-                System.out.println("File Split completed at this stage");
-              });
+              asyncInput.pipeTo(writer).onComplete(ar1 ->
+                LOGGER.debug("File Split completed at this stage"));
             } catch (IOException e) {
               asyncResultHandler.handle(Future.failedFuture(e).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
             }

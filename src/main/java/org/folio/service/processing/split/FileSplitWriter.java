@@ -4,6 +4,8 @@ import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.service.s3storage.MinioStorageService;
 
 import java.io.IOException;
@@ -42,6 +44,9 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   private int chunkIndex = 1;
 
+  private static final Logger LOGGER = LogManager.getLogger();
+
+
   public FileSplitWriter(Context vertxContext, MinioStorageService minioStorageService, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise, String chunkFolder, String key, byte recordTerminator, int maxRecordsPerChunk) throws IOException {
     this.vertxContext = vertxContext;
     this.minioStorageService = minioStorageService;
@@ -78,7 +83,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         try {
           nextChunk();
         } catch (IOException e) {
-          e.printStackTrace();
+          LOGGER.error("Error writing file chunk", e);
           if (handler != null) {
             handler.handle(Future.failedFuture(e));
           }
@@ -94,7 +99,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           currentChunkStream.write(b);
         } else {
           var e = new RuntimeException("Unreachable statement");
-          e.printStackTrace();
+          LOGGER.error("Error writing file chunk", e);
           if (handler != null) {
             handler.handle(Future.failedFuture(e));
           }
@@ -111,7 +116,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           }
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        LOGGER.error("Error writing file chunk", e);
         if (handler != null) {
           handler.handle(Future.failedFuture(e));
         }

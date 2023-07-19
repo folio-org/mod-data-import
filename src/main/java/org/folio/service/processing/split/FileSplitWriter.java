@@ -109,10 +109,12 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         }
         if (b == recordTerminator) {
           if (++recordCount == maxRecordsPerChunk) {
-            currentChunkStream.close();
-            uploadChunkAsync(currentChunkPath, currentChunkKey);
-            currentChunkStream = null;
-            recordCount = 0;
+            if (currentChunkStream != null) {
+              currentChunkStream.close();
+              uploadChunkAsync(currentChunkPath, currentChunkKey);
+              currentChunkStream = null;
+              recordCount = 0;
+            }
           }
         }
       } catch (IOException e) {

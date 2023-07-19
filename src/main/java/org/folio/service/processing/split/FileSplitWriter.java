@@ -40,7 +40,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   private int recordCount = 0;
 
-  private int chunkIndex = 0;
+  private int chunkIndex = 1;
 
   public FileSplitWriter(Context vertxContext, MinioStorageService minioStorageService, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise, String chunkFolder, String key, byte recordTerminator, int maxRecordsPerChunk) throws IOException {
     this.vertxContext = vertxContext;

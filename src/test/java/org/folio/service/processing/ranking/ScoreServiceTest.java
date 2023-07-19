@@ -49,19 +49,19 @@ public class ScoreServiceTest {
 
   @Test
   public void testTenantUsageMap() {
-    assertThat(service.getTenantUsageMap(collection()), is(anEmptyMap()));
+    assertThat(ScoreService.getTenantUsageMap(collection()), is(anEmptyMap()));
     assertThat(
-      service.getTenantUsageMap(collection(ofTenant("A"))),
+      ScoreService.getTenantUsageMap(collection(ofTenant("A"))),
       allOf(is(aMapWithSize(1)), hasEntry("A", 1L))
     );
     assertThat(
-      service.getTenantUsageMap(
+      ScoreService.getTenantUsageMap(
         collection(ofTenant("A"), ofTenant("A"), ofTenant("A"), ofTenant("A"))
       ),
       allOf(is(aMapWithSize(1)), hasEntry("A", 4L))
     );
     assertThat(
-      service.getTenantUsageMap(
+      ScoreService.getTenantUsageMap(
         collection(
           ofTenant("A"),
           ofTenant("B"),

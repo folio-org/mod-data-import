@@ -108,7 +108,7 @@ public class ScoreService {
   /**
    * Creates a map of tenant -> number of chunks in progress
    */
-  public Map<String, Long> getTenantUsageMap(
+  public static Map<String, Long> getTenantUsageMap(
     DataImportQueueItemCollection queueItems
   ) {
     return queueItems

@@ -32,7 +32,12 @@ public class ScoreService {
    */
   public Future<Optional<DataImportQueueItem>> getBestQueueItem() {
     return this.getRankedQueueItems()
-      .map(set -> Optional.ofNullable(set.first()));
+      .map((NavigableSet<DataImportQueueItem> set) -> {
+        if (set.isEmpty()) {
+          return Optional.empty();
+        }
+        return Optional.of(set.first());
+      });
   }
 
   /**
@@ -91,7 +96,7 @@ public class ScoreService {
             )
           );
 
-        return null;
+        return set;
       });
   }
 

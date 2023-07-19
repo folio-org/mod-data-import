@@ -306,7 +306,7 @@ public class MinioStorageServiceTest {
         .write(S3_FILE_KEY, sampleDataStream);
       Mockito.verifyNoMoreInteractions(folioS3Client);
 
-      assertEquals(path, S3_FILE_KEY);
+      assertEquals(S3_FILE_KEY, path);
 
       async.complete();
     });

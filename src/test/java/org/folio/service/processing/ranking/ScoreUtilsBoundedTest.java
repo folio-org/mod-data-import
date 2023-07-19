@@ -59,7 +59,7 @@ public class ScoreUtilsBoundedTest {
   }
 
   @Test
-  public void test() {
+  public void testScoring() {
     for (int i = lowerRange; i <= upperRange; i++) {
       assertThat(
         ScoreUtils.calculateBoundedLogarithmicScore(

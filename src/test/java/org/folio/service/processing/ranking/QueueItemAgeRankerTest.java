@@ -7,6 +7,7 @@ import static org.hamcrest.Matchers.is;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,11 +34,11 @@ public class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
   }
 
   @Test
-  public void test() {
-    assertThat(ageRanker.score(ofAge(0)), is(closeTo(10, EPSILON)));
-    assertThat(ageRanker.score(ofAge(15)), is(closeTo(70, EPSILON)));
-    assertThat(ageRanker.score(ofAge(63)), is(closeTo(100, EPSILON)));
-    assertThat(ageRanker.score(ofAge(64)), is(closeTo(-1, EPSILON)));
-    assertThat(ageRanker.score(ofAge(600)), is(closeTo(-1, EPSILON)));
+  public void testScoring() {
+    assertThat(ageRanker.score(ofAge(0), Map.of()), is(closeTo(10, EPSILON)));
+    assertThat(ageRanker.score(ofAge(15), Map.of()), is(closeTo(70, EPSILON)));
+    assertThat(ageRanker.score(ofAge(63), Map.of()), is(closeTo(100, EPSILON)));
+    assertThat(ageRanker.score(ofAge(64), Map.of()), is(closeTo(-1, EPSILON)));
+    assertThat(ageRanker.score(ofAge(600), Map.of()), is(closeTo(-1, EPSILON)));
   }
 }

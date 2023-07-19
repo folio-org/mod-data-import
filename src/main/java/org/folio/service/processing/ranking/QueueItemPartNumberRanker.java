@@ -1,5 +1,6 @@
 package org.folio.service.processing.ranking;
 
+import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -23,7 +24,10 @@ public class QueueItemPartNumberRanker implements QueueItemRanker {
   private int scoreLastReference;
 
   @Override
-  public double score(DataImportQueueItem queueItem) {
+  public double score(
+    DataImportQueueItem queueItem,
+    Map<String, Integer> tenantUsage
+  ) {
     return ScoreUtils.calculateUnboundedLogarithmicScore(
       queueItem.getPartNumber(),
       scoreFirst,

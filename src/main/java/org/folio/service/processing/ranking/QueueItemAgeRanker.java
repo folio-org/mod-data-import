@@ -1,6 +1,7 @@
 package org.folio.service.processing.ranking;
 
 import java.time.Instant;
+import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -28,7 +29,10 @@ public class QueueItemAgeRanker implements QueueItemRanker {
   private int scoreAgeExtremeValue;
 
   @Override
-  public double score(DataImportQueueItem queueItem) {
+  public double score(
+    DataImportQueueItem queueItem,
+    Map<String, Integer> tenantUsage
+  ) {
     Instant createdAt = Instant.parse(queueItem.getTimestamp());
     Instant now = Instant.now();
 

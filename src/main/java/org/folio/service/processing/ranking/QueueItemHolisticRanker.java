@@ -1,5 +1,6 @@
 package org.folio.service.processing.ranking;
 
+import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -20,11 +21,14 @@ public class QueueItemHolisticRanker implements QueueItemRanker {
   private QueueItemSizeRanker sizeRanker;
 
   @Override
-  public double score(DataImportQueueItem queueItem) {
+  public double score(
+    DataImportQueueItem queueItem,
+    Map<String, Integer> tenantUsage
+  ) {
     return (
-      ageRanker.score(queueItem) +
-      partNumberRanker.score(queueItem) +
-      sizeRanker.score(queueItem)
+      ageRanker.score(queueItem, tenantUsage) +
+      partNumberRanker.score(queueItem, tenantUsage) +
+      sizeRanker.score(queueItem, tenantUsage)
     );
   }
 }

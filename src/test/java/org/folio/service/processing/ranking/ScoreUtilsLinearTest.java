@@ -49,7 +49,7 @@ public class ScoreUtilsLinearTest {
   }
 
   @Test
-  public void test() {
+  public void testScoring() {
     assertThat(
       ScoreUtils.calculateLinearScore(value, LOWER_SCORE, UPPER_SCORE),
       is(closeTo(expected, EPSILON))

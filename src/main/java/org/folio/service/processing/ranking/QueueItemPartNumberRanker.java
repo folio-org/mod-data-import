@@ -29,7 +29,8 @@ public class QueueItemPartNumberRanker implements QueueItemRanker {
     Map<String, Long> tenantUsage
   ) {
     return ScoreUtils.calculateUnboundedLogarithmicScore(
-      queueItem.getPartNumber(),
+      // log calculation expects zero index
+      queueItem.getPartNumber() - 1L,
       scoreFirst,
       scoreLast,
       scoreLastReference

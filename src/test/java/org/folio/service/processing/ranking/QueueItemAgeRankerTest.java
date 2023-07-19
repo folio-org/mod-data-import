@@ -17,15 +17,15 @@ public class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
 
   private static final double EPSILON = 0.0000001;
 
-  QueueItemAgeRanker ageRanker;
+  QueueItemAgeRanker ranker;
 
   public QueueItemAgeRankerTest() {
-    this.ageRanker = new QueueItemAgeRanker();
+    this.ranker = new QueueItemAgeRanker();
 
-    this.setField(ageRanker, "scoreAgeNewest", 10);
-    this.setField(ageRanker, "scoreAgeOldest", 100);
-    this.setField(ageRanker, "scoreAgeExtremeThresholdMinutes", 64);
-    this.setField(ageRanker, "scoreAgeExtremeValue", -1);
+    this.setField(ranker, "scoreAgeNewest", 10);
+    this.setField(ranker, "scoreAgeOldest", 100);
+    this.setField(ranker, "scoreAgeExtremeThresholdMinutes", 64);
+    this.setField(ranker, "scoreAgeExtremeValue", -1);
   }
 
   private DataImportQueueItem ofAge(int age) {
@@ -35,10 +35,10 @@ public class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
 
   @Test
   public void testScoring() {
-    assertThat(ageRanker.score(ofAge(0), Map.of()), is(closeTo(10, EPSILON)));
-    assertThat(ageRanker.score(ofAge(15), Map.of()), is(closeTo(70, EPSILON)));
-    assertThat(ageRanker.score(ofAge(63), Map.of()), is(closeTo(100, EPSILON)));
-    assertThat(ageRanker.score(ofAge(64), Map.of()), is(closeTo(-1, EPSILON)));
-    assertThat(ageRanker.score(ofAge(600), Map.of()), is(closeTo(-1, EPSILON)));
+    assertThat(ranker.score(ofAge(0), Map.of()), is(closeTo(10, EPSILON)));
+    assertThat(ranker.score(ofAge(15), Map.of()), is(closeTo(70, EPSILON)));
+    assertThat(ranker.score(ofAge(63), Map.of()), is(closeTo(100, EPSILON)));
+    assertThat(ranker.score(ofAge(64), Map.of()), is(closeTo(-1, EPSILON)));
+    assertThat(ranker.score(ofAge(600), Map.of()), is(closeTo(-1, EPSILON)));
   }
 }

@@ -35,6 +35,14 @@ public class QueueItemTenantUsageRanker implements QueueItemRanker {
     // effectively no effect.
     Long totalWorkers = tenantUsage.values().stream().reduce(0L, Long::sum);
 
+    // same reasoning as above; if there are no workers in use, then we don't
+    // care about the result of this metric (since all tenants should be
+    // equivalently using 0 workers).  This is needed to prevent an exception
+    // on division
+    if (totalWorkers == 0) {
+      totalWorkers = 1L;
+    }
+
     return ScoreUtils.calculateLinearScore(
       (double) tenantUsage.getOrDefault(queueItem.getTenant(), 0L) /
       totalWorkers,

@@ -6,19 +6,17 @@ import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-@RunWith(VertxUnitRunner.class)
 public class QueueItemHolisticRankerTest extends AbstractQueueItemRankerTest {
 
   @Mock
@@ -57,5 +55,12 @@ public class QueueItemHolisticRankerTest extends AbstractQueueItemRankerTest {
     verify(partNumberRanker, times(1)).score(item, tenantMap);
     verify(sizeRanker, times(1)).score(item, tenantMap);
     verify(tenantUsageRanker, times(1)).score(item, tenantMap);
+
+    verifyNoMoreInteractions(
+      ageRanker,
+      partNumberRanker,
+      sizeRanker,
+      tenantUsageRanker
+    );
   }
 }

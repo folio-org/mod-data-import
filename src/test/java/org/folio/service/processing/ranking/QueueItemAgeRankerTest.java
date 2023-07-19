@@ -4,15 +4,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.is;
 
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
-@RunWith(VertxUnitRunner.class)
 public class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
 
   QueueItemAgeRanker ranker;

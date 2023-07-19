@@ -1,5 +1,9 @@
 package org.folio.service.processing.split;
 
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class FileSplitUtilities {
 
   public static final byte MARC_RECORD_TERMINATOR = (byte) 0x1d;

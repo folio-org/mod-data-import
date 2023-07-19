@@ -53,9 +53,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
         handleEnd();
       }
     });
-    queue.drainHandler(v -> {
-      doRead();
-    });
+    queue.drainHandler(v -> doRead());
   }
 
   public void close() {
@@ -222,13 +220,13 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     }, res -> {
 
       if (res.failed()) {
-        context.runOnContext((v) -> handler.handle(Future.failedFuture(res.cause())));
+        context.runOnContext(v -> handler.handle(Future.failedFuture(res.cause())));
       } else {
         // Do the completed check
         Integer bytesRead = (Integer) res.result();
         if (bytesRead == -1) {
           //End of file
-          context.runOnContext((v) -> {
+          context.runOnContext(v -> {
             buff.flip();
             writeBuff.setBytes(offset, buff);
             buff.compact();
@@ -242,7 +240,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
         } else {
           // It's been fully written
 
-          context.runOnContext((v) -> {
+          context.runOnContext(v -> {
             buff.flip();
             writeBuff.setBytes(offset, buff);
             buff.compact();
@@ -265,14 +263,14 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   }
 
   private synchronized void handleEnd() {
-    Handler<Void> endHandler;
+    Handler<Void> handler;
     synchronized (this) {
       dataHandler = null;
-      endHandler = this.endHandler;
+      handler = this.endHandler;
     }
     if (endHandler != null) {
       checkContext();
-      endHandler.handle(null);
+      handler.handle(null);
     }
   }
 

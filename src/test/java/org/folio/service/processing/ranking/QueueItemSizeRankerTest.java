@@ -13,8 +13,6 @@ import org.junit.runner.RunWith;
 @RunWith(VertxUnitRunner.class)
 public class QueueItemSizeRankerTest extends AbstractQueueItemRankerTest {
 
-  private static final double EPSILON = 0.0000001;
-
   QueueItemSizeRanker ranker;
 
   public QueueItemSizeRankerTest() {

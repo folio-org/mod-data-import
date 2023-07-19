@@ -21,8 +21,6 @@ import org.mockito.MockitoAnnotations;
 @RunWith(VertxUnitRunner.class)
 public class QueueItemHolisticRankerTest extends AbstractQueueItemRankerTest {
 
-  private static final double EPSILON = 0.0000001;
-
   @Mock
   QueueItemAgeRanker ageRanker;
 

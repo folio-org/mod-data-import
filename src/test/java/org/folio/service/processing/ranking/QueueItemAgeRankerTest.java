@@ -15,8 +15,6 @@ import org.junit.runner.RunWith;
 @RunWith(VertxUnitRunner.class)
 public class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
 
-  private static final double EPSILON = 0.0000001;
-
   QueueItemAgeRanker ranker;
 
   public QueueItemAgeRankerTest() {

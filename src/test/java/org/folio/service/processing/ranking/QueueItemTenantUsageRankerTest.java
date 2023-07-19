@@ -14,8 +14,6 @@ import org.junit.runner.RunWith;
 public class QueueItemTenantUsageRankerTest
   extends AbstractQueueItemRankerTest {
 
-  private static final double EPSILON = 0.0000001;
-
   QueueItemTenantUsageRanker ranker;
 
   public QueueItemTenantUsageRankerTest() {

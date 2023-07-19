@@ -1,0 +1,45 @@
+package org.folio.service.processing.ranking;
+
+import java.util.Map;
+import org.folio.rest.jaxrs.model.DataImportQueueItem;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+/**
+ * Service for ranking queue items based on how much of the worker pool is in
+ * use by a tenant, to prevent saturation by a single tenant in multi-tenant
+ * environments.
+ * In a single-tenant environment, this will have no effect, as all jobs will
+ * have the same tenant and therefore be affected equally by this ranker.
+ */
+@Component
+public class QueueItemTenantUsageRanker implements QueueItemRanker {
+
+  // we default to zeroes since, if the env variables are not present,
+  // then we should not score on this metric
+  @Value("${SCORE_TENANT_USAGE_MIN:0}")
+  private int scoreNoWorkers;
+
+  @Value("${SCORE_TENANT_USAGE_MAX:0}")
+  private int scoreAllWorkers;
+
+  @Override
+  public double score(
+    DataImportQueueItem queueItem,
+    Map<String, Long> tenantUsage
+  ) {
+    // this may not be an accurate calculation if not all workers are currently
+    // in use.  however, if this is the case, that indicates that the pool is
+    // not saturated (therefore no competition), meaning any tenant which wants
+    // to run a job can start their job immediately, and this ranking has
+    // effectively no effect.
+    Long totalWorkers = tenantUsage.values().stream().reduce(0L, Long::sum);
+
+    return ScoreUtils.calculateLinearScore(
+      (double) tenantUsage.getOrDefault(queueItem.getTenant(), 0L) /
+      totalWorkers,
+      scoreNoWorkers,
+      scoreAllWorkers
+    );
+  }
+}

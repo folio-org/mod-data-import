@@ -215,7 +215,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
         Integer bytesRead = ch.read(buff);
         future.complete(bytesRead);
       } catch (Exception e) {
-        log.error(e);
+        LOGGER.error(e);
         future.fail(e);
       }
 
@@ -280,8 +280,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     if (exceptionHandler != null && t instanceof Exception) {
       exceptionHandler.handle(t);
     } else {
-      log.error("Unhandled exception", t);
-
+      LOGGER.error("Unhandled exception", t);
     }
   }
 

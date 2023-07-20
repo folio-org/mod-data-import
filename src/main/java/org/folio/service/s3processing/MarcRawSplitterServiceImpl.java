@@ -20,7 +20,6 @@ public class MarcRawSplitterServiceImpl implements MarcRawSplitterService {
 
   private static final byte RECORD_TERMINATOR = 29;
 
-  private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
   private MinioStorageService minioStorageService;

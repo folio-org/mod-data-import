@@ -26,6 +26,10 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   private final String key;
 
+  private final boolean uploadFilesToS3;
+
+  private final boolean deleteLocalFiles;
+
   private final byte recordTerminator;
   private final int maxRecordsPerChunk;
 
@@ -47,7 +51,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private static final Logger LOGGER = LogManager.getLogger();
 
 
-  public FileSplitWriter(Context vertxContext, MinioStorageService minioStorageService, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise, String chunkFolder, String key, byte recordTerminator, int maxRecordsPerChunk) throws IOException {
+  public FileSplitWriter(Context vertxContext, MinioStorageService minioStorageService, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise, String chunkFolder, String key, byte recordTerminator, int maxRecordsPerChunk,
+                         boolean uploadFilesToS3, boolean deleteLocalFiles) throws IOException {
     this.vertxContext = vertxContext;
     this.minioStorageService = minioStorageService;
     this.chunkUploadingCompositeFuturePromise = chunkUploadingCompositeFuturePromise;
@@ -55,6 +60,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     this.key = key;
     this.recordTerminator = recordTerminator;
     this.maxRecordsPerChunk = maxRecordsPerChunk;
+    this.uploadFilesToS3 = uploadFilesToS3;
+    this.deleteLocalFiles = deleteLocalFiles;
 
     chunkProcessingFutures = new ArrayList<>();
 
@@ -180,33 +187,38 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     chunkProcessingFutures.add(chunkPromise.future());
     vertxContext.executeBlocking(event -> {
 
-      // chunk file uploading to S3
-      System.out.println(Thread.currentThread().getName() + ": Uploading file:" + chunkPath + ": key:" + chunkKey);
       Path cp = Path.of(chunkPath);
-      try {
-        minioStorageService.write(chunkKey, Files.newInputStream(cp)).onComplete(s3Path -> {
-          if (s3Path.failed()) {
-            System.out.println(Thread.currentThread().getName() + ": Failed Uploading file: " + chunkPath);
-            chunkPromise.fail(s3Path.cause());
-          } else if (s3Path.succeeded()){
-            System.out.println(Thread.currentThread().getName() + ": Successfully Uploaded file: " + chunkPath);
-          }
-          }
-        );
-      } catch (IOException e) {
-        System.out.println(Thread.currentThread().getName() + ": Uploading file: " + chunkPath + " IOException");
-        event.fail(e);
-        chunkPromise.fail(e);
-        return;
+      // chunk file uploading to S3
+      if (uploadFilesToS3) {
+        System.out.println(Thread.currentThread().getName() + ": Uploading file:" + chunkPath + ": key:" + chunkKey);
+
+        try {
+          minioStorageService.write(chunkKey, Files.newInputStream(cp)).onComplete(s3Path -> {
+              if (s3Path.failed()) {
+                System.out.println(Thread.currentThread().getName() + ": Failed Uploading file: " + chunkPath);
+                chunkPromise.fail(s3Path.cause());
+              } else if (s3Path.succeeded()) {
+                System.out.println(Thread.currentThread().getName() + ": Successfully Uploaded file: " + chunkPath);
+              }
+            }
+          );
+        } catch (IOException e) {
+          System.out.println(Thread.currentThread().getName() + ": Uploading file: " + chunkPath + " IOException");
+          event.fail(e);
+          chunkPromise.fail(e);
+          return;
+        }
       }
       //TODO: Once file uploading completed,
       // there could be a next async handler to do some DB calls or initiate a next step for chunk processing
-      try {
-        Files.delete(cp);
-      } catch (IOException e) {
-        event.fail(e);
-        chunkPromise.fail(e);
-        return;
+      if (deleteLocalFiles) {
+        try {
+          Files.delete(cp);
+        } catch (IOException e) {
+          event.fail(e);
+          chunkPromise.fail(e);
+          return;
+        }
       }
       System.out.println(Thread.currentThread().getName() + ": Uploading file: " + chunkPath + " Completed");
       event.complete();

@@ -1,6 +1,8 @@
 package org.folio.rest.impl;
 
 import io.vertx.core.*;
+import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -64,6 +66,9 @@ public class DataImportImpl implements DataImport {
 
   @Value("${RECORDS_PER_SPLIT_FILE:1000}")
   private int recordsPerSplitFile;
+
+  @Value("${S3_LOCAL_STORAGE_PATH:/Users/cgodfrey/data-import-local/}")
+  private String s3localStoragePath;
 
   private final FileProcessor fileProcessor;
   private Future<UploadDefinition> fileUploadStateFuture;
@@ -536,9 +541,10 @@ public class DataImportImpl implements DataImport {
     return new String(decodedBytes, StandardCharsets.UTF_8);
   }
 
-  @Override
+
+  //@Override
   public void getDataImportTestFileSplit(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
+    vertxContext.runOnContext(v ->
       minioStorageService.readFile(key).onComplete(
         inStream -> {
           if (inStream.failed()) {
@@ -549,7 +555,7 @@ public class DataImportImpl implements DataImport {
               Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
               chunkUploadingCompositeFuturePromise.future().onComplete(chunkUploadingAsyncResult -> handleFileUploading(chunkUploadingAsyncResult, asyncResultHandler));
 
-              FileSplitWriter writer = new FileSplitWriter(vertxContext, minioStorageService, chunkUploadingCompositeFuturePromise, "/Users/cgodfrey/data-import-local/", key, FileSplitUtilities.MARC_RECORD_TERMINATOR, recordsPerSplitFile);
+              FileSplitWriter writer = new FileSplitWriter(vertxContext, minioStorageService, chunkUploadingCompositeFuturePromise, s3localStoragePath, key, FileSplitUtilities.MARC_RECORD_TERMINATOR, recordsPerSplitFile, true, true);
               asyncInput.pipeTo(writer).onComplete(ar1 ->
                 LOGGER.debug("File Split completed at this stage"));
             } catch (IOException e) {
@@ -557,6 +563,31 @@ public class DataImportImpl implements DataImport {
             }
           } else {
             asyncResultHandler.handle(Future.failedFuture(inStream.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+          }
+        }));
+  }
+
+  @Override
+  public void getDataImportTestFileSplitLocal(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      var fileSystem = vertxContext.owner().fileSystem();
+      fileSystem
+        .open(s3localStoragePath + key, new OpenOptions().setRead(true))
+        .onComplete(ar -> {
+          if (ar.succeeded()) {
+            AsyncFile file = ar.result();
+            try {
+              Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
+              chunkUploadingCompositeFuturePromise.future().onComplete(chunkUploadingAsyncResult -> handleFileUploading(chunkUploadingAsyncResult, asyncResultHandler));
+
+              FileSplitWriter writer = new FileSplitWriter(vertxContext, minioStorageService, chunkUploadingCompositeFuturePromise, s3localStoragePath, key, FileSplitUtilities.MARC_RECORD_TERMINATOR, recordsPerSplitFile, false, false);
+              file.pipeTo(writer).onComplete(ar1 ->
+                LOGGER.debug("File Split completed at this stage"));
+            } catch (IOException e) {
+              asyncResultHandler.handle(Future.failedFuture(e).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+            }
+          } else {
+            asyncResultHandler.handle(Future.failedFuture(ar.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
           }
         });
     });
@@ -567,7 +598,7 @@ public class DataImportImpl implements DataImport {
       chunkUploadingAsyncResult.result().onComplete(ar -> {
         if (ar.succeeded()) {
           asyncResultHandler.handle(Future.succeededFuture("Dummy").map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
-          System.out.println("Chunk Files uploading completed at this stage");
+          LOGGER.debug("Chunk Files uploading completed at this stage");
         } else {
           asyncResultHandler.handle(Future.failedFuture(ar.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
         }

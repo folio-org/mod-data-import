@@ -1,3 +1,6 @@
+## 2023-03-xo v2.8.0-SNAPSHOT
+* [MODDATAIMP-854](https://issues.folio.org/browse/MODDATAIMP-854) Upgrade mod-data-import to Java 17
+
 ## 2023-03-xo v2.7.1-SNAPSHOT
 * [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Update data-import-util library to v1.11.0
 

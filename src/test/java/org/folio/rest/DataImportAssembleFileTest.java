@@ -1,12 +1,22 @@
 package org.folio.rest;
 
 
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import org.apache.http.HttpStatus;
 
 import org.folio.rest.jaxrs.model.AssembleFileDto;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
+import org.folio.s3.client.S3ClientFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.testcontainers.containers.localstack.LocalStackContainer;
@@ -14,8 +24,7 @@ import org.testcontainers.containers.localstack.LocalStackContainer;
 import io.restassured.RestAssured;
 import io.restassured.mapper.ObjectMapperType;
 import io.restassured.path.json.JsonPath;
-import io.restassured.path.json.mapper.factory.JsonbObjectMapperFactory;
-import io.restassured.response.Response;
+
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -45,18 +54,64 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
     
     async.complete();
     async = context.async();
-    //upload 1st piece
+ 
    
-    //upload second piece
-  
-  
-    
-  
+    String url1 = info1.get("url");
     ArrayList<String> tags = new ArrayList<String>();
+    try {
+      URL urlobj = new URL(url1);
+      HttpURLConnection con = (HttpURLConnection) urlobj.openConnection();
+      con.setRequestMethod("POST");
+      FileOutputStream output = (FileOutputStream) con.getOutputStream();
 
+      // open file for output
+      FileInputStream file = new FileInputStream(
+          new File("src/test/resources/mod-data-import/src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
+      output.write(file.readAllBytes());
+      tags.add(con.getHeaderField("eTag"));
+    } catch (Exception e) {
+
+    }
+
+    
+    async.complete();
+    async = context.async();
+   
+
+    //upload 2nd piece
+    JsonPath info2 = RestAssured
+    .given()
+    .spec(spec)
+    .when()
+    .queryParam("key", key1)
+    .queryParam("uploadId",uploadId1)
+    .queryParam("partNumber", "2")
+    .get(UPLOAD_URL_CONTINUE_PATH)
+    .then()
+    .statusCode(HttpStatus.SC_OK).log().all()
+    .extract().body().jsonPath();
+    async.complete();
+    
+    String url2 = info1.get("url");
+ 
+    try {
+      URL urlobj2 = new URL(url2);
+      HttpURLConnection con2 = (HttpURLConnection) urlobj2.openConnection();
+      con2.setRequestMethod("POST");
+      FileOutputStream output = (FileOutputStream) con2.getOutputStream();
+
+      // open file for output
+      FileInputStream file = new FileInputStream(
+          new File("src/test/resources/mod-data-import/src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
+      output.write(file.readAllBytes());
+      tags.add(con2.getHeaderField("eTag"));
+    } catch (Exception e) {
+
+    }
+    
     AssembleFileDto dto =  new AssembleFileDto();
-    dto.setUploadId("aosidfpvxcohujasleih");
-    dto.setKey("this/is/a/key");
+    dto.setUploadId(uploadId1);
+    dto.setKey(key1);
     dto.setTags(tags);
     RestAssured.given()
       .spec(spec)

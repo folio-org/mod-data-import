@@ -175,7 +175,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     currentChunkPath = path.toString();
     currentChunkKey = fileName;
     currentChunkStream = Files.newOutputStream(path, CREATE);
-    System.out.println(Thread.currentThread().getName() + ": nextChunk: " + currentChunkPath);
+    LOGGER.debug("{}: nextChunk:{}", Thread.currentThread().getName(), currentChunkPath );
   }
 
   private void init() throws IOException {
@@ -190,20 +190,21 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       Path cp = Path.of(chunkPath);
       // chunk file uploading to S3
       if (uploadFilesToS3) {
-        System.out.println(Thread.currentThread().getName() + ": Uploading file:" + chunkPath + ": key:" + chunkKey);
+         LOGGER.debug("{}: Uploading file:{}:key{}", Thread.currentThread().getName(), chunkPath, chunkKey );
 
         try {
           minioStorageService.write(chunkKey, Files.newInputStream(cp)).onComplete(s3Path -> {
               if (s3Path.failed()) {
-                System.out.println(Thread.currentThread().getName() + ": Failed Uploading file: " + chunkPath);
+                LOGGER.error("{}: Failed Uploading file: {}", Thread.currentThread().getName(), chunkPath );
+
                 chunkPromise.fail(s3Path.cause());
               } else if (s3Path.succeeded()) {
-                System.out.println(Thread.currentThread().getName() + ": Successfully Uploaded file: " + chunkPath);
+                LOGGER.info("{}: Successfully Uploading file: {}", Thread.currentThread().getName(), chunkPath );
               }
             }
           );
         } catch (IOException e) {
-          System.out.println(Thread.currentThread().getName() + ": Uploading file: " + chunkPath + " IOException");
+          LOGGER.error("{}: Uploading file: {} IOEException", Thread.currentThread().getName(), chunkPath );
           event.fail(e);
           chunkPromise.fail(e);
           return;
@@ -220,7 +221,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           return;
         }
       }
-      System.out.println(Thread.currentThread().getName() + ": Uploading file: " + chunkPath + " Completed");
+      LOGGER.info("{}: Uploading file: {} Completed", Thread.currentThread().getName(), chunkPath );
       event.complete();
       chunkPromise.complete(chunkPath);
     }, false);

@@ -597,7 +597,7 @@ public class DataImportImpl implements DataImport {
     if (chunkUploadingAsyncResult.succeeded()) {
       chunkUploadingAsyncResult.result().onComplete(ar -> {
         if (ar.succeeded()) {
-          asyncResultHandler.handle(Future.succeededFuture("Dummy").map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
+          asyncResultHandler.handle(Future.succeededFuture("Testing Complete").map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
           LOGGER.debug("Chunk Files uploading completed at this stage");
         } else {
           asyncResultHandler.handle(Future.failedFuture(ar.cause()).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));

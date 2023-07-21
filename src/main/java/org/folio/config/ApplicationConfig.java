@@ -18,7 +18,6 @@ import org.springframework.context.annotation.PropertySource;
   "org.folio.service.upload",
   "org.folio.service.cleanup",
   "org.folio.service.s3storage",
-  "org.folio.service.s3processing",
   "org.folio.service.processing.split"
 })
 @PropertySource("classpath:minio.properties")

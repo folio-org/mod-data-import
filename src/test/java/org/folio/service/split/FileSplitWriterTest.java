@@ -18,7 +18,7 @@ import org.mockito.MockitoAnnotations;
 import java.io.File;
 import java.io.IOException;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(VertxUnitRunner.class)
 public class FileSplitWriterTest {
@@ -61,7 +61,7 @@ public class FileSplitWriterTest {
             file.pipeTo(writer).onComplete(ar1 -> {
               if (ar1.succeeded()) {
                 File[] splitFiles = localStorageFolder.listFiles();
-                assertTrue(splitFiles.length == 4);
+                assertEquals(4, splitFiles.length);
                 // More assertions to be made on the split files - names and content
                 async.complete();
               } else {

@@ -9,7 +9,7 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(VertxUnitRunner.class)
 public class FileSplitUtilitiesTest {
@@ -26,7 +26,7 @@ public class FileSplitUtilitiesTest {
 
     Integer count = FileSplitUtilities.countRecordsInMarcFile(inputStream);
 
-    assertTrue(count == VALID_MARC_RECORD_COUNT);
+    assertEquals(VALID_MARC_RECORD_COUNT, count.intValue());
 
   }
 
@@ -37,7 +37,7 @@ public class FileSplitUtilitiesTest {
 
     Integer count = FileSplitUtilities.countRecordsInMarcFile(inputStream);
 
-    assertTrue(count == 0);
+    assertEquals(0, count.intValue());
   }
 
 }

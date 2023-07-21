@@ -1,10 +1,7 @@
 package org.folio.service.processing.split;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import lombok.NoArgsConstructor;
 import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.io.IOException;
 import java.io.InputStream;

@@ -11,7 +11,7 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 * [Docker](#docker)
 * [Installing the module](#installing-the-module)
 * [Deploying the module](#deploying-the-module)
-* [Maximum upload file size and java heap memory setup](#maximum-upload-file-size-and-java-heap-memory-setups)
+* [Maximum upload file size and java heap memory setup](#maximum-upload-file-size-and-java-heap-memory-setups) 
 * [Scalability](#scalability)
 * [Interaction with Kafka](#interaction-with-kafka)
 * [Other system properties](#system-properties-that-can-be-adjusted-for-this-module-and-default-values)
@@ -95,13 +95,11 @@ curl -w '\n' -X POST -D -   \
 ## Maximum upload file size and java heap memory setups
 
 Current implementation supports only storing of the file in a LOCAL_STORAGE (file system of the module). It has a couple of implications:
-
-1. the request for processing the file can be processed only by the same instance of the module, which prevents mod-data-import from scaling
+1. the request for processing the file can be processed only by the same instance of the module, which prevents mod-data-import from scaling 
 2. file size that can be uploaded is limited to the java heap memory allocated to the module.
 It is necessary to have the size of the java heap equal to the expected max file size plus 10 percent.
 
 #### Example
-
 | File Size | Java Heap size |
 |:---------:|:--------------:|
 |   256mb   |     270+ mb    |
@@ -124,7 +122,7 @@ To allow multiple instance deployment, for every instance the same persistent vo
 This module uses S3-compatible storage as part of the file upload process.  The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
 
 | Name                    | Description                                                                |
-| ----------------------- | -------------------------------------------------------------------------- |
+|-------------------------|----------------------------------------------------------------------------|
 | `AWS_URL`               | URL of S3-compatible storage, e.g. `http://127.0.0.1:9000/`                |
 | `AWS_REGION`            | S3 region                                                                  |
 | `AWS_BUCKET`            | Bucket to store and retrieve data                                          |
@@ -157,19 +155,19 @@ All modules involved in data import (mod-data-import, mod-source-record-manager,
 
 **Properties that are required for mod-data-import to interact with Kafka:**
 
-- `KAFKA_HOST`
-- `KAFKA_PORT`
-- `OKAPI_URL`
-- `ENV` (unique env ID)
+* `KAFKA_HOST`
+* `KAFKA_PORT`
+* `OKAPI_URL`
+* `ENV` (unique env ID)
 
 ## Other system properties
 
 Initial handling of the uploaded file means chunking it and sending records for processing in other modules. The chunk size can be adjusted for different files, otherwise default values will be used:
 
-- "_file.processing.marc.raw.buffer.chunk.size_": 50 - applicable to MARC files in binary format
-- "_file.processing.marc.json.buffer.chunk.size_": 50 - applicable to json files with MARC data in json format
-- "_file.processing.marc.xml.buffer.chunk.size_": 10 - applicable to xml files with MARC data in xml format
-- "_file.processing.edifact.buffer.chunk.size_": 10 - applicable to EDIFACT files
+* "_file.processing.marc.raw.buffer.chunk.size_": 50 - applicable to MARC files in binary format
+* "_file.processing.marc.json.buffer.chunk.size_": 50 - applicable to json files with MARC data in json format
+* "_file.processing.marc.xml.buffer.chunk.size_": 10 - applicable to xml files with MARC data in xml format
+* "_file.processing.edifact.buffer.chunk.size_": 10 - applicable to EDIFACT files
 
 ## Issue tracker
 

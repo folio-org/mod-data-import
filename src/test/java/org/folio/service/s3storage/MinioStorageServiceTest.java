@@ -258,8 +258,5 @@ public class MinioStorageServiceTest {
   
     });
   }
-  @Test
-  public void testAssembleFailure(TestContext context) {
-    
-  }
+
 }

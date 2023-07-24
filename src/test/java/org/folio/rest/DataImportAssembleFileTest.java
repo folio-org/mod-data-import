@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -34,8 +35,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
 
   private static final String ASSEMBLE_PATH = "/data-import/assembleStorageFile";
   private static final String UPLOAD_URL_PATH = "/data-import/uploadUrl";
-  private static final String UPLOAD_URL_CONTINUE_PATH =
-      "/data-import/uploadUrl/subsequent";
+  private static final String UPLOAD_URL_CONTINUE_PATH = "/data-import/uploadUrl/subsequent";
   @Test
   public void shouldAssembleFileCorrectly(TestContext context) {
     //start upload
@@ -44,11 +44,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
         .spec(spec)
         .when()
         .queryParam("fileName", "test-name1")
-        .post(UPLOAD_URL_PATH )
-        .then()
-        .statusCode(HttpStatus.SC_OK)
-        .log().all()
-        .extract().body().jsonPath();
+        .get(UPLOAD_URL_PATH ).jsonPath();
     String uploadId1 = info1.get("uploadId");
     String key1 = info1.get("key");
     
@@ -61,16 +57,20 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
     try {
       URL urlobj = new URL(url1);
       HttpURLConnection con = (HttpURLConnection) urlobj.openConnection();
-      con.setRequestMethod("POST");
-      FileOutputStream output = (FileOutputStream) con.getOutputStream();
+      con.setRequestMethod("PUT");
+      con.setDoOutput(true);
+      OutputStream output = con.getOutputStream();
 
       // open file for output
       FileInputStream file = new FileInputStream(
-          new File("src/test/resources/mod-data-import/src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
+          new File("src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
       output.write(file.readAllBytes());
       tags.add(con.getHeaderField("eTag"));
+      for(String i : con.getHeaderFields().keySet()) {
+        System.out.println(i + " " + con.getHeaderField(i));
+      }
     } catch (Exception e) {
-
+      e.printStackTrace();
     }
 
     
@@ -97,12 +97,13 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
     try {
       URL urlobj2 = new URL(url2);
       HttpURLConnection con2 = (HttpURLConnection) urlobj2.openConnection();
-      con2.setRequestMethod("POST");
+      con2.setRequestMethod("PUT");
+      con2.setDoOutput(true);
       FileOutputStream output = (FileOutputStream) con2.getOutputStream();
 
       // open file for output
       FileInputStream file = new FileInputStream(
-          new File("src/test/resources/mod-data-import/src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
+          new File("/src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
       output.write(file.readAllBytes());
       tags.add(con2.getHeaderField("eTag"));
     } catch (Exception e) {

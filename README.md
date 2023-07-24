@@ -6,16 +6,15 @@ This software is distributed under the terms of the Apache License,
 Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 4 README.md -->
-
-- [Introduction](#introduction)
-- [Compiling](#compiling)
-- [Docker](#docker)
-- [Installing the module](#installing-the-module)
-- [Deploying the module](#deploying-the-module)
-- [Maximum upload file size and java heap memory setup](#maximum-upload-file-size-and-java-heap-memory-setups)
-- [Scalability](#scalability)
-- [Interaction with Kafka](#interaction-with-kafka)
-- [Other system properties](#system-properties-that-can-be-adjusted-for-this-module-and-default-values)
+* [Introduction](#introduction)
+* [Compiling](#compiling)
+* [Docker](#docker)
+* [Installing the module](#installing-the-module)
+* [Deploying the module](#deploying-the-module)
+* [Maximum upload file size and java heap memory setup](#maximum-upload-file-size-and-java-heap-memory-setups)
+* [Scalability](#scalability)
+* [Interaction with Kafka](#interaction-with-kafka)
+* [Other system properties](#system-properties-that-can-be-adjusted-for-this-module-and-default-values)
 
 ## Introduction
 
@@ -99,43 +98,30 @@ Current implementation supports only storing of the file in a LOCAL_STORAGE (fil
 
 1. the request for processing the file can be processed only by the same instance of the module, which prevents mod-data-import from scaling
 2. file size that can be uploaded is limited to the java heap memory allocated to the module.
-   It is necessary to have the size of the java heap equal to the expected max file size plus 10 percent.
+It is necessary to have the size of the java heap equal to the expected max file size plus 10 percent.
 
 #### Example
 
 | File Size | Java Heap size |
-| :-------: | :------------: |
-|   256mb   |    270+ mb     |
-|   512mb   |    560+ mb     |
-|    1GB    |    1.1+ GB     |
+|:---------:|:--------------:|
+|   256mb   |     270+ mb    |
+|   512mb   |     560+ mb    |
+|    1GB    |     1.1+ GB    |
 
 ## Scalability
 
 To initialise processing of a file user should choose a Job Profile - that information is crucial as it basically contains the instructions on what to do with the uploaded file. However, this process happens after file is uploaded and comes to mod-data-import as a separate request.
 External storage is required to make mod-data-import scalable. Implementation of the module has the possibility to read the configuration settings from mod-configuration.
-To allow multiple instance deployment, for every instance the same persistent volume must be mounted to the mount point defined by the value of \***\*_data.import.storage.path_ property.\*\***
+To allow multiple instance deployment, for every instance the same persistent volume must be mounted to the mount point defined by the value of ****_data.import.storage.path_ property.****
 
 ### Module properties to set up at mod-configuration
 
-- **_data.import.storage.type_** - type of data storage used for uploaded files. Default value is **LOCAL_STORAGE**. Other implementations for storage should be added.
-- **_data.import.storage.path_** - **path where uploaded file will be stored**
+* **_data.import.storage.type_** - type of data storage used for uploaded files. Default value is **LOCAL_STORAGE**. Other implementations for storage should be added.
+* **_data.import.storage.path_** - **path where uploaded file will be stored**
 
 ## Interaction with AWS S3/Minio
 
-This module uses S3-compatible storage as part of the file upload process. The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
-
-| Name                    | Description                                                                |
-| ----------------------- | -------------------------------------------------------------------------- |
-| `AWS_URL`               | URL of S3-compatible storage, e.g. `http://127.0.0.1:9000/`                |
-| `AWS_REGION`            | S3 region                                                                  |
-| `AWS_BUCKET`            | Bucket to store and retrieve data                                          |
-| `AWS_ACCESS_KEY_ID`     | S3 access key                                                              |
-| `AWS_SECRET_ACCESS_KEY` | S3 secret key                                                              |
-| `AWS_SDK`               | If AWS S3 is being used (should be `"true"` if so and `"false"` otherwise) |
-
-## Interaction with AWS S3/Minio
-
-This module uses S3-compatible storage as part of the file upload process. The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
+This module uses S3-compatible storage as part of the file upload process.  The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
 
 | Name                    | Description                                                                |
 | ----------------------- | -------------------------------------------------------------------------- |
@@ -150,18 +136,18 @@ This module uses S3-compatible storage as part of the file upload process. The f
 
 This covers the following environment variables:
 
-- `SCORE_JOB_SMALLEST`
-- `SCORE_JOB_LARGEST`
-- `SCORE_JOB_REFERENCE`
-- `SCORE_AGE_NEWEST`
-- `SCORE_AGE_OLDEST`
-- `SCORE_AGE_EXTREME_THRESHOLD_MINUTES`
-- `SCORE_AGE_EXTREME_VALUE`
-- `SCORE_TENANT_USAGE_MIN`
-- `SCORE_TENANT_USAGE_MAX`
-- `SCORE_PART_NUMBER_FIRST`
-- `SCORE_PART_NUMBER_LAST`
-- `SCORE_PART_NUMBER_LAST_REFERENCE`
+* `SCORE_JOB_SMALLEST`
+* `SCORE_JOB_LARGEST`
+* `SCORE_JOB_REFERENCE`
+* `SCORE_AGE_NEWEST`
+* `SCORE_AGE_OLDEST`
+* `SCORE_AGE_EXTREME_THRESHOLD_MINUTES`
+* `SCORE_AGE_EXTREME_VALUE`
+* `SCORE_TENANT_USAGE_MIN`
+* `SCORE_TENANT_USAGE_MAX`
+* `SCORE_PART_NUMBER_FIRST`
+* `SCORE_PART_NUMBER_LAST`
+* `SCORE_PART_NUMBER_LAST_REFERENCE`
 
 For information on what these mean and how to configure them, please see [this wiki page](https://wiki.folio.org/display/FOLIOtips/Queue+and+chunk+processing+customization).
 

@@ -39,7 +39,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
   @Test
   public void shouldAssembleFileCorrectly(TestContext context) {
     //start upload
-    Async async = context.async();
+  
     JsonPath info1 =  RestAssured.given()
         .spec(spec)
         .when()
@@ -48,8 +48,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
     String uploadId1 = info1.get("uploadId");
     String key1 = info1.get("key");
     
-    async.complete();
-    async = context.async();
+
  
    
     String url1 = info1.get("url");
@@ -66,16 +65,12 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
           new File("src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
       output.write(file.readAllBytes());
       tags.add(con.getHeaderField("eTag"));
-      for(String i : con.getHeaderFields().keySet()) {
-        System.out.println(i + " " + con.getHeaderField(i));
-      }
     } catch (Exception e) {
       e.printStackTrace();
     }
 
     
-    async.complete();
-    async = context.async();
+
    
 
     //upload 2nd piece
@@ -90,8 +85,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
     .then()
     .statusCode(HttpStatus.SC_OK).log().all()
     .extract().body().jsonPath();
-    async.complete();
-    
+
     String url2 = info1.get("url");
  
     try {
@@ -109,7 +103,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
     } catch (Exception e) {
 
     }
-    
+
     AssembleFileDto dto =  new AssembleFileDto();
     dto.setUploadId(uploadId1);
     dto.setKey(key1);
@@ -122,5 +116,6 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+    
   }
 }

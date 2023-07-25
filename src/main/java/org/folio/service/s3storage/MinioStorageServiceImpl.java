@@ -6,7 +6,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

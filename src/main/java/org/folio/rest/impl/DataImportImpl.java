@@ -497,7 +497,7 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug(
-          "postDataImportAssembleStorageFile:: Assemble Storage File to complete upload",
+          "postDataImportAssembleStorageFile:: Assemble Storage File to complete upload {}",
           entity.getKey()
         );
         minioStorageService.completeMultipartFileUpload(entity.getKey(),  entity.getUploadId(),entity.getTags())

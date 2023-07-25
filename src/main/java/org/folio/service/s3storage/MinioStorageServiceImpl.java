@@ -120,7 +120,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
             promise.complete(true);
       
       } catch(Exception e) {
-        e.printStackTrace();
+       
         LOGGER.error("Failed to complete multipart upload {}", e.getMessage());
         blockingFuture.fail(e);
         promise.complete(false);

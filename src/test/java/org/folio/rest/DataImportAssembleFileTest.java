@@ -93,11 +93,11 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
       HttpURLConnection con2 = (HttpURLConnection) urlobj2.openConnection();
       con2.setRequestMethod("PUT");
       con2.setDoOutput(true);
-      FileOutputStream output = (FileOutputStream) con2.getOutputStream();
+      OutputStream output =  con2.getOutputStream();
 
       // open file for output
       FileInputStream file = new FileInputStream(
-          new File("/src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
+          new File("src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
       output.write(file.readAllBytes());
       tags.add(con2.getHeaderField("eTag"));
     } catch (Exception e) {

@@ -501,7 +501,7 @@ public class DataImportImpl implements DataImport {
           entity.getKey()
         );
         minioStorageService.completeMultipartFileUpload(entity.getKey(),  entity.getUploadId(),entity.getTags())
-          .map(  deleted -> deleted ? PostDataImportAssembleStorageFileResponse.respond204() : PostDataImportAssembleStorageFileResponse.respond500WithTextPlain("Failed to assemble Data Import upload file") )
+          .map(  completed -> completed ? PostDataImportAssembleStorageFileResponse.respond204() : PostDataImportAssembleStorageFileResponse.respond500WithTextPlain("Failed to assemble Data Import upload file") )
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

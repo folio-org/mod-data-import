@@ -84,7 +84,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
     
   }
   @Test
-  public void shouldFailAssembleFileTooSmall(TestContext context) { 
+  public void shouldFailAssembleFileFailedPartUpload(TestContext context) { 
     
     JsonPath info1 =  RestAssured.given()
         .spec(spec)

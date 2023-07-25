@@ -66,7 +66,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
       output.write(file.readAllBytes());
       tags.add(con.getHeaderField("eTag"));
     } catch (Exception e) {
-      e.printStackTrace();
+      context.fail(e.getMessage());
     }
 
     
@@ -86,7 +86,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
     .statusCode(HttpStatus.SC_OK).log().all()
     .extract().body().jsonPath();
 
-    String url2 = info1.get("url");
+    String url2 = info2.get("url");
  
     try {
       URL urlobj2 = new URL(url2);
@@ -101,7 +101,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
       output.write(file.readAllBytes());
       tags.add(con2.getHeaderField("eTag"));
     } catch (Exception e) {
-
+      context.fail(e.getMessage());
     }
 
     AssembleFileDto dto =  new AssembleFileDto();

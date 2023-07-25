@@ -37,7 +37,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
   private static final String UPLOAD_URL_PATH = "/data-import/uploadUrl";
   private static final String UPLOAD_URL_CONTINUE_PATH = "/data-import/uploadUrl/subsequent";
   @Test
-  public void shouldAssembleFileCorrectly(TestContext context) {
+  public void shouldAssembleFile(TestContext context) {
     //start upload
   
     JsonPath info1 =  RestAssured.given()
@@ -47,31 +47,10 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
         .get(UPLOAD_URL_PATH ).jsonPath();
     String uploadId1 = info1.get("uploadId");
     String key1 = info1.get("key");
-    
-
- 
    
+    
     String url1 = info1.get("url");
-    ArrayList<String> tags = new ArrayList<String>();
-    try {
-      URL urlobj = new URL(url1);
-      HttpURLConnection con = (HttpURLConnection) urlobj.openConnection();
-      con.setRequestMethod("PUT");
-      con.setDoOutput(true);
-      OutputStream output = con.getOutputStream();
-
-      // open file for output
-      FileInputStream file = new FileInputStream(
-          new File("src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
-      output.write(file.readAllBytes());
-      tags.add(con.getHeaderField("eTag"));
-    } catch (Exception e) {
-      context.fail(e.getMessage());
-    }
-
-    
-
-   
+    ArrayList<String> tags = putFakeFile(context, url1, 5 * 1024 * 1024);
 
     //upload 2nd piece
     JsonPath info2 = RestAssured
@@ -88,21 +67,7 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
 
     String url2 = info2.get("url");
  
-    try {
-      URL urlobj2 = new URL(url2);
-      HttpURLConnection con2 = (HttpURLConnection) urlobj2.openConnection();
-      con2.setRequestMethod("PUT");
-      con2.setDoOutput(true);
-      OutputStream output =  con2.getOutputStream();
-
-      // open file for output
-      FileInputStream file = new FileInputStream(
-          new File("src/test/resources/CornellFOLIOExemplars_Bibs.mrc"));
-      output.write(file.readAllBytes());
-      tags.add(con2.getHeaderField("eTag"));
-    } catch (Exception e) {
-      context.fail(e.getMessage());
-    }
+    tags.addAll( putFakeFile(context, url2,5 * 1024 * 1024));
 
     AssembleFileDto dto =  new AssembleFileDto();
     dto.setUploadId(uploadId1);
@@ -117,5 +82,66 @@ public class DataImportAssembleFileTest extends AbstractRestTest {
       .log().all()
       .statusCode(HttpStatus.SC_NO_CONTENT);
     
+  }
+  @Test
+  public void shouldFailAssembleFileTooSmall(TestContext context) { 
+    
+    JsonPath info1 =  RestAssured.given()
+        .spec(spec)
+        .when()
+        .queryParam("fileName", "test-name1")
+        .get(UPLOAD_URL_PATH ).jsonPath();
+    String uploadId1 = info1.get("uploadId");
+    String key1 = info1.get("key");
+   
+    
+    String url1 = info1.get("url");
+    ArrayList<String> tags = putFakeFile(context, url1, 1 * 1024 * 1024);
+
+    //upload 2nd piece
+    JsonPath info2 = RestAssured
+    .given()
+    .spec(spec)
+    .when()
+    .queryParam("key", key1)
+    .queryParam("uploadId",uploadId1)
+    .queryParam("partNumber", "2")
+    .get(UPLOAD_URL_CONTINUE_PATH)
+    .then()
+    .statusCode(HttpStatus.SC_OK).log().all()
+    .extract().body().jsonPath();
+
+    String url2 = info2.get("url");
+ 
+    tags.addAll( putFakeFile(context, url2,5 * 1024 * 1024));
+    
+
+    AssembleFileDto dto =  new AssembleFileDto();
+    dto.setUploadId(uploadId1);
+    dto.setKey(key1);
+    dto.setTags(tags);
+    RestAssured.given()
+      .spec(spec)
+      .body(dto, ObjectMapperType.GSON)
+      .when()
+      .post(ASSEMBLE_PATH )
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
+  private ArrayList<String> putFakeFile(TestContext context, String url1, int size) {
+    ArrayList<String> tags = new ArrayList<String>();
+    try {
+      URL urlobj = new URL(url1);
+      HttpURLConnection con = (HttpURLConnection) urlobj.openConnection();
+      con.setRequestMethod("PUT");
+      con.setDoOutput(true);
+      OutputStream output = con.getOutputStream();
+      output.write(new byte[size]);
+      tags.add(con.getHeaderField("eTag"));
+    } catch (Exception e) {
+      context.fail(e.getMessage());
+    }
+    return tags;
   }
 }

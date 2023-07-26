@@ -1,13 +1,17 @@
 package org.folio.dao;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.matches;
 import static org.mockito.ArgumentMatchers.startsWith;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -18,14 +22,20 @@ import io.vertx.core.Promise;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.ArrayTuple;
+import java.util.Arrays;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
+import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.joda.time.DateTime;
@@ -47,8 +57,13 @@ public class DataImportQueueDaoTest {
   @Mock
   private PostgresClient postgresClient;
 
+  @Mock
+  private PgConnection postgresConnection;
+
   @InjectMocks
-  DataImportQueueItemDao queueItemDaoImpl = new DataImportQueueItemDaoImpl();
+  DataImportQueueItemDao queueItemDaoImpl = new DataImportQueueItemDaoImpl(
+    postgresClientFactory
+  );
 
   UUID storedItemUUID;
 
@@ -59,7 +74,7 @@ public class DataImportQueueDaoTest {
   }
 
   @Test
-  public void shouldGetAllQueueItems(TestContext context) {
+  public void testGetAllQueueItems(TestContext context) {
     // given
     doAnswer((InvocationOnMock invocation) -> {
         Promise<RowSet<Row>> promise = invocation.getArgument(1);
@@ -86,7 +101,7 @@ public class DataImportQueueDaoTest {
   }
 
   @Test
-  public void shouldAddQueueItem(TestContext context) {
+  public void testAddQueueItem(TestContext context) {
     // given
     doAnswer((InvocationOnMock invocation) -> {
         Promise<RowSet<Row>> promise = invocation.getArgument(2);
@@ -128,7 +143,7 @@ public class DataImportQueueDaoTest {
   }
 
   @Test
-  public void shouldGetQueueItemByIdFailure(TestContext context) {
+  public void testGetQueueItemByIdFailure(TestContext context) {
     Async async = context.async();
 
     // given
@@ -165,7 +180,7 @@ public class DataImportQueueDaoTest {
   }
 
   @Test
-  public void shouldGetWaitingQueueItems(TestContext context) {
+  public void testGetWaitingQueueItems(TestContext context) {
     // given
     doAnswer((InvocationOnMock invocation) -> {
         Promise<RowSet<Row>> promise = invocation.getArgument(2);
@@ -202,7 +217,7 @@ public class DataImportQueueDaoTest {
   }
 
   @Test
-  public void shouldGetInProgressQueueItems(TestContext context) {
+  public void testGetInProgressQueueItems(TestContext context) {
     // given
     doAnswer((InvocationOnMock invocation) -> {
         Promise<RowSet<Row>> promise = invocation.getArgument(2);
@@ -238,8 +253,80 @@ public class DataImportQueueDaoTest {
       );
   }
 
+  // casting to generics makes it sad :(
+  @SuppressWarnings("unchecked")
   @Test
-  public void shouldUpdateQueueItemById(TestContext context) {
+  public void testAtomicGetAndUpdateEmpty(TestContext context) {
+    DataImportQueueItemDao testInstance = spy(
+      new DataImportQueueItemDaoImpl(postgresClientFactory)
+    );
+
+    DataImportQueueItem testWaiting1 = new DataImportQueueItem().withId("A");
+    DataImportQueueItem testWaiting2 = new DataImportQueueItem().withId("B");
+    DataImportQueueItem testInProgress = new DataImportQueueItem().withId("C");
+
+    when(testInstance.getAllWaitingQueueItems())
+      .thenReturn(
+        Future.succeededFuture(
+          new DataImportQueueItemCollection()
+            .withDataImportQueueItems(Arrays.asList(testWaiting1, testWaiting2))
+        )
+      );
+    when(testInstance.getAllInProgressQueueItems())
+      .thenReturn(
+        Future.succeededFuture(
+          new DataImportQueueItemCollection()
+            .withDataImportQueueItems(Arrays.asList(testInProgress))
+        )
+      );
+    when(testInstance.getAllQueueItemsAndProcessAtomic(any()))
+      .thenCallRealMethod();
+
+    when(postgresClient.withTransaction(any()))
+      .thenAnswer((InvocationOnMock invocation) ->
+        (
+          (Function<PgConnection, Future<Optional<DataImportQueueItem>>>) (
+            invocation.getArgument(0)
+          )
+        ).apply(postgresConnection)
+      );
+
+    // response value unused
+    when(postgresConnection.query(anyString())).thenReturn(null);
+
+    testInstance
+      .getAllQueueItemsAndProcessAtomic((inProgress, waiting) -> {
+        assertThat(
+          inProgress.getDataImportQueueItems(),
+          contains(testInProgress)
+        );
+        assertThat(
+          waiting.getDataImportQueueItems(),
+          contains(testWaiting1, testWaiting2)
+        );
+
+        return Optional.empty();
+      })
+      .onComplete(
+        context.asyncAssertSuccess(result -> {
+          assertThat(result.isEmpty(), is(true));
+
+          verify(postgresConnection, times(1))
+            .query(
+              matches(
+                Pattern.compile(
+                  "^LOCK TABLE \\w+\\.\\w+ IN ACCESS EXCLUSIVE MODE$"
+                )
+              )
+            );
+
+          verify(postgresClient, atLeastOnce()).withTransaction(any());
+        })
+      );
+  }
+
+  @Test
+  public void testUpdateQueueItemById(TestContext context) {
     // given
     doAnswer((InvocationOnMock invocation) -> {
         Promise<RowSet<Row>> promise = invocation.getArgument(2);
@@ -281,7 +368,7 @@ public class DataImportQueueDaoTest {
   }
 
   @Test
-  public void shouldDeleteQueueItemById(TestContext context) {
+  public void testDeleteQueueItemById(TestContext context) {
     // given
     when(postgresClient.execute(anyString(), any(Tuple.class)))
       .thenReturn(Future.succeededFuture(new LocalRowSet(1)));

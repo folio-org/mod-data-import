@@ -18,9 +18,13 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Arrays;
+import java.util.NavigableSet;
+import java.util.Optional;
+import java.util.function.BiFunction;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
+import org.folio.service.AbstractIntegrationTest;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,7 +33,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 @RunWith(VertxUnitRunner.class)
-public class ScoreServiceRankingTest {
+public class ScoreServiceRankingTest extends AbstractIntegrationTest {
 
   @Mock
   DataImportQueueItemDao queueItemDao;
@@ -65,123 +69,91 @@ public class ScoreServiceRankingTest {
     );
   }
 
+  // casting with generics makes it sad :(
+  @SuppressWarnings("unchecked")
   private void mockDatabaseContents(
     DataImportQueueItemCollection waiting,
     DataImportQueueItemCollection inProgress
   ) {
-    when(queueItemDao.getAllInProgressQueueItems())
-      .thenReturn(Future.succeededFuture(inProgress));
-    when(queueItemDao.getAllWaitingQueueItems())
-      .thenReturn(Future.succeededFuture(waiting));
+    when(queueItemDao.getAllQueueItemsAndProcessAtomic(any()))
+      .thenAnswer(invocation -> {
+        BiFunction<DataImportQueueItemCollection, DataImportQueueItemCollection, Optional<DataImportQueueItem>> processor = (BiFunction<DataImportQueueItemCollection, DataImportQueueItemCollection, Optional<DataImportQueueItem>>) invocation.getArgument(
+          0
+        );
+        return Future.succeededFuture(processor.apply(inProgress, waiting));
+      });
   }
 
   @Test
-  public void testEmpty(TestContext context) {
-    Async async = context.async();
-
+  public void testEmpty() {
     DataImportQueueItemCollection waiting = collectionOfTenant();
     DataImportQueueItemCollection inProgress = collectionOfTenant();
-    mockDatabaseContents(waiting, inProgress);
 
-    service
-      .getRankedQueueItems()
-      .onFailure(cause -> context.fail(cause))
-      .onSuccess(result ->
-        context.verify(v -> {
-          assertThat(result, is(empty()));
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
 
-          verifyNoInteractions(ranker);
+    assertThat(result, is(empty()));
 
-          async.complete();
-        })
-      );
+    verifyNoInteractions(ranker);
   }
 
   @Test
-  public void testEmptyWithInProgress(TestContext context) {
-    Async async = context.async();
-
+  public void testEmptyWithInProgress() {
     DataImportQueueItemCollection waiting = collectionOfTenant();
     DataImportQueueItemCollection inProgress = collectionOfTenant("A", "B");
-    mockDatabaseContents(waiting, inProgress);
 
-    service
-      .getRankedQueueItems()
-      .onFailure(cause -> context.fail(cause))
-      .onSuccess(result ->
-        context.verify(v -> {
-          assertThat(result, is(empty()));
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
 
-          verifyNoInteractions(ranker);
+    assertThat(result, is(empty()));
 
-          async.complete();
-        })
-      );
+    verifyNoInteractions(ranker);
   }
 
   @Test
-  public void testSingleton(TestContext context) {
-    Async async = context.async();
-
+  public void testSingleton() {
     DataImportQueueItemCollection waiting = collectionOfTenant("A");
     DataImportQueueItemCollection inProgress = collectionOfTenant();
-    mockDatabaseContents(waiting, inProgress);
 
-    service
-      .getRankedQueueItems()
-      .onFailure(cause -> context.fail(cause))
-      .onSuccess(result ->
-        context.verify(v -> {
-          assertThat(
-            result,
-            contains(waiting.getDataImportQueueItems().get(0))
-          );
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
 
-          waiting
-            .getDataImportQueueItems()
-            .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-          verifyNoMoreInteractions(ranker);
+    assertThat(result, contains(waiting.getDataImportQueueItems().get(0)));
 
-          async.complete();
-        })
-      );
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
   }
 
   @Test
-  public void testSingletonWithInProgress(TestContext context) {
-    Async async = context.async();
-
+  public void testSingletonWithInProgress() {
     DataImportQueueItemCollection waiting = collectionOfTenant("A");
     DataImportQueueItemCollection inProgress = collectionOfTenant("B", "C");
-    mockDatabaseContents(waiting, inProgress);
 
-    service
-      .getRankedQueueItems()
-      .onFailure(cause -> context.fail(cause))
-      .onSuccess(result ->
-        context.verify(v -> {
-          assertThat(
-            result,
-            contains(waiting.getDataImportQueueItems().get(0))
-          );
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
 
-          waiting
-            .getDataImportQueueItems()
-            .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-          verifyNoMoreInteractions(ranker);
+    assertThat(result, contains(waiting.getDataImportQueueItems().get(0)));
 
-          async.complete();
-        })
-      );
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
   }
 
   @Test
-  public void testManyCase1(TestContext context) {
-    Async async = context.async();
-
+  public void testManyCase1() {
     DataImportQueueItemCollection waiting = collectionOfTenant("A", "B", "C");
     DataImportQueueItemCollection inProgress = collectionOfTenant("A", "B");
-    mockDatabaseContents(waiting, inProgress);
 
     when(ranker.score(any(), any()))
       .thenAnswer(invocation -> {
@@ -189,38 +161,31 @@ public class ScoreServiceRankingTest {
         return Double.valueOf(item.getTenant().charAt(0));
       });
 
-    service
-      .getRankedQueueItems()
-      .onFailure(cause -> context.fail(cause))
-      .onSuccess(result ->
-        context.verify(v -> {
-          assertThat(
-            result,
-            contains(
-              // C should come first because it has the highest car code
-              waiting.getDataImportQueueItems().get(2),
-              waiting.getDataImportQueueItems().get(1),
-              waiting.getDataImportQueueItems().get(0)
-            )
-          );
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
 
-          waiting
-            .getDataImportQueueItems()
-            .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-          verifyNoMoreInteractions(ranker);
+    assertThat(
+      result,
+      contains(
+        // C should come first because it has the highest car code
+        waiting.getDataImportQueueItems().get(2),
+        waiting.getDataImportQueueItems().get(1),
+        waiting.getDataImportQueueItems().get(0)
+      )
+    );
 
-          async.complete();
-        })
-      );
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
   }
 
   @Test
-  public void testManyCase2(TestContext context) {
-    Async async = context.async();
-
+  public void testManyCase2() {
     DataImportQueueItemCollection waiting = collectionOfTenant("C", "B", "A");
     DataImportQueueItemCollection inProgress = collectionOfTenant("D", "B");
-    mockDatabaseContents(waiting, inProgress);
 
     when(ranker.score(any(), any()))
       .thenAnswer(invocation -> {
@@ -228,38 +193,31 @@ public class ScoreServiceRankingTest {
         return Double.valueOf(item.getTenant().charAt(0));
       });
 
-    service
-      .getRankedQueueItems()
-      .onFailure(cause -> context.fail(cause))
-      .onSuccess(result ->
-        context.verify(v -> {
-          assertThat(
-            result,
-            contains(
-              // C should come first because it has the highest car code
-              waiting.getDataImportQueueItems().get(0),
-              waiting.getDataImportQueueItems().get(1),
-              waiting.getDataImportQueueItems().get(2)
-            )
-          );
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
 
-          waiting
-            .getDataImportQueueItems()
-            .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-          verifyNoMoreInteractions(ranker);
+    assertThat(
+      result,
+      contains(
+        // C should come first because it has the highest car code
+        waiting.getDataImportQueueItems().get(0),
+        waiting.getDataImportQueueItems().get(1),
+        waiting.getDataImportQueueItems().get(2)
+      )
+    );
 
-          async.complete();
-        })
-      );
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
   }
 
   @Test
-  public void testManyCase3(TestContext context) {
-    Async async = context.async();
-
+  public void testManyCase3() {
     DataImportQueueItemCollection waiting = collectionOfTenant("A", "C", "B");
     DataImportQueueItemCollection inProgress = collectionOfTenant("D", "B");
-    mockDatabaseContents(waiting, inProgress);
 
     when(ranker.score(any(), any()))
       .thenAnswer(invocation -> {
@@ -267,29 +225,25 @@ public class ScoreServiceRankingTest {
         return Double.valueOf(item.getTenant().charAt(0));
       });
 
-    service
-      .getRankedQueueItems()
-      .onFailure(cause -> context.fail(cause))
-      .onSuccess(result ->
-        context.verify(v -> {
-          assertThat(
-            result,
-            contains(
-              // C should come first because it has the highest car code
-              waiting.getDataImportQueueItems().get(1),
-              waiting.getDataImportQueueItems().get(2),
-              waiting.getDataImportQueueItems().get(0)
-            )
-          );
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
 
-          waiting
-            .getDataImportQueueItems()
-            .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-          verifyNoMoreInteractions(ranker);
+    assertThat(
+      result,
+      contains(
+        // C should come first because it has the highest car code
+        waiting.getDataImportQueueItems().get(1),
+        waiting.getDataImportQueueItems().get(2),
+        waiting.getDataImportQueueItems().get(0)
+      )
+    );
 
-          async.complete();
-        })
-      );
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
   }
 
   @Test
@@ -361,4 +315,7 @@ public class ScoreServiceRankingTest {
         })
       );
   }
+
+  @Override
+  protected void clearTable(TestContext context) {}
 }

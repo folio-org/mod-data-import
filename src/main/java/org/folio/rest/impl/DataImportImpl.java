@@ -506,7 +506,7 @@ public class DataImportImpl implements DataImport {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOGGER.warn("getDataImportUploadUrl:: Failed to get upload url", e);
+        LOGGER.warn("getDataImportUploadUrl:: Failed to assemble file upload", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

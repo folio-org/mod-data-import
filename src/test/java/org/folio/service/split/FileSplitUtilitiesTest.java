@@ -1,7 +1,9 @@
-package org.folio.service.processing.split;
+package org.folio.service.split;
 
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
+import org.folio.service.processing.split.FileSplitUtilities;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

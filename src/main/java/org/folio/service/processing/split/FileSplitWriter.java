@@ -7,6 +7,7 @@ import io.vertx.core.streams.WriteStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.service.s3storage.MinioStorageService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -19,25 +20,27 @@ import static java.nio.file.StandardOpenOption.CREATE;
 
 public class FileSplitWriter implements WriteStream<Buffer> {
 
+  @Autowired
   private MinioStorageService minioStorageService;
 
   private final Context vertxContext;
-  private final String chunkFolder;
+  private String chunkFolder;
 
-  private final String key;
+  private String key;
 
-  private final boolean uploadFilesToS3;
+  private boolean uploadFilesToS3;
 
-  private final boolean deleteLocalFiles;
+  private boolean deleteLocalFiles;
 
-  private final byte recordTerminator;
-  private final int maxRecordsPerChunk;
+  private byte recordTerminator;
+  private  int maxRecordsPerChunk;
 
   private final Promise<CompositeFuture> chunkUploadingCompositeFuturePromise;
 
+  //generic Future is required for vertx compatibility with composite.all
   private final List<Future> chunkProcessingFutures;
   private Handler<Throwable> exceptionHandler;
-  private Handler<Void> drainHandler;
+ 
 
   private OutputStream currentChunkStream;
   private String currentChunkPath;
@@ -51,23 +54,22 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private static final Logger LOGGER = LogManager.getLogger();
 
 
-  public FileSplitWriter(Context vertxContext, MinioStorageService minioStorageService, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise, String chunkFolder, String key, byte recordTerminator, int maxRecordsPerChunk,
-                         boolean uploadFilesToS3, boolean deleteLocalFiles) throws IOException {
+  public FileSplitWriter(Context vertxContext, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise) throws IOException {
     this.vertxContext = vertxContext;
-    this.minioStorageService = minioStorageService;
     this.chunkUploadingCompositeFuturePromise = chunkUploadingCompositeFuturePromise;
+    chunkProcessingFutures = new ArrayList<>();
+
+    init();
+  }
+  public void setParams(String chunkFolder, String key, byte recordTerminator, int maxRecordsPerChunk,
+      boolean uploadFilesToS3, boolean deleteLocalFiles) {
     this.chunkFolder = chunkFolder;
     this.key = key;
     this.recordTerminator = recordTerminator;
     this.maxRecordsPerChunk = maxRecordsPerChunk;
     this.uploadFilesToS3 = uploadFilesToS3;
     this.deleteLocalFiles = deleteLocalFiles;
-
-    chunkProcessingFutures = new ArrayList<>();
-
-    init();
   }
-
   @Override
   public WriteStream<Buffer> exceptionHandler(@Nullable Handler<Throwable> handler) {
     exceptionHandler = handler;
@@ -165,7 +167,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   @Override
   public WriteStream<Buffer> drainHandler(@Nullable Handler<Void> handler) {
-    drainHandler = handler;
+    //drain handler is unused
     return this;
   }
 

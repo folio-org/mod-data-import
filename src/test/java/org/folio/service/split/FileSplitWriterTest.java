@@ -1,4 +1,4 @@
-package org.folio.service.processing.split;
+package org.folio.service.split;
 
 import io.vertx.core.*;
 import io.vertx.core.file.AsyncFile;
@@ -6,6 +6,9 @@ import io.vertx.core.file.OpenOptions;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
+import org.folio.service.processing.split.FileSplitUtilities;
+import org.folio.service.processing.split.FileSplitWriter;
 import org.folio.service.s3storage.MinioStorageService;
 import org.junit.Before;
 import org.junit.Rule;
@@ -57,7 +60,8 @@ public class FileSplitWriterTest {
           try {
             Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
 
-            FileSplitWriter writer = new FileSplitWriter(vertxContext, minioStorageService, chunkUploadingCompositeFuturePromise, localStorageFolder.getPath(), VALID_MARC_KEY, FileSplitUtilities.MARC_RECORD_TERMINATOR, 3, false, false);
+            FileSplitWriter writer = new FileSplitWriter(vertxContext, chunkUploadingCompositeFuturePromise );
+            writer.setParams(localStorageFolder.getPath(), VALID_MARC_KEY, FileSplitUtilities.MARC_RECORD_TERMINATOR, 3, false, false);
             file.pipeTo(writer).onComplete(ar1 -> {
               if (ar1.succeeded()) {
                 File[] splitFiles = localStorageFolder.listFiles();

@@ -15,6 +15,7 @@ import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
+import org.folio.rest.jaxrs.model.AssembleFileDto;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -490,6 +491,27 @@ public class DataImportImpl implements DataImport {
     });
     
   }
+  @Override
+  public void postDataImportAssembleStorageFile(AssembleFileDto entity, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        LOGGER.debug(
+          "postDataImportAssembleStorageFile:: Assemble Storage File to complete upload {}",
+          entity.getKey()
+        );
+        minioStorageService.completeMultipartFileUpload(entity.getKey(),  entity.getUploadId(),entity.getTags())
+          .map(  completed -> Boolean.TRUE.equals(completed) ? PostDataImportAssembleStorageFileResponse.respond204() : PostDataImportAssembleStorageFileResponse.respond400WithTextPlain("Failed to assemble Data Import upload file") )
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOGGER.warn("getDataImportUploadUrl:: Failed to assemble file upload", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+    
+  }
   /**
    * Validate {@link FileExtension} before save or update
    *
@@ -537,6 +559,8 @@ public class DataImportImpl implements DataImport {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
   }
+
+
 
 
 }

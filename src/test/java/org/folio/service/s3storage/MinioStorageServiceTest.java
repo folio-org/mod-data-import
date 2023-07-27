@@ -5,14 +5,23 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+
 import org.folio.rest.jaxrs.model.FileUploadInfo;
+import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
 import org.junit.Before;
@@ -21,6 +30,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
 
 @RunWith(VertxUnitRunner.class)
 public class MinioStorageServiceTest {
@@ -213,4 +223,40 @@ public class MinioStorageServiceTest {
       async.complete();
     });
   }
+  @Test
+  public void testAssembleSuccessful(TestContext context) {
+    Async async = context.async();
+    List<String> tags = List.of("etag1","etag2","etag3");
+    
+    doAnswer((InvocationOnMock invocation) -> {
+
+      return null;
+    }).when(
+        folioS3Client
+        ).completeMultipartUpload(
+          "test-key",
+          "upload-id",
+          tags);
+
+
+    
+    Future<Boolean> result = minioStorageService.completeMultipartFileUpload(
+        "test-key",
+        "upload-id",
+        tags);
+    result.onFailure(_err -> {
+      context.fail("completeMultipartFileUpload should not fail");
+    
+    });
+  result.onSuccess(assembleResult -> {
+    Mockito
+    .verify(folioS3Client, times(1))
+    .completeMultipartUpload("test-key", "upload-id", tags);
+  Mockito.verifyNoMoreInteractions(folioS3Client);
+  async.complete();
+
+  
+    });
+  }
+
 }

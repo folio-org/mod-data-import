@@ -7,7 +7,6 @@ import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.DataImportQueueItemDao;
@@ -34,7 +33,7 @@ public class ScoreService {
    * one worker in a pool can execute this at a time, guaranteeing that no two
    * workers can get the same queue item
    */
-  public Future<Optional<DataImportQueueItem>> getBestQueueItem() {
+  public Future<Optional<DataImportQueueItem>> getBestQueueItemAndMarkInProgress() {
     return queueItemDao.getAllQueueItemsAndProcessAtomic(
       (
         DataImportQueueItemCollection inProgress,

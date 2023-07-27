@@ -555,8 +555,8 @@ public class DataImportImpl implements DataImport {
               Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
               chunkUploadingCompositeFuturePromise.future().onComplete(chunkUploadingAsyncResult -> handleFileUploading(chunkUploadingAsyncResult, asyncResultHandler));
 
-              FileSplitWriter writer = new FileSplitWriter(vertxContext, chunkUploadingCompositeFuturePromise);
-              writer.setParams( s3localStoragePath, key, FileSplitUtilities.MARC_RECORD_TERMINATOR, recordsPerSplitFile, true, true);
+              FileSplitWriter writer = new FileSplitWriter(vertxContext, chunkUploadingCompositeFuturePromise, key, s3localStoragePath);
+              writer.setParams( FileSplitUtilities.MARC_RECORD_TERMINATOR, recordsPerSplitFile, true, true);
               asyncInput.pipeTo(writer).onComplete(ar1 ->
                 LOGGER.debug("File Split completed at this stage"));
             } catch (IOException e) {
@@ -581,8 +581,8 @@ public class DataImportImpl implements DataImport {
               Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
               chunkUploadingCompositeFuturePromise.future().onComplete(chunkUploadingAsyncResult -> handleFileUploading(chunkUploadingAsyncResult, asyncResultHandler));
 
-              FileSplitWriter writer = new FileSplitWriter(vertxContext, chunkUploadingCompositeFuturePromise);
-              writer.setParams( s3localStoragePath, key, FileSplitUtilities.MARC_RECORD_TERMINATOR, recordsPerSplitFile, true, true);
+              FileSplitWriter writer = new FileSplitWriter(vertxContext, chunkUploadingCompositeFuturePromise, key,s3localStoragePath);
+              writer.setParams(   FileSplitUtilities.MARC_RECORD_TERMINATOR, recordsPerSplitFile, true, true);
               
               file.pipeTo(writer).onComplete(ar1 ->
                 LOGGER.debug("File Split completed at this stage"));

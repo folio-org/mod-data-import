@@ -54,17 +54,16 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private static final Logger LOGGER = LogManager.getLogger();
 
 
-  public FileSplitWriter(Context vertxContext, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise) throws IOException {
+  public FileSplitWriter(Context vertxContext, Promise<CompositeFuture> chunkUploadingCompositeFuturePromise, String key, String chunkFolder) throws IOException {
     this.vertxContext = vertxContext;
     this.chunkUploadingCompositeFuturePromise = chunkUploadingCompositeFuturePromise;
     chunkProcessingFutures = new ArrayList<>();
-
+    this.key = key;
+    this.chunkFolder = chunkFolder;
     init();
   }
-  public void setParams(String chunkFolder, String key, byte recordTerminator, int maxRecordsPerChunk,
+  public void setParams( byte recordTerminator, int maxRecordsPerChunk,
       boolean uploadFilesToS3, boolean deleteLocalFiles) {
-    this.chunkFolder = chunkFolder;
-    this.key = key;
     this.recordTerminator = recordTerminator;
     this.maxRecordsPerChunk = maxRecordsPerChunk;
     this.uploadFilesToS3 = uploadFilesToS3;

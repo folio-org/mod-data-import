@@ -131,7 +131,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     try {
       endChunk();
       handler.handle(Future.succeededFuture());
-      //reference to this https://github.com/eclipse-vertx/vert.x/issues/2627 due to code smell related to declaration of chunkProcessingFutures and Future.all is not available
+      // due to code smell related to declaration of chunkProcessingFutures and Future.all is not available reference https://github.com/eclipse-vertx/vert.x/issues/2627
       chunkUploadingCompositeFuturePromise.complete(CompositeFuture.all(Arrays.asList(chunkProcessingFutures.toArray(new Future[chunkProcessingFutures.size()]))));
     } catch (IOException e) {
       handler.handle(Future.failedFuture(e));

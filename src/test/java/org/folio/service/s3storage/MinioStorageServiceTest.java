@@ -5,15 +5,24 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.io.IOUtils;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+
 import org.folio.rest.jaxrs.model.FileUploadInfo;
+import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
 import org.junit.Before;
@@ -22,6 +31,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -222,7 +232,7 @@ public class MinioStorageServiceTest {
     });
   }
   @Test
-  public void testReadFileSuccessful(TestContext context) {
+  public void testAssembleSuccessful(TestContext context) {
     Async async = context.async();
 
     String testData = "Testing";

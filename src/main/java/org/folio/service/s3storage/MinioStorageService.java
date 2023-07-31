@@ -1,6 +1,9 @@
 package org.folio.service.s3storage;
 
 import io.vertx.core.Future;
+
+import java.util.List;
+
 import javax.validation.constraints.NotNull;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 
@@ -48,6 +51,8 @@ public interface MinioStorageService {
     @NotNull String uploadId,
     int partNumber
   );
+  
+  Future<Boolean> completeMultipartFileUpload(String key, String uploadId, List<String> etags);
 
   /**
    * Opens a file on S3, returns an input stream to read from the remote file

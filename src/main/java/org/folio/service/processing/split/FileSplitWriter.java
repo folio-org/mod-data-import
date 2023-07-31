@@ -87,18 +87,13 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   public void write(Buffer data, Handler<AsyncResult<Void>> handler) {
     var bytes = data.getBytes();
     for (var b : bytes) {
+     
       if (currentChunkStream == null) {
         try {
-          nextChunk();
+          startChunk();
         } catch (IOException e) {
           LOGGER.error("Error writing file chunk", e);
-          if (handler != null) {
-            handler.handle(Future.failedFuture(e));
-          }
-          if (exceptionHandler != null) {
-            exceptionHandler.handle(e);
-          }
-          chunkUploadingCompositeFuturePromise.fail(e);
+          handleWriteException(handler, e);
           return;
         }
       }
@@ -108,44 +103,95 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         } else {
           var e = new RuntimeException("Unreachable statement");
           LOGGER.error("Error writing file chunk", e);
-          if (handler != null) {
-            handler.handle(Future.failedFuture(e));
-          }
-          if (exceptionHandler != null) {
-            exceptionHandler.handle(e);
-          }
+          handleWriteException(handler, e);
         }
         if (b == recordTerminator) {
+          LOGGER.info("record term found" + b);
           if (++recordCount == maxRecordsPerChunk) {
             if (currentChunkStream != null) {
-              currentChunkStream.close();
-              uploadChunkAsync(currentChunkPath, currentChunkKey);
-              currentChunkStream = null;
-              recordCount = 0;
+              endChunk();
             }
           }
         }
       } catch (IOException e) {
         LOGGER.error("Error writing file chunk", e);
-        if (handler != null) {
-          handler.handle(Future.failedFuture(e));
-        }
-        if (exceptionHandler != null) {
-          exceptionHandler.handle(e);
-        }
-        chunkUploadingCompositeFuturePromise.fail(e);
+        handleWriteException(handler, e);
       }
     }
 
+  }
+//  @Override
+//  public void write(Buffer data, Handler<AsyncResult<Void>> handler) {
+//    var bytes = data.getBytes();
+//    for (var b : bytes) {
+//
+//      if (currentChunkStream == null) {
+//        try {
+//          nextChunk();
+//        } catch (IOException e) {
+//          LOGGER.error("Error writing file chunk", e);
+//          if (handler != null) {
+//            handler.handle(Future.failedFuture(e));
+//          }
+//          if (exceptionHandler != null) {
+//            exceptionHandler.handle(e);
+//          }
+//          chunkUploadingCompositeFuturePromise.fail(e);
+//          return;
+//        }
+//      }
+//      try {
+//        if (currentChunkStream != null) {
+//          currentChunkStream.write(b);
+//        } else {
+//          var e = new RuntimeException("Unreachable statement");
+//          LOGGER.error("Error writing file chunk", e);
+//          if (handler != null) {
+//            handler.handle(Future.failedFuture(e));
+//          }
+//          if (exceptionHandler != null) {
+//            exceptionHandler.handle(e);
+//          }
+//        }
+//        if (b == recordTerminator) {
+//          LOGGER.info("record term found " + b);
+//          if (++recordCount == maxRecordsPerChunk) {
+//            if (currentChunkStream != null) {
+//              LOGGER.info("stream close " + recordCount);
+//              currentChunkStream.close();
+//              uploadChunkAsync(currentChunkPath, currentChunkKey);
+//              currentChunkStream = null;
+//              recordCount = 0;
+//            }
+//          }
+//        }
+//      } catch (IOException e) {
+//        LOGGER.error("Error writing file chunk", e);
+//        if (handler != null) {
+//          handler.handle(Future.failedFuture(e));
+//        }
+//        if (exceptionHandler != null) {
+//          exceptionHandler.handle(e);
+//        }
+//        chunkUploadingCompositeFuturePromise.fail(e);
+//      }
+//    }
+//
+//  }
+  private void handleWriteException(Handler<AsyncResult<Void>> handler, Exception e) {
+    if (handler != null) {
+      handler.handle(Future.failedFuture(e));
+    }
+    if (exceptionHandler != null) {
+      exceptionHandler.handle(e);
+    }
+    chunkUploadingCompositeFuturePromise.fail(e);
   }
 
   @Override
   public void end(Handler<AsyncResult<Void>> handler) {
     try {
-      if (currentChunkStream != null) {
-        currentChunkStream.close();
-        uploadChunkAsync(currentChunkPath, currentChunkKey);
-      }
+      endChunk();
       handler.handle(Future.succeededFuture());
       chunkUploadingCompositeFuturePromise.complete(CompositeFuture.all(chunkProcessingFutures));
     } catch (IOException e) {
@@ -179,6 +225,23 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     LOGGER.debug("{}: nextChunk:{}", Thread.currentThread().getName(), currentChunkPath );
   }
 
+  private void startChunk() throws IOException {
+    String fileName = FileSplitUtilities.buildPartKey(key, chunkIndex++);
+    var path = Path.of(chunkFolder, fileName);
+    currentChunkPath = path.toString();
+    currentChunkKey = fileName;
+    currentChunkStream = Files.newOutputStream(path, CREATE);
+    LOGGER.info("{}: startChunk:{}", Thread.currentThread().getName(), currentChunkPath );
+    
+  }
+  private void endChunk() throws IOException { 
+    LOGGER.info("stream close " + recordCount);
+    currentChunkStream.close();
+    uploadChunkAsync(currentChunkPath, currentChunkKey);
+    currentChunkStream = null;
+    recordCount = 0;
+    LOGGER.info("{}: endChunk:{}", Thread.currentThread().getName(), currentChunkPath );
+  }
   private void init() throws IOException {
     nextChunk();
   }
@@ -191,12 +254,12 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       Path cp = Path.of(chunkPath);
       // chunk file uploading to S3
       if (uploadFilesToS3) {
-         LOGGER.debug("{}: Uploading file:{}:key{}", Thread.currentThread().getName(), chunkPath, chunkKey );
+         LOGGER.info("{}: Uploading file:{}:key{}", Thread.currentThread().getName(), chunkPath, chunkKey );
 
         try {
           minioStorageService.write(chunkKey, Files.newInputStream(cp)).onComplete(s3Path -> {
               if (s3Path.failed()) {
-                LOGGER.error("{}: Failed Uploading file: {}", Thread.currentThread().getName(), chunkPath );
+                LOGGER.info("{}: Failed Uploading file: {}", Thread.currentThread().getName(), chunkPath );
 
                 chunkPromise.fail(s3Path.cause());
               } else if (s3Path.succeeded()) {

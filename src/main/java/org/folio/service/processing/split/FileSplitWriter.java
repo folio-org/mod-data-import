@@ -104,8 +104,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           var e = new RuntimeException("Unreachable statement");
           handleWriteException(handler, e);
         }
-        if (b == recordTerminator 
-            && (++recordCount == maxRecordsPerChunk)) {
+        if (b == recordTerminator  && 
+           (++recordCount == maxRecordsPerChunk)) {
               endChunk();
         }
       } catch (IOException e) {
@@ -161,7 +161,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     currentChunkPath = path.toString();
     currentChunkKey = fileName;
     currentChunkStream = Files.newOutputStream(path, CREATE);
-    LOGGER.debug("{}: nextChunk:{}", Thread.currentThread().getName(), currentChunkPath );
+    LOGGER.debug("{}: nextChunk:{} time:", Thread.currentThread().getName(), currentChunkPath,System.currentTimeMillis() );
   }
 
   private void startChunk() throws IOException {
@@ -170,7 +170,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     currentChunkPath = path.toString();
     currentChunkKey = fileName;
     currentChunkStream = Files.newOutputStream(path, CREATE);
-    LOGGER.info("{}: startChunk:{}", Thread.currentThread().getName(), currentChunkPath );
+    LOGGER.info("{}: startChunk:{} time:{}", Thread.currentThread().getName(), currentChunkPath, System.currentTimeMillis() );
     
   }
   private void endChunk() throws IOException { 
@@ -179,7 +179,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       uploadChunkAsync(currentChunkPath, currentChunkKey);
       currentChunkStream = null;
       recordCount = 0;
-      LOGGER.info("{}: endChunk:{}", Thread.currentThread().getName(), currentChunkPath );
+      LOGGER.info("{}: endChunk:{} time:{}", Thread.currentThread().getName(), currentChunkPath, System.currentTimeMillis() );
     } else {
       LOGGER.error("{}: stream was null, did not end", Thread.currentThread().getName() );
     }
@@ -196,7 +196,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       Path cp = Path.of(chunkPath);
       // chunk file uploading to S3
       if (uploadFilesToS3) {
-         LOGGER.info("{}: Uploading file:{}:key{}", Thread.currentThread().getName(), chunkPath, chunkKey );
+         LOGGER.info("{}: Uploading file:{}:key{} time:{}", Thread.currentThread().getName(), chunkPath, chunkKey,System.currentTimeMillis() );
 
         try {
           minioStorageService.write(chunkKey, Files.newInputStream(cp)).onComplete(s3Path -> {
@@ -205,7 +205,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
                 chunkPromise.fail(s3Path.cause());
               } else if (s3Path.succeeded()) {
-                LOGGER.info("{}: Successfully Uploading file: {}", Thread.currentThread().getName(), chunkPath );
+                LOGGER.info("{}: Successfully Uploading file: {} time:{}", Thread.currentThread().getName(), chunkPath,System.currentTimeMillis() );
               }
             }
           );
@@ -226,7 +226,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           return;
         }
       }
-      LOGGER.info("{}: Uploading file: {} Completed", Thread.currentThread().getName(), chunkPath );
+      LOGGER.info("{}: Uploading file: {} Completed time: {}", Thread.currentThread().getName(), chunkPath , System.currentTimeMillis());
       event.complete();
       chunkPromise.complete(chunkPath);
     }, false);

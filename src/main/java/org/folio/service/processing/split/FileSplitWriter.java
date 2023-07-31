@@ -105,13 +105,9 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           LOGGER.error("Error writing file chunk", e);
           handleWriteException(handler, e);
         }
-        if (b == recordTerminator) {
-          LOGGER.info("record term found" + b);
-          if (++recordCount == maxRecordsPerChunk) {
-            if (currentChunkStream != null) {
+        if (b == recordTerminator 
+            && (++recordCount == maxRecordsPerChunk)) {
               endChunk();
-            }
-          }
         }
       } catch (IOException e) {
         LOGGER.error("Error writing file chunk", e);
@@ -120,64 +116,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     }
 
   }
-//  @Override
-//  public void write(Buffer data, Handler<AsyncResult<Void>> handler) {
-//    var bytes = data.getBytes();
-//    for (var b : bytes) {
-//
-//      if (currentChunkStream == null) {
-//        try {
-//          nextChunk();
-//        } catch (IOException e) {
-//          LOGGER.error("Error writing file chunk", e);
-//          if (handler != null) {
-//            handler.handle(Future.failedFuture(e));
-//          }
-//          if (exceptionHandler != null) {
-//            exceptionHandler.handle(e);
-//          }
-//          chunkUploadingCompositeFuturePromise.fail(e);
-//          return;
-//        }
-//      }
-//      try {
-//        if (currentChunkStream != null) {
-//          currentChunkStream.write(b);
-//        } else {
-//          var e = new RuntimeException("Unreachable statement");
-//          LOGGER.error("Error writing file chunk", e);
-//          if (handler != null) {
-//            handler.handle(Future.failedFuture(e));
-//          }
-//          if (exceptionHandler != null) {
-//            exceptionHandler.handle(e);
-//          }
-//        }
-//        if (b == recordTerminator) {
-//          LOGGER.info("record term found " + b);
-//          if (++recordCount == maxRecordsPerChunk) {
-//            if (currentChunkStream != null) {
-//              LOGGER.info("stream close " + recordCount);
-//              currentChunkStream.close();
-//              uploadChunkAsync(currentChunkPath, currentChunkKey);
-//              currentChunkStream = null;
-//              recordCount = 0;
-//            }
-//          }
-//        }
-//      } catch (IOException e) {
-//        LOGGER.error("Error writing file chunk", e);
-//        if (handler != null) {
-//          handler.handle(Future.failedFuture(e));
-//        }
-//        if (exceptionHandler != null) {
-//          exceptionHandler.handle(e);
-//        }
-//        chunkUploadingCompositeFuturePromise.fail(e);
-//      }
-//    }
-//
-//  }
+
   private void handleWriteException(Handler<AsyncResult<Void>> handler, Exception e) {
     if (handler != null) {
       handler.handle(Future.failedFuture(e));
@@ -235,12 +174,15 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     
   }
   private void endChunk() throws IOException { 
-    LOGGER.info("stream close " + recordCount);
-    currentChunkStream.close();
-    uploadChunkAsync(currentChunkPath, currentChunkKey);
-    currentChunkStream = null;
-    recordCount = 0;
-    LOGGER.info("{}: endChunk:{}", Thread.currentThread().getName(), currentChunkPath );
+    if (currentChunkStream != null) {
+      currentChunkStream.close();
+      uploadChunkAsync(currentChunkPath, currentChunkKey);
+      currentChunkStream = null;
+      recordCount = 0;
+      LOGGER.info("{}: endChunk:{}", Thread.currentThread().getName(), currentChunkPath );
+    } else {
+      LOGGER.error("{}: stream was null, did not end", Thread.currentThread().getName() );
+    }
   }
   private void init() throws IOException {
     nextChunk();

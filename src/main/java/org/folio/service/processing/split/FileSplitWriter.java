@@ -14,6 +14,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -38,7 +39,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private final Promise<CompositeFuture> chunkUploadingCompositeFuturePromise;
 
   //generic Future is required for vertx compatibility with composite.all
-  private final List<Future> chunkProcessingFutures;
+  private final List<Future<String>> chunkProcessingFutures;
   private Handler<Throwable> exceptionHandler;
  
 
@@ -92,7 +93,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         try {
           startChunk();
         } catch (IOException e) {
-          LOGGER.error("Error writing file chunk", e);
           handleWriteException(handler, e);
           return;
         }
@@ -102,7 +102,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           currentChunkStream.write(b);
         } else {
           var e = new RuntimeException("Unreachable statement");
-          LOGGER.error("Error writing file chunk", e);
           handleWriteException(handler, e);
         }
         if (b == recordTerminator 
@@ -110,7 +109,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
               endChunk();
         }
       } catch (IOException e) {
-        LOGGER.error("Error writing file chunk", e);
         handleWriteException(handler, e);
       }
     }
@@ -118,6 +116,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   }
 
   private void handleWriteException(Handler<AsyncResult<Void>> handler, Exception e) {
+    LOGGER.error("Error writing file chunk", e);
     if (handler != null) {
       handler.handle(Future.failedFuture(e));
     }
@@ -132,7 +131,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     try {
       endChunk();
       handler.handle(Future.succeededFuture());
-      chunkUploadingCompositeFuturePromise.complete(CompositeFuture.all(chunkProcessingFutures));
+      //reference to this https://github.com/eclipse-vertx/vert.x/issues/2627 due to code smell related to declaration of chunkProcessingFutures and Future.all is not available
+      chunkUploadingCompositeFuturePromise.complete(CompositeFuture.all(Arrays.asList(chunkProcessingFutures.toArray(new Future[chunkProcessingFutures.size()]))));
     } catch (IOException e) {
       handler.handle(Future.failedFuture(e));
       chunkUploadingCompositeFuturePromise.fail(e);
@@ -216,8 +216,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           return;
         }
       }
-      //TODO: Once file uploading completed,
-      // there could be a next async handler to do some DB calls or initiate a next step for chunk processing
+      onFileComplete();
       if (deleteLocalFiles) {
         try {
           Files.delete(cp);
@@ -231,5 +230,9 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       event.complete();
       chunkPromise.complete(chunkPath);
     }, false);
+  }
+  private void onFileComplete() {
+    // Do any work here that is required once the fragment file is uploaded
+    
   }
 }

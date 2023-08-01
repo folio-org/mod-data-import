@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Arrays;
 import java.util.NavigableSet;
+import java.util.UUID;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
@@ -43,7 +44,9 @@ public class ScoreServiceRankingTest {
   }
 
   private DataImportQueueItem ofTenant(String tenant) {
-    return new DataImportQueueItem().withTenant(tenant);
+    return new DataImportQueueItem()
+      .withId(new UUID(0, 0).toString())
+      .withTenant(tenant);
   }
 
   private DataImportQueueItemCollection collection(

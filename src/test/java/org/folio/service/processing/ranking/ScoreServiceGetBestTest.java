@@ -16,6 +16,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.BiFunction;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.rest.AbstractRestTest;
@@ -46,7 +47,9 @@ public class ScoreServiceGetBestTest extends AbstractRestTest {
   }
 
   private DataImportQueueItem ofTenant(String tenant) {
-    return new DataImportQueueItem().withTenant(tenant);
+    return new DataImportQueueItem()
+      .withId(new UUID(0, 0).toString())
+      .withTenant(tenant);
   }
 
   private DataImportQueueItemCollection collection(

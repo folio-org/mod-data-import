@@ -76,10 +76,7 @@ public class ScoreService {
       "Calculating scores for {} waiting chunks",
       waiting.getDataImportQueueItems().size()
     );
-    LOGGER.info(
-      "Current worker tenant usage (tenant(number of workers)): {}",
-      tenantUsageMap
-    );
+    LOGGER.info("Current worker tenant usage: {}", tenantUsageMap);
 
     TreeSet<DataImportQueueItem> set = new TreeSet<>((a, b) -> {
       int scoreDiff = -Double.compare(

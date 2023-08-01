@@ -2,12 +2,15 @@ package org.folio.dao;
 
 import static java.lang.String.format;
 
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.NotFoundException;
@@ -37,12 +40,14 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     "UPDATE %s.%s SET jobExecutionId = $2,uploadDefinitionId = $3, tenant = $4,size = $5,originalSize = $6,filePath = $7,timestamp = $8, partNumber = $9, processing = $10 WHERE id = $1";
   private static final String DELETE_BY_ID_SQL =
     "DELETE FROM %s.%s WHERE id = $1";
+  private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
+    "LOCK TABLE %s.%s IN ACCESS EXCLUSIVE MODE";
 
-  @Autowired
   private PostgresClientFactory pgClientFactory;
 
-  public DataImportQueueItemDaoImpl() {
-    super();
+  @Autowired
+  public DataImportQueueItemDaoImpl(PostgresClientFactory pgClientFactory) {
+    this.pgClientFactory = pgClientFactory;
   }
 
   @Override
@@ -107,6 +112,49 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
       promise.fail(e);
     }
     return promise.future().map(this::mapResultSetToQueueItemList);
+  }
+
+  @Override
+  public Future<Optional<DataImportQueueItem>> getAllQueueItemsAndProcessAtomic(
+    BiFunction<DataImportQueueItemCollection, DataImportQueueItemCollection, Optional<DataImportQueueItem>> processor
+  ) {
+    return pgClientFactory
+      .getInstance()
+      .withTransaction((PgConnection conn) -> {
+        // lock the table to ensure no other workers can read or update
+        conn.query(
+          format(
+            LOCK_ACCESS_EXCLUSIVE_SQL,
+            MODULE_GLOBAL_SCHEMA,
+            QUEUE_ITEM_TABLE
+          )
+        );
+
+        return CompositeFuture
+          .all(getAllInProgressQueueItems(), getAllWaitingQueueItems())
+          .compose((CompositeFuture compositeFuture) -> {
+            DataImportQueueItemCollection inProgress = compositeFuture.resultAt(
+              0
+            );
+            DataImportQueueItemCollection waiting = compositeFuture.resultAt(1);
+
+            Optional<DataImportQueueItem> result = processor.apply(
+              inProgress,
+              waiting
+            );
+
+            return Future.succeededFuture(result);
+          })
+          .compose((Optional<DataImportQueueItem> result) -> {
+            if (result.isPresent()) {
+              return updateDataImportQueueItem(
+                result.get().withProcessing(true)
+              )
+                .map(Optional::of);
+            }
+            return Future.succeededFuture(result);
+          });
+      });
   }
 
   @Override

@@ -2,6 +2,7 @@ package org.folio.service.processing.ranking;
 
 import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -15,13 +16,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class QueueItemTenantUsageRanker implements QueueItemRanker {
 
+  private int scoreNoWorkers;
+  private int scoreAllWorkers;
+
   // we default to zeroes since, if the env variables are not present,
   // then we should not score on this metric
-  @Value("${SCORE_TENANT_USAGE_MIN:0}")
-  private int scoreNoWorkers;
-
-  @Value("${SCORE_TENANT_USAGE_MAX:0}")
-  private int scoreAllWorkers;
+  @Autowired
+  public QueueItemTenantUsageRanker(
+    @Value("${SCORE_TENANT_USAGE_MIN:0}") int scoreNoWorkers,
+    @Value("${SCORE_TENANT_USAGE_MAX:0}") int scoreAllWorkers
+  ) {
+    this.scoreNoWorkers = scoreNoWorkers;
+    this.scoreAllWorkers = scoreAllWorkers;
+  }
 
   @Override
   public double score(

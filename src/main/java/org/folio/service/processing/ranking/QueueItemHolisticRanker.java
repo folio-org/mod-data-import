@@ -11,17 +11,23 @@ import org.springframework.stereotype.Component;
 @Component
 public class QueueItemHolisticRanker implements QueueItemRanker {
 
-  @Autowired
   private QueueItemAgeRanker ageRanker;
-
-  @Autowired
   private QueueItemPartNumberRanker partNumberRanker;
-
-  @Autowired
   private QueueItemSizeRanker sizeRanker;
+  private QueueItemTenantUsageRanker tenantUsageRanker;
 
   @Autowired
-  private QueueItemTenantUsageRanker tenantUsageRanker;
+  public QueueItemHolisticRanker(
+    QueueItemAgeRanker ageRanker,
+    QueueItemPartNumberRanker partNumberRanker,
+    QueueItemSizeRanker sizeRanker,
+    QueueItemTenantUsageRanker tenantUsageRanker
+  ) {
+    this.ageRanker = ageRanker;
+    this.partNumberRanker = partNumberRanker;
+    this.sizeRanker = sizeRanker;
+    this.tenantUsageRanker = tenantUsageRanker;
+  }
 
   @Override
   public double score(

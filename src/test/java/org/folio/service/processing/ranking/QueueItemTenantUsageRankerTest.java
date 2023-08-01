@@ -14,10 +14,7 @@ public class QueueItemTenantUsageRankerTest
   QueueItemTenantUsageRanker ranker;
 
   public QueueItemTenantUsageRankerTest() {
-    this.ranker = new QueueItemTenantUsageRanker();
-
-    this.setField(ranker, "scoreNoWorkers", 100);
-    this.setField(ranker, "scoreAllWorkers", -100);
+    this.ranker = new QueueItemTenantUsageRanker(100, -100);
   }
 
   @Test

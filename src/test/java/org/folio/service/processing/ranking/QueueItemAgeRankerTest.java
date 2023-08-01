@@ -15,12 +15,7 @@ public class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
   QueueItemAgeRanker ranker;
 
   public QueueItemAgeRankerTest() {
-    this.ranker = new QueueItemAgeRanker();
-
-    this.setField(ranker, "scoreAgeNewest", 10);
-    this.setField(ranker, "scoreAgeOldest", 100);
-    this.setField(ranker, "scoreAgeExtremeThresholdMinutes", 64);
-    this.setField(ranker, "scoreAgeExtremeValue", -1);
+    this.ranker = new QueueItemAgeRanker(10, 100, 64, -1);
   }
 
   private DataImportQueueItem ofAge(int age) {

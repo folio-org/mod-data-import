@@ -20,11 +20,17 @@ public class ScoreService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  @Autowired
   private QueueItemHolisticRanker ranker;
+  private DataImportQueueItemDao queueItemDao;
 
   @Autowired
-  private DataImportQueueItemDao queueItemDao;
+  public ScoreService(
+    QueueItemHolisticRanker ranker,
+    DataImportQueueItemDao queueItemDao
+  ) {
+    this.ranker = ranker;
+    this.queueItemDao = queueItemDao;
+  }
 
   /**
    * Get the next best queue item that is currently waiting to execute and mark
@@ -75,12 +81,19 @@ public class ScoreService {
       tenantUsageMap
     );
 
-    TreeSet<DataImportQueueItem> set = new TreeSet<>((a, b) ->
-      -Double.compare(
+    TreeSet<DataImportQueueItem> set = new TreeSet<>((a, b) -> {
+      int scoreDiff = -Double.compare(
         calculateScoreCached(cache, a, tenantUsageMap),
         calculateScoreCached(cache, b, tenantUsageMap)
-      )
-    );
+      );
+
+      if (scoreDiff == 0) {
+        // make deterministic
+        return a.getId().compareTo(b.getId());
+      }
+
+      return scoreDiff;
+    });
 
     set.addAll(waiting.getDataImportQueueItems());
 
@@ -132,7 +145,6 @@ public class ScoreService {
     DataImportQueueItem item,
     Map<String, Long> tenantUsageMap
   ) {
-    LOGGER.info("Cache saw {}", item);
     return cache.computeIfAbsent(
       item,
       el -> calculateScore(item, tenantUsageMap)

@@ -13,11 +13,7 @@ public class QueueItemPartNumberRankerTest extends AbstractQueueItemRankerTest {
   QueueItemPartNumberRanker ranker;
 
   public QueueItemPartNumberRankerTest() {
-    this.ranker = new QueueItemPartNumberRanker();
-
-    this.setField(ranker, "scoreFirst", 1);
-    this.setField(ranker, "scoreLast", 0);
-    this.setField(ranker, "scoreLastReference", 31);
+    this.ranker = new QueueItemPartNumberRanker(1, 0, 31);
   }
 
   private DataImportQueueItem ofPart(int partNumber) {

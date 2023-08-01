@@ -13,11 +13,7 @@ public class QueueItemSizeRankerTest extends AbstractQueueItemRankerTest {
   QueueItemSizeRanker ranker;
 
   public QueueItemSizeRankerTest() {
-    this.ranker = new QueueItemSizeRanker();
-
-    this.setField(ranker, "scoreSmallest", 100);
-    this.setField(ranker, "scoreLargest", 10);
-    this.setField(ranker, "scoreLargeReference", 63);
+    this.ranker = new QueueItemSizeRanker(100, 10, 63);
   }
 
   private DataImportQueueItem ofSize(int size) {

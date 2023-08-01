@@ -38,7 +38,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   private final Promise<CompositeFuture> chunkUploadingCompositeFuturePromise;
 
-  //generic Future is required for vertx compatibility with composite.all
   private final List<Future<String>> chunkProcessingFutures;
   private Handler<Throwable> exceptionHandler;
  
@@ -155,15 +154,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     return this;
   }
 
-  private void nextChunk() throws IOException {
-    String fileName = FileSplitUtilities.buildPartKey(key, chunkIndex++);
-    var path = Path.of(chunkFolder, fileName);
-    currentChunkPath = path.toString();
-    currentChunkKey = fileName;
-    currentChunkStream = Files.newOutputStream(path, CREATE);
-    LOGGER.debug("{}: nextChunk:{} time:", Thread.currentThread().getName(), currentChunkPath,System.currentTimeMillis() );
-  }
-
   private void startChunk() throws IOException {
     String fileName = FileSplitUtilities.buildPartKey(key, chunkIndex++);
     var path = Path.of(chunkFolder, fileName);
@@ -185,7 +175,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     }
   }
   private void init() throws IOException {
-    nextChunk();
+    startChunk();
   }
 
   private void uploadChunkAsync(String chunkPath, String chunkKey) {

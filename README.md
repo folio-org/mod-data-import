@@ -6,15 +6,21 @@ This software is distributed under the terms of the Apache License,
 Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 4 README.md -->
-* [Introduction](#introduction)
-* [Compiling](#compiling)
-* [Docker](#docker)
-* [Installing the module](#installing-the-module)
-* [Deploying the module](#deploying-the-module)
-* [Maximum upload file size and java heap memory setup](#maximum-upload-file-size-and-java-heap-memory-setups)  
-* [Scalability](#scalability)
-* [Interaction with Kafka](#interaction-with-kafka)
-* [Other system properties](#system-properties-that-can-be-adjusted-for-this-module-and-default-values)
+- [Introduction](#introduction)
+- [Compiling](#compiling)
+- [Docker](#docker)
+- [Installing the module](#installing-the-module)
+- [Deploying the module](#deploying-the-module)
+- [Maximum upload file size and java heap memory setups](#maximum-upload-file-size-and-java-heap-memory-setups)
+    - [Example](#example)
+- [Scalability](#scalability)
+  - [Module properties to set up at mod-configuration](#module-properties-to-set-up-at-mod-configuration)
+- [Interaction with AWS S3/Minio](#interaction-with-aws-s3minio)
+- [Interaction with Kafka](#interaction-with-kafka)
+- [Other system properties](#other-system-properties)
+- [Issue tracker](#issue-tracker)
+- [Additional information](#additional-information)
+- [Script to upload a batch of MARC records](#script-to-upload-a-batch-of-marc-records)
 
 ## Introduction
 
@@ -129,6 +135,7 @@ This module uses S3-compatible storage as part of the file upload process.  The 
 | `AWS_ACCESS_KEY_ID`     | S3 access key                                                              |
 | `AWS_SECRET_ACCESS_KEY` | S3 secret key                                                              |
 | `AWS_SDK`               | If AWS S3 is being used (should be `"true"` if so and `"false"` otherwise) |
+| `S3_FORCEPATHSTYLE`     | If path-style requests should be used instead of virtual-hosted-style      |
 
 ## Interaction with Kafka
 

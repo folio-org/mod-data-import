@@ -1,19 +1,22 @@
 package org.folio.service.processing.split;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.impl.Arguments;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.impl.InboundBuffer;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Objects;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class AsyncInputStream implements ReadStream<Buffer> {
 
@@ -81,7 +84,9 @@ public class AsyncInputStream implements ReadStream<Buffer> {
    * io.vertx.core.streams.ReadStream#exceptionHandler(io.vertx.core.Handler)
    */
   @Override
-  public synchronized AsyncInputStream exceptionHandler(Handler<Throwable> exceptionHandler) {
+  public synchronized AsyncInputStream exceptionHandler(
+    Handler<Throwable> exceptionHandler
+  ) {
     check();
     this.exceptionHandler = exceptionHandler;
     return this;
@@ -141,8 +146,12 @@ public class AsyncInputStream implements ReadStream<Buffer> {
 
   private void checkContext() {
     if (!vertx.getOrCreateContext().equals(context)) {
-      throw new IllegalStateException("AsyncInputStream must only be used in the context that created it, expected: " + this.context
-        + " actual " + vertx.getOrCreateContext());
+      throw new IllegalStateException(
+        "AsyncInputStream must only be used in the context that created it, expected: " +
+        this.context +
+        " actual " +
+        vertx.getOrCreateContext()
+      );
     }
   }
 
@@ -153,7 +162,6 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   }
 
   private void doClose(Handler<AsyncResult<Void>> handler) {
-
     try {
       ch.close();
       if (handler != null) {
@@ -166,8 +174,13 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     }
   }
 
-  public synchronized AsyncInputStream read(Buffer buffer, int offset, long position, int length,
-                                            Handler<AsyncResult<Buffer>> handler) {
+  public synchronized AsyncInputStream read(
+    Buffer buffer,
+    int offset,
+    long position,
+    int length,
+    Handler<AsyncResult<Buffer>> handler
+  ) {
     Objects.requireNonNull(buffer, "buffer");
     Objects.requireNonNull(handler, "handler");
     Arguments.require(offset >= 0, "offset must be >= 0");
@@ -188,67 +201,81 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     if (!readInProgress) {
       readInProgress = true;
       Buffer buff = Buffer.buffer(readBufferSize);
-      doRead(buff, 0, bb, readPos, ar -> {
-        if (ar.succeeded()) {
-          readInProgress = false;
-          Buffer buffer = ar.result();
-          readPos += buffer.length();
-          // Empty buffer represents end of file
-          if (queue.write(buffer) && buffer.length() > 0) {
-            doRead(bb);
+      doRead(
+        buff,
+        0,
+        bb,
+        readPos,
+        ar -> {
+          if (ar.succeeded()) {
+            readInProgress = false;
+            Buffer buffer = ar.result();
+            readPos += buffer.length();
+            // Empty buffer represents end of file
+            if (queue.write(buffer) && buffer.length() > 0) {
+              doRead(bb);
+            }
+          } else {
+            handleException(ar.cause());
           }
-        } else {
-          handleException(ar.cause());
         }
-      });
+      );
     }
   }
 
-  private void doRead(Buffer writeBuff, int offset, ByteBuffer buff, long position, Handler<AsyncResult<Buffer>> handler) {
-
+  private void doRead(
+    Buffer writeBuff,
+    int offset,
+    ByteBuffer buff,
+    long position,
+    Handler<AsyncResult<Buffer>> handler
+  ) {
     // ReadableByteChannel doesn't have a completion handler, so we wrap it into
     // an executeBlocking and use the future there
-    vertx.executeBlocking(future -> {
-      try {
-        Integer bytesRead = ch.read(buff);
-        future.complete(bytesRead);
-      } catch (Exception e) {
-        LOGGER.error(e);
-        future.fail(e);
-      }
-
-    }, res -> {
-
-      if (res.failed()) {
-        context.runOnContext(v -> handler.handle(Future.failedFuture(res.cause())));
-      } else {
-        // Do the completed check
-        Integer bytesRead = (Integer) res.result();
-        if (bytesRead == -1) {
-          //End of file
-          context.runOnContext(v -> {
-            buff.flip();
-            writeBuff.setBytes(offset, buff);
-            buff.compact();
-            handler.handle(Future.succeededFuture(writeBuff));
-          });
-        } else if (buff.hasRemaining()) {
-          long pos = position;
-          pos += bytesRead;
-          // resubmit
-          doRead(writeBuff, offset, buff, pos, handler);
+    vertx.executeBlocking(
+      future -> {
+        try {
+          Integer bytesRead = ch.read(buff);
+          future.complete(bytesRead);
+        } catch (Exception e) {
+          LOGGER.error(e);
+          future.fail(e);
+        }
+      },
+      res -> {
+        if (res.failed()) {
+          context.runOnContext(v ->
+            handler.handle(Future.failedFuture(res.cause()))
+          );
         } else {
-          // It's been fully written
+          // Do the completed check
+          Integer bytesRead = (Integer) res.result();
+          if (bytesRead == -1) {
+            //End of file
+            context.runOnContext(v -> {
+              buff.flip();
+              writeBuff.setBytes(offset, buff);
+              buff.compact();
+              handler.handle(Future.succeededFuture(writeBuff));
+            });
+          } else if (buff.hasRemaining()) {
+            long pos = position;
+            pos += bytesRead;
+            // resubmit
+            doRead(writeBuff, offset, buff, pos, handler);
+          } else {
+            // It's been fully written
 
-          context.runOnContext(v -> {
-            buff.flip();
-            writeBuff.setBytes(offset, buff);
-            buff.compact();
-            handler.handle(Future.succeededFuture(writeBuff));
-          });
+            context.runOnContext(v -> {
+              buff.flip();
+              writeBuff.setBytes(offset, buff);
+              buff.compact();
+              handler.handle(Future.succeededFuture(writeBuff));
+            });
+          }
         }
       }
-    });
+    );
   }
 
   private void handleData(Buffer buff) {
@@ -281,5 +308,4 @@ public class AsyncInputStream implements ReadStream<Buffer> {
       LOGGER.error("Unhandled exception", t);
     }
   }
-
 }

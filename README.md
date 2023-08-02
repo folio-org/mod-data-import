@@ -123,6 +123,14 @@ To allow multiple instance deployment, for every instance the same persistent vo
 * **_data.import.storage.type_** - type of data storage used for uploaded files. Default value is **LOCAL_STORAGE**. Other implementations for storage should be added.
 * **_data.import.storage.path_** - **path where uploaded file will be stored**
 
+## File splitting configuration
+
+The file-splitting process may be configured with the following environment variables:
+
+| Name                      | Description                                                                |
+|---------------------------|----------------------------------------------------------------------------|
+| `RECORDS_PER_SPLIT_FILE`  | The maximum number of records to include in a single file; default is 1000 |
+
 ## Interaction with AWS S3/Minio
 
 This module uses S3-compatible storage as part of the file upload process.  The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):

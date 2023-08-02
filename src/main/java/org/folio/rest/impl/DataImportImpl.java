@@ -1,7 +1,14 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
@@ -62,8 +69,8 @@ public class DataImportImpl implements DataImport {
   @Autowired
   private MinioStorageService minioStorageService;
 
-  @Value("${splitFileProcess:false}")
-  private boolean splitFileProcess;
+  @Value("${SPLIT_FILES_ENABLED:false}")
+  private boolean fileSplittingEnabled;
 
   @Value("${RECORDS_PER_SPLIT_FILE:1000}")
   private int recordsPerSplitFile;
@@ -482,11 +489,11 @@ public class DataImportImpl implements DataImport {
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                        Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      Promise<SplitStatus> splitconfigpromise = Promise.promise();
+      Promise<SplitStatus> promise = Promise.promise();
       SplitStatus response = new SplitStatus();
-      response.setSplitStatus(this.splitFileProcess);
-      splitconfigpromise.complete(response);
-      splitconfigpromise.future()
+      response.setSplitStatus(this.fileSplittingEnabled);
+      promise.complete(response);
+      promise.future()
         .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
         .map(Response.class::cast)
         .onComplete(asyncResultHandler);
@@ -552,7 +559,7 @@ public class DataImportImpl implements DataImport {
       JsonObject tokenJson = new JsonObject(json);
       return tokenJson.getString("user_id");
     } catch (Exception e) {
-      LOGGER.warn("getUserIdFromToken:: Invalid x-okapi-token: " + token, e);
+      LOGGER.warn("getUserIdFromToken:: Invalid x-okapi-token: {}", token, e);
       return null;
     }
   }
@@ -561,9 +568,6 @@ public class DataImportImpl implements DataImport {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
   }
-
-
-
 
   @Override
   public void getDataImportTestFileSplit(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
@@ -594,7 +598,7 @@ public class DataImportImpl implements DataImport {
   @Override
   public void getDataImportTestFileSplitLocal(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      var fileSystem = vertxContext.owner().fileSystem();
+      FileSystem fileSystem = vertxContext.owner().fileSystem();
       fileSystem
         .open(s3localStoragePath + key, new OpenOptions().setRead(true))
         .onComplete(ar -> {

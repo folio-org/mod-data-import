@@ -258,6 +258,11 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest-all</artifactId>
+      <version>1.3</version>
+    </dependency>
+    <dependency>
       <groupId>net.mguenther.kafka</groupId>
       <artifactId>kafka-junit</artifactId>
       <version>${kafka-junit.version}</version>

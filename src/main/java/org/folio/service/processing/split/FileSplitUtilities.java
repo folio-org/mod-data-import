@@ -32,7 +32,7 @@ public class FileSplitUtilities {
     );
   }
 
-  public static Integer countRecordsInMarcFile(InputStream inStream) throws IOException {
+  public static int countRecordsInMarcFile(InputStream inStream) throws IOException {
     try {
       byte[] byteBuffer = new byte[BUFFER_SIZE];
       int numberOfBytes;

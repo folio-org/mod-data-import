@@ -565,7 +565,7 @@ public class DataImportImpl implements DataImport {
 
 
 
-  //@Override
+  @Override
   public void getDataImportTestFileSplit(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v ->
       minioStorageService.readFile(key).onComplete(

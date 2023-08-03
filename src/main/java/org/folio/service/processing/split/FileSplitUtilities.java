@@ -2,14 +2,17 @@ package org.folio.service.processing.split;
 
 import java.io.IOException;
 import java.io.InputStream;
-import lombok.experimental.UtilityClass;
 
-@UtilityClass
 public class FileSplitUtilities {
 
   public static final byte MARC_RECORD_TERMINATOR = (byte) 0x1d;
 
   private static final int BUFFER_SIZE = 8192;
+
+  private FileSplitUtilities() {
+    throw new UnsupportedOperationException(
+        "Cannot instantiate utility class.");
+  }
 
   /**
    * Creates the S3 key for a split chunk within a larger file
@@ -25,9 +28,15 @@ public class FileSplitUtilities {
       keyNameParts[keyNameParts.length - 2] = partUpdate;
       return String.join(".", keyNameParts);
     }
+
     return String.format("%s_%s", baseKey, partNumber);
   }
 
+  /**
+   * Counts records in a given {@link InputStream}, closing it afterwards.
+   *
+   * @throws IOException if the stream cannot be read
+   */
   public static int countRecordsInMarcFile(InputStream inStream)
       throws IOException {
     try {

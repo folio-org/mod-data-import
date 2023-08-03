@@ -37,7 +37,6 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   private final InboundBuffer<Buffer> queue;
 
   private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
-  private long readPos;
 
   /**
    * Create a new AsyncInputStream to wrap a regular {@link InputStream}
@@ -177,17 +176,15 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   public synchronized AsyncInputStream read(
       Buffer buffer,
       int offset,
-      long position,
       int length,
       Handler<AsyncResult<Buffer>> handler) {
     Objects.requireNonNull(buffer, "buffer");
     Objects.requireNonNull(handler, "handler");
     Arguments.require(offset >= 0, "offset must be >= 0");
-    Arguments.require(position >= 0, "position must be >= 0");
     Arguments.require(length >= 0, "length must be >= 0");
     check();
     ByteBuffer bb = ByteBuffer.allocate(length);
-    doRead(buffer, offset, bb, position, handler);
+    doRead(buffer, offset, bb, handler);
     return this;
   }
 
@@ -204,12 +201,10 @@ public class AsyncInputStream implements ReadStream<Buffer> {
           buff,
           0,
           bb,
-          readPos,
           ar -> {
             if (ar.succeeded()) {
               readInProgress = false;
               Buffer buffer = ar.result();
-              readPos += buffer.length();
               // Empty buffer represents end of file
               if (queue.write(buffer) && buffer.length() > 0) {
                 doRead(bb);
@@ -225,7 +220,6 @@ public class AsyncInputStream implements ReadStream<Buffer> {
       Buffer writeBuff,
       int offset,
       ByteBuffer buff,
-      long position,
       Handler<AsyncResult<Buffer>> handler) {
     // ReadableByteChannel doesn't have a completion handler, so we wrap it into
     // an executeBlocking and use the future there
@@ -254,10 +248,8 @@ public class AsyncInputStream implements ReadStream<Buffer> {
                 handler.handle(Future.succeededFuture(writeBuff));
               });
             } else if (buff.hasRemaining()) {
-              long pos = position;
-              pos += bytesRead;
               // resubmit
-              doRead(writeBuff, offset, buff, pos, handler);
+              doRead(writeBuff, offset, buff, handler);
             } else {
               // It's been fully written
 

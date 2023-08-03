@@ -71,7 +71,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
    */
   @Override
   public synchronized AsyncInputStream endHandler(Handler<Void> endHandler) {
-    check();
+    ensureOpen();
     this.endHandler = endHandler;
     return this;
   }
@@ -84,7 +84,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   @Override
   public synchronized AsyncInputStream exceptionHandler(
       Handler<Throwable> exceptionHandler) {
-    check();
+    ensureOpen();
     this.exceptionHandler = exceptionHandler;
     return this;
   }
@@ -96,7 +96,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
    */
   @Override
   public synchronized AsyncInputStream handler(Handler<Buffer> handler) {
-    check();
+    ensureOpen();
     this.dataHandler = handler;
     if (this.dataHandler != null && !this.closed) {
       this.doRead();
@@ -113,7 +113,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
    */
   @Override
   public synchronized AsyncInputStream pause() {
-    check();
+    ensureOpen();
     queue.pause();
     return this;
   }
@@ -125,10 +125,8 @@ public class AsyncInputStream implements ReadStream<Buffer> {
    */
   @Override
   public synchronized AsyncInputStream resume() {
-    check();
-    if (!closed) {
-      queue.resume();
-    }
+    ensureOpen(); // ensure not yet closed
+    queue.resume();
     return this;
   }
 
@@ -138,24 +136,28 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     return this;
   }
 
-  private void check() {
+  private void ensureOpen() {
     if (this.closed) {
       throw new IllegalStateException("InputStream is closed");
     }
   }
 
-  private void checkContext() {
+  private void ensureValidContext() {
     if (!vertx.getOrCreateContext().equals(context)) {
-      throw new IllegalStateException(
+      // this is called from a handler, so throwing won't usually do anything
+      // so, we want to ensure we log it appropriately
+      IllegalStateException ex = new IllegalStateException(
           "AsyncInputStream must only be used in the context that created it, expected: " +
               this.context +
               " actual " +
               vertx.getOrCreateContext());
+      handleException(ex);
+      throw ex;
     }
   }
 
   private synchronized void closeInternal(Handler<AsyncResult<Void>> handler) {
-    check();
+    ensureOpen();
     closed = true;
     doClose(handler);
   }
@@ -182,14 +184,14 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     Objects.requireNonNull(handler, "handler");
     Arguments.require(offset >= 0, "offset must be >= 0");
     Arguments.require(length >= 0, "length must be >= 0");
-    check();
+    ensureOpen();
     ByteBuffer bb = ByteBuffer.allocate(length);
     doRead(buffer, offset, bb, handler);
     return this;
   }
 
   private void doRead() {
-    check();
+    ensureOpen();
     doRead(ByteBuffer.allocate(readBufferSize));
   }
 
@@ -270,7 +272,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
       handler = this.dataHandler;
     }
     if (handler != null) {
-      checkContext();
+      ensureValidContext();
       handler.handle(buff);
     }
   }
@@ -282,7 +284,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
       handler = this.endHandler;
     }
     if (endHandler != null) {
-      checkContext();
+      ensureValidContext();
       handler.handle(null);
     }
   }

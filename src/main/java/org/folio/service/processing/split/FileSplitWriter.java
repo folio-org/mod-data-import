@@ -2,6 +2,21 @@ package org.folio.service.processing.split;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import javax.validation.constraints.Min;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.service.s3storage.MinioStorageService;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
@@ -11,73 +26,55 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.service.s3storage.MinioStorageService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 
 public class FileSplitWriter implements WriteStream<Buffer> {
+
+  private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
   private MinioStorageService minioStorageService;
 
-  @Value("${RECORDS_PER_SPLIT_FILE:1000}")
-  private int maxRecordsPerChunk;
-
   private final Context vertxContext;
-  private String chunkFolder;
-
-  private String key;
-
-  private boolean uploadFilesToS3;
-
-  private boolean deleteLocalFiles;
-
-  private byte recordTerminator;
-
   private final Promise<CompositeFuture> chunkUploadingCompositeFuturePromise;
-
   private final List<Future<String>> chunkProcessingFutures;
   private Handler<Throwable> exceptionHandler;
 
+  private String chunkFolder;
+  private String outputKey;
+  private boolean uploadFilesToS3;
+  private boolean deleteLocalFiles;
+
+  private int maxRecordsPerChunk;
+  private byte recordTerminator;
+
   private OutputStream currentChunkStream;
   private String currentChunkPath;
-
   private String currentChunkKey;
 
-  private int recordCount = 0;
-
   private int chunkIndex = 1;
-
-  private static final Logger LOGGER = LogManager.getLogger();
+  private int recordCount = 0;
 
   public FileSplitWriter(
       Context vertxContext,
       Promise<CompositeFuture> chunkUploadingCompositeFuturePromise,
-      String key,
+      String outputKey,
       String chunkFolder,
+      @Min(1) int maxRecordsPerChunk,
       byte recordTerminator,
       boolean uploadFilesToS3,
       boolean deleteLocalFiles) throws IOException {
     this.vertxContext = vertxContext;
     this.chunkUploadingCompositeFuturePromise = chunkUploadingCompositeFuturePromise;
     chunkProcessingFutures = new ArrayList<>();
-    this.key = key;
+    this.outputKey = outputKey;
     this.chunkFolder = chunkFolder;
 
+    this.maxRecordsPerChunk = maxRecordsPerChunk;
     this.recordTerminator = recordTerminator;
     this.uploadFilesToS3 = uploadFilesToS3;
     this.deleteLocalFiles = deleteLocalFiles;
 
-    init();
+    startChunk();
   }
 
   @Override
@@ -125,7 +122,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private void handleWriteException(
       Handler<AsyncResult<Void>> handler,
       Exception e) {
-    LOGGER.error("Error writing file chunk", e);
+    LOGGER.error("Error writing file chunk: ", e);
     if (handler != null) {
       handler.handle(Future.failedFuture(e));
     }
@@ -140,8 +137,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     try {
       endChunk();
       handler.handle(Future.succeededFuture());
-      // due to code smell related to declaration of chunkProcessingFutures
-      // Future.all is not available:
+      // Future.all is not available, CompositeFuture.all is broken,
+      // and we're on an older Vert.x, so we must resort to this ugly re-encapsulation
       // https://github.com/eclipse-vertx/vert.x/issues/2627
       chunkUploadingCompositeFuturePromise.complete(
           CompositeFuture.all(
@@ -154,24 +151,27 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     }
   }
 
+  // unused
   @Override
   public WriteStream<Buffer> setWriteQueueMaxSize(int maxSize) {
     return this;
   }
 
+  // unused
   @Override
   public boolean writeQueueFull() {
     return false;
   }
 
+  // unused
   @Override
   public WriteStream<Buffer> drainHandler(@Nullable Handler<Void> handler) {
-    // drain handler is unused
     return this;
   }
 
+  /** Start processing a new chunk */
   private void startChunk() throws IOException {
-    String fileName = FileSplitUtilities.buildChunkKey(key, chunkIndex++);
+    String fileName = FileSplitUtilities.buildChunkKey(outputKey, chunkIndex++);
     var path = Path.of(chunkFolder, fileName);
     currentChunkPath = path.toString();
     currentChunkKey = fileName;
@@ -183,6 +183,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         System.currentTimeMillis());
   }
 
+  /** Finalize the current chunk */
   private void endChunk() throws IOException {
     if (currentChunkStream != null) {
       currentChunkStream.close();
@@ -196,13 +197,9 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           System.currentTimeMillis());
     } else {
       LOGGER.error(
-          "{}: stream was null, did not end",
+          "{}: stream was null, so did not end this chunk",
           Thread.currentThread().getName());
     }
-  }
-
-  private void init() throws IOException {
-    startChunk();
   }
 
   private void uploadChunkAsync(String chunkPath, String chunkKey) {
@@ -226,14 +223,14 @@ public class FileSplitWriter implements WriteStream<Buffer> {
                   .onComplete(s3Path -> {
                     if (s3Path.failed()) {
                       LOGGER.info(
-                          "{}: Failed Uploading file: {}",
+                          "{}: Failed uploading file: {}",
                           Thread.currentThread().getName(),
                           chunkPath);
 
                       chunkPromise.fail(s3Path.cause());
                     } else if (s3Path.succeeded()) {
                       LOGGER.info(
-                          "{}: Successfully Uploading file: {} time:{}",
+                          "{}: Successfully uploaded file: {} time:{}",
                           Thread.currentThread().getName(),
                           chunkPath,
                           System.currentTimeMillis());
@@ -241,9 +238,10 @@ public class FileSplitWriter implements WriteStream<Buffer> {
                   });
             } catch (IOException e) {
               LOGGER.error(
-                  "{}: Uploading file: {} IOEException",
+                  "{}: Exception uploading file: {}",
                   Thread.currentThread().getName(),
                   chunkPath);
+              LOGGER.error(e);
               event.fail(e);
               chunkPromise.fail(e);
               return;
@@ -260,7 +258,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
             }
           }
           LOGGER.info(
-              "{}: Uploading file: {} Completed time: {}",
+              "{}: Finished processing chunk: {} Completed time: {}",
               Thread.currentThread().getName(),
               chunkPath,
               System.currentTimeMillis());

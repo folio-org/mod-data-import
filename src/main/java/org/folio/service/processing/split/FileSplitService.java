@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.service.s3storage.MinioStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,9 +21,13 @@ public class FileSplitService {
 
   private MinioStorageService minioStorageService;
 
+  private int maxRecordsPerChunk;
+
   @Autowired
-  public FileSplitService(MinioStorageService minioStorageService) {
+  public FileSplitService(MinioStorageService minioStorageService,
+      @Value("${RECORDS_PER_SPLIT_FILE:1000}") int maxRecordsPerChunk) {
     this.minioStorageService = minioStorageService;
+    this.maxRecordsPerChunk = maxRecordsPerChunk;
   }
 
   /**
@@ -72,6 +77,7 @@ public class FileSplitService {
         promise,
         key,
         "",
+        maxRecordsPerChunk,
         FileSplitUtilities.MARC_RECORD_TERMINATOR,
         true,
         true);

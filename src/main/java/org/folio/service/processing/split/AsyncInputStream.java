@@ -141,7 +141,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
 
   private void check() {
     if (this.closed) {
-      throw new IllegalStateException("Inputstream is closed");
+      throw new IllegalStateException("InputStream is closed");
     }
   }
 

@@ -208,7 +208,6 @@ public class AsyncInputStream implements ReadStream<Buffer> {
               readInProgress = false;
               Buffer buffer = ar.result();
               // Empty buffer represents end of file
-              LOGGER.info("in the spot: {}", buffer.length());
               if (queue.write(buffer) && buffer.length() > 0) {
                 doRead(bb);
               }

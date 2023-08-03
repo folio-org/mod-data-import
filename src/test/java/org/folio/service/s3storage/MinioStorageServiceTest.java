@@ -200,7 +200,7 @@ public class MinioStorageServiceTest {
   }
 
   @Test
-  public void testAssembleSuccessful(TestContext context) {
+  public void testReadFileSuccessful(TestContext context) {
     Async async = context.async();
 
     String testData = "Testing";

@@ -26,7 +26,7 @@ public class FileSplitService {
   }
 
   /**
-   * Download a file from S3 and split it into parts.
+   * Read a file from S3 and split it into parts.
    *
    * @return a {@link Promise} that will be completed when the file has been
    *         split. This

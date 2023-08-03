@@ -19,10 +19,9 @@ public class FileSplitUtilities {
 
     if (keyNameParts.length > 1) {
       String partUpdate = String.format(
-        "%s_%s",
-        keyNameParts[keyNameParts.length - 2],
-        partNumber
-      );
+          "%s_%s",
+          keyNameParts[keyNameParts.length - 2],
+          partNumber);
       keyNameParts[keyNameParts.length - 2] = partUpdate;
       return String.join(".", keyNameParts);
     }
@@ -30,7 +29,7 @@ public class FileSplitUtilities {
   }
 
   public static int countRecordsInMarcFile(InputStream inStream)
-    throws IOException {
+      throws IOException {
     try {
       byte[] byteBuffer = new byte[BUFFER_SIZE];
       int numberOfBytes;
@@ -39,11 +38,10 @@ public class FileSplitUtilities {
       int offset = 0;
       do {
         numberOfBytes = inStream.read(byteBuffer, offset, BUFFER_SIZE);
-        for (int i = 0; i < numberOfBytes; i++) if (
-          byteBuffer[i] == MARC_RECORD_TERMINATOR
-        ) {
-          ++numRecords;
-        }
+        for (int i = 0; i < numberOfBytes; i++)
+          if (byteBuffer[i] == MARC_RECORD_TERMINATOR) {
+            ++numRecords;
+          }
       } while (numberOfBytes >= 0);
       return numRecords;
     } finally {

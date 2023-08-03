@@ -37,12 +37,10 @@ public class FileSplitWriterTest {
 
   private static final String VALID_MARC_KEY = "10.mrc";
 
-
   @Before
   public void setUp(TestContext context) {
     MockitoAnnotations.openMocks(this);
   }
-
 
   @Test
   public void shouldSplitFileIntoCorrectChunks(TestContext context) throws IOException {
@@ -53,33 +51,34 @@ public class FileSplitWriterTest {
 
     var fileSystem = vertxContext.owner().fileSystem();
     Future<AsyncFile> asyncFileFuture = fileSystem
-      .open(VALID_MARC_SOURCE_PATH_10, new OpenOptions().setRead(true))
-      .onComplete(ar -> {
-        if (ar.succeeded()) {
-          AsyncFile file = ar.result();
-          try {
-            Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
+        .open(VALID_MARC_SOURCE_PATH_10, new OpenOptions().setRead(true))
+        .onComplete(ar -> {
+          if (ar.succeeded()) {
+            AsyncFile file = ar.result();
+            try {
+              Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
 
-            FileSplitWriter writer = new FileSplitWriter(vertxContext, chunkUploadingCompositeFuturePromise, VALID_MARC_KEY ,localStorageFolder.getPath());
-            writer.setParams( FileSplitUtilities.MARC_RECORD_TERMINATOR, 3, false, false);
-            file.pipeTo(writer).onComplete(ar1 -> {
-              if (ar1.succeeded()) {
-                File[] splitFiles = localStorageFolder.listFiles();
-                assertEquals(4, splitFiles.length);
-                // More assertions to be made on the split files - names and content
-                async.complete();
-              } else {
-                context.fail("shouldSplitFileIntoCorrectChunks should not fail");
-              }
-            });
-          } catch (IOException e) {
-            throw new RuntimeException(e);
+              FileSplitWriter writer = new FileSplitWriter(vertxContext, chunkUploadingCompositeFuturePromise,
+                  VALID_MARC_KEY, localStorageFolder.getPath());
+              writer.setParams(FileSplitUtilities.MARC_RECORD_TERMINATOR, 3, false, false);
+              file.pipeTo(writer).onComplete(ar1 -> {
+                if (ar1.succeeded()) {
+                  File[] splitFiles = localStorageFolder.listFiles();
+                  assertEquals(4, splitFiles.length);
+                  // More assertions to be made on the split files - names and content
+                  async.complete();
+                } else {
+                  context.fail("shouldSplitFileIntoCorrectChunks should not fail");
+                }
+              });
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          } else {
+            context.fail("shouldSplitFileIntoCorrectChunks failed opening test marc file");
           }
-        } else {
-          context.fail("shouldSplitFileIntoCorrectChunks failed opening test marc file");
-        }
 
-      });
+        });
   }
 
 }

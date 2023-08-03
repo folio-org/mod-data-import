@@ -60,17 +60,15 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private static final Logger LOGGER = LogManager.getLogger();
 
   public FileSplitWriter(
-    Context vertxContext,
-    Promise<CompositeFuture> chunkUploadingCompositeFuturePromise,
-    String key,
-    String chunkFolder,
-    byte recordTerminator,
-    boolean uploadFilesToS3,
-    boolean deleteLocalFiles
-  ) throws IOException {
+      Context vertxContext,
+      Promise<CompositeFuture> chunkUploadingCompositeFuturePromise,
+      String key,
+      String chunkFolder,
+      byte recordTerminator,
+      boolean uploadFilesToS3,
+      boolean deleteLocalFiles) throws IOException {
     this.vertxContext = vertxContext;
-    this.chunkUploadingCompositeFuturePromise =
-      chunkUploadingCompositeFuturePromise;
+    this.chunkUploadingCompositeFuturePromise = chunkUploadingCompositeFuturePromise;
     chunkProcessingFutures = new ArrayList<>();
     this.key = key;
     this.chunkFolder = chunkFolder;
@@ -84,8 +82,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   @Override
   public WriteStream<Buffer> exceptionHandler(
-    @Nullable Handler<Throwable> handler
-  ) {
+      @Nullable Handler<Throwable> handler) {
     exceptionHandler = handler;
     return this;
   }
@@ -126,9 +123,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   }
 
   private void handleWriteException(
-    Handler<AsyncResult<Void>> handler,
-    Exception e
-  ) {
+      Handler<AsyncResult<Void>> handler,
+      Exception e) {
     LOGGER.error("Error writing file chunk", e);
     if (handler != null) {
       handler.handle(Future.failedFuture(e));
@@ -145,16 +141,13 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       endChunk();
       handler.handle(Future.succeededFuture());
       // due to code smell related to declaration of chunkProcessingFutures
-      // Future.all is not available: https://github.com/eclipse-vertx/vert.x/issues/2627
+      // Future.all is not available:
+      // https://github.com/eclipse-vertx/vert.x/issues/2627
       chunkUploadingCompositeFuturePromise.complete(
-        CompositeFuture.all(
-          Arrays.asList(
-            chunkProcessingFutures.toArray(
-              new Future[chunkProcessingFutures.size()]
-            )
-          )
-        )
-      );
+          CompositeFuture.all(
+              Arrays.asList(
+                  chunkProcessingFutures.toArray(
+                      new Future[chunkProcessingFutures.size()]))));
     } catch (IOException e) {
       handler.handle(Future.failedFuture(e));
       chunkUploadingCompositeFuturePromise.fail(e);
@@ -173,7 +166,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   @Override
   public WriteStream<Buffer> drainHandler(@Nullable Handler<Void> handler) {
-    //drain handler is unused
+    // drain handler is unused
     return this;
   }
 
@@ -184,11 +177,10 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     currentChunkKey = fileName;
     currentChunkStream = Files.newOutputStream(path, CREATE);
     LOGGER.info(
-      "{}: startChunk:{} time:{}",
-      Thread.currentThread().getName(),
-      currentChunkPath,
-      System.currentTimeMillis()
-    );
+        "{}: startChunk:{} time:{}",
+        Thread.currentThread().getName(),
+        currentChunkPath,
+        System.currentTimeMillis());
   }
 
   private void endChunk() throws IOException {
@@ -198,16 +190,14 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       currentChunkStream = null;
       recordCount = 0;
       LOGGER.info(
-        "{}: endChunk:{} time:{}",
-        Thread.currentThread().getName(),
-        currentChunkPath,
-        System.currentTimeMillis()
-      );
+          "{}: endChunk:{} time:{}",
+          Thread.currentThread().getName(),
+          currentChunkPath,
+          System.currentTimeMillis());
     } else {
       LOGGER.error(
-        "{}: stream was null, did not end",
-        Thread.currentThread().getName()
-      );
+          "{}: stream was null, did not end",
+          Thread.currentThread().getName());
     }
   }
 
@@ -219,75 +209,69 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     Promise<String> chunkPromise = Promise.promise();
     chunkProcessingFutures.add(chunkPromise.future());
     vertxContext.executeBlocking(
-      event -> {
-        Path cp = Path.of(chunkPath);
-        // chunk file uploading to S3
-        if (uploadFilesToS3) {
+        event -> {
+          Path cp = Path.of(chunkPath);
+          // chunk file uploading to S3
+          if (uploadFilesToS3) {
+            LOGGER.info(
+                "{}: Uploading file:{}:key{} time:{}",
+                Thread.currentThread().getName(),
+                chunkPath,
+                chunkKey,
+                System.currentTimeMillis());
+
+            try {
+              minioStorageService
+                  .write(chunkKey, Files.newInputStream(cp))
+                  .onComplete(s3Path -> {
+                    if (s3Path.failed()) {
+                      LOGGER.info(
+                          "{}: Failed Uploading file: {}",
+                          Thread.currentThread().getName(),
+                          chunkPath);
+
+                      chunkPromise.fail(s3Path.cause());
+                    } else if (s3Path.succeeded()) {
+                      LOGGER.info(
+                          "{}: Successfully Uploading file: {} time:{}",
+                          Thread.currentThread().getName(),
+                          chunkPath,
+                          System.currentTimeMillis());
+                    }
+                  });
+            } catch (IOException e) {
+              LOGGER.error(
+                  "{}: Uploading file: {} IOEException",
+                  Thread.currentThread().getName(),
+                  chunkPath);
+              event.fail(e);
+              chunkPromise.fail(e);
+              return;
+            }
+          }
+          onFileComplete();
+          if (deleteLocalFiles) {
+            try {
+              Files.delete(cp);
+            } catch (IOException e) {
+              event.fail(e);
+              chunkPromise.fail(e);
+              return;
+            }
+          }
           LOGGER.info(
-            "{}: Uploading file:{}:key{} time:{}",
-            Thread.currentThread().getName(),
-            chunkPath,
-            chunkKey,
-            System.currentTimeMillis()
-          );
-
-          try {
-            minioStorageService
-              .write(chunkKey, Files.newInputStream(cp))
-              .onComplete(s3Path -> {
-                if (s3Path.failed()) {
-                  LOGGER.info(
-                    "{}: Failed Uploading file: {}",
-                    Thread.currentThread().getName(),
-                    chunkPath
-                  );
-
-                  chunkPromise.fail(s3Path.cause());
-                } else if (s3Path.succeeded()) {
-                  LOGGER.info(
-                    "{}: Successfully Uploading file: {} time:{}",
-                    Thread.currentThread().getName(),
-                    chunkPath,
-                    System.currentTimeMillis()
-                  );
-                }
-              });
-          } catch (IOException e) {
-            LOGGER.error(
-              "{}: Uploading file: {} IOEException",
+              "{}: Uploading file: {} Completed time: {}",
               Thread.currentThread().getName(),
-              chunkPath
-            );
-            event.fail(e);
-            chunkPromise.fail(e);
-            return;
-          }
-        }
-        onFileComplete();
-        if (deleteLocalFiles) {
-          try {
-            Files.delete(cp);
-          } catch (IOException e) {
-            event.fail(e);
-            chunkPromise.fail(e);
-            return;
-          }
-        }
-        LOGGER.info(
-          "{}: Uploading file: {} Completed time: {}",
-          Thread.currentThread().getName(),
-          chunkPath,
-          System.currentTimeMillis()
-        );
-        event.complete();
-        chunkPromise.complete(chunkPath);
-      },
-      false
-    );
+              chunkPath,
+              System.currentTimeMillis());
+          event.complete();
+          chunkPromise.complete(chunkPath);
+        },
+        false);
   }
 
   private void onFileComplete() {
     // Do any work here that is required once the fragment file is uploaded
-
+    // TODO: is this needed?
   }
 }

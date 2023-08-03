@@ -40,9 +40,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   private long readPos;
 
   /**
-   * Create a new Async InputStream
-   *
-   * @param in
+   * Create a new AsyncInputStream to wrap a regular {@link InputStream}
    */
   public AsyncInputStream(Vertx vertx, Context context, InputStream in) {
     this.vertx = vertx;
@@ -67,8 +65,9 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     closeInternal(handler);
   }
 
-  /*
-   * (non-Javadoc)
+  /**
+   * {@inheritDoc}
+   *
    * @see io.vertx.core.streams.ReadStream#endHandler(io.vertx.core.Handler)
    */
   @Override
@@ -78,22 +77,22 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     return this;
   }
 
-  /*
-   * (non-Javadoc)
-   * @see
-   * io.vertx.core.streams.ReadStream#exceptionHandler(io.vertx.core.Handler)
+  /**
+   * {@inheritDoc}
+   *
+   * @see io.vertx.core.streams.ReadStream#exceptionHandler(io.vertx.core.Handler)
    */
   @Override
   public synchronized AsyncInputStream exceptionHandler(
-    Handler<Throwable> exceptionHandler
-  ) {
+      Handler<Throwable> exceptionHandler) {
     check();
     this.exceptionHandler = exceptionHandler;
     return this;
   }
 
-  /*
-   * (non-Javadoc)
+  /**
+   * {@inheritDoc}
+   *
    * @see io.vertx.core.streams.ReadStream#handler(io.vertx.core.Handler)
    */
   @Override
@@ -108,8 +107,9 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     return this;
   }
 
-  /*
-   * (non-Javadoc)
+  /**
+   * {@inheritDoc}
+   *
    * @see io.vertx.core.streams.ReadStream#pause()
    */
   @Override
@@ -119,8 +119,9 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     return this;
   }
 
-  /*
-   * (non-Javadoc)
+  /**
+   * {@inheritDoc}
+   *
    * @see io.vertx.core.streams.ReadStream#resume()
    */
   @Override
@@ -147,11 +148,10 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   private void checkContext() {
     if (!vertx.getOrCreateContext().equals(context)) {
       throw new IllegalStateException(
-        "AsyncInputStream must only be used in the context that created it, expected: " +
-        this.context +
-        " actual " +
-        vertx.getOrCreateContext()
-      );
+          "AsyncInputStream must only be used in the context that created it, expected: " +
+              this.context +
+              " actual " +
+              vertx.getOrCreateContext());
     }
   }
 
@@ -175,12 +175,11 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   }
 
   public synchronized AsyncInputStream read(
-    Buffer buffer,
-    int offset,
-    long position,
-    int length,
-    Handler<AsyncResult<Buffer>> handler
-  ) {
+      Buffer buffer,
+      int offset,
+      long position,
+      int length,
+      Handler<AsyncResult<Buffer>> handler) {
     Objects.requireNonNull(buffer, "buffer");
     Objects.requireNonNull(handler, "handler");
     Arguments.require(offset >= 0, "offset must be >= 0");
@@ -202,80 +201,75 @@ public class AsyncInputStream implements ReadStream<Buffer> {
       readInProgress = true;
       Buffer buff = Buffer.buffer(readBufferSize);
       doRead(
-        buff,
-        0,
-        bb,
-        readPos,
-        ar -> {
-          if (ar.succeeded()) {
-            readInProgress = false;
-            Buffer buffer = ar.result();
-            readPos += buffer.length();
-            // Empty buffer represents end of file
-            if (queue.write(buffer) && buffer.length() > 0) {
-              doRead(bb);
+          buff,
+          0,
+          bb,
+          readPos,
+          ar -> {
+            if (ar.succeeded()) {
+              readInProgress = false;
+              Buffer buffer = ar.result();
+              readPos += buffer.length();
+              // Empty buffer represents end of file
+              if (queue.write(buffer) && buffer.length() > 0) {
+                doRead(bb);
+              }
+            } else {
+              handleException(ar.cause());
             }
-          } else {
-            handleException(ar.cause());
-          }
-        }
-      );
+          });
     }
   }
 
   private void doRead(
-    Buffer writeBuff,
-    int offset,
-    ByteBuffer buff,
-    long position,
-    Handler<AsyncResult<Buffer>> handler
-  ) {
+      Buffer writeBuff,
+      int offset,
+      ByteBuffer buff,
+      long position,
+      Handler<AsyncResult<Buffer>> handler) {
     // ReadableByteChannel doesn't have a completion handler, so we wrap it into
     // an executeBlocking and use the future there
     vertx.executeBlocking(
-      future -> {
-        try {
-          Integer bytesRead = ch.read(buff);
-          future.complete(bytesRead);
-        } catch (Exception e) {
-          LOGGER.error(e);
-          future.fail(e);
-        }
-      },
-      res -> {
-        if (res.failed()) {
-          context.runOnContext(v ->
-            handler.handle(Future.failedFuture(res.cause()))
-          );
-        } else {
-          // Do the completed check
-          Integer bytesRead = (Integer) res.result();
-          if (bytesRead == -1) {
-            //End of file
-            context.runOnContext(v -> {
-              buff.flip();
-              writeBuff.setBytes(offset, buff);
-              buff.compact();
-              handler.handle(Future.succeededFuture(writeBuff));
-            });
-          } else if (buff.hasRemaining()) {
-            long pos = position;
-            pos += bytesRead;
-            // resubmit
-            doRead(writeBuff, offset, buff, pos, handler);
-          } else {
-            // It's been fully written
-
-            context.runOnContext(v -> {
-              buff.flip();
-              writeBuff.setBytes(offset, buff);
-              buff.compact();
-              handler.handle(Future.succeededFuture(writeBuff));
-            });
+        future -> {
+          try {
+            Integer bytesRead = ch.read(buff);
+            future.complete(bytesRead);
+          } catch (Exception e) {
+            LOGGER.error(e);
+            future.fail(e);
           }
-        }
-      }
-    );
+        },
+        res -> {
+          if (res.failed()) {
+            context.runOnContext(v -> handler.handle(Future.failedFuture(res.cause())));
+          } else {
+            // Do the completed check
+            Integer bytesRead = (Integer) res.result();
+            if (bytesRead == -1) {
+              // End of file
+              context.runOnContext(v -> {
+                buff.flip();
+                writeBuff.setBytes(offset, buff);
+                buff.compact();
+                handler.handle(Future.succeededFuture(writeBuff));
+              });
+            } else if (buff.hasRemaining()) {
+              long pos = position;
+              pos += bytesRead;
+              // resubmit
+              doRead(writeBuff, offset, buff, pos, handler);
+            } else {
+              // It's been fully written
+
+              context.runOnContext(v -> {
+                buff.flip();
+                writeBuff.setBytes(offset, buff);
+                buff.compact();
+                handler.handle(Future.succeededFuture(writeBuff));
+              });
+            }
+          }
+        });
   }
 
   private void handleData(Buffer buff) {

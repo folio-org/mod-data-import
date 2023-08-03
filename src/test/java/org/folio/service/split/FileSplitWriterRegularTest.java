@@ -32,9 +32,7 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
-import lombok.extern.log4j.Log4j2;
 
-@Log4j2
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(VertxUnitRunnerWithParametersFactory.class)
 public class FileSplitWriterRegularTest {
@@ -98,7 +96,6 @@ public class FileSplitWriterRegularTest {
               // splitting finished, "uploading" in progress
               chunkUploadingCompositeFuturePromise.future().onComplete(context.asyncAssertSuccess(cf -> {
                 // "uploading" finished, check the results
-                log.info("{}/{} -> {} = {}", sourceFile, chunkSize, expectedChunkFiles, cf.list());
                 List<Path> paths = cf.list().stream().map(obj -> Path.of((String) obj))
                     .collect(Collectors.toList());
                 List<String> fileNames = paths.stream().map(path -> path.getFileName().toString())

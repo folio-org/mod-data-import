@@ -104,12 +104,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         }
       }
       try {
-        if (currentChunkStream != null) {
-          currentChunkStream.write(b);
-        } else {
-          var e = new RuntimeException("Unreachable statement");
-          handleWriteException(handler, e);
-        }
+        currentChunkStream.write(b);
+
         if (b == recordTerminator && (++recordCount == maxRecordsPerChunk)) {
           endChunk();
         }

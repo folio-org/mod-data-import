@@ -43,7 +43,7 @@ public class FileSplitWriterDeleteLocalTest {
             File folder = temporaryFolder.newFolder();
 
             FileSplitWriter writer = new FileSplitWriter(vertx.getOrCreateContext(),
-                chunkUploadingCompositeFuturePromise, TEST_KEY, temporaryFolder.newFolder().toString(), 3,
+                chunkUploadingCompositeFuturePromise, TEST_KEY, folder.toString(), 3,
                 FileSplitUtilities.MARC_RECORD_TERMINATOR,
                 false, true);
 

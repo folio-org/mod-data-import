@@ -297,7 +297,7 @@
           "permissionsRequired": ["data-import.uploadUrl.get"]
         },
         {
-          "methods": ["POST"],
+          "methods": ["GET"],
           "pathPattern": "/data-import/testFileSplit",
           "permissionsRequired": []
         }

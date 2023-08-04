@@ -47,7 +47,7 @@
             "data-import.uploaddefinitions.get"
           ]
         },
-               {
+        {
           "methods": [
             "POST"
           ],
@@ -295,6 +295,11 @@
           "methods": ["GET"],
           "pathPattern": "/data-import/uploadUrl/subsequent",
           "permissionsRequired": ["data-import.uploadUrl.get"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/data-import/testFileSplit",
+          "permissionsRequired": []
         }
       ]
     },

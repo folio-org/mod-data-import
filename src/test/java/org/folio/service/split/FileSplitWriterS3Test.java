@@ -16,6 +16,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,6 +47,8 @@ public class FileSplitWriterS3Test {
 
   @Rule
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  File chunkDir;
 
   Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
 
@@ -88,6 +91,8 @@ public class FileSplitWriterS3Test {
 
   @Before
   public void setUp() throws IOException {
+    chunkDir = temporaryFolder.newFolder();
+
     MockitoAnnotations.openMocks(this);
 
     writer =
@@ -100,7 +105,7 @@ public class FileSplitWriterS3Test {
             chunkUploadingCompositeFuturePromise
           )
           .outputKey(key)
-          .chunkFolder(temporaryFolder.newFolder().getPath())
+          .chunkFolder(chunkDir.toString())
           .maxRecordsPerChunk(chunkSize)
           .uploadFilesToS3(true)
           .deleteLocalFiles(false)
@@ -128,7 +133,9 @@ public class FileSplitWriterS3Test {
                 cf.onComplete(
                   context.asyncAssertSuccess(result -> {
                     for (Object obj : result.list()) {
-                      String path = (String) obj;
+                      String path = Path
+                        .of(chunkDir.toString(), (String) obj)
+                        .toString();
 
                       try (
                         FileInputStream fileStream = new FileInputStream(path)

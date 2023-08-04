@@ -248,6 +248,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
                       return;
                     }
                   }
+
+                  chunkPromise.complete(chunkKey);
                 }
               });
           } catch (IOException e) {
@@ -283,7 +285,9 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           chunkPath,
           System.currentTimeMillis()
         );
-        event.complete();
+        if (!uploadFilesToS3) {
+          event.complete();
+        }
         chunkPromise.complete(chunkPath);
       },
       false

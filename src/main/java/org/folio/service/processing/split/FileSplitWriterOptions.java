@@ -19,6 +19,10 @@ public class FileSplitWriterOptions {
   @Nonnull
   private Context vertxContext;
 
+  /**
+   * A promise that will resolve with a CompositeFuture containing either S3
+   * keys or file paths to each chunk
+   */
   @Nonnull
   private final Promise<CompositeFuture> chunkUploadingCompositeFuturePromise;
 
@@ -28,6 +32,7 @@ public class FileSplitWriterOptions {
   @Nonnull
   private String outputKey;
 
+  /** Where temporary files should be stored */
   @Nonnull
   private String chunkFolder;
 

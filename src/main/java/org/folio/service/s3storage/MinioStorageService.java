@@ -1,13 +1,14 @@
 package org.folio.service.s3storage;
 
-import io.vertx.core.Future;
-
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 import javax.validation.constraints.NotNull;
+
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 
-import java.io.InputStream;
+import io.vertx.core.Future;
 
 public interface MinioStorageService {
   /**
@@ -73,6 +74,6 @@ public interface MinioStorageService {
    * @param is   the byte array with the bytes to write
    * @return the path to the file
    */
-  Future<String> write(String path, InputStream is);
+  Future<String> write(String path, InputStream is) throws IOException;
 
 }

@@ -258,7 +258,7 @@ public class MinioStorageServiceTest {
   }
 
   @Test
-  public void testWriteFileSuccessful(TestContext context) {
+  public void testWriteFileSuccessful(TestContext context) throws IOException {
     Async async = context.async();
 
     String testData = "Testing";
@@ -286,7 +286,7 @@ public class MinioStorageServiceTest {
   }
 
   @Test
-  public void testWriteFileFailure(TestContext context) {
+  public void testWriteFileFailure(TestContext context) throws IOException {
     Async async = context.async();
 
     String testData = "Testing";

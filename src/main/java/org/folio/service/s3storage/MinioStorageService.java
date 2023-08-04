@@ -1,14 +1,11 @@
 package org.folio.service.s3storage;
 
+import io.vertx.core.Future;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-
 import javax.validation.constraints.NotNull;
-
 import org.folio.rest.jaxrs.model.FileUploadInfo;
-
-import io.vertx.core.Future;
 
 public interface MinioStorageService {
   /**
@@ -52,8 +49,12 @@ public interface MinioStorageService {
     @NotNull String uploadId,
     int partNumber
   );
-  
-  Future<Boolean> completeMultipartFileUpload(String key, String uploadId, List<String> etags);
+
+  Future<Boolean> completeMultipartFileUpload(
+    String key,
+    String uploadId,
+    List<String> etags
+  );
 
   /**
    * Opens a file on S3, returns an input stream to read from the remote file
@@ -62,10 +63,7 @@ public interface MinioStorageService {
    * @param key - the key to access the file on S3 storage
    * @return InputStream - a new input stream with file content
    */
-   Future<InputStream> readFile(
-    String key
-  );
-
+  Future<InputStream> readFile(String key);
 
   /**
    * Writes bytes to a file on S3-compatible storage
@@ -75,5 +73,4 @@ public interface MinioStorageService {
    * @return the path to the file
    */
   Future<String> write(String path, InputStream is) throws IOException;
-
 }

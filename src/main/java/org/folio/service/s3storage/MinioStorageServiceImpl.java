@@ -4,9 +4,8 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-
+import java.io.InputStream;
 import java.util.List;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
@@ -14,8 +13,6 @@ import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.io.InputStream;
 
 @Service
 public class MinioStorageServiceImpl implements MinioStorageService {
@@ -109,16 +106,17 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     return promise.future();
   }
 
-  public Future<InputStream> readFile(
-    String key
-  ) {
+  public Future<InputStream> readFile(String key) {
     Promise<InputStream> inStreamPromise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
     vertx.executeBlocking(
       (Promise<InputStream> blockingFuture) -> {
         try {
-          LOGGER.info("Created input stream to read remote file for key {}", key);
+          LOGGER.info(
+            "Created input stream to read remote file for key {}",
+            key
+          );
           InputStream inStream = client.read(key);
           blockingFuture.complete(inStream);
         } catch (S3ClientException e) {
@@ -137,7 +135,6 @@ public class MinioStorageServiceImpl implements MinioStorageService {
   }
 
   public Future<String> write(String path, InputStream is) {
-
     Promise<String> stringPromise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
@@ -161,20 +158,21 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     );
     return stringPromise.future();
   }
-  public Future<Boolean> completeMultipartFileUpload(String path,String uploadId,List<String> partEtags ) {
+
+  public Future<Boolean> completeMultipartFileUpload(
+    String path,
+    String uploadId,
+    List<String> partEtags
+  ) {
     Promise<Boolean> promise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    vertx.executeBlocking(
-        (Promise<String> blockingFuture) -> {
+    vertx.executeBlocking((Promise<String> blockingFuture) -> {
       try {
-        
-            client.completeMultipartUpload(path, uploadId, partEtags);
-            blockingFuture.complete();
-            promise.complete(true);
-      
-      } catch(Exception e) {
-       
+        client.completeMultipartUpload(path, uploadId, partEtags);
+        blockingFuture.complete();
+        promise.complete(true);
+      } catch (Exception e) {
         LOGGER.error("Failed to complete multipart upload {}", e.getMessage());
         blockingFuture.fail(e);
         promise.complete(false);
@@ -182,6 +180,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     });
     return promise.future();
   }
+
   private static String buildKey(String tenantId, String fileName) {
     return String.format(
       "%s/%d-%s",

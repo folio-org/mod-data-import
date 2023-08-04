@@ -377,7 +377,6 @@
         <version>1.12.6</version>
         <configuration>
           <verbose>true</verbose>
-          <showWeaveInfo>false</showWeaveInfo>
           <complianceLevel>11</complianceLevel>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
@@ -387,9 +386,14 @@
               <artifactId>domain-models-api-aspects</artifactId>
             </aspectLibrary>
           </aspectLibraries>
+          <sources />
+          <weaveDirectories>
+            <weaveDirectory>${project.build.directory}/classes</weaveDirectory>
+          </weaveDirectories>
         </configuration>
         <executions>
           <execution>
+            <phase>process-classes</phase>
             <goals>
               <goal>compile</goal>
             </goals>
@@ -404,6 +408,11 @@
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjtools</artifactId>
+            <version>1.9.6</version>
+          </dependency>
+          <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
             <version>1.9.6</version>
           </dependency>
         </dependencies>

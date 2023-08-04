@@ -212,6 +212,18 @@ public class AsyncInputStreamTest {
   }
 
   @Test
+  public void testHandlerEmpty(TestContext context) {
+    Async async = context.async();
+    AsyncInputStream stream = new AsyncInputStream(vertx, vertx.getOrCreateContext(),
+        new ByteArrayInputStream(emptyBuff));
+
+    stream.handler(buff -> context.fail("No data should have been read"));
+    stream.exceptionHandler(err -> context.fail(err));
+    stream.endHandler(v -> async.complete());
+    stream.exceptionHandler(err -> context.fail(err));
+  }
+
+  @Test
   @SuppressWarnings("java:S2699")
   public void testHandlerSmall(TestContext context) {
     Async async = context.async();
@@ -221,6 +233,7 @@ public class AsyncInputStreamTest {
     List<byte[]> receivedData = new ArrayList<>();
 
     stream.handler(buff -> receivedData.add(buff.getBytes()));
+    stream.exceptionHandler(err -> context.fail(err));
     stream.endHandler(v -> {
       asyncAssertThat(context, receivedData, hasSize(1));
       asyncAssertThat(context, receivedData.get(0), is(smallBuff));
@@ -238,6 +251,7 @@ public class AsyncInputStreamTest {
     List<byte[]> receivedData = new ArrayList<>();
 
     stream.handler(buff -> receivedData.add(buff.getBytes()));
+    stream.exceptionHandler(err -> context.fail(err));
     stream.endHandler(v -> {
       asyncAssertThat(context, receivedData, hasSize(1));
       asyncAssertThat(context, receivedData.get(0), is(mediumBuff));
@@ -255,6 +269,7 @@ public class AsyncInputStreamTest {
     List<byte[]> receivedData = new ArrayList<>();
 
     stream.handler(buff -> receivedData.add(buff.getBytes()));
+    stream.exceptionHandler(err -> context.fail(err));
     stream.endHandler(v -> {
       asyncAssertThat(context, receivedData, hasSize(3));
       asyncAssertThat(context, receivedData.get(0), is(Arrays.copyOfRange(largeBuff, 0, 8192)));

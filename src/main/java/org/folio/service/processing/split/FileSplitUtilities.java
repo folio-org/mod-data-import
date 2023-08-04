@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -61,7 +62,10 @@ public class FileSplitUtilities {
 
   public static Path createTemporaryDir(String key) throws IOException {
     return Files.createTempDirectory(
-      String.format("mod-data-import-splits-%s", key.replace('/', '-'))
+      String.format("mod-data-import-splits-%s", key.replace('/', '-')),
+      PosixFilePermissions.asFileAttribute(
+        PosixFilePermissions.fromString("rw-------")
+      )
     );
   }
 }

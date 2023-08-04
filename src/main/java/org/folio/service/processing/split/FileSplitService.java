@@ -103,7 +103,7 @@ public class FileSplitService {
 
     return promise
       .future()
-      .onSuccess(cf -> {
+      .onSuccess(cf ->
         cf.onSuccess(innerResult -> {
           LOGGER.info("Deleting temporary folder={}", tempDir);
 
@@ -113,7 +113,7 @@ public class FileSplitService {
             // not severe enough to fail the whole upload, though
             LOGGER.error("Could not delete temporary folder", e);
           }
-        });
-      });
+        })
+      );
   }
 }

@@ -11,6 +11,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -48,6 +49,9 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private int chunkIndex = 1;
   private int recordCount = 0;
 
+  private long chunkStart = 0;
+  private List<Long> chunkDurations = new ArrayList<>();
+
   public FileSplitWriter(FileSplitWriterOptions options) throws IOException {
     this.vertxContext = options.getVertxContext();
     this.minioStorageService = options.getMinioStorageService();
@@ -64,6 +68,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     this.recordTerminator = options.getRecordTerminator();
 
     this.chunkProcessingFutures = new ArrayList<>();
+
+    LOGGER.info("About to call first startChunk!");
 
     startChunk();
   }
@@ -85,8 +91,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   @Override
   public void write(Buffer data, Handler<AsyncResult<Void>> handler) {
-    var bytes = data.getBytes();
-    for (var b : bytes) {
+    byte[] bytes = data.getBytes();
+    for (byte b : bytes) {
       if (currentChunkStream == null) {
         try {
           startChunk();
@@ -165,7 +171,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   /** Start processing a new chunk */
   private void startChunk() throws IOException {
     String fileName = FileSplitUtilities.buildChunkKey(outputKey, chunkIndex++);
-    var path = Path.of(chunkFolder, fileName);
+    Path path = Path.of(chunkFolder, new File(fileName).getName());
     currentChunkPath = path.toString();
     currentChunkKey = fileName;
     currentChunkStream = Files.newOutputStream(path, CREATE);
@@ -175,6 +181,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       currentChunkPath,
       System.currentTimeMillis()
     );
+    chunkStart = System.currentTimeMillis();
   }
 
   /** Finalize the current chunk */
@@ -184,12 +191,15 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       uploadChunkAsync(currentChunkPath, currentChunkKey);
       currentChunkStream = null;
       recordCount = 0;
+      long end = System.currentTimeMillis();
       LOGGER.info(
-        "{}: endChunk:{} time:{}",
+        "{}: endChunk:{} duration:{}",
         Thread.currentThread().getName(),
         currentChunkPath,
-        System.currentTimeMillis()
+        end - chunkStart
       );
+      chunkDurations.add(end - chunkStart);
+      LOGGER.warn("{}: {}", outputKey, chunkDurations);
     } else {
       LOGGER.error(
         "{}: stream was null, so did not end this chunk",
@@ -287,8 +297,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         );
         if (!uploadFilesToS3) {
           event.complete();
+          chunkPromise.complete(chunkPath);
         }
-        chunkPromise.complete(chunkPath);
       },
       false
     );

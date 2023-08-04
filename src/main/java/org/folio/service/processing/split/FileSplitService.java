@@ -52,6 +52,7 @@ public class FileSplitService {
         try {
           return splitStream(context, stream, key);
         } catch (IOException e) {
+          LOGGER.error("Unable to split file", e);
           throw new UncheckedIOException(e);
         }
       });

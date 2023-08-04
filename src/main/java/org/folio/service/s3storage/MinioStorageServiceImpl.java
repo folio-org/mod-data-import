@@ -120,6 +120,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
           InputStream inStream = client.read(key);
           blockingFuture.complete(inStream);
         } catch (S3ClientException e) {
+          LOGGER.error("Could not read from S3:", e);
           blockingFuture.fail(e);
         }
       },

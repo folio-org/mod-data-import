@@ -7,7 +7,6 @@ import static org.hamcrest.Matchers.is;
 import java.io.File;
 import java.io.IOException;
 
-import org.folio.service.processing.split.FileSplitUtilities;
 import org.folio.service.processing.split.FileSplitWriter;
 import org.junit.Rule;
 import org.junit.Test;
@@ -42,10 +41,8 @@ public class FileSplitWriterDeleteLocalTest {
           try {
             File folder = temporaryFolder.newFolder();
 
-            FileSplitWriter writer = new FileSplitWriter(vertx.getOrCreateContext(),
-                chunkUploadingCompositeFuturePromise, TEST_KEY, folder.toString(), 3,
-                FileSplitUtilities.MARC_RECORD_TERMINATOR,
-                false, true);
+            FileSplitWriter writer = new FileSplitWriter(chunkUploadingCompositeFuturePromise, TEST_KEY,
+                folder.toString(), 3, false, true);
 
             file.pipeTo(writer).onComplete(context.asyncAssertSuccess());
             chunkUploadingCompositeFuturePromise.future().onComplete(context.asyncAssertSuccess(result -> {

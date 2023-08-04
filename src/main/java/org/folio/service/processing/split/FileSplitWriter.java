@@ -1,6 +1,7 @@
 package org.folio.service.processing.split;
 
 import static java.nio.file.StandardOpenOption.CREATE;
+import static org.folio.service.processing.split.FileSplitUtilities.MARC_RECORD_TERMINATOR;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -24,12 +25,16 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
 
 public class FileSplitWriter implements WriteStream<Buffer> {
 
   private static final Logger LOGGER = LogManager.getLogger();
+
+  @Autowired
+  private Vertx vertx;
 
   @Autowired
   private MinioStorageService minioStorageService;
@@ -45,7 +50,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private boolean deleteLocalFiles;
 
   private int maxRecordsPerChunk;
-  private byte recordTerminator;
 
   private OutputStream currentChunkStream;
   private String currentChunkPath;
@@ -55,22 +59,19 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private int recordCount = 0;
 
   public FileSplitWriter(
-      Context vertxContext,
       Promise<CompositeFuture> chunkUploadingCompositeFuturePromise,
       String outputKey,
       String chunkFolder,
       @Min(1) int maxRecordsPerChunk,
-      byte recordTerminator,
       boolean uploadFilesToS3,
       boolean deleteLocalFiles) throws IOException {
-    this.vertxContext = vertxContext;
+    this.vertxContext = this.vertx.getOrCreateContext();
     this.chunkUploadingCompositeFuturePromise = chunkUploadingCompositeFuturePromise;
     chunkProcessingFutures = new ArrayList<>();
     this.outputKey = outputKey;
     this.chunkFolder = chunkFolder;
 
     this.maxRecordsPerChunk = maxRecordsPerChunk;
-    this.recordTerminator = recordTerminator;
     this.uploadFilesToS3 = uploadFilesToS3;
     this.deleteLocalFiles = deleteLocalFiles;
 
@@ -106,7 +107,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       try {
         currentChunkStream.write(b);
 
-        if (b == recordTerminator && (++recordCount == maxRecordsPerChunk)) {
+        if (b == MARC_RECORD_TERMINATOR && (++recordCount == maxRecordsPerChunk)) {
           endChunk();
         }
       } catch (IOException e) {

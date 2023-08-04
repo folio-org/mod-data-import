@@ -46,9 +46,8 @@ public class FileSplitWriterExceptionalTest {
             File folder = temporaryFolder.newFolder();
             String path = folder.getPath();
 
-            FileSplitWriter writer = new FileSplitWriter(vertx.getOrCreateContext(),
-                chunkUploadingCompositeFuturePromise, TEST_KEY, path, 1, FileSplitUtilities.MARC_RECORD_TERMINATOR,
-                false, false);
+            FileSplitWriter writer = new FileSplitWriter(chunkUploadingCompositeFuturePromise, TEST_KEY, path, 1, false,
+                false);
 
             writer.exceptionHandler(err -> async.countDown());
 
@@ -74,8 +73,7 @@ public class FileSplitWriterExceptionalTest {
       File folder = temporaryFolder.newFolder();
       String path = folder.getPath();
 
-      FileSplitWriter writer = new FileSplitWriter(vertx.getOrCreateContext(),
-          chunkUploadingCompositeFuturePromise, TEST_KEY, path, 1, FileSplitUtilities.MARC_RECORD_TERMINATOR,
+      FileSplitWriter writer = new FileSplitWriter(chunkUploadingCompositeFuturePromise, TEST_KEY, path, 1,
           false, false);
 
       for (File f : folder.listFiles()) {

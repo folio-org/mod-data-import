@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.folio.service.processing.split.FileSplitUtilities;
 import org.folio.service.processing.split.FileSplitWriter;
 import org.folio.service.s3storage.MinioStorageService;
 import org.junit.Before;
@@ -51,10 +50,8 @@ public class FileSplitWriterS3ExceptionalTest {
 
   @Before
   public void setUp() throws IOException {
-    writer = new FileSplitWriter(vertx.getOrCreateContext(),
-        chunkUploadingCompositeFuturePromise, TEST_KEY, temporaryFolder.newFolder().toString(), 3,
-        FileSplitUtilities.MARC_RECORD_TERMINATOR,
-        true, false);
+    writer = new FileSplitWriter(chunkUploadingCompositeFuturePromise, TEST_KEY, temporaryFolder.newFolder().toString(),
+        3, true, false);
 
     MockitoAnnotations.openMocks(this);
   }

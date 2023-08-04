@@ -16,7 +16,6 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 
-import org.folio.service.processing.split.FileSplitUtilities;
 import org.folio.service.processing.split.FileSplitWriter;
 import org.folio.service.s3storage.MinioStorageService;
 import org.junit.Before;
@@ -95,10 +94,8 @@ public class FileSplitWriterS3Test {
 
   @Before
   public void setUp() throws IOException {
-    writer = new FileSplitWriter(vertx.getOrCreateContext(),
-        chunkUploadingCompositeFuturePromise, key, temporaryFolder.newFolder().toString(), chunkSize,
-        FileSplitUtilities.MARC_RECORD_TERMINATOR,
-        true, false);
+    writer = new FileSplitWriter(chunkUploadingCompositeFuturePromise, key, temporaryFolder.newFolder().toString(),
+        chunkSize, true, false);
 
     MockitoAnnotations.openMocks(this);
   }

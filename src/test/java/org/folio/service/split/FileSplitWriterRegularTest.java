@@ -95,10 +95,8 @@ public class FileSplitWriterRegularTest {
 
   @Before
   public void setUp() throws Exception {
-    writer = new FileSplitWriter(vertx.getOrCreateContext(),
-        chunkUploadingCompositeFuturePromise,
-        key, temporaryFolder.newFolder().getPath(),
-        chunkSize, FileSplitUtilities.MARC_RECORD_TERMINATOR, false, false);
+    writer = new FileSplitWriter(chunkUploadingCompositeFuturePromise, key, temporaryFolder.newFolder().getPath(),
+        chunkSize, false, false);
 
     MockitoAnnotations.openMocks(this);
   }

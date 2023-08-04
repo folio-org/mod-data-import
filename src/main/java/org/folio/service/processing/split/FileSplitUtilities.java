@@ -64,7 +64,7 @@ public class FileSplitUtilities {
     return Files.createTempDirectory(
       String.format("mod-data-import-splits-%s", key.replace('/', '-')),
       PosixFilePermissions.asFileAttribute(
-        PosixFilePermissions.fromString("rw-------")
+        PosixFilePermissions.fromString("rwx------")
       )
     );
   }

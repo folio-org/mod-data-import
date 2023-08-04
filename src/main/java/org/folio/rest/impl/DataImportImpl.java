@@ -590,17 +590,17 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportTestFileSplitLocal(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getDataImportTestFileSplitLocal(String path, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         vertxContext
           .owner()
           .fileSystem()
-          .readFile(key)
+          .readFile(path)
           .onSuccess(file -> {
             try {
               fileSplitService
-                .splitStream(vertxContext, new ByteArrayInputStream(file.getBytes()), key)
+                .splitStream(vertxContext, new ByteArrayInputStream(file.getBytes()), path)
                 .onSuccess(composite -> composite.onSuccess(success -> {
                   LOGGER.debug("All chunks uploaded successfully!");
                   asyncResultHandler.handle(Future.succeededFuture("Testing Complete")

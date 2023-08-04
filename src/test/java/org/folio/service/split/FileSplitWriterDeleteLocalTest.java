@@ -4,21 +4,20 @@ import static org.folio.util.VertxMatcherAssert.asyncAssertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 
-import java.io.File;
-import java.io.IOException;
-
-import org.folio.service.processing.split.FileSplitWriter;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.File;
+import java.io.IOException;
+import org.folio.service.processing.split.FileSplitWriter;
+import org.folio.service.processing.split.FileSplitWriterOptions;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class FileSplitWriterDeleteLocalTest {
@@ -33,25 +32,46 @@ public class FileSplitWriterDeleteLocalTest {
 
   @Test
   public void testCleanup(TestContext context) throws IOException {
-    vertx.getOrCreateContext().owner().fileSystem()
-        .open(TEST_FILE, new OpenOptions().setRead(true))
-        .onComplete(context.asyncAssertSuccess(file -> {
+    vertx
+      .getOrCreateContext()
+      .owner()
+      .fileSystem()
+      .open(TEST_FILE, new OpenOptions().setRead(true))
+      .onComplete(
+        context.asyncAssertSuccess(file -> {
           Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
 
           try {
             File folder = temporaryFolder.newFolder();
 
-            FileSplitWriter writer = new FileSplitWriter(chunkUploadingCompositeFuturePromise, TEST_KEY,
-                folder.toString(), 3, false, true);
+            FileSplitWriter writer = new FileSplitWriter(
+              FileSplitWriterOptions
+                .builder()
+                .vertxContext(vertx.getOrCreateContext())
+                .chunkUploadingCompositeFuturePromise(
+                  chunkUploadingCompositeFuturePromise
+                )
+                .outputKey(TEST_KEY)
+                .chunkFolder(folder.toString())
+                .maxRecordsPerChunk(3)
+                .uploadFilesToS3(false)
+                .deleteLocalFiles(true)
+                .build()
+            );
 
             file.pipeTo(writer).onComplete(context.asyncAssertSuccess());
-            chunkUploadingCompositeFuturePromise.future().onComplete(context.asyncAssertSuccess(result -> {
-              asyncAssertThat(context, result.list(), hasSize(4));
-              asyncAssertThat(context, folder.listFiles().length, is(0));
-            }));
+            chunkUploadingCompositeFuturePromise
+              .future()
+              .onComplete(
+                context.asyncAssertSuccess(result -> {
+                  asyncAssertThat(context, result.list(), hasSize(4));
+                  asyncAssertThat(context, folder.listFiles().length, is(0));
+                })
+              );
           } catch (IOException err) {
             context.fail(err);
           }
-        }));
+        })
+      );
   }
 }

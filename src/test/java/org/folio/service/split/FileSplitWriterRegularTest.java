@@ -5,6 +5,13 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.OpenOptions;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,9 +22,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.folio.service.processing.split.FileSplitUtilities;
 import org.folio.service.processing.split.FileSplitWriter;
+import org.folio.service.processing.split.FileSplitWriterOptions;
 import org.folio.service.s3storage.MinioStorageService;
 import org.junit.Before;
 import org.junit.Rule;
@@ -27,17 +34,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.junit.runners.Parameterized.UseParametersRunnerFactory;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.file.OpenOptions;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
 
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(VertxUnitRunnerWithParametersFactory.class)
@@ -53,7 +51,6 @@ public class FileSplitWriterRegularTest {
 
   Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
 
-  @InjectMocks
   FileSplitWriter writer;
 
   private String sourceFile;
@@ -65,28 +62,86 @@ public class FileSplitWriterRegularTest {
   @Parameters
   public static Collection<Object[]> getCases() {
     return Arrays.asList(
-
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 11, new String[] { "out_1.mrc" } },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 10, new String[] { "out_1.mrc" } },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 9, new String[] { "out_1.mrc", "out_2.mrc" } },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 5, new String[] { "out_1.mrc", "out_2.mrc" } },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 3,
-            new String[] { "out_1.mrc", "out_2.mrc", "out_3.mrc", "out_4.mrc", } },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 1,
-            new String[] { "out_1.mrc", "out_2.mrc", "out_3.mrc", "out_4.mrc", "out_5.mrc", "out_6.mrc", "out_7.mrc",
-                "out_8.mrc", "out_9.mrc", "out_10.mrc" } },
-
-        new Object[] { "src/test/resources/0.mrc", "none.mrc", 1, new String[] { "none_1.mrc" } },
-
-        new Object[] { "src/test/resources/1.mrc", "single.mrc", 10, new String[] { "single_1.mrc" } },
-        new Object[] { "src/test/resources/1.mrc", "single.mrc", 1, new String[] { "single_1.mrc" } },
-
-        new Object[] { "src/test/resources/100.mrc", "big.mrc", 60, new String[] { "big_1.mrc", "big_2.mrc" } });
-
+      new Object[] {
+        "src/test/resources/10.mrc",
+        "out.mrc",
+        11,
+        new String[] { "out_1.mrc" },
+      },
+      new Object[] {
+        "src/test/resources/10.mrc",
+        "out.mrc",
+        10,
+        new String[] { "out_1.mrc" },
+      },
+      new Object[] {
+        "src/test/resources/10.mrc",
+        "out.mrc",
+        9,
+        new String[] { "out_1.mrc", "out_2.mrc" },
+      },
+      new Object[] {
+        "src/test/resources/10.mrc",
+        "out.mrc",
+        5,
+        new String[] { "out_1.mrc", "out_2.mrc" },
+      },
+      new Object[] {
+        "src/test/resources/10.mrc",
+        "out.mrc",
+        3,
+        new String[] { "out_1.mrc", "out_2.mrc", "out_3.mrc", "out_4.mrc" },
+      },
+      new Object[] {
+        "src/test/resources/10.mrc",
+        "out.mrc",
+        1,
+        new String[] {
+          "out_1.mrc",
+          "out_2.mrc",
+          "out_3.mrc",
+          "out_4.mrc",
+          "out_5.mrc",
+          "out_6.mrc",
+          "out_7.mrc",
+          "out_8.mrc",
+          "out_9.mrc",
+          "out_10.mrc",
+        },
+      },
+      new Object[] {
+        "src/test/resources/0.mrc",
+        "none.mrc",
+        1,
+        new String[] { "none_1.mrc" },
+      },
+      new Object[] {
+        "src/test/resources/1.mrc",
+        "single.mrc",
+        10,
+        new String[] { "single_1.mrc" },
+      },
+      new Object[] {
+        "src/test/resources/1.mrc",
+        "single.mrc",
+        1,
+        new String[] { "single_1.mrc" },
+      },
+      new Object[] {
+        "src/test/resources/100.mrc",
+        "big.mrc",
+        60,
+        new String[] { "big_1.mrc", "big_2.mrc" },
+      }
+    );
   }
 
-  public FileSplitWriterRegularTest(String sourceFile, String key, int chunkSize, String[] expectedChunkFiles)
-      throws IOException {
+  public FileSplitWriterRegularTest(
+    String sourceFile,
+    String key,
+    int chunkSize,
+    String[] expectedChunkFiles
+  ) throws IOException {
     this.sourceFile = sourceFile;
     this.key = key;
     this.chunkSize = chunkSize;
@@ -95,95 +150,172 @@ public class FileSplitWriterRegularTest {
 
   @Before
   public void setUp() throws Exception {
-    writer = new FileSplitWriter(chunkUploadingCompositeFuturePromise, key, temporaryFolder.newFolder().getPath(),
-        chunkSize, false, false);
-
     MockitoAnnotations.openMocks(this);
+
+    writer =
+      new FileSplitWriter(
+        FileSplitWriterOptions
+          .builder()
+          .vertxContext(vertx.getOrCreateContext())
+          .chunkUploadingCompositeFuturePromise(
+            chunkUploadingCompositeFuturePromise
+          )
+          .outputKey(key)
+          .chunkFolder(temporaryFolder.newFolder().getPath())
+          .maxRecordsPerChunk(chunkSize)
+          .uploadFilesToS3(false)
+          .deleteLocalFiles(false)
+          .build()
+      );
   }
 
   @Test
   public void testSplit(TestContext context) throws IOException {
-    vertx.getOrCreateContext().owner().fileSystem()
-        .open(sourceFile, new OpenOptions().setRead(true))
-        .onComplete(context.asyncAssertSuccess(file -> {
+    vertx
+      .getOrCreateContext()
+      .owner()
+      .fileSystem()
+      .open(sourceFile, new OpenOptions().setRead(true))
+      .onComplete(
+        context.asyncAssertSuccess(file -> {
           // start the splitting
-          file.pipeTo(writer).onComplete(context.asyncAssertSuccess(v -> {
-            // splitting finished, "uploading" in progress
-            chunkUploadingCompositeFuturePromise.future().onComplete(
-                context.asyncAssertSuccess(cf -> cf.onComplete(context.asyncAssertSuccess(internalFuture -> {
-                  // "uploading" finished, check the results
-                  List<Path> paths = internalFuture.list().stream().map(obj -> Path.of((String) obj))
-                      .collect(Collectors.toList());
-                  List<String> fileNames = paths.stream().map(path -> path.getFileName().toString())
-                      .collect(Collectors.toList());
+          file
+            .pipeTo(writer)
+            .onComplete(
+              context.asyncAssertSuccess(v -> {
+                // splitting finished, "uploading" in progress
+                chunkUploadingCompositeFuturePromise
+                  .future()
+                  .onComplete(
+                    context.asyncAssertSuccess(cf ->
+                      cf.onComplete(
+                        context.asyncAssertSuccess(internalFuture -> {
+                          // "uploading" finished, check the results
+                          List<Path> paths = internalFuture
+                            .list()
+                            .stream()
+                            .map(obj -> Path.of((String) obj))
+                            .collect(Collectors.toList());
+                          List<String> fileNames = paths
+                            .stream()
+                            .map(path -> path.getFileName().toString())
+                            .collect(Collectors.toList());
 
-                  // number of chunks and chunk names
-                  asyncAssertThat(context, fileNames, contains(expectedChunkFiles));
+                          // number of chunks and chunk names
+                          asyncAssertThat(
+                            context,
+                            fileNames,
+                            contains(expectedChunkFiles)
+                          );
 
-                  // read and verify chunking
-                  int totalSize = 0;
-                  List<byte[]> fileContents = new ArrayList<>();
+                          // read and verify chunking
+                          int totalSize = 0;
+                          List<byte[]> fileContents = new ArrayList<>();
 
-                  // get each file's contents
-                  for (Path path : paths) {
-                    File actualFile = path.toFile();
-                    totalSize += actualFile.length();
-                    try (FileInputStream fileStream = new FileInputStream(actualFile)) {
-                      fileContents.add(fileStream.readAllBytes());
-                    } catch (IOException err) {
-                      context.fail(err);
-                    }
-                  }
-
-                  // recombine the split chunks
-                  byte[] actual = new byte[totalSize];
-                  int pos = 0;
-                  for (byte[] content : fileContents) {
-                    System.arraycopy(content, 0, actual, pos, content.length);
-                    pos += content.length;
-                  }
-
-                  // verify end delimiter
-                  for (byte[] content : fileContents) {
-                    if (content.length > 0) { // don't check empty chunks (for empty starting file)
-                      asyncAssertThat(context, content[content.length - 1],
-                          is(FileSplitUtilities.MARC_RECORD_TERMINATOR));
-                    }
-                  }
-
-                  // + 1 is sufficient in case the original file is larger since it will read in
-                  // some extra after the splits, which is enough to fail the test
-                  file.read(Buffer.buffer(), 0, 0, totalSize + 1)
-                      .onComplete(context.asyncAssertSuccess(expectedBuffer -> {
-                        try {
-                          byte[] expected = expectedBuffer.getBytes();
-                          // verify the chunks are equivalent
-                          asyncAssertThat(context, actual, is(expected));
-
-                          // verify counts of records in each are correct
-                          int totalRecords = FileSplitUtilities
-                              .countRecordsInMarcFile(new ByteArrayInputStream(actual));
-
-                          for (int i = 0; i < fileContents.size(); i++) {
-                            if (i == fileContents.size() - 1) {
-                              // the last slice should have all remaining records
-                              asyncAssertThat(context, FileSplitUtilities.countRecordsInMarcFile(
-                                  new ByteArrayInputStream(fileContents.get(i))), is(totalRecords));
-                            } else {
-                              // all other slices should have a full chunk
-                              asyncAssertThat(context, FileSplitUtilities.countRecordsInMarcFile(
-                                  new ByteArrayInputStream(fileContents.get(i))), is(chunkSize));
-                              totalRecords -= chunkSize;
+                          // get each file's contents
+                          for (Path path : paths) {
+                            File actualFile = path.toFile();
+                            totalSize += actualFile.length();
+                            try (
+                              FileInputStream fileStream = new FileInputStream(
+                                actualFile
+                              )
+                            ) {
+                              fileContents.add(fileStream.readAllBytes());
+                            } catch (IOException err) {
+                              context.fail(err);
                             }
                           }
 
-                          verifyNoInteractions(minioStorageService);
-                        } catch (IOException err) {
-                          context.fail(err);
-                        }
-                      }));
-                }))));
-          }));
-        }));
+                          // recombine the split chunks
+                          byte[] actual = new byte[totalSize];
+                          int pos = 0;
+                          for (byte[] content : fileContents) {
+                            System.arraycopy(
+                              content,
+                              0,
+                              actual,
+                              pos,
+                              content.length
+                            );
+                            pos += content.length;
+                          }
+
+                          // verify end delimiter
+                          for (byte[] content : fileContents) {
+                            if (content.length > 0) { // don't check empty chunks (for empty starting file)
+                              asyncAssertThat(
+                                context,
+                                content[content.length - 1],
+                                is(FileSplitUtilities.MARC_RECORD_TERMINATOR)
+                              );
+                            }
+                          }
+
+                          // + 1 is sufficient in case the original file is larger since it will read in
+                          // some extra after the splits, which is enough to fail the test
+                          file
+                            .read(Buffer.buffer(), 0, 0, totalSize + 1)
+                            .onComplete(
+                              context.asyncAssertSuccess(expectedBuffer -> {
+                                try {
+                                  byte[] expected = expectedBuffer.getBytes();
+                                  // verify the chunks are equivalent
+                                  asyncAssertThat(
+                                    context,
+                                    actual,
+                                    is(expected)
+                                  );
+
+                                  // verify counts of records in each are correct
+                                  int totalRecords = FileSplitUtilities.countRecordsInMarcFile(
+                                    new ByteArrayInputStream(actual)
+                                  );
+
+                                  for (
+                                    int i = 0;
+                                    i < fileContents.size();
+                                    i++
+                                  ) {
+                                    if (i == fileContents.size() - 1) {
+                                      // the last slice should have all remaining records
+                                      asyncAssertThat(
+                                        context,
+                                        FileSplitUtilities.countRecordsInMarcFile(
+                                          new ByteArrayInputStream(
+                                            fileContents.get(i)
+                                          )
+                                        ),
+                                        is(totalRecords)
+                                      );
+                                    } else {
+                                      // all other slices should have a full chunk
+                                      asyncAssertThat(
+                                        context,
+                                        FileSplitUtilities.countRecordsInMarcFile(
+                                          new ByteArrayInputStream(
+                                            fileContents.get(i)
+                                          )
+                                        ),
+                                        is(chunkSize)
+                                      );
+                                      totalRecords -= chunkSize;
+                                    }
+                                  }
+
+                                  verifyNoInteractions(minioStorageService);
+                                } catch (IOException err) {
+                                  context.fail(err);
+                                }
+                              })
+                            );
+                        })
+                      )
+                    )
+                  );
+              })
+            );
+        })
+      );
   }
 }

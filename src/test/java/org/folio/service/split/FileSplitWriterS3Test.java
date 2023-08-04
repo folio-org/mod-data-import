@@ -9,14 +9,21 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.file.OpenOptions;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
-
 import org.folio.service.processing.split.FileSplitWriter;
+import org.folio.service.processing.split.FileSplitWriterOptions;
 import org.folio.service.s3storage.MinioStorageService;
 import org.junit.Before;
 import org.junit.Rule;
@@ -28,17 +35,8 @@ import org.junit.runners.Parameterized.Parameters;
 import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.file.OpenOptions;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
 
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(VertxUnitRunnerWithParametersFactory.class)
@@ -53,10 +51,10 @@ public class FileSplitWriterS3Test {
 
   @Mock
   private MinioStorageService minioStorageService;
+
   @Captor
   private ArgumentCaptor<InputStream> captor;
 
-  @InjectMocks
   private FileSplitWriter writer;
 
   private String sourceFile;
@@ -68,25 +66,21 @@ public class FileSplitWriterS3Test {
   @Parameters
   public static Collection<Object[]> getCases() {
     return Arrays.asList(
-
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 11 },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 10 },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 9 },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 5 },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 3 },
-        new Object[] { "src/test/resources/10.mrc", "out.mrc", 1 },
-
-        new Object[] { "src/test/resources/0.mrc", "none.mrc", 1 },
-
-        new Object[] { "src/test/resources/1.mrc", "single.mrc", 10 },
-        new Object[] { "src/test/resources/1.mrc", "single.mrc", 1 },
-
-        new Object[] { "src/test/resources/100.mrc", "big.mrc", 60 });
-
+      new Object[] { "src/test/resources/10.mrc", "out.mrc", 11 },
+      new Object[] { "src/test/resources/10.mrc", "out.mrc", 10 },
+      new Object[] { "src/test/resources/10.mrc", "out.mrc", 9 },
+      new Object[] { "src/test/resources/10.mrc", "out.mrc", 5 },
+      new Object[] { "src/test/resources/10.mrc", "out.mrc", 3 },
+      new Object[] { "src/test/resources/10.mrc", "out.mrc", 1 },
+      new Object[] { "src/test/resources/0.mrc", "none.mrc", 1 },
+      new Object[] { "src/test/resources/1.mrc", "single.mrc", 10 },
+      new Object[] { "src/test/resources/1.mrc", "single.mrc", 1 },
+      new Object[] { "src/test/resources/100.mrc", "big.mrc", 60 }
+    );
   }
 
   public FileSplitWriterS3Test(String sourceFile, String key, int chunkSize)
-      throws IOException {
+    throws IOException {
     this.sourceFile = sourceFile;
     this.key = key;
     this.chunkSize = chunkSize;
@@ -94,35 +88,72 @@ public class FileSplitWriterS3Test {
 
   @Before
   public void setUp() throws IOException {
-    writer = new FileSplitWriter(chunkUploadingCompositeFuturePromise, key, temporaryFolder.newFolder().toString(),
-        chunkSize, true, false);
-
     MockitoAnnotations.openMocks(this);
+
+    writer =
+      new FileSplitWriter(
+        FileSplitWriterOptions
+          .builder()
+          .vertxContext(vertx.getOrCreateContext())
+          .minioStorageService(minioStorageService)
+          .chunkUploadingCompositeFuturePromise(
+            chunkUploadingCompositeFuturePromise
+          )
+          .outputKey(key)
+          .chunkFolder(temporaryFolder.newFolder().getPath())
+          .maxRecordsPerChunk(chunkSize)
+          .uploadFilesToS3(true)
+          .deleteLocalFiles(false)
+          .build()
+      );
   }
 
   @Test
   public void testUploadToS3(TestContext context) throws IOException {
-    when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture("result"));
+    when(minioStorageService.write(any(), any()))
+      .thenReturn(Future.succeededFuture("result"));
 
-    vertx.getOrCreateContext().owner().fileSystem()
-        .open(sourceFile, new OpenOptions().setRead(true))
-        .onComplete(context.asyncAssertSuccess(file -> {
+    vertx
+      .getOrCreateContext()
+      .owner()
+      .fileSystem()
+      .open(sourceFile, new OpenOptions().setRead(true))
+      .onComplete(
+        context.asyncAssertSuccess(file -> {
           file.pipeTo(writer).onComplete(context.asyncAssertSuccess());
-          chunkUploadingCompositeFuturePromise.future().onComplete(
-              context.asyncAssertSuccess(cf -> cf.onComplete(context.asyncAssertSuccess(result -> {
-                for (Object obj : result.list()) {
-                  String path = (String) obj;
+          chunkUploadingCompositeFuturePromise
+            .future()
+            .onComplete(
+              context.asyncAssertSuccess(cf ->
+                cf.onComplete(
+                  context.asyncAssertSuccess(result -> {
+                    for (Object obj : result.list()) {
+                      String path = (String) obj;
 
-                  try (FileInputStream fileStream = new FileInputStream(path)) {
-                    verify(minioStorageService).write(eq(Path.of(path).getFileName().toString()), captor.capture());
-                    asyncAssertThat(context, captor.getValue().readAllBytes(), is(equalTo(fileStream.readAllBytes())));
-                  } catch (IOException err) {
-                    context.fail(err);
-                  }
-                }
+                      try (
+                        FileInputStream fileStream = new FileInputStream(path)
+                      ) {
+                        verify(minioStorageService)
+                          .write(
+                            eq(Path.of(path).getFileName().toString()),
+                            captor.capture()
+                          );
+                        asyncAssertThat(
+                          context,
+                          captor.getValue().readAllBytes(),
+                          is(equalTo(fileStream.readAllBytes()))
+                        );
+                      } catch (IOException err) {
+                        context.fail(err);
+                      }
+                    }
 
-                verifyNoMoreInteractions(minioStorageService);
-              }))));
-        }));
+                    verifyNoMoreInteractions(minioStorageService);
+                  })
+                )
+              )
+            );
+        })
+      );
   }
 }

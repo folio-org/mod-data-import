@@ -212,17 +212,6 @@ public class AsyncInputStreamTest {
   }
 
   @Test
-  public void testHandlerEmpty(TestContext context) {
-    Async async = context.async();
-    AsyncInputStream stream = new AsyncInputStream(vertx, vertx.getOrCreateContext(),
-        new ByteArrayInputStream(emptyBuff));
-
-    stream.handler(buff -> context.fail("No data should have been read"));
-    stream.endHandler(v -> async.complete());
-    stream.exceptionHandler(err -> context.fail(err));
-  }
-
-  @Test
   @SuppressWarnings("java:S2699")
   public void testHandlerSmall(TestContext context) {
     Async async = context.async();

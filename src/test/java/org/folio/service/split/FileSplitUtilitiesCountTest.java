@@ -18,31 +18,21 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class FileSplitUtilitiesCountTest {
 
-  private static final String EMPTY_MARC_SOURCE_PATH =
-    "src/test/resources/0.mrc";
-
-  // fits in one buffer read
-  private static final String VALID_1_MARC_SOURCE_PATH =
-    "src/test/resources/1.mrc";
-  private static final int VALID_1_MARC_RECORD_COUNT = 1;
-
-  // multiple buffer reads
-  private static final String VALID_100_MARC_SOURCE_PATH =
-    "src/test/resources/100.mrc";
-  private static final int VALID_100_MARC_RECORD_COUNT = 100;
-
-  // invalid format
-  private static final String INVALID_MARC_SOURCE_PATH =
-    "src/test/resources/invalidMarcFile.mrc";
-
   // tuples of [path, number of records]
   @Parameters
   public static Collection<Object[]> getCases() {
     return Arrays.asList(
-      new Object[] { EMPTY_MARC_SOURCE_PATH, 0 },
-      new Object[] { VALID_1_MARC_SOURCE_PATH, VALID_1_MARC_RECORD_COUNT },
-      new Object[] { VALID_100_MARC_SOURCE_PATH, VALID_100_MARC_RECORD_COUNT },
-      new Object[] { INVALID_MARC_SOURCE_PATH, 0 }
+      new Object[] { "src/test/resources/0.mrc", 0 },
+      // 1 buffer read
+      new Object[] { "src/test/resources/1.mrc", 1 },
+      // multiple buffer reads
+      new Object[] { "src/test/resources/100.mrc", 100 },
+      new Object[] { "src/test/resources/2500.mrc", 2500 },
+      new Object[] { "src/test/resources/5000.mrc", 5000 },
+      new Object[] { "src/test/resources/10000.mrc", 10000 },
+      new Object[] { "src/test/resources/22778.mrc", 22778 },
+      new Object[] { "src/test/resources/50000.mrc", 50000 },
+      new Object[] { "src/test/resources/invalidMarcFile.mrc", 0 }
     );
   }
 

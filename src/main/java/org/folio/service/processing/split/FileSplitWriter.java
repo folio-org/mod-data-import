@@ -11,9 +11,9 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,17 +42,17 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   private int maxRecordsPerChunk;
 
-  private OutputStream currentChunkStream;
+  private ByteArrayOutputStream currentChunkStream;
   private String currentChunkPath;
   private String currentChunkKey;
 
   private int chunkIndex = 1;
   private int recordCount = 0;
 
-  private long chunkStart = 0;
-  private List<Long> chunkDurations = new ArrayList<>();
+  // used to hint the buffer size for the next chunks
+  private int lastChunkSize;
 
-  public FileSplitWriter(FileSplitWriterOptions options) throws IOException {
+  public FileSplitWriter(FileSplitWriterOptions options) {
     this.vertxContext = options.getVertxContext();
     this.minioStorageService = options.getMinioStorageService();
     this.chunkUploadingCompositeFuturePromise =
@@ -65,11 +65,16 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     this.uploadFilesToS3 = options.isUploadFilesToS3();
     this.deleteLocalFiles = options.isDeleteLocalFiles();
 
+    // Per https://www.loc.gov/marc/makrbrkr.html, the average size of a MARC
+    // record is 800-1500 chars (bytes).  So, we will use 800/record as the
+    // first buffer's size (then future chunks can be the same size as previous).
+    // This allows some responsiveness in the first chunk and later ones, to
+    // ensure we don't waste too much time resizing the buffer.
+    this.lastChunkSize = 800 * maxRecordsPerChunk;
+
     this.recordTerminator = options.getRecordTerminator();
 
     this.chunkProcessingFutures = new ArrayList<>();
-
-    LOGGER.info("About to call first startChunk!");
 
     startChunk();
   }
@@ -94,12 +99,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     byte[] bytes = data.getBytes();
     for (byte b : bytes) {
       if (currentChunkStream == null) {
-        try {
-          startChunk();
-        } catch (IOException e) {
-          handleWriteException(handler, e);
-          return;
-        }
+        startChunk();
       }
       try {
         currentChunkStream.write(b);
@@ -169,37 +169,40 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   }
 
   /** Start processing a new chunk */
-  private void startChunk() throws IOException {
+  private void startChunk() {
     String fileName = FileSplitUtilities.buildChunkKey(outputKey, chunkIndex++);
     Path path = Path.of(chunkFolder, new File(fileName).getName());
     currentChunkPath = path.toString();
     currentChunkKey = fileName;
-    currentChunkStream = Files.newOutputStream(path, CREATE);
+    currentChunkStream = new ByteArrayOutputStream(lastChunkSize);
     LOGGER.info(
       "{}: startChunk:{} time:{}",
       Thread.currentThread().getName(),
       currentChunkPath,
       System.currentTimeMillis()
     );
-    chunkStart = System.currentTimeMillis();
   }
 
   /** Finalize the current chunk */
   private void endChunk() throws IOException {
     if (currentChunkStream != null) {
       currentChunkStream.close();
+      currentChunkStream.writeTo(
+        Files.newOutputStream(Path.of(currentChunkPath), CREATE)
+      );
+      lastChunkSize = currentChunkStream.size();
       uploadChunkAsync(currentChunkPath, currentChunkKey);
+
+      // this will trigger a startChunk when more data is received
       currentChunkStream = null;
       recordCount = 0;
-      long end = System.currentTimeMillis();
+
       LOGGER.info(
-        "{}: endChunk:{} duration:{}",
+        "{}: finished chunk of size {} written to {}",
         Thread.currentThread().getName(),
-        currentChunkPath,
-        end - chunkStart
+        lastChunkSize,
+        currentChunkPath
       );
-      chunkDurations.add(end - chunkStart);
-      LOGGER.warn("{}: {}", outputKey, chunkDurations);
     } else {
       LOGGER.error(
         "{}: stream was null, so did not end this chunk",
@@ -217,7 +220,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         // chunk file uploading to S3
         if (uploadFilesToS3) {
           LOGGER.info(
-            "{}: Uploading file:{}:key{} time:{}",
+            "{}: Uploading file: {}, key={}, time={}",
             Thread.currentThread().getName(),
             chunkPath,
             chunkKey,

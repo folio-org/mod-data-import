@@ -97,19 +97,36 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   @Override
   public void write(Buffer data, Handler<AsyncResult<Void>> handler) {
     byte[] bytes = data.getBytes();
-    for (byte b : bytes) {
+    int start = 0;
+    int len = 0;
+
+    for (int i = 0; i < bytes.length; i++) {
+      if (
+        bytes[i] == recordTerminator && (++recordCount == maxRecordsPerChunk)
+      ) {
+        len = i + 1 - start;
+
+        try {
+          if (currentChunkStream == null) {
+            startChunk();
+          }
+          currentChunkStream.write(bytes, start, len);
+          endChunk();
+        } catch (IOException e) {
+          handleWriteException(handler, e);
+        }
+
+        start = i + 1;
+      }
+    }
+
+    if (start < bytes.length) {
+      len = bytes.length - start;
+
       if (currentChunkStream == null) {
         startChunk();
       }
-      try {
-        currentChunkStream.write(b);
-
-        if (b == recordTerminator && (++recordCount == maxRecordsPerChunk)) {
-          endChunk();
-        }
-      } catch (IOException e) {
-        handleWriteException(handler, e);
-      }
+      currentChunkStream.write(bytes, start, len);
     }
   }
 
@@ -202,11 +219,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         Thread.currentThread().getName(),
         lastChunkSize,
         currentChunkPath
-      );
-    } else {
-      LOGGER.error(
-        "{}: stream was null, so did not end this chunk",
-        Thread.currentThread().getName()
       );
     }
   }

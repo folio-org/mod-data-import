@@ -341,6 +341,33 @@ public class AsyncInputStreamTest {
   }
 
   @Test
+  public void testHandlerOutOfOrder(TestContext context) {
+    Async async = context.async();
+    AsyncInputStream stream = new AsyncInputStream(
+      vertx,
+      vertx.getOrCreateContext(),
+      new ByteArrayInputStream(emptyBuff)
+    );
+
+    stream.handler(buff -> context.fail("No data should have been read"));
+
+    vertx.setTimer(
+      100,
+      _v -> {
+        stream.endHandler(v ->
+          context.fail(
+            "End handler should not be called after stream is consumed"
+          )
+        );
+        stream.exceptionHandler(err -> context.fail(err));
+
+        // make sure neither are called, then complete
+        vertx.setTimer(100, __v -> async.complete());
+      }
+    );
+  }
+
+  @Test
   @SuppressWarnings("java:S2699")
   public void testHandlerSmall(TestContext context) {
     Async async = context.async();

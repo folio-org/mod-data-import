@@ -91,6 +91,9 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   }
 
   /**
+   * <strong>This will immediately start consumption of the stream.</strong>
+   * Be sure that the endHandler and other options are set first, if needed
+   *
    * {@inheritDoc}
    *
    * @see io.vertx.core.streams.ReadStream#handler(io.vertx.core.Handler)
@@ -100,6 +103,14 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     ensureOpen();
     this.dataHandler = handler;
     if (this.dataHandler != null && !this.closed) {
+      if (this.endHandler == null) {
+        LOGGER.warn(
+          "AsyncInputStream consumption has begun but endHandler is not set!!"
+        );
+        LOGGER.warn(
+          "Iff you wish to use an endHandler, be sure it is set before setting the handler.  Otherwise, this may cause race conditions!"
+        );
+      }
       this.doRead();
     } else {
       queue.clear();

@@ -127,10 +127,10 @@ To allow multiple instance deployment, for every instance the same persistent vo
 
 The file-splitting process may be configured with the following environment variables:
 
-| Name                      | Description                                                                      |
-|---------------------------|----------------------------------------------------------------------------------|
-| `SPLIT_FILES_ENABLED`     | Whether files should be split into chunks and processed separately; default true |
-| `RECORDS_PER_SPLIT_FILE`  | The maximum number of records to include in a single file; default is 1000       |
+| Name                      | Description                                                                       |
+|---------------------------|-----------------------------------------------------------------------------------|
+| `SPLIT_FILES_ENABLED`     | Whether files should be split into chunks and processed separately; default false |
+| `RECORDS_PER_SPLIT_FILE`  | The maximum number of records to include in a single file; default is 1000        |
 
 ## Interaction with AWS S3/Minio
 

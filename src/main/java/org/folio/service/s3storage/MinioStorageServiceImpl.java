@@ -32,6 +32,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     this.vertx = vertx;
   }
 
+  @Override
   public Future<FileUploadInfo> getFileUploadFirstPartUrl(
     String uploadFileName,
     String tenantId
@@ -65,6 +66,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
       .compose(outcome -> getFileUploadPartUrl(key, outcome, 1));
   }
 
+  @Override
   public Future<FileUploadInfo> getFileUploadPartUrl(
     String key,
     String uploadId,
@@ -106,6 +108,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     return promise.future();
   }
 
+  @Override
   public Future<InputStream> readFile(String key) {
     Promise<InputStream> inStreamPromise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
@@ -135,6 +138,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     return inStreamPromise.future();
   }
 
+  @Override
   public Future<String> write(String path, InputStream is) {
     Promise<String> stringPromise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
@@ -158,6 +162,33 @@ public class MinioStorageServiceImpl implements MinioStorageService {
       }
     );
     return stringPromise.future();
+  }
+
+  @Override
+  public Future<Void> remove(String key) {
+    Promise<Void> promise = Promise.promise();
+    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
+
+    vertx.executeBlocking(
+      (Promise<Void> blockingFuture) -> {
+        try {
+          LOGGER.info("Deleting file {}", key);
+          client.remove(key);
+          blockingFuture.complete();
+        } catch (S3ClientException e) {
+          LOGGER.error("Could not remove from S3:", e);
+          blockingFuture.fail(e);
+        }
+      },
+      (AsyncResult<Void> asyncResult) -> {
+        if (asyncResult.failed()) {
+          promise.fail(asyncResult.cause());
+        } else {
+          promise.complete(asyncResult.result());
+        }
+      }
+    );
+    return promise.future();
   }
 
   public Future<Boolean> completeMultipartFileUpload(

@@ -316,4 +316,51 @@ public class MinioStorageServiceTest {
     });
   }
 
+  @Test
+  public void testRemoveFileSuccessful(TestContext context) throws IOException {
+    Async async = context.async();
+
+    Mockito
+        .doReturn(S3_FILE_KEY)
+        .when(folioS3Client).remove(S3_FILE_KEY);
+
+    Future<Void> result = minioStorageService.remove(
+        S3_FILE_KEY);
+
+    result.onFailure(_err -> context.fail("testRemoveFileSuccessful should not fail"));
+    result.onSuccess(_v -> {
+      Mockito
+          .verify(folioS3Client, times(1))
+          .remove(S3_FILE_KEY);
+      Mockito.verifyNoMoreInteractions(folioS3Client);
+
+      async.complete();
+    });
+  }
+
+  @Test
+  public void testRemoveFileFailure(TestContext context) throws IOException {
+    Async async = context.async();
+
+    S3ClientException exception = new S3ClientException("test exception");
+
+    Mockito
+        .doThrow(exception)
+        .when(folioS3Client).remove(S3_FILE_KEY);
+
+    Future<Void> result = minioStorageService.remove(S3_FILE_KEY);
+
+    result.onSuccess(inStream -> {
+      context.fail("testRemoveFileFailure should fail");
+    });
+
+    result.onFailure(_err -> {
+      Mockito
+          .verify(folioS3Client, times(1))
+          .remove(S3_FILE_KEY);
+      Mockito.verifyNoMoreInteractions(folioS3Client);
+      assertSame("Fails with correct exception", exception, _err);
+      async.complete();
+    });
+  }
 }

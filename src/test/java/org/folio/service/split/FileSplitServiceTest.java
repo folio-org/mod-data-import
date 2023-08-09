@@ -5,6 +5,9 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
@@ -47,7 +50,7 @@ public class FileSplitServiceTest {
   public void setUp() throws IOException {
     MockitoAnnotations.openMocks(this);
 
-    this.fileSplitService = new FileSplitService(minioStorageService, 100);
+    this.fileSplitService = new FileSplitService(minioStorageService, 1000);
     when(minioStorageService.write(any(), any()))
       .thenReturn(Future.succeededFuture());
   }
@@ -56,7 +59,11 @@ public class FileSplitServiceTest {
   public void testSplitFileFromS3(TestContext context) throws IOException {
     when(minioStorageService.readFile("test-key"))
       .thenReturn(
-        Future.succeededFuture(new ByteArrayInputStream(new byte[1]))
+        Future.succeededFuture(
+          new ByteArrayInputStream(
+            Files.readAllBytes(Path.of("src/test/resources/10000.mrc"))
+          )
+        )
       );
 
     fileSplitService
@@ -65,7 +72,19 @@ public class FileSplitServiceTest {
         context.asyncAssertSuccess(result ->
           result.onComplete(
             context.asyncAssertSuccess(innerResult ->
-              innerResult.onComplete(context.asyncAssertSuccess())
+              innerResult.onComplete(
+                context.asyncAssertSuccess(finalResult -> {
+                  try {
+                    verify(minioStorageService, times(1)).readFile("test-key");
+                    verify(minioStorageService, times(10)).write(any(), any());
+                    verify(minioStorageService, times(1)).remove("test-key");
+
+                    verifyNoMoreInteractions(minioStorageService);
+                  } catch (IOException e) {
+                    context.fail(e);
+                  }
+                })
+              )
             )
           )
         )
@@ -94,13 +113,17 @@ public class FileSplitServiceTest {
       fileSplitService
         .splitFileFromS3(vertx.getOrCreateContext(), "test-key")
         .onComplete(
-          context.asyncAssertFailure(result ->
+          context.asyncAssertFailure(result -> {
             asyncAssertThat(
               context,
               result,
               is(instanceOf(UncheckedIOException.class))
-            )
-          )
+            );
+
+            verify(minioStorageService, times(1)).readFile("test-key");
+
+            verifyNoMoreInteractions(minioStorageService);
+          })
         );
     }
   }

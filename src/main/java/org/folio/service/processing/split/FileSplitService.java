@@ -50,7 +50,18 @@ public class FileSplitService {
       .readFile(key)
       .compose(stream -> {
         try {
-          return splitStream(context, stream, key);
+          return splitStream(context, stream, key)
+            .compose(cf -> {
+              Promise<CompositeFuture> fullyCompletedPromise = Promise.promise();
+
+              cf.onSuccess(ar -> {
+                LOGGER.info("Split from S3 completed...deleting original file");
+                minioStorageService.remove(key);
+                fullyCompletedPromise.complete(ar);
+              });
+
+              return fullyCompletedPromise.future();
+            });
         } catch (IOException e) {
           LOGGER.error("Unable to split file", e);
           throw new UncheckedIOException(e);

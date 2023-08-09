@@ -73,4 +73,11 @@ public interface MinioStorageService {
    * @return the path to the file
    */
   Future<String> write(String path, InputStream is) throws IOException;
+
+  /**
+   * Delete a file from S3 storage
+   * @param key the key to delete
+   * @return a future that will be completed upon file deletion
+   */
+  Future<Void> remove(String key);
 }

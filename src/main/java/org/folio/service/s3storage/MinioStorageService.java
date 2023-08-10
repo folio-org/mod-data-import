@@ -1,9 +1,9 @@
 package org.folio.service.s3storage;
 
 import io.vertx.core.Future;
-
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
-
 import javax.validation.constraints.NotNull;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 
@@ -49,6 +49,35 @@ public interface MinioStorageService {
     @NotNull String uploadId,
     int partNumber
   );
-  
-  Future<Boolean> completeMultipartFileUpload(String key, String uploadId, List<String> etags);
+
+  Future<Boolean> completeMultipartFileUpload(
+    String key,
+    String uploadId,
+    List<String> etags
+  );
+
+  /**
+   * Opens a file on S3, returns an input stream to read from the remote file
+   * The calling method is responsible for closing the stream
+   *
+   * @param key - the key to access the file on S3 storage
+   * @return InputStream - a new input stream with file content
+   */
+  Future<InputStream> readFile(String key);
+
+  /**
+   * Writes bytes to a file on S3-compatible storage
+   *
+   * @param path the path to the file on S3-compatible storage
+   * @param is   the byte array with the bytes to write
+   * @return the path to the file
+   */
+  Future<String> write(String path, InputStream is) throws IOException;
+
+  /**
+   * Delete a file from S3 storage
+   * @param key the key to delete
+   * @return a future that will be completed upon file deletion
+   */
+  Future<Void> remove(String key);
 }

@@ -11,10 +11,16 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 * [Docker](#docker)
 * [Installing the module](#installing-the-module)
 * [Deploying the module](#deploying-the-module)
-* [Maximum upload file size and java heap memory setup](#maximum-upload-file-size-and-java-heap-memory-setups) 
+* [Maximum upload file size and java heap memory setups](#maximum-upload-file-size-and-java-heap-memory-setups)
+  * [Example](#example)
 * [Scalability](#scalability)
+  * [Module properties to set up at mod-configuration](#module-properties-to-set-up-at-mod-configuration)
+* [Interaction with AWS S3/Minio](#interaction-with-aws-s3minio)
 * [Interaction with Kafka](#interaction-with-kafka)
-* [Other system properties](#system-properties-that-can-be-adjusted-for-this-module-and-default-values)
+* [Other system properties](#other-system-properties)
+* [Issue tracker](#issue-tracker)
+* [Additional information](#additional-information)
+* [Script to upload a batch of MARC records](#script-to-upload-a-batch-of-marc-records)
 
 ## Introduction
 
@@ -117,6 +123,15 @@ To allow multiple instance deployment, for every instance the same persistent vo
 * **_data.import.storage.type_** - type of data storage used for uploaded files. Default value is **LOCAL_STORAGE**. Other implementations for storage should be added.
 * **_data.import.storage.path_** - **path where uploaded file will be stored**
 
+## File splitting configuration
+
+The file-splitting process may be configured with the following environment variables:
+
+| Name                      | Description                                                                       |
+|---------------------------|-----------------------------------------------------------------------------------|
+| `SPLIT_FILES_ENABLED`     | Whether files should be split into chunks and processed separately; default false |
+| `RECORDS_PER_SPLIT_FILE`  | The maximum number of records to include in a single file; default is 1000        |
+
 ## Interaction with AWS S3/Minio
 
 This module uses S3-compatible storage as part of the file upload process.  The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
@@ -129,6 +144,7 @@ This module uses S3-compatible storage as part of the file upload process.  The 
 | `AWS_ACCESS_KEY_ID`     | S3 access key                                                              |
 | `AWS_SECRET_ACCESS_KEY` | S3 secret key                                                              |
 | `AWS_SDK`               | If AWS S3 is being used (should be `"true"` if so and `"false"` otherwise) |
+| `S3_FORCEPATHSTYLE`     | If path-style requests should be used instead of virtual-hosted-style      |
 
 ## Queue scoring algorithm
 

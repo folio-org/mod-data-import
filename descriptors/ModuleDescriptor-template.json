@@ -47,7 +47,7 @@
             "data-import.uploaddefinitions.get"
           ]
         },
-               {
+        {
           "methods": [
             "POST"
           ],
@@ -295,6 +295,11 @@
           "methods": ["GET"],
           "pathPattern": "/data-import/uploadUrl/subsequent",
           "permissionsRequired": ["data-import.uploadUrl.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import/testFileSplit",
+          "permissionsRequired": []
         }
       ]
     },
@@ -451,6 +456,9 @@
       { "name": "AWS_ACCESS_KEY_ID", "value": "AKIAIOSFODNN7EXAMPLE" },
       { "name": "AWS_SECRET_ACCESS_KEY", "value": "wJalrXUtnFEMI/K7MDENG/EXAMPLEKEY" },
       { "name": "AWS_SDK", "value": "false" },
+      { "name": "S3_FORCEPATHSTYLE", "value": "false" },
+      { "name": "SPLIT_FILES_ENABLED", "value": "false" },
+      { "name": "RECORDS_PER_SPLIT_FILE", "value": "1000" },
       { "name": "SCORE_JOB_SMALLEST", "value": "40" },
       { "name": "SCORE_JOB_LARGEST", "value": "-40" },
       { "name": "SCORE_JOB_REFERENCE", "value": "100000" },

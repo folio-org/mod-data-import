@@ -7,10 +7,10 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
@@ -28,6 +28,7 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
+import org.folio.service.processing.split.FileSplitService;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
@@ -36,6 +37,9 @@ import org.springframework.beans.factory.annotation.Value;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -62,12 +66,13 @@ public class DataImportImpl implements DataImport {
   private FileUploadLifecycleService fileService;
   @Autowired
   private FileExtensionService fileExtensionService;
-
   @Autowired
   private MinioStorageService minioStorageService;
-  
-  @Value("${splitFileProcess:false}")
-  private boolean splitFileProcess;
+  @Autowired
+  private FileSplitService fileSplitService;
+
+  @Value("${SPLIT_FILES_ENABLED:false}")
+  private boolean fileSplittingEnabled;
 
   private final FileProcessor fileProcessor;
   private Future<UploadDefinition> fileUploadStateFuture;
@@ -135,8 +140,8 @@ public class DataImportImpl implements DataImport {
         entity.setId(uploadDefinitionId);
         LOGGER.debug("putDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
         uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef ->
-          // just update UploadDefinition without FileDefinition changes
-          Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
+            // just update UploadDefinition without FileDefinition changes
+            Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
           .map(PutDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -455,7 +460,7 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void getDataImportUploadUrlSubsequent(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
-                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug(
@@ -475,22 +480,22 @@ public class DataImportImpl implements DataImport {
       }
     });
   }
-  
+
   @Override
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) {
+                                       Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      Promise<SplitStatus> splitconfigpromise = Promise.promise();
+      Promise<SplitStatus> promise = Promise.promise();
       SplitStatus response = new SplitStatus();
-      response.setSplitStatus(this.splitFileProcess);
-      splitconfigpromise.complete(response);
-      splitconfigpromise.future()
-      .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
-      .map(Response.class::cast)
-      .onComplete(asyncResultHandler); 
+      response.setSplitStatus(this.fileSplittingEnabled);
+      promise.complete(response);
+      promise.future()
+        .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
+        .map(Response.class::cast)
+        .onComplete(asyncResultHandler);
     });
-    
   }
+
   @Override
   public void postDataImportAssembleStorageFile(AssembleFileDto entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
@@ -550,7 +555,7 @@ public class DataImportImpl implements DataImport {
       JsonObject tokenJson = new JsonObject(json);
       return tokenJson.getString("user_id");
     } catch (Exception e) {
-      LOGGER.warn("getUserIdFromToken:: Invalid x-okapi-token: " + token, e);
+      LOGGER.warn("getUserIdFromToken:: Invalid x-okapi-token: {}", token, e);
       return null;
     }
   }
@@ -560,7 +565,68 @@ public class DataImportImpl implements DataImport {
     return new String(decodedBytes, StandardCharsets.UTF_8);
   }
 
+  @Override
+  public void getDataImportTestFileSplit(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        fileSplitService
+          .splitFileFromS3(vertxContext, key)
+          .onSuccess(composite -> composite.onSuccess(success -> {
+            LOGGER.debug("All chunks uploaded successfully!");
+            asyncResultHandler.handle(Future.succeededFuture("Testing Complete")
+                .map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
+          })
+          .onFailure(err -> {
+            LOGGER.error("Chunks did not upload successfully", err);
+            asyncResultHandler
+              .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+          }));
+      } catch (Exception err) {
+        LOGGER.error("getDataImportTestFileSplit:: Failed to split and upload chunks", err);
+        asyncResultHandler
+          .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+      }
+    });
+  }
 
-
-
+  @Override
+  public void getDataImportTestFileSplitLocal(String path, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        vertxContext
+          .owner()
+          .fileSystem()
+          .readFile(path)
+          .onSuccess(file -> {
+            try {
+              fileSplitService
+                .splitStream(vertxContext, new ByteArrayInputStream(file.getBytes()), path)
+                .onSuccess(composite -> composite.onSuccess(success -> {
+                  LOGGER.debug("All chunks uploaded successfully!");
+                  asyncResultHandler.handle(Future.succeededFuture("Testing Complete")
+                      .map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
+                })
+                .onFailure(err -> {
+                  LOGGER.error("Chunks did not upload successfully", err);
+                  asyncResultHandler
+                    .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+                }));
+            } catch (IOException err) {
+              LOGGER.error("Could not split file", err);
+              asyncResultHandler
+                .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+            }
+          })
+          .onFailure(err -> {
+            LOGGER.error("Could not open file", err);
+            asyncResultHandler
+              .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+          });
+      } catch (Exception err) {
+        LOGGER.error("getDataImportTestFileSplitLocal:: Failed to split and upload chunks", err);
+        asyncResultHandler
+          .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
+      }
+    });
+  }
 }

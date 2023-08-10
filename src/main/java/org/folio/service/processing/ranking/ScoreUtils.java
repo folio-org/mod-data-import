@@ -40,6 +40,13 @@ public class ScoreUtils {
     int upperScore,
     @Min(0) int upperReference
   ) {
+    // if the score or value range is 0, we don't care about this metric, so just return zero.
+    // this also prevents a divide-by-zero error later when doing log(upperReference)
+    //   in the event that upperReference == 0
+    if (lowerScore == upperScore || upperReference == 0) {
+      return 0;
+    }
+
     // we must add 1 to the value to avoid taking the log of 0
     double upperLog = Math.log(upperReference + 1.0);
     double valueLog = Math.log(value + 1.0);

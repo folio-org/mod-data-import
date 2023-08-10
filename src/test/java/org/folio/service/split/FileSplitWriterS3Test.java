@@ -1,6 +1,6 @@
 package org.folio.service.split;
 
-import static org.folio.util.VertxMatcherAssert.asyncAssertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -145,8 +145,7 @@ public class FileSplitWriterS3Test {
                             eq(Path.of(path).getFileName().toString()),
                             captor.capture()
                           );
-                        asyncAssertThat(
-                          context,
+                        assertThat(
                           captor.getValue().readAllBytes(),
                           is(equalTo(fileStream.readAllBytes()))
                         );

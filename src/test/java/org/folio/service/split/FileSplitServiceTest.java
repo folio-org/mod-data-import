@@ -1,6 +1,6 @@
 package org.folio.service.split;
 
-import static org.folio.util.VertxMatcherAssert.asyncAssertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -114,11 +114,7 @@ public class FileSplitServiceTest {
         .splitFileFromS3(vertx.getOrCreateContext(), "test-key")
         .onComplete(
           context.asyncAssertFailure(result -> {
-            asyncAssertThat(
-              context,
-              result,
-              is(instanceOf(UncheckedIOException.class))
-            );
+            assertThat(result, is(instanceOf(UncheckedIOException.class)));
 
             verify(minioStorageService, times(1)).readFile("test-key");
 

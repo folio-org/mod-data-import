@@ -1,6 +1,6 @@
 package org.folio.service.split;
 
-import static org.folio.util.VertxMatcherAssert.asyncAssertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThrows;
@@ -62,9 +62,9 @@ public class AsyncInputStreamTest {
       0,
       128,
       context.asyncAssertSuccess(result -> {
-        asyncAssertThat(context, result.length(), is(0));
+        assertThat(result.length(), is(0));
 
-        asyncAssertThat(context, result, is(testBuffer));
+        assertThat(result, is(testBuffer));
         stream.close(context.asyncAssertSuccess());
       })
     );
@@ -85,9 +85,11 @@ public class AsyncInputStreamTest {
       8192,
       context.asyncAssertSuccess(result -> {
         // stops at full stream being consumed
-        asyncAssertThat(context, result.length(), is(4096));
+        assertThat(result.length(), is(4096));
+        assertThat(result.length(), is(4096));
 
-        asyncAssertThat(context, result, is(testBuffer));
+        assertThat(result, is(testBuffer));
+        assertThat(result, is(testBuffer));
         stream.close(context.asyncAssertSuccess());
       })
     );
@@ -107,13 +109,14 @@ public class AsyncInputStreamTest {
       0,
       128,
       context.asyncAssertSuccess(result -> {
-        asyncAssertThat(context, result.length(), is(128));
-        asyncAssertThat(
-          context,
+        assertThat(result.length(), is(128));
+        assertThat(result.length(), is(128));
+        assertThat(
           result.getBytes(),
           is(Arrays.copyOfRange(smallBuff, 0, 128))
         );
-        asyncAssertThat(context, result, is(testBuffer));
+        assertThat(result, is(testBuffer));
+        assertThat(result, is(testBuffer));
 
         stream.read(
           testBuffer,
@@ -121,9 +124,12 @@ public class AsyncInputStreamTest {
           4096,
           context.asyncAssertSuccess(_result -> {
             // even though we ask for 4096 more bytes, it should stop at full length
-            asyncAssertThat(context, result.length(), is(4096));
-            asyncAssertThat(context, result.getBytes(), is(smallBuff));
-            asyncAssertThat(context, result, is(testBuffer));
+            assertThat(result.length(), is(4096));
+            assertThat(result.length(), is(4096));
+            assertThat(result.getBytes(), is(smallBuff));
+            assertThat(result.getBytes(), is(smallBuff));
+            assertThat(result, is(testBuffer));
+            assertThat(result, is(testBuffer));
 
             stream.close(context.asyncAssertSuccess());
           })
@@ -147,13 +153,14 @@ public class AsyncInputStreamTest {
       0,
       4096,
       context.asyncAssertSuccess(result -> {
-        asyncAssertThat(context, result.length(), is(4096));
-        asyncAssertThat(
-          context,
+        assertThat(result.length(), is(4096));
+        assertThat(result.length(), is(4096));
+        assertThat(
           result.getBytes(),
           is(Arrays.copyOfRange(largeBuff, 0, 4096))
         );
-        asyncAssertThat(context, result, is(testBuffer));
+        assertThat(result, is(testBuffer));
+        assertThat(result, is(testBuffer));
 
         // read from here to halfway into second chunk
         stream.read(
@@ -161,9 +168,9 @@ public class AsyncInputStreamTest {
           4096,
           8192,
           context.asyncAssertSuccess(_result -> {
-            asyncAssertThat(context, result.length(), is(4096 + 8192));
-            asyncAssertThat(
-              context,
+            assertThat(result.length(), is(4096 + 8192));
+            assertThat(result.length(), is(4096 + 8192));
+            assertThat(
               result.getBytes(),
               is(Arrays.copyOfRange(largeBuff, 0, 4096 + 8192))
             );
@@ -174,8 +181,10 @@ public class AsyncInputStreamTest {
               4096 + 8192,
               8192 * 2,
               context.asyncAssertSuccess(_result2 -> {
-                asyncAssertThat(context, result.length(), is(largeBuff.length));
-                asyncAssertThat(context, result.getBytes(), is(largeBuff));
+                assertThat(result.length(), is(largeBuff.length));
+                assertThat(result.length(), is(largeBuff.length));
+                assertThat(result.getBytes(), is(largeBuff));
+                assertThat(result.getBytes(), is(largeBuff));
 
                 stream.close(context.asyncAssertSuccess());
               })
@@ -201,9 +210,12 @@ public class AsyncInputStreamTest {
       0,
       8192 * 3,
       context.asyncAssertSuccess(result -> {
-        asyncAssertThat(context, result.length(), is(largeBuff.length));
-        asyncAssertThat(context, result.getBytes(), is(largeBuff));
-        asyncAssertThat(context, result, is(testBuffer));
+        assertThat(result.length(), is(largeBuff.length));
+        assertThat(result.length(), is(largeBuff.length));
+        assertThat(result.getBytes(), is(largeBuff));
+        assertThat(result.getBytes(), is(largeBuff));
+        assertThat(result, is(testBuffer));
+        assertThat(result, is(testBuffer));
 
         stream.close(context.asyncAssertSuccess());
       })
@@ -224,9 +236,12 @@ public class AsyncInputStreamTest {
       0,
       8192,
       context.asyncAssertSuccess(result -> {
-        asyncAssertThat(context, result.length(), is(mediumBuff.length));
-        asyncAssertThat(context, result.getBytes(), is(mediumBuff));
-        asyncAssertThat(context, result, is(testBuffer));
+        assertThat(result.length(), is(mediumBuff.length));
+        assertThat(result.length(), is(mediumBuff.length));
+        assertThat(result.getBytes(), is(mediumBuff));
+        assertThat(result.getBytes(), is(mediumBuff));
+        assertThat(result, is(testBuffer));
+        assertThat(result, is(testBuffer));
 
         stream.read(
           testBuffer,
@@ -234,9 +249,12 @@ public class AsyncInputStreamTest {
           8192,
           context.asyncAssertSuccess(_result -> {
             // no change
-            asyncAssertThat(context, result.length(), is(mediumBuff.length));
-            asyncAssertThat(context, result.getBytes(), is(mediumBuff));
-            asyncAssertThat(context, result, is(testBuffer));
+            assertThat(result.length(), is(mediumBuff.length));
+            assertThat(result.length(), is(mediumBuff.length));
+            assertThat(result.getBytes(), is(mediumBuff));
+            assertThat(result.getBytes(), is(mediumBuff));
+            assertThat(result, is(testBuffer));
+            assertThat(result, is(testBuffer));
 
             stream.close(context.asyncAssertSuccess());
           })
@@ -259,26 +277,28 @@ public class AsyncInputStreamTest {
       0,
       4096,
       context.asyncAssertSuccess(result -> {
-        asyncAssertThat(context, result.length(), is(4096));
-        asyncAssertThat(
-          context,
+        assertThat(result.length(), is(4096));
+        assertThat(result.length(), is(4096));
+        assertThat(
           result.getBytes(),
           is(Arrays.copyOfRange(mediumBuff, 0, 4096))
         );
-        asyncAssertThat(context, result, is(testBuffer));
+        assertThat(result, is(testBuffer));
+        assertThat(result, is(testBuffer));
 
         stream.read(
           testBuffer,
           0,
           8192,
           context.asyncAssertSuccess(_result -> {
-            asyncAssertThat(context, result.length(), is(4096));
-            asyncAssertThat(
-              context,
+            assertThat(result.length(), is(4096));
+            assertThat(result.length(), is(4096));
+            assertThat(
               result.getBytes(),
               is(Arrays.copyOfRange(mediumBuff, 4096, 8192))
             );
-            asyncAssertThat(context, result, is(testBuffer));
+            assertThat(result, is(testBuffer));
+            assertThat(result, is(testBuffer));
 
             stream.close(context.asyncAssertSuccess());
           })
@@ -379,11 +399,15 @@ public class AsyncInputStreamTest {
 
     List<byte[]> receivedData = new ArrayList<>();
 
-    stream.endHandler(v -> {
-      asyncAssertThat(context, receivedData, hasSize(1));
-      asyncAssertThat(context, receivedData.get(0), is(smallBuff));
-      async.complete();
-    });
+    stream.endHandler(v ->
+      context.verify(_v -> {
+        assertThat(receivedData, hasSize(1));
+        assertThat(receivedData, hasSize(1));
+        assertThat(receivedData.get(0), is(smallBuff));
+        assertThat(receivedData.get(0), is(smallBuff));
+        async.complete();
+      })
+    );
     stream.exceptionHandler(err -> context.fail(err));
     stream.handler(buff -> receivedData.add(buff.getBytes()));
   }
@@ -401,11 +425,15 @@ public class AsyncInputStreamTest {
     List<byte[]> receivedData = new ArrayList<>();
 
     stream.exceptionHandler(err -> context.fail(err));
-    stream.endHandler(v -> {
-      asyncAssertThat(context, receivedData, hasSize(1));
-      asyncAssertThat(context, receivedData.get(0), is(mediumBuff));
-      async.complete();
-    });
+    stream.endHandler(v ->
+      context.verify(_v -> {
+        assertThat(receivedData, hasSize(1));
+        assertThat(receivedData, hasSize(1));
+        assertThat(receivedData.get(0), is(mediumBuff));
+        assertThat(receivedData.get(0), is(mediumBuff));
+        async.complete();
+      })
+    );
     stream.handler(buff -> receivedData.add(buff.getBytes()));
   }
 
@@ -422,25 +450,25 @@ public class AsyncInputStreamTest {
     List<byte[]> receivedData = new ArrayList<>();
 
     stream.exceptionHandler(err -> context.fail(err));
-    stream.endHandler(v -> {
-      asyncAssertThat(context, receivedData, hasSize(3));
-      asyncAssertThat(
-        context,
-        receivedData.get(0),
-        is(Arrays.copyOfRange(largeBuff, 0, 8192))
-      );
-      asyncAssertThat(
-        context,
-        receivedData.get(1),
-        is(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2))
-      );
-      asyncAssertThat(
-        context,
-        receivedData.get(2),
-        is(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096))
-      );
-      async.complete();
-    });
+    stream.endHandler(v ->
+      context.verify(_v -> {
+        assertThat(receivedData, hasSize(3));
+        assertThat(receivedData, hasSize(3));
+        assertThat(
+          receivedData.get(0),
+          is(Arrays.copyOfRange(largeBuff, 0, 8192))
+        );
+        assertThat(
+          receivedData.get(1),
+          is(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2))
+        );
+        assertThat(
+          receivedData.get(2),
+          is(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096))
+        );
+        async.complete();
+      })
+    );
     stream.handler(buff -> receivedData.add(buff.getBytes()));
   }
 
@@ -456,25 +484,25 @@ public class AsyncInputStreamTest {
     List<byte[]> receivedData = new ArrayList<>();
     AtomicBoolean isPaused = new AtomicBoolean(false);
 
-    stream.endHandler(v -> {
-      asyncAssertThat(context, receivedData, hasSize(3));
-      asyncAssertThat(
-        context,
-        receivedData.get(0),
-        is(Arrays.copyOfRange(largeBuff, 0, 8192))
-      );
-      asyncAssertThat(
-        context,
-        receivedData.get(1),
-        is(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2))
-      );
-      asyncAssertThat(
-        context,
-        receivedData.get(2),
-        is(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096))
-      );
-      async.complete();
-    });
+    stream.endHandler(v ->
+      context.verify(_v -> {
+        assertThat(receivedData, hasSize(3));
+        assertThat(receivedData, hasSize(3));
+        assertThat(
+          receivedData.get(0),
+          is(Arrays.copyOfRange(largeBuff, 0, 8192))
+        );
+        assertThat(
+          receivedData.get(1),
+          is(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2))
+        );
+        assertThat(
+          receivedData.get(2),
+          is(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096))
+        );
+        async.complete();
+      })
+    );
 
     stream.handler(buff -> {
       if (isPaused.get()) {
@@ -508,25 +536,25 @@ public class AsyncInputStreamTest {
     List<byte[]> receivedData = new ArrayList<>();
     AtomicBoolean isPaused = new AtomicBoolean(false);
 
-    stream.endHandler(v -> {
-      asyncAssertThat(context, receivedData, hasSize(3));
-      asyncAssertThat(
-        context,
-        receivedData.get(0),
-        is(Arrays.copyOfRange(largeBuff, 0, 8192))
-      );
-      asyncAssertThat(
-        context,
-        receivedData.get(1),
-        is(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2))
-      );
-      asyncAssertThat(
-        context,
-        receivedData.get(2),
-        is(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096))
-      );
-      async.complete();
-    });
+    stream.endHandler(v ->
+      context.verify(_v -> {
+        assertThat(receivedData, hasSize(3));
+        assertThat(receivedData, hasSize(3));
+        assertThat(
+          receivedData.get(0),
+          is(Arrays.copyOfRange(largeBuff, 0, 8192))
+        );
+        assertThat(
+          receivedData.get(1),
+          is(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2))
+        );
+        assertThat(
+          receivedData.get(2),
+          is(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096))
+        );
+        async.complete();
+      })
+    );
 
     stream.handler(buff -> {
       if (isPaused.get()) {
@@ -589,15 +617,17 @@ public class AsyncInputStreamTest {
 
     List<byte[]> receivedData = new ArrayList<>();
 
-    stream.endHandler(v -> {
-      asyncAssertThat(context, receivedData, hasSize(1));
-      asyncAssertThat(
-        context,
-        receivedData.get(0),
-        is(Arrays.copyOfRange(largeBuff, 0, 8192))
-      );
-      async.complete();
-    });
+    stream.endHandler(v ->
+      context.verify(_v -> {
+        assertThat(receivedData, hasSize(1));
+        assertThat(receivedData, hasSize(1));
+        assertThat(
+          receivedData.get(0),
+          is(Arrays.copyOfRange(largeBuff, 0, 8192))
+        );
+        async.complete();
+      })
+    );
 
     stream.handler(buff -> {
       receivedData.add(buff.getBytes());
@@ -662,13 +692,17 @@ public class AsyncInputStreamTest {
 
     List<byte[]> receivedData = new ArrayList<>();
 
-    stream.handler(buff -> {
-      receivedData.add(buff.getBytes());
+    stream.handler(buff ->
+      context.verify(v -> {
+        receivedData.add(buff.getBytes());
 
-      asyncAssertThat(context, receivedData, hasSize(1));
-      asyncAssertThat(context, receivedData.get(0), is(smallBuff));
-      async.complete();
-    });
+        assertThat(receivedData, hasSize(1));
+        assertThat(receivedData, hasSize(1));
+        assertThat(receivedData.get(0), is(smallBuff));
+        assertThat(receivedData.get(0), is(smallBuff));
+        async.complete();
+      })
+    );
   }
 
   @Test

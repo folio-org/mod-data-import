@@ -1,6 +1,6 @@
 package org.folio.service.split;
 
-import static org.folio.util.VertxMatcherAssert.asyncAssertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -265,11 +265,7 @@ public class FileSplitWriterRegularTest {
                             .collect(Collectors.toList());
 
                           // number of chunks and chunk names
-                          asyncAssertThat(
-                            context,
-                            fileNames,
-                            contains(expectedChunkFiles)
-                          );
+                          assertThat(fileNames, contains(expectedChunkFiles));
 
                           // read and verify chunking
                           int totalSize = 0;
@@ -307,8 +303,7 @@ public class FileSplitWriterRegularTest {
                           // verify end delimiter
                           for (byte[] content : fileContents) {
                             if (content.length > 0) { // don't check empty chunks (for empty starting file)
-                              asyncAssertThat(
-                                context,
+                              assertThat(
                                 content[content.length - 1],
                                 is(FileSplitUtilities.MARC_RECORD_TERMINATOR)
                               );
@@ -324,11 +319,7 @@ public class FileSplitWriterRegularTest {
                                 try {
                                   byte[] expected = expectedBuffer.getBytes();
                                   // verify the chunks are equivalent
-                                  asyncAssertThat(
-                                    context,
-                                    actual,
-                                    is(expected)
-                                  );
+                                  assertThat(actual, is(expected));
 
                                   // verify counts of records in each are correct
                                   int totalRecords = FileSplitUtilities.countRecordsInMarcFile(
@@ -342,8 +333,7 @@ public class FileSplitWriterRegularTest {
                                   ) {
                                     if (i == fileContents.size() - 1) {
                                       // the last slice should have all remaining records
-                                      asyncAssertThat(
-                                        context,
+                                      assertThat(
                                         FileSplitUtilities.countRecordsInMarcFile(
                                           new ByteArrayInputStream(
                                             fileContents.get(i)
@@ -353,8 +343,7 @@ public class FileSplitWriterRegularTest {
                                       );
                                     } else {
                                       // all other slices should have a full chunk
-                                      asyncAssertThat(
-                                        context,
+                                      assertThat(
                                         FileSplitUtilities.countRecordsInMarcFile(
                                           new ByteArrayInputStream(
                                             fileContents.get(i)

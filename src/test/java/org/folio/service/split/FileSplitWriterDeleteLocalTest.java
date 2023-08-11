@@ -1,6 +1,6 @@
 package org.folio.service.split;
 
-import static org.folio.util.VertxMatcherAssert.asyncAssertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 
@@ -64,8 +64,8 @@ public class FileSplitWriterDeleteLocalTest {
               .future()
               .onComplete(
                 context.asyncAssertSuccess(result -> {
-                  asyncAssertThat(context, result.list(), hasSize(4));
-                  asyncAssertThat(context, folder.listFiles().length, is(0));
+                  assertThat(result.list(), hasSize(4));
+                  assertThat(folder.listFiles().length, is(0));
                 })
               );
           } catch (IOException err) {

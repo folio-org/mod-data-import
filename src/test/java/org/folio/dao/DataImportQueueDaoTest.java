@@ -122,7 +122,6 @@ public class DataImportQueueDaoTest {
     queueItem.setId(storedItemUUID.toString());
     queueItem.setUploadDefinitionId(UUID.randomUUID().toString());
     queueItem.setJobExecutionId(UUID.randomUUID().toString());
-    queueItem.setSize(1000);
     queueItem.setOriginalSize(5000);
     DateTime now = new DateTime();
     queueItem.setTimestamp(now.toString());
@@ -347,7 +346,6 @@ public class DataImportQueueDaoTest {
     queueItem.setId(storedItemUUID.toString());
     queueItem.setUploadDefinitionId(UUID.randomUUID().toString());
     queueItem.setJobExecutionId(UUID.randomUUID().toString());
-    queueItem.setSize(1000);
     queueItem.setOriginalSize(5000);
     DateTime now = new DateTime();
     queueItem.setTimestamp(now.toString());

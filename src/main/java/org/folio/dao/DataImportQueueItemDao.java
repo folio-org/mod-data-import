@@ -58,7 +58,7 @@ public interface DataImportQueueItemDao {
    * Saves {@link DataImportQueueItem} to database
    *
    * @param DataImportQueueItem DataImportQueueItem to save
-   * @return future
+   * @return future with added row's ID
    */
   Future<String> addQueueItem(DataImportQueueItem dataImportQueueItem);
 

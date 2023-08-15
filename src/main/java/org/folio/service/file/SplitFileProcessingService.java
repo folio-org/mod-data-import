@@ -1,5 +1,6 @@
 package org.folio.service.file;
 
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.ext.web.handler.HttpException;
@@ -8,11 +9,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.dao.DataImportQueueItemDao;
-import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.impl.util.BufferMapper;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
@@ -44,21 +45,18 @@ public class SplitFileProcessingService {
   /**
    * Registers split parts as Job Executions in mod-source-record-manager
    * and adds each part to the DI queue.
+   *
+   * @return a {@link CompositeFuture} of {@link JobExecutionDto}
    */
-  public List<Future<JobExecutionDto>> registerSplitFiles(
+  public CompositeFuture registerSplitFiles(
     UploadDefinition parentUploadDefinition,
     JobExecution parentJobExecution,
-    List<String> keys,
+    ChangeManagerClient client,
     int parentJobSize,
-    OkapiConnectionParams params
+    String tenant,
+    List<String> keys
   ) {
     List<Future<JobExecutionDto>> futures = new ArrayList<>();
-
-    ChangeManagerClient client = new ChangeManagerClient(
-      params.getOkapiUrl(),
-      params.getTenantId(),
-      params.getToken()
-    );
 
     int partNumber = 1;
     for (String key : keys) {
@@ -74,13 +72,16 @@ public class SplitFileProcessingService {
             : null
         );
 
-      // outer scope variable could change before lambda execution
+      // outer scope variable could change before lambda execution, so we make it final here
       final int thisPartNumber = partNumber;
 
-      try {
-        client.postChangeManagerJobExecutions(
-          initJobExecutionsRqDto,
-          response -> {
+      Promise<JobExecutionDto> promise = Promise.promise();
+      futures.add(promise.future());
+
+      client.postChangeManagerJobExecutions(
+        initJobExecutionsRqDto,
+        response -> {
+          try {
             if (
               response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()
             ) {
@@ -94,42 +95,39 @@ public class SplitFileProcessingService {
                 "Error creating new JobExecution"
               );
             } else {
-              futures.add(
-                BufferMapper
-                  .mapBufferContentToEntity(
-                    response.result().bodyAsBuffer(),
-                    JobExecutionDtoCollection.class
-                  )
-                  .map(collection -> collection.getJobExecutions().get(0))
-                  .compose(execution ->
-                    queueItemDao
-                      .addQueueItem(
-                        new DataImportQueueItem()
-                          .withJobExecutionId(execution.getId())
-                          .withUploadDefinitionId(
-                            parentUploadDefinition.getId()
-                          )
-                          .withTenant(params.getTenantId())
-                          .withOriginalSize(parentJobSize)
-                          .withFilePath(key)
-                          .withTimestamp(Instant.now().toString())
-                          .withPartNumber(thisPartNumber)
-                          .withProcessing(false)
-                      )
-                      .map(v -> execution)
-                  )
-              );
+              BufferMapper
+                .mapBufferContentToEntity(
+                  response.result().bodyAsBuffer(),
+                  JobExecutionDtoCollection.class
+                )
+                .map(collection -> collection.getJobExecutions().get(0))
+                .compose(execution ->
+                  queueItemDao
+                    .addQueueItem(
+                      new DataImportQueueItem()
+                        .withJobExecutionId(execution.getId())
+                        .withUploadDefinitionId(parentUploadDefinition.getId())
+                        .withTenant(tenant)
+                        .withOriginalSize(parentJobSize)
+                        .withFilePath(key)
+                        .withTimestamp(Instant.now().toString())
+                        .withPartNumber(thisPartNumber)
+                        .withProcessing(false)
+                    )
+                    .onSuccess(v -> promise.complete(execution))
+                )
+                .onFailure(promise::fail);
             }
+          } catch (Exception e) {
+            promise.fail(e);
           }
-        );
-      } catch (Exception e) {
-        Promise<JobExecutionDto> promise = Promise.promise();
-        promise.fail(e);
-        futures.add(promise.future());
-      }
+        }
+      );
       partNumber++;
     }
 
-    return futures;
+    return CompositeFuture.join(
+      futures.stream().map(Future.class::cast).collect(Collectors.toList())
+    );
   }
 }

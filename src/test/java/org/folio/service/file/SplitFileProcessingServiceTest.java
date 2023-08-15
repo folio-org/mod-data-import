@@ -16,7 +16,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -186,8 +185,6 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
     WireMock.stubFor(
       WireMock
         .post("/change-manager/jobExecutions")
-        .inScenario("multiple")
-        .whenScenarioStateIs(Scenario.STARTED)
         .willReturn(
           WireMock
             .created()
@@ -197,62 +194,13 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
                   new InitJobExecutionsRsDto()
                     .withJobExecutions(
                       Arrays.asList(
-                        new JobExecution().withId("test-execution-id-1")
+                        new JobExecution().withId("test-execution-id")
                       )
                     )
                 )
                 .encode()
             )
         )
-        .willSetStateTo("success1")
-    );
-
-    WireMock.stubFor(
-      WireMock
-        .post("/change-manager/jobExecutions")
-        .inScenario("multiple")
-        .whenScenarioStateIs("success1")
-        .willReturn(
-          WireMock
-            .created()
-            .withBody(
-              JsonObject
-                .mapFrom(
-                  new InitJobExecutionsRsDto()
-                    .withJobExecutions(
-                      Arrays.asList(
-                        new JobExecution().withId("test-execution-id-2")
-                      )
-                    )
-                )
-                .encode()
-            )
-        )
-        .willSetStateTo("success2")
-    );
-
-    WireMock.stubFor(
-      WireMock
-        .post("/change-manager/jobExecutions")
-        .inScenario("multiple")
-        .whenScenarioStateIs("success2")
-        .willReturn(
-          WireMock
-            .created()
-            .withBody(
-              JsonObject
-                .mapFrom(
-                  new InitJobExecutionsRsDto()
-                    .withJobExecutions(
-                      Arrays.asList(
-                        new JobExecution().withId("test-execution-id-3")
-                      )
-                    )
-                )
-                .encode()
-            )
-        )
-        .willSetStateTo("success3")
     );
 
     service
@@ -277,9 +225,9 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
               .map(exec -> exec.getId())
               .collect(Collectors.toList()),
             containsInAnyOrder(
-              "test-execution-id-1",
-              "test-execution-id-2",
-              "test-execution-id-3"
+              "test-execution-id",
+              "test-execution-id",
+              "test-execution-id"
             )
           );
 

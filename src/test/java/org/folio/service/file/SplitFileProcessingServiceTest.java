@@ -31,9 +31,9 @@ import org.folio.dao.DataImportQueueItemDaoImpl;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.client.ChangeManagerClient;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionDto;
-import org.folio.rest.jaxrs.model.JobExecutionDtoCollection;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.PostgresClient;
@@ -136,10 +136,10 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
             .withBody(
               JsonObject
                 .mapFrom(
-                  new JobExecutionDtoCollection()
+                  new InitJobExecutionsRsDto()
                     .withJobExecutions(
                       Arrays.asList(
-                        new JobExecutionDto().withId("test-execution-id")
+                        new JobExecution().withId("test-execution-id")
                       )
                     )
                 )
@@ -194,10 +194,10 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
             .withBody(
               JsonObject
                 .mapFrom(
-                  new JobExecutionDtoCollection()
+                  new InitJobExecutionsRsDto()
                     .withJobExecutions(
                       Arrays.asList(
-                        new JobExecutionDto().withId("test-execution-id-1")
+                        new JobExecution().withId("test-execution-id-1")
                       )
                     )
                 )
@@ -218,10 +218,10 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
             .withBody(
               JsonObject
                 .mapFrom(
-                  new JobExecutionDtoCollection()
+                  new InitJobExecutionsRsDto()
                     .withJobExecutions(
                       Arrays.asList(
-                        new JobExecutionDto().withId("test-execution-id-2")
+                        new JobExecution().withId("test-execution-id-2")
                       )
                     )
                 )
@@ -242,10 +242,10 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
             .withBody(
               JsonObject
                 .mapFrom(
-                  new JobExecutionDtoCollection()
+                  new InitJobExecutionsRsDto()
                     .withJobExecutions(
                       Arrays.asList(
-                        new JobExecutionDto().withId("test-execution-id-3")
+                        new JobExecution().withId("test-execution-id-3")
                       )
                     )
                 )

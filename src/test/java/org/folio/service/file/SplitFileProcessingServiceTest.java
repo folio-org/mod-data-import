@@ -1,6 +1,7 @@
 package org.folio.service.file;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
@@ -15,6 +16,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -23,6 +25,8 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import java.util.Arrays;
+import java.util.stream.Collectors;
+import lombok.extern.log4j.Log4j2;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dao.DataImportQueueItemDaoImpl;
 import org.folio.dao.util.PostgresClientFactory;
@@ -43,6 +47,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 
+@Log4j2
 @RunWith(VertxUnitRunner.class)
 public class SplitFileProcessingServiceTest extends AbstractRestTest {
 
@@ -173,6 +178,132 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
             .postChangeManagerJobExecutions(any(), any());
 
           verify(queueItemDao, times(1)).addQueueItem(any());
+          verifyNoMoreInteractions(queueItemDao);
+        })
+      );
+  }
+
+  @Test
+  public void testMultipleSplitRegistration(TestContext context) {
+    WireMock.stubFor(
+      WireMock
+        .post("/change-manager/jobExecutions")
+        .inScenario("multiple")
+        .whenScenarioStateIs(Scenario.STARTED)
+        .willReturn(
+          WireMock
+            .created()
+            .withBody(
+              JsonObject
+                .mapFrom(
+                  new JobExecutionDtoCollection()
+                    .withJobExecutions(
+                      Arrays.asList(
+                        new JobExecutionDto().withId("test-execution-id-1")
+                      )
+                    )
+                )
+                .encode()
+            )
+        )
+        .willSetStateTo("success1")
+    );
+
+    WireMock.stubFor(
+      WireMock
+        .post("/change-manager/jobExecutions")
+        .inScenario("multiple")
+        .whenScenarioStateIs("success1")
+        .willReturn(
+          WireMock
+            .created()
+            .withBody(
+              JsonObject
+                .mapFrom(
+                  new JobExecutionDtoCollection()
+                    .withJobExecutions(
+                      Arrays.asList(
+                        new JobExecutionDto().withId("test-execution-id-2")
+                      )
+                    )
+                )
+                .encode()
+            )
+        )
+        .willSetStateTo("success2")
+    );
+
+    WireMock.stubFor(
+      WireMock
+        .post("/change-manager/jobExecutions")
+        .inScenario("multiple")
+        .whenScenarioStateIs("success2")
+        .willReturn(
+          WireMock
+            .created()
+            .withBody(
+              JsonObject
+                .mapFrom(
+                  new JobExecutionDtoCollection()
+                    .withJobExecutions(
+                      Arrays.asList(
+                        new JobExecutionDto().withId("test-execution-id-3")
+                      )
+                    )
+                )
+                .encode()
+            )
+        )
+        .willSetStateTo("success3")
+    );
+
+    service
+      .registerSplitFiles(
+        PARENT_UPLOAD_DEFINITION_WITH_USER,
+        PARENT_JOB_EXECUTION,
+        changeManagerClient,
+        123,
+        TENANT_ID,
+        Arrays.asList("key1", "key2", "key3")
+      )
+      .onComplete(
+        context.asyncAssertSuccess(result -> {
+          assertThat(result.succeeded(), is(true));
+          assertThat(result.list(), hasSize(3));
+          log.error(
+            result
+              .list()
+              .stream()
+              .map(JobExecutionDto.class::cast)
+              .map(exec -> exec.getId())
+              .collect(Collectors.toList())
+          );
+
+          assertThat(
+            result
+              .list()
+              .stream()
+              .map(JobExecutionDto.class::cast)
+              .map(exec -> exec.getId())
+              .collect(Collectors.toList()),
+            containsInAnyOrder(
+              "test-execution-id-1",
+              "test-execution-id-2",
+              "test-execution-id-3"
+            )
+          );
+
+          WireMock.verify(
+            WireMock.exactly(3),
+            WireMock.anyRequestedFor(
+              WireMock.urlMatching("/change-manager/jobExecutions")
+            )
+          );
+
+          verify(changeManagerClient, times(3))
+            .postChangeManagerJobExecutions(any(), any());
+
+          verify(queueItemDao, times(3)).addQueueItem(any());
           verifyNoMoreInteractions(queueItemDao);
         })
       );

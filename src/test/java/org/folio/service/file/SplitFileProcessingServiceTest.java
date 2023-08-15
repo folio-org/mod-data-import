@@ -259,10 +259,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         Arrays.asList("key1")
       )
       .onComplete(
-        context.asyncAssertSuccess(result -> {
-          assertThat(result.succeeded(), is(false));
-          assertThat(result.causes(), hasSize(1));
-
+        context.asyncAssertFailure(result -> {
           WireMock.verify(
             WireMock.exactly(1),
             WireMock.anyRequestedFor(
@@ -296,10 +293,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         Arrays.asList("key1")
       )
       .onComplete(
-        context.asyncAssertSuccess(result -> {
-          assertThat(result.succeeded(), is(false));
-          assertThat(result.causes(), hasSize(1));
-
+        context.asyncAssertFailure(result -> {
           WireMock.verify(
             WireMock.exactly(1),
             WireMock.anyRequestedFor(

@@ -205,7 +205,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
 
     service
       .registerSplitFiles(
-        PARENT_UPLOAD_DEFINITION_WITH_USER,
+        PARENT_UPLOAD_DEFINITION,
         PARENT_JOB_EXECUTION,
         changeManagerClient,
         123,

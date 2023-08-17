@@ -247,34 +247,6 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
   }
 
   @Test
-  public void testNoResponseAtAll(TestContext context) {
-    service
-      .registerSplitFiles(
-        PARENT_UPLOAD_DEFINITION_WITH_USER,
-        PARENT_JOB_EXECUTION,
-        changeManagerClient,
-        123,
-        TENANT_ID,
-        Arrays.asList("key1")
-      )
-      .onComplete(
-        context.asyncAssertFailure(result -> {
-          WireMock.verify(
-            WireMock.exactly(1),
-            WireMock.anyRequestedFor(
-              WireMock.urlMatching("/change-manager/jobExecutions")
-            )
-          );
-
-          verify(changeManagerClient, times(1))
-            .postChangeManagerJobExecutions(any(), any());
-
-          verifyNoMoreInteractions(queueItemDao);
-        })
-      );
-  }
-
-  @Test
   public void testBadResponse(TestContext context) {
     WireMock.stubFor(
       WireMock

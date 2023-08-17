@@ -19,9 +19,8 @@ import org.folio.rest.impl.util.BufferMapper;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.JobExecutionDto;
-import org.folio.rest.jaxrs.model.JobExecutionDtoCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -46,7 +45,7 @@ public class SplitFileProcessingService {
    * Registers split parts as Job Executions in mod-source-record-manager
    * and adds each part to the DI queue.
    *
-   * @return a {@link CompositeFuture} of {@link JobExecutionDto}
+   * @return a {@link CompositeFuture} of {@link JobExecution}
    */
   public CompositeFuture registerSplitFiles(
     UploadDefinition parentUploadDefinition,
@@ -56,7 +55,7 @@ public class SplitFileProcessingService {
     String tenant,
     List<String> keys
   ) {
-    List<Future<JobExecutionDto>> futures = new ArrayList<>();
+    List<Future<JobExecution>> futures = new ArrayList<>();
 
     int partNumber = 1;
     for (String key : keys) {
@@ -75,7 +74,7 @@ public class SplitFileProcessingService {
       // outer scope variable could change before lambda execution, so we make it final here
       final int thisPartNumber = partNumber;
 
-      Promise<JobExecutionDto> promise = Promise.promise();
+      Promise<JobExecution> promise = Promise.promise();
       futures.add(promise.future());
 
       client.postChangeManagerJobExecutions(

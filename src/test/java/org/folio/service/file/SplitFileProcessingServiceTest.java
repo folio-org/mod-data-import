@@ -32,7 +32,6 @@ import org.folio.rest.AbstractRestTest;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.JobExecutionDto;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.PostgresClient;
@@ -161,7 +160,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
           assertThat(result.succeeded(), is(true));
           assertThat(result.list(), hasSize(1));
 
-          JobExecutionDto execution = (JobExecutionDto) result.list().get(0);
+          JobExecution execution = (JobExecution) result.list().get(0);
           assertThat(execution.getId(), is("test-execution-id"));
 
           WireMock.verify(
@@ -221,7 +220,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
             result
               .list()
               .stream()
-              .map(JobExecutionDto.class::cast)
+              .map(JobExecution.class::cast)
               .map(exec -> exec.getId())
               .collect(Collectors.toList()),
             containsInAnyOrder(

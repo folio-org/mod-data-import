@@ -98,7 +98,7 @@ public class SplitFileProcessingService {
               BufferMapper
                 .mapBufferContentToEntity(
                   response.result().bodyAsBuffer(),
-                  JobExecutionDtoCollection.class
+                  InitJobExecutionsRsDto.class
                 )
                 .map(collection -> collection.getJobExecutions().get(0))
                 .compose(execution ->

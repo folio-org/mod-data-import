@@ -45,6 +45,13 @@ public class SplitFileProcessingService {
    * Registers split parts as Job Executions in mod-source-record-manager
    * and adds each part to the DI queue.
    *
+   * @param parentUploadDefinition the upload definition representing these files
+   * @param parentJobExecution the parent composite job execution
+   * @param client the {@link ChangeManagerClient} to make API calls to
+   * @param parentJobSize the size of the parent job, as calculated by {@code FileSplitUtilities}
+   * @param tenant the tenant of the request
+   * @param keys the list of S3 keys to register, as returned by {@code FileSplitService}
+   *
    * @return a {@link CompositeFuture} of {@link JobExecution}
    */
   public CompositeFuture registerSplitFiles(

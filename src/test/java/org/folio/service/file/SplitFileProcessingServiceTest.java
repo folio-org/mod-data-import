@@ -50,7 +50,8 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
   private static final String PARENT_UPLOAD_DEFINITION_ID =
     "parent-upload-definition-id";
   private static final UploadDefinition PARENT_UPLOAD_DEFINITION = new UploadDefinition()
-    .withId(PARENT_UPLOAD_DEFINITION_ID);
+    .withId(PARENT_UPLOAD_DEFINITION_ID)
+    .withMetadata(null);
   private static final UploadDefinition PARENT_UPLOAD_DEFINITION_WITH_USER = PARENT_UPLOAD_DEFINITION.withMetadata(
     new Metadata().withCreatedByUserId("user")
   );
@@ -256,7 +257,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
 
     service
       .registerSplitFiles(
-        PARENT_UPLOAD_DEFINITION_WITH_USER,
+        PARENT_UPLOAD_DEFINITION,
         PARENT_JOB_EXECUTION,
         changeManagerClient,
         123,

@@ -12,7 +12,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.File;
 import java.io.IOException;
-import lombok.extern.log4j.Log4j2;
 import org.folio.service.processing.split.FileSplitWriter;
 import org.folio.service.processing.split.FileSplitWriterOptions;
 import org.junit.Rule;
@@ -20,7 +19,6 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
-@Log4j2
 @RunWith(VertxUnitRunner.class)
 public class FileSplitWriterDeleteLocalTest {
 
@@ -67,8 +65,15 @@ public class FileSplitWriterDeleteLocalTest {
               .onComplete(
                 context.asyncAssertSuccess(result -> {
                   assertThat(result.list(), hasSize(4));
-                  log.error(folder.listFiles());
-                  assertThat(folder.listFiles().length, is(0));
+                  // need to add a small delay since the actual deletion of files can be async
+                  // depending on OS implementations
+                  vertx.setTimer(
+                    100,
+                    _v ->
+                      context.verify(__v ->
+                        assertThat(folder.listFiles().length, is(0))
+                      )
+                  );
                 })
               );
           } catch (IOException err) {

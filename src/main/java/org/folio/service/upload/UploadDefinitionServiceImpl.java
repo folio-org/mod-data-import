@@ -341,7 +341,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return promise.future();
   }
 
-  private Future<JobExecution> getJobExecutionById(String jobExecutionId, OkapiConnectionParams params) {
+  @Override
+  public Future<JobExecution> getJobExecutionById(String jobExecutionId, OkapiConnectionParams params) {
     Promise<JobExecution> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
     try {

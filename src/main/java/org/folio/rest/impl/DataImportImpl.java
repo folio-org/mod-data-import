@@ -26,6 +26,7 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.jaxrs.resource.DataImport;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.file.FileUploadLifecycleService;
+import org.folio.service.file.SplitFileProcessingService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
 import org.folio.service.processing.split.FileSplitService;
@@ -70,6 +71,8 @@ public class DataImportImpl implements DataImport {
   private MinioStorageService minioStorageService;
   @Autowired
   private FileSplitService fileSplitService;
+  @Autowired
+  private SplitFileProcessingService splitFileProcessingService;
 
   @Value("${SPLIT_FILES_ENABLED:false}")
   private boolean fileSplittingEnabled;
@@ -482,6 +485,29 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
+  public void postDataImportJobExecutionsDownloadUrlByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
+                                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        LOGGER.debug(
+          "postDataImportJobExecutionsDownloadUrlByJobExecutionId:: getting download URL for job execution {}",
+          jobExecutionId
+        );
+        splitFileProcessingService
+          .getKey(jobExecutionId, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
+          .compose(key -> minioStorageService.getFileDownloadUrl(key))
+          .map(PostDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOGGER.warn("postDataImportJobExecutionsDownloadUrlByJobExecutionId:: Failed to get download url", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                        Context vertxContext) {
     vertxContext.runOnContext(v -> {
@@ -628,12 +654,5 @@ public class DataImportImpl implements DataImport {
           .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
       }
     });
-  }
-
-  @Override
-  public void postDataImportJobExecutionsDownloadUrlByJobExecutionId(String jobExecutionId,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'postDataImportJobExecutionsDownloadUrlByJobExecutionId'");
   }
 }

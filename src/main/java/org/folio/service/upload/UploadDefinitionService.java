@@ -6,6 +6,7 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -131,4 +132,12 @@ public interface UploadDefinitionService {
    * @return - future with updated {@link UploadDefinition}
    */
   Future<UploadDefinition> updateUploadDefinitionStatus(String uploadDefinitionId, UploadDefinition.Status status, String tenantId);
+
+  /**
+   * Get a JobExecution by its ID
+   * 
+   * @param jobExecutionId the ID of the job execution
+   * @return - future with the requested {@link JobExecution}
+   */
+  Future<JobExecution> getJobExecutionById(String jobExecutionId, OkapiConnectionParams params);
 }

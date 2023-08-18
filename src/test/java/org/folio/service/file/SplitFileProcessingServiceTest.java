@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
+import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -36,6 +37,7 @@ import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.helpers.LocalRowSet;
+import org.folio.service.upload.UploadDefinitionService;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -66,6 +68,9 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
 
   @Mock
   PostgresClient postgresClient;
+
+  @Mock
+  UploadDefinitionService uploadDefinitionService;
 
   ChangeManagerClient changeManagerClient;
   DataImportQueueItemDao queueItemDao;
@@ -101,7 +106,8 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
 
     this.queueItemDao = spy(new DataImportQueueItemDaoImpl(pgClientFactory));
 
-    this.service = new SplitFileProcessingService(queueItemDao);
+    this.service =
+      new SplitFileProcessingService(queueItemDao, uploadDefinitionService);
   }
 
   @Test
@@ -277,6 +283,26 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
             .postChangeManagerJobExecutions(any(), any());
 
           verifyNoMoreInteractions(queueItemDao);
+        })
+      );
+  }
+
+  @Test
+  public void testGetKey(TestContext context) {
+    when(uploadDefinitionService.getJobExecutionById(anyString(), any()))
+      .thenReturn(
+        Future.succeededFuture(new JobExecution().withSourcePath("key"))
+      );
+
+    service
+      .getKey("id", null)
+      .onComplete(
+        context.asyncAssertSuccess(result -> {
+          assertThat(result, is("key"));
+
+          verify(uploadDefinitionService, times(1))
+            .getJobExecutionById("id", null);
+          verifyNoMoreInteractions(uploadDefinitionService);
         })
       );
   }

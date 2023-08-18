@@ -31,7 +31,8 @@ types:
   dataTypeCollection: !include raml-storage/schemas/mod-data-import/dataTypeCollection.json
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
   dataImportInitConfig: !include raml-storage/schemas/common/dataImportInitConfig.json
-  fileUploadInfo: !include fileUploadInfo.json
+  fileUploadInfo: !include raml-storage/schemas/mod-data-import/fileUploadInfo.json
+  fileDownloadInfo: !include raml-storage/schemas/mod-data-import/fileDownloadInfo.json
   splitStatus: !include raml-storage/schemas/dto/splitStatus.json
   assembleFileDto: !include raml-storage/schemas/dto/assembleFileDto.json
 traits:
@@ -176,6 +177,15 @@ resourceTypes:
               body:
                 text/plain:
                   example: "Internal server error"
+  /jobExecutions/{jobExecutionId}:
+    /downloadUrl:
+      description: Get a presigned S3 download URL
+      post:
+        responses:
+          200:
+            body:
+              application/json:
+                type: fileDownloadInfo
   /fileExtensions:
     displayName: File Extension
     description: API for managing file extensions

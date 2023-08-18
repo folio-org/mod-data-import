@@ -629,4 +629,11 @@ public class DataImportImpl implements DataImport {
       }
     });
   }
+
+  @Override
+  public void postDataImportJobExecutionsDownloadUrlByJobExecutionId(String jobExecutionId,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'postDataImportJobExecutionsDownloadUrlByJobExecutionId'");
+  }
 }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import javax.validation.constraints.NotNull;
+import org.folio.rest.jaxrs.model.FileDownloadInfo;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 
 public interface MinioStorageService {
@@ -49,6 +50,17 @@ public interface MinioStorageService {
     @NotNull String uploadId,
     int partNumber
   );
+
+  /**
+   * Gets a presigned download url
+   *
+   * @param key - the key to access the file on S3 storage, as stored in the job execution in mod-srm
+   * @return FileDownloadInfo
+   * <ul>
+   *   <li>url: presigned URL to S3 storage</li>
+   * </ul>
+   */
+  Future<FileDownloadInfo> getFileDownloadUrl(String key);
 
   Future<Boolean> completeMultipartFileUpload(
     String key,

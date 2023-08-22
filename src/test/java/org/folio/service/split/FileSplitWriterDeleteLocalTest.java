@@ -65,7 +65,15 @@ public class FileSplitWriterDeleteLocalTest {
               .onComplete(
                 context.asyncAssertSuccess(result -> {
                   assertThat(result.list(), hasSize(4));
-                  assertThat(folder.listFiles().length, is(0));
+                  // need to add a small delay since the actual deletion of files can be async
+                  // depending on OS implementations
+                  vertx.setTimer(
+                    100,
+                    _v ->
+                      context.verify(__v ->
+                        assertThat(folder.listFiles().length, is(0))
+                      )
+                  );
                 })
               );
           } catch (IOException err) {

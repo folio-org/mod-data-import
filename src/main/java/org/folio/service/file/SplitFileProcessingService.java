@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.dao.DataImportQueueItemDao;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.impl.util.BufferMapper;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
@@ -22,6 +23,7 @@ import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -35,10 +37,15 @@ public class SplitFileProcessingService {
   private static final Logger LOGGER = LogManager.getLogger();
 
   private DataImportQueueItemDao queueItemDao;
+  private UploadDefinitionService uploadDefinitionService;
 
   @Autowired
-  public SplitFileProcessingService(DataImportQueueItemDao queueItemDao) {
+  public SplitFileProcessingService(
+    DataImportQueueItemDao queueItemDao,
+    UploadDefinitionService uploadDefinitionService
+  ) {
     this.queueItemDao = queueItemDao;
+    this.uploadDefinitionService = uploadDefinitionService;
   }
 
   /**
@@ -135,5 +142,36 @@ public class SplitFileProcessingService {
     return CompositeFuture.join(
       futures.stream().map(Future.class::cast).collect(Collectors.toList())
     );
+  }
+
+  /**
+   * Gets the S3 storage key for a given job execution ID.
+   *
+   * <strong>No guarantee is made that the returned key will be valid in these cases:</strong>
+   * <ul>
+   * <li>The job execution ID refers to a parent or other meta job</li>
+   * <li>The job execution was created before S3-like storage was enabled, meaning
+   *     the original file was never uploaded to S3</li>
+   * </ul>
+   *
+   * The returned key <strong>may or may not</strong> exist and may have been deleted;
+   * no checking for this is done.
+   *
+   * Asynchronous as we need to communicate with mod-srm to get the key.
+   * - The alternative to this would be to add an API to mod-srm (requiring adding
+   *     a full S3 library to mod-srm), or
+   * - Allowing the UI to provide the key back to us, leading to arbitrary
+   *     file access, potentially across tenants (even if the keys are hard-to-guess).
+   *
+   * @param jobExecutionId the job execution ID for the slice that we want the key from
+   * @return a future for the job's S3 key
+   */
+  public Future<String> getKey(
+    String jobExecutionId,
+    OkapiConnectionParams params
+  ) {
+    return uploadDefinitionService
+      .getJobExecutionById(jobExecutionId, params)
+      .map(JobExecution::getSourcePath);
   }
 }

@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.rest.jaxrs.model.FileDownloadInfo;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
@@ -101,6 +102,34 @@ public class MinioStorageServiceImpl implements MinioStorageService {
           fileUpload.setKey(key);
           fileUpload.setUploadId(uploadId);
           promise.complete(fileUpload);
+        }
+      }
+    );
+
+    return promise.future();
+  }
+
+  @Override
+  public Future<FileDownloadInfo> getFileDownloadUrl(String key) {
+    Promise<FileDownloadInfo> promise = Promise.promise();
+    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
+
+    vertx.executeBlocking(
+      (Promise<String> blockingFuture) -> {
+        try {
+          LOGGER.info("Getting presigned URL for key {}", key);
+          blockingFuture.complete(client.getPresignedUrl(key));
+        } catch (S3ClientException e) {
+          blockingFuture.fail(e);
+        }
+      },
+      (AsyncResult<String> asyncResult) -> {
+        if (asyncResult.failed()) {
+          promise.fail(asyncResult.cause());
+        } else {
+          promise.complete(
+            new FileDownloadInfo().withUrl(asyncResult.result())
+          );
         }
       }
     );

@@ -298,6 +298,11 @@
         },
         {
           "methods": ["GET"],
+          "pathPattern": "/data-import//jobExecutions/{id}/downloadUrl",
+          "permissionsRequired": ["data-import.downloadUrl.get"]
+        },
+        {
+          "methods": ["GET"],
           "pathPattern": "/data-import/testFileSplit",
           "permissionsRequired": []
         }
@@ -403,6 +408,11 @@
       "permissionName": "data-import.uploadUrl.get",
       "displayName": "Data Import - get S3 upload URL",
       "description": "Get S3 upload URL"
+    },
+    {
+      "permissionName": "data-import.downloadUrl.get",
+      "displayName": "Data Import - get S3 download URL",
+      "description": "Get S3 download URL"
     },
     {
       "permissionName": "data-import.upload.all",

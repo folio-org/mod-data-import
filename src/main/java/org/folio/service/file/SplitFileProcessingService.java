@@ -19,9 +19,12 @@ import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.impl.util.BufferMapper;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.File;
+import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
+import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,17 +58,18 @@ public class SplitFileProcessingService {
    * @param parentUploadDefinition the upload definition representing these files
    * @param parentJobExecution the parent composite job execution
    * @param client the {@link ChangeManagerClient} to make API calls to
+   * @param jobProfileId the ID of the job profile to be used for later processing
    * @param parentJobSize the size of the parent job, as calculated by {@code FileSplitUtilities}
    * @param tenant the tenant of the request
    * @param keys the list of S3 keys to register, as returned by {@code FileSplitService}
    *
    * @return a {@link CompositeFuture} of {@link JobExecution}
    */
-  public CompositeFuture registerSplitFiles(
+  public CompositeFuture registerSplitFileParts(
     UploadDefinition parentUploadDefinition,
     JobExecution parentJobExecution,
+    JobProfileInfo jobProfileInfo,
     ChangeManagerClient client,
-    String jobProfileId,
     int parentJobSize,
     String tenant,
     List<String> keys
@@ -77,6 +81,7 @@ public class SplitFileProcessingService {
       InitJobExecutionsRqDto initJobExecutionsRqDto = new InitJobExecutionsRqDto()
         .withFiles(Arrays.asList(new File().withName(key)))
         .withParentJobId(parentJobExecution.getId())
+        .withJobProfileInfo(jobProfileInfo)
         .withJobPartNumber(partNumber)
         .withTotalJobParts(keys.size())
         .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
@@ -127,7 +132,6 @@ public class SplitFileProcessingService {
                         .withTimestamp(Instant.now().toString())
                         .withPartNumber(thisPartNumber)
                         .withProcessing(false)
-                        .withJobProfileId(jobProfileId)
                     )
                     .onSuccess(v -> promise.complete(execution))
                 )

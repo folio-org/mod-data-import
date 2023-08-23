@@ -117,6 +117,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         null,
         null,
         changeManagerClient,
+        "profile-id",
         0,
         TENANT_ID,
         Arrays.asList()
@@ -158,6 +159,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         PARENT_UPLOAD_DEFINITION_WITH_USER,
         PARENT_JOB_EXECUTION,
         changeManagerClient,
+        "profile-id",
         123,
         TENANT_ID,
         Arrays.asList("key1")
@@ -214,6 +216,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         PARENT_UPLOAD_DEFINITION,
         PARENT_JOB_EXECUTION,
         changeManagerClient,
+        "profile-id",
         123,
         TENANT_ID,
         Arrays.asList("key1", "key2", "key3")
@@ -266,6 +269,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         PARENT_UPLOAD_DEFINITION,
         PARENT_JOB_EXECUTION,
         changeManagerClient,
+        "profile-id",
         123,
         TENANT_ID,
         Arrays.asList("key1")

@@ -45,8 +45,8 @@ public class DataImportImpl implements DataImport {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private static final String FILE_EXTENSION_DUPLICATE_ERROR_CODE = "fileExtension.duplication.invalid";
-  private static final String FILE_EXTENSION_INVALID_ERROR_CODE = "fileExtension.extension.invalid";
+  private static final String FILE_EXTENSION_DUPLICATE_ERROR_MESSAGE = "File extension %s already exists";
+  private static final String FILE_EXTENSION_INVALID_ERROR_MESSAGE = "File extension %s is not a valid format";
   private static final String FILE_EXTENSION_VALIDATE_ERROR_MESSAGE = "Failed to validate file extension";
   private static final String UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE = "Failed to validate Upload Definition";
   private static final String FILE_EXTENSION_VALID_REGEXP = "^\\.(\\w+)$";
@@ -436,11 +436,11 @@ public class DataImportImpl implements DataImport {
       .withTotalRecords(0);
     return Future.succeededFuture()
       .map(v -> !extension.getExtension().matches(FILE_EXTENSION_VALID_REGEXP)
-        ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_INVALID_ERROR_CODE))).withTotalRecords(errors.getErrors().size() + 1)
+        ? errors.withErrors(Collections.singletonList(new Error().withMessage(String.format(FILE_EXTENSION_INVALID_ERROR_MESSAGE, extension.getExtension())))).withTotalRecords(errors.getErrors().size() + 1)
         : errors)
       .compose(errorsReply -> fileExtensionService.isFileExtensionExistByName(extension, tenantId))
       .map(exist -> exist && errors.getTotalRecords() == 0
-        ? errors.withErrors(Collections.singletonList(new Error().withMessage(FILE_EXTENSION_DUPLICATE_ERROR_CODE))).withTotalRecords(errors.getErrors().size() + 1)
+        ? errors.withErrors(Collections.singletonList(new Error().withMessage(String.format(FILE_EXTENSION_DUPLICATE_ERROR_MESSAGE, extension.getExtension())))).withTotalRecords(errors.getErrors().size() + 1)
         : errors);
   }
 

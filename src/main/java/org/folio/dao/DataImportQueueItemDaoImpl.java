@@ -35,9 +35,9 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static final String GET_BY_ID_SQL =
     "SELECT * FROM %s.%s WHERE id = $1";
   private static final String INSERT_SQL =
-    "INSERT INTO %s.%s (id, jobExecutionId, uploadDefinitionId, jobProfileId, tenant, originalSize, filePath, timestamp, partNumber, processing) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
+    "INSERT INTO %s.%s (id, jobExecutionId, uploadDefinitionId, tenant, originalSize, filePath, timestamp, partNumber, processing) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
   private static final String UPDATE_BY_ID_SQL =
-    "UPDATE %s.%s SET jobExecutionId = $2, uploadDefinitionId = $3, jobProfileId = $4, tenant = $5, originalSize = $6, filePath = $7, timestamp = $8, partNumber = $9, processing = $10 WHERE id = $1";
+    "UPDATE %s.%s SET jobExecutionId = $2, uploadDefinitionId = $3, tenant = $4, originalSize = $5, filePath = $6, timestamp = $7, partNumber = $8, processing = $9 WHERE id = $1";
   private static final String DELETE_BY_ID_SQL =
     "DELETE FROM %s.%s WHERE id = $1";
   private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
@@ -201,7 +201,6 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           dataImportQueueItem.getId(),
           dataImportQueueItem.getJobExecutionId(),
           dataImportQueueItem.getUploadDefinitionId(),
-          dataImportQueueItem.getJobProfileId(),
           dataImportQueueItem.getTenant(),
           dataImportQueueItem.getOriginalSize(),
           dataImportQueueItem.getFilePath(),
@@ -233,7 +232,6 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
             dataImportQueueItem.getId(),
             dataImportQueueItem.getJobExecutionId(),
             dataImportQueueItem.getUploadDefinitionId(),
-            dataImportQueueItem.getJobProfileId(),
             dataImportQueueItem.getTenant(),
             dataImportQueueItem.getOriginalSize(),
             dataImportQueueItem.getFilePath(),
@@ -292,7 +290,6 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     queueItem.setId(rowAsJson.getString("id"));
     queueItem.setJobExecutionId(rowAsJson.getString("jobExeutionId"));
     queueItem.setUploadDefinitionId(rowAsJson.getString("uploadDefinitionId"));
-    queueItem.setJobProfileId(rowAsJson.getString("jobProfileId"));
     queueItem.setTenant(rowAsJson.getString("tenant"));
     queueItem.setFilePath(rowAsJson.getString("filePath"));
     queueItem.setOriginalSize(rowAsJson.getInteger("originalSize"));

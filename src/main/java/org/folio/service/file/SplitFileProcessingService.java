@@ -65,6 +65,7 @@ public class SplitFileProcessingService {
     UploadDefinition parentUploadDefinition,
     JobExecution parentJobExecution,
     ChangeManagerClient client,
+    String jobProfileId,
     int parentJobSize,
     String tenant,
     List<String> keys
@@ -126,6 +127,7 @@ public class SplitFileProcessingService {
                         .withTimestamp(Instant.now().toString())
                         .withPartNumber(thisPartNumber)
                         .withProcessing(false)
+                        .withJobProfileId(jobProfileId)
                     )
                     .onSuccess(v -> promise.complete(execution))
                 )

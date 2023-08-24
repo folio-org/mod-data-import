@@ -11,7 +11,7 @@
       <column name="upload_definition_id" type="uuid" />
       <column name="original_size" type="bigint" />
       <column name="file_path" type="text" />
-      <column name="timestamp" type="datetime" />
+      <column name="timestamp" type="timestamp" />
       <column name="tenant" type="text" />
       <column name="part_number" type="int" />
       <column name="processing" type="boolean" defaultValueBoolean="false" />

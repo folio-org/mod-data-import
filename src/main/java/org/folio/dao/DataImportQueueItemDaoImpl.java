@@ -11,6 +11,7 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.function.BiFunction;
@@ -52,12 +53,15 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
 
   private PostgresClientFactory pgClientFactory;
   private SimpleDateFormat dateFormatter;
+  private TimeZone timeZone;
 
   @Autowired
   public DataImportQueueItemDaoImpl(PostgresClientFactory pgClientFactory) {
     this.pgClientFactory = pgClientFactory;
+
+    this.timeZone = TimeZone.getTimeZone(TimeZones.GMT_ID);
     this.dateFormatter = new SimpleDateFormat(DATE_FORMAT_PATTERN);
-    this.dateFormatter.setTimeZone(TimeZone.getTimeZone(TimeZones.GMT_ID));
+    this.dateFormatter.setTimeZone(this.timeZone);
   }
 
   @Override
@@ -214,7 +218,10 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           dataImportQueueItem.getTenant(),
           dataImportQueueItem.getOriginalSize(),
           dataImportQueueItem.getFilePath(),
-          dataImportQueueItem.getTimestamp(),
+          LocalDateTime.ofInstant(
+            dataImportQueueItem.getTimestamp().toInstant(),
+            timeZone.toZoneId()
+          ),
           dataImportQueueItem.getPartNumber(),
           dataImportQueueItem.getProcessing()
         ),
@@ -245,7 +252,10 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
             dataImportQueueItem.getTenant(),
             dataImportQueueItem.getOriginalSize(),
             dataImportQueueItem.getFilePath(),
-            dataImportQueueItem.getTimestamp(),
+            LocalDateTime.ofInstant(
+              dataImportQueueItem.getTimestamp().toInstant(),
+              timeZone.toZoneId()
+            ),
             dataImportQueueItem.getPartNumber(),
             dataImportQueueItem.getProcessing()
           ),

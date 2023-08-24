@@ -618,7 +618,7 @@ public class DataImportImpl implements DataImport {
       try {
         fileSplitService
           .splitFileFromS3(vertxContext, key)
-          .map(_v -> GetDataImportTestFileSplitResponse.respond200WithApplicationJson("Testing Complete"))
+          .map(vv -> GetDataImportTestFileSplitResponse.respond200WithApplicationJson("Testing Complete"))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

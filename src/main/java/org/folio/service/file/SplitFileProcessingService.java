@@ -324,7 +324,7 @@ public class SplitFileProcessingService {
         response
           .getJobExecutions()
           .stream()
-          .collect(Collectors.toMap(JobExecution::getFileName, exec -> exec))
+          .collect(Collectors.toMap(JobExecution::getSourcePath, exec -> exec))
       );
   }
 

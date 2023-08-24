@@ -298,7 +298,7 @@
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/data-import//jobExecutions/{id}/downloadUrl",
+          "pathPattern": "/data-import/jobExecutions/{id}/downloadUrl",
           "permissionsRequired": ["data-import.downloadUrl.get"]
         },
         {

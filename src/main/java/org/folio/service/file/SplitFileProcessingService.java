@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -244,7 +245,7 @@ public class SplitFileProcessingService {
                   .withTenant(tenant)
                   .withOriginalSize(parentJobSize)
                   .withFilePath(key)
-                  .withTimestamp(LocalDateTime.now().toString())
+                  .withTimestamp(new Date())
                   .withPartNumber(thisPartNumber)
                   .withProcessing(false)
               )

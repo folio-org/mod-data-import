@@ -15,6 +15,7 @@ import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
+import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.AssembleFileDto;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -281,11 +282,33 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         LOGGER.info("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Starting file processing for upload definition {}", uploadDefinitionId);
-        fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders));
-        Future.succeededFuture()
-          .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
-          .map(Response.class::cast)
-          .onComplete(asyncResultHandler);
+
+        if (this.fileSplittingEnabled) {
+          OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+          splitFileProcessingService
+            .startJob(
+              entity,
+              new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken()),
+              params.getTenantId()
+            )
+            .map(
+              PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()
+            )
+            .map(Response.class::cast)
+            .onComplete(asyncResultHandler);
+        } else {
+          fileProcessor.process(
+            JsonObject.mapFrom(entity),
+            JsonObject.mapFrom(okapiHeaders)
+          );
+          Future
+            .succeededFuture()
+            .map(
+              PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()
+            )
+            .map(Response.class::cast)
+            .onComplete(asyncResultHandler);
+        }
       } catch (Exception e) {
         LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Cannot upload definitions process files by uploadDefinitionId {}", uploadDefinitionId);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -488,7 +511,7 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug(
-          "postDataImportJobExecutionsDownloadUrlByJobExecutionId:: getting download URL for job execution {}",
+          "getDataImportJobExecutionsDownloadUrlByJobExecutionId:: getting download URL for job execution {}",
           jobExecutionId
         );
         splitFileProcessingService
@@ -499,7 +522,7 @@ public class DataImportImpl implements DataImport {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOGGER.warn("postDataImportJobExecutionsDownloadUrlByJobExecutionId:: Failed to get download url", e);
+        LOGGER.warn("getDataImportJobExecutionsDownloadUrlByJobExecutionId:: Failed to get download url", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

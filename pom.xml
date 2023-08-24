@@ -351,7 +351,6 @@
             <configuration>
               <sources>
                 <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
-                <source>${project.build.directory}/generated-sources/modulename</source>
               </sources>
             </configuration>
           </execution>

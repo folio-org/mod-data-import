@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.is;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.junit.Test;
@@ -20,7 +21,7 @@ public class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
 
   private DataImportQueueItem ofAge(int age) {
     return new DataImportQueueItem()
-      .withTimestamp(Instant.now().minus(age, ChronoUnit.MINUTES).toString());
+      .withTimestamp(Date.from(Instant.now().minus(age, ChronoUnit.MINUTES)));
   }
 
   @Test

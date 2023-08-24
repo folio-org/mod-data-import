@@ -374,19 +374,3 @@ resourceTypes:
           description: "Internal server error"
           body:
             text/plain:
-  /testFileSplitLocal:
-    get:
-      description: Test File Split
-      queryParameters:
-        path:
-          description: "The path of file locally to be split"
-          required: true
-      responses:
-        200:
-          body:
-            application/json:
-              type: string
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:

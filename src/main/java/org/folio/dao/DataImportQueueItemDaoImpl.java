@@ -35,9 +35,9 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static final String GET_BY_ID_SQL =
     "SELECT * FROM %s.%s WHERE id = $1";
   private static final String INSERT_SQL =
-    "INSERT INTO %s.%s (id, jobExecutionId, uploadDefinitionId, tenant, originalSize, filePath, timestamp, partNumber, processing) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
+    "INSERT INTO %s.%s (id, job_execution_id, upload_definition_id, tenant, original_size, file_path, timestamp, part_number, processing) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
   private static final String UPDATE_BY_ID_SQL =
-    "UPDATE %s.%s SET jobExecutionId = $2, uploadDefinitionId = $3, tenant = $4, originalSize = $5, filePath = $6, timestamp = $7, partNumber = $8, processing = $9 WHERE id = $1";
+    "UPDATE %s.%s SET job_execution_id = $2, upload_definition_id = $3, tenant = $4, original_size = $5, file_path = $6, timestamp = $7, part_number = $8, processing = $9 WHERE id = $1";
   private static final String DELETE_BY_ID_SQL =
     "DELETE FROM %s.%s WHERE id = $1";
   private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
@@ -288,13 +288,15 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private DataImportQueueItem mapRowJsonToQueueItem(Row rowAsJson) {
     DataImportQueueItem queueItem = new DataImportQueueItem();
     queueItem.setId(rowAsJson.getString("id"));
-    queueItem.setJobExecutionId(rowAsJson.getString("jobExeutionId"));
-    queueItem.setUploadDefinitionId(rowAsJson.getString("uploadDefinitionId"));
+    queueItem.setJobExecutionId(rowAsJson.getString("job_exeution_id"));
+    queueItem.setUploadDefinitionId(
+      rowAsJson.getString("upload_definition_id")
+    );
     queueItem.setTenant(rowAsJson.getString("tenant"));
-    queueItem.setFilePath(rowAsJson.getString("filePath"));
-    queueItem.setOriginalSize(rowAsJson.getInteger("originalSize"));
-    queueItem.setTimestamp(rowAsJson.getString("timeStamp"));
-    queueItem.setPartNumber(rowAsJson.getInteger("partNumber"));
+    queueItem.setFilePath(rowAsJson.getString("file_path"));
+    queueItem.setOriginalSize(rowAsJson.getInteger("original_size"));
+    queueItem.setTimestamp(rowAsJson.getString("time_stamp"));
+    queueItem.setPartNumber(rowAsJson.getInteger("part_number"));
     queueItem.setProcessing(rowAsJson.getBoolean("processing"));
     return queueItem;
   }

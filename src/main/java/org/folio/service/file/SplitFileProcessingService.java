@@ -121,7 +121,11 @@ public class SplitFileProcessingService {
           .list()
           .get(1);
 
-        LOGGER.info("Inside main compose; got info");
+        LOGGER.info(
+          "Inside main compose; got info. parents: {}, splits: {}",
+          parentJobExecutions,
+          splitInformation
+        );
 
         CompositeFuture cf = CompositeFuture.all(
           parentJobExecutions

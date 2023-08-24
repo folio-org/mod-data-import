@@ -79,36 +79,29 @@ public class SplitFileProcessingService {
     ChangeManagerClient client,
     String tenant
   ) {
-    CompositeFuture splittingFuture = CompositeFuture
-      .all(
-        entity
-          .getUploadDefinition()
-          .getFileDefinitions()
+    CompositeFuture splittingFuture = CompositeFuture.all(
+      entity
+        .getUploadDefinition()
+        .getFileDefinitions()
+        .stream()
+        .map(FileDefinition::getName)
+        .map(this::splitFile)
+        .collect(Collectors.toList())
+    );
+
+    CompositeFuture initializationFuture = CompositeFuture.all(
+      createParentJobExecutions(entity, client),
+      splittingFuture.map(cf ->
+        cf
+          .list()
           .stream()
-          .map(FileDefinition::getName)
-          .map(this::splitFile)
-          .collect(Collectors.toList())
+          .map(SplitFileInformation.class::cast)
+          .collect(Collectors.toMap(SplitFileInformation::getKey, el -> el))
       )
-      .onSuccess(v -> LOGGER.info("Finished splittingFuture"))
-      .onFailure(v -> LOGGER.info("Failed splittingFuture"));
+    );
 
-    CompositeFuture initializationFuture = CompositeFuture
-      .all(
-        createParentJobExecutions(entity, client),
-        splittingFuture.map(cf ->
-          cf
-            .list()
-            .stream()
-            .map(SplitFileInformation.class::cast)
-            .collect(Collectors.toMap(SplitFileInformation::getKey, el -> el))
-        )
-      )
-      .onSuccess(v -> LOGGER.info("Finished initializationFuture"))
-      .onFailure(v -> LOGGER.info("Failed initializationFuture"));
-
-    Future<Void> mf = initializationFuture
+    return initializationFuture
       .compose(result -> {
-        LOGGER.info("Inside main compose");
         // type erasure for conversion to Map<String, JobExecution> since Java can only check that it's a Map
         // https://stackoverflow.com/questions/2592642/type-safety-unchecked-cast-from-object
         @SuppressWarnings("unchecked")
@@ -122,27 +115,17 @@ public class SplitFileProcessingService {
           .list()
           .get(1);
 
-        LOGGER.info(
-          "Inside main compose; got info. parents: {}, splits: {}",
-          parentJobExecutions,
-          splitInformation
-        );
-
-        CompositeFuture cf = CompositeFuture.all(
+        return CompositeFuture.all(
           parentJobExecutions
             .entrySet()
             .stream()
             .map(jobExecEntry -> {
               // should always be here, but let's orElseThrow to be safe
-              LOGGER.info(
-                "Starting nested registerSplitFileParts {}",
-                jobExecEntry.getValue().getJobPartNumber()
-              );
               SplitFileInformation split = Optional
                 .ofNullable(splitInformation.get(jobExecEntry.getKey()))
                 .orElseThrow();
 
-              CompositeFuture f = registerSplitFileParts(
+              return registerSplitFileParts(
                 entity.getUploadDefinition(),
                 jobExecEntry.getValue(),
                 entity.getJobProfileInfo(),
@@ -151,41 +134,11 @@ public class SplitFileProcessingService {
                 tenant,
                 split.getSplitKeys()
               );
-              f.onSuccess(v ->
-                LOGGER.info(
-                  "Finished nested registerSplitFileParts {}",
-                  jobExecEntry.getValue().getJobPartNumber()
-                )
-              );
-              f.onFailure(v ->
-                LOGGER.info(
-                  "Failed nested registerSplitFileParts {}",
-                  jobExecEntry.getValue().getJobPartNumber()
-                )
-              );
-              return f;
             })
             .collect(Collectors.toList())
         );
-        cf
-          .onSuccess(v ->
-            LOGGER.info("Finished nested CF BBBBBBBBBBBBBBBBBBBBBBBB")
-          )
-          .onFailure(v ->
-            LOGGER.info("Failed nested CF BBBBBBBBBBBBBBBBBBBBBBBB", v)
-          );
-        LOGGER.info("Returning nested CF CCCCCCCCCCCCCCCCCCCCCCCC");
-        return cf;
       })
-      .compose(v -> {
-        LOGGER.info("Main future done; returning void");
-        return Future.succeededFuture();
-      });
-
-    mf
-      .onSuccess(v -> LOGGER.info("Finished main future ZZZZZZ"))
-      .onFailure(v -> LOGGER.info("Failed main future ZZZZZZ", v));
-    return mf;
+      .compose(v -> Future.succeededFuture());
   }
 
   /**

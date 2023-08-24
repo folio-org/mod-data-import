@@ -289,7 +289,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
             return;
           }
         }
-        onFileComplete();
         if (!uploadFilesToS3 && deleteLocalFiles) {
           try {
             LOGGER.info(
@@ -317,14 +316,5 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       },
       false
     );
-  }
-
-  private void onFileComplete() {
-    // Do any work here that is required once the fragment file is written to disk
-    // At this point, it is guaranteed to exist, but if async work is done here it
-    // very well could be deleted.  It also may or may not have been uploaded to
-    // S3 (as that happens async).  Deletion and upload both rely on options passed
-    // into this class, so be sure to check those if doing anything async.
-    // TODO: is this needed?
   }
 }

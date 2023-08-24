@@ -2,7 +2,6 @@ package org.folio.service.config;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.config.ApplicationConfig;
 import org.folio.kafka.KafkaConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -11,12 +10,16 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @ComponentScan(basePackages = {
-  "org.folio.rest.impl",
   "org.folio.dao",
+  "org.folio.rest.impl",
+  "org.folio.service.cleanup",
   "org.folio.service.file",
   "org.folio.service.fileextension",
-  "org.folio.service.upload",
-  "org.folio.service.cleanup"})
+  "org.folio.service.processing.ranking",
+  "org.folio.service.processing.split",
+  "org.folio.service.s3storage",
+  "org.folio.service.upload"
+})
 public class ApplicationTestConfig {
 
   private static final Logger LOGGER = LogManager.getLogger();

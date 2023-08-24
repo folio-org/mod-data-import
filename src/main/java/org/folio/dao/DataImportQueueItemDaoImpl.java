@@ -9,11 +9,15 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.NotFoundException;
+import org.apache.commons.lang3.time.TimeZones;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.PostgresClientFactory;
@@ -43,11 +47,17 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
     "LOCK TABLE %s.%s IN ACCESS EXCLUSIVE MODE";
 
+  private static final String DATE_FORMAT_PATTERN =
+    "yyyy-MM-dd'T'HH:mm:ss.SSSX";
+
   private PostgresClientFactory pgClientFactory;
+  private SimpleDateFormat dateFormatter;
 
   @Autowired
   public DataImportQueueItemDaoImpl(PostgresClientFactory pgClientFactory) {
     this.pgClientFactory = pgClientFactory;
+    this.dateFormatter = new SimpleDateFormat(DATE_FORMAT_PATTERN);
+    this.dateFormatter.setTimeZone(TimeZone.getTimeZone(TimeZones.GMT_ID));
   }
 
   @Override
@@ -295,7 +305,13 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     queueItem.setTenant(rowAsJson.getString("tenant"));
     queueItem.setFilePath(rowAsJson.getString("file_path"));
     queueItem.setOriginalSize(rowAsJson.getInteger("original_size"));
-    queueItem.setTimestamp(rowAsJson.getString("time_stamp"));
+    try {
+      queueItem.setTimestamp(
+        dateFormatter.parse(rowAsJson.getString("timestamp"))
+      );
+    } catch (ParseException e) {
+      throw new IllegalArgumentException("Unable to parse timestamp");
+    }
     queueItem.setPartNumber(rowAsJson.getInteger("part_number"));
     queueItem.setProcessing(rowAsJson.getBoolean("processing"));
     return queueItem;

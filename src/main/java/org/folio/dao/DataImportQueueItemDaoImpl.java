@@ -28,7 +28,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static final Logger LOGGER = LogManager.getLogger();
 
   private static final String MODULE_GLOBAL_SCHEMA = "data_import_global";
-  private static final String QUEUE_ITEM_TABLE = "queue_items";
+  private static final String QUEUE_ITEM_TABLE = "dataImportQueueItems";
   private static final String GET_ALL_SQL = "SELECT * FROM %s.%s";
   private static final String GET_ALL_BY_PROCESSING_SQL =
     "SELECT * FROM %s.%s WHERE processing = $1";

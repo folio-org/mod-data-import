@@ -8,6 +8,7 @@ import io.vertx.ext.web.handler.HttpException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -243,7 +244,7 @@ public class SplitFileProcessingService {
                   .withTenant(tenant)
                   .withOriginalSize(parentJobSize)
                   .withFilePath(key)
-                  .withTimestamp(Instant.now().toString())
+                  .withTimestamp(LocalDateTime.now().toString())
                   .withPartNumber(thisPartNumber)
                   .withProcessing(false)
               )

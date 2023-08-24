@@ -39,8 +39,6 @@ import org.springframework.beans.factory.annotation.Value;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -597,59 +595,12 @@ public class DataImportImpl implements DataImport {
       try {
         fileSplitService
           .splitFileFromS3(vertxContext, key)
-          .onSuccess(composite -> composite.onSuccess(success -> {
-            LOGGER.debug("All chunks uploaded successfully!");
-            asyncResultHandler.handle(Future.succeededFuture("Testing Complete")
-                .map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
-          })
-          .onFailure(err -> {
-            LOGGER.error("Chunks did not upload successfully", err);
-            asyncResultHandler
-              .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-          }));
+          .map(_v -> GetDataImportTestFileSplitResponse.respond200WithApplicationJson("Testing Complete"))
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
       } catch (Exception err) {
         LOGGER.error("getDataImportTestFileSplit:: Failed to split and upload chunks", err);
-        asyncResultHandler
-          .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-      }
-    });
-  }
-
-  @Override
-  public void getDataImportTestFileSplitLocal(String path, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        vertxContext
-          .owner()
-          .fileSystem()
-          .readFile(path)
-          .onSuccess(file -> {
-            try {
-              fileSplitService
-                .splitStream(vertxContext, new ByteArrayInputStream(file.getBytes()), path)
-                .onSuccess(composite -> composite.onSuccess(success -> {
-                  LOGGER.debug("All chunks uploaded successfully!");
-                  asyncResultHandler.handle(Future.succeededFuture("Testing Complete")
-                      .map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
-                })
-                .onFailure(err -> {
-                  LOGGER.error("Chunks did not upload successfully", err);
-                  asyncResultHandler
-                    .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-                }));
-            } catch (IOException err) {
-              LOGGER.error("Could not split file", err);
-              asyncResultHandler
-                .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-            }
-          })
-          .onFailure(err -> {
-            LOGGER.error("Could not open file", err);
-            asyncResultHandler
-              .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-          });
-      } catch (Exception err) {
-        LOGGER.error("getDataImportTestFileSplitLocal:: Failed to split and upload chunks", err);
         asyncResultHandler
           .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
       }

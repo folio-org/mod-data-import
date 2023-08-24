@@ -3,13 +3,19 @@ package org.folio.service.file;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.ext.web.handler.HttpException;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import lombok.Data;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
@@ -26,6 +32,9 @@ import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.processing.split.FileSplitService;
+import org.folio.service.processing.split.FileSplitUtilities;
+import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -39,16 +48,96 @@ public class SplitFileProcessingService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
+  private Vertx vertx;
+
+  private FileSplitService fileSplitService;
+  private MinioStorageService minioStorageService;
+
   private DataImportQueueItemDao queueItemDao;
   private UploadDefinitionService uploadDefinitionService;
 
   @Autowired
   public SplitFileProcessingService(
+    Vertx vertx,
+    FileSplitService fileSplitService,
+    MinioStorageService minioStorageService,
     DataImportQueueItemDao queueItemDao,
     UploadDefinitionService uploadDefinitionService
   ) {
+    this.vertx = vertx;
+
+    this.fileSplitService = fileSplitService;
+    this.minioStorageService = minioStorageService;
+
     this.queueItemDao = queueItemDao;
     this.uploadDefinitionService = uploadDefinitionService;
+  }
+
+  public Future<Void> startJob(
+    ProcessFilesRqDto entity,
+    ChangeManagerClient client,
+    String tenant
+  ) {
+    CompositeFuture splittingFuture = CompositeFuture.all(
+      entity
+        .getUploadDefinition()
+        .getFileDefinitions()
+        .stream()
+        .map(FileDefinition::getName)
+        .map(this::splitFile)
+        .collect(Collectors.toList())
+    );
+
+    CompositeFuture initializationFuture = CompositeFuture.all(
+      createParentJobExecutions(entity, client),
+      splittingFuture.map(cf ->
+        cf
+          .list()
+          .stream()
+          .map(SplitFileInformation.class::cast)
+          .collect(Collectors.toMap(SplitFileInformation::getKey, el -> el))
+      )
+    );
+
+    return initializationFuture
+      .compose(result -> {
+        // type erasure for conversion to Map<String, JobExecution> since Java can only check that it's a Map
+        // https://stackoverflow.com/questions/2592642/type-safety-unchecked-cast-from-object
+        @SuppressWarnings("unchecked")
+        Map<String, JobExecution> parentJobExecutions = (Map<String, JobExecution>) result
+          .list()
+          .get(0);
+
+        // same here
+        @SuppressWarnings("unchecked")
+        Map<String, SplitFileInformation> splitInformation = (Map<String, SplitFileInformation>) result
+          .list()
+          .get(1);
+
+        return CompositeFuture.all(
+          parentJobExecutions
+            .entrySet()
+            .stream()
+            .map(jobExecEntry -> {
+              // should always be here, but let's orElseThrow to be safe
+              SplitFileInformation split = Optional
+                .ofNullable(splitInformation.get(jobExecEntry.getKey()))
+                .orElseThrow();
+
+              return registerSplitFileParts(
+                entity.getUploadDefinition(),
+                jobExecEntry.getValue(),
+                entity.getJobProfileInfo(),
+                client,
+                split.getTotalRecords(),
+                tenant,
+                split.getSplitKeys()
+              );
+            })
+            .collect(Collectors.toList())
+        );
+      })
+      .compose(v -> Future.succeededFuture());
   }
 
   /**
@@ -57,6 +146,7 @@ public class SplitFileProcessingService {
    *
    * @param parentUploadDefinition the upload definition representing these files
    * @param parentJobExecution the parent composite job execution
+   * @param jobProfileInfo the job profile to be used for later processing
    * @param client the {@link ChangeManagerClient} to make API calls to
    * @param jobProfileId the ID of the job profile to be used for later processing
    * @param parentJobSize the size of the parent job, as calculated by {@code FileSplitUtilities}
@@ -92,56 +182,30 @@ public class SplitFileProcessingService {
         );
 
       // outer scope variable could change before lambda execution, so we make it final here
-      final int thisPartNumber = partNumber;
+      int thisPartNumber = partNumber;
 
-      Promise<JobExecution> promise = Promise.promise();
-      futures.add(promise.future());
-
-      client.postChangeManagerJobExecutions(
-        initJobExecutionsRqDto,
-        response -> {
-          try {
-            if (
-              response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()
-            ) {
-              LOGGER.warn(
-                "registerSplitFiles:: Error creating new child JobExecution for key {}. Status message: {}",
-                key,
-                response.result().statusMessage()
-              );
-              throw new HttpException(
-                response.result().statusCode(),
-                "Error creating new JobExecution"
-              );
-            } else {
-              BufferMapper
-                .mapBufferContentToEntity(
-                  response.result().bodyAsBuffer(),
-                  InitJobExecutionsRsDto.class
-                )
-                .map(collection -> collection.getJobExecutions().get(0))
-                .compose(execution ->
-                  queueItemDao
-                    .addQueueItem(
-                      new DataImportQueueItem()
-                        .withJobExecutionId(execution.getId())
-                        .withUploadDefinitionId(parentUploadDefinition.getId())
-                        .withTenant(tenant)
-                        .withOriginalSize(parentJobSize)
-                        .withFilePath(key)
-                        .withTimestamp(Instant.now().toString())
-                        .withPartNumber(thisPartNumber)
-                        .withProcessing(false)
-                    )
-                    .onSuccess(v -> promise.complete(execution))
-                )
-                .onFailure(promise::fail);
-            }
-          } catch (Exception e) {
-            promise.fail(e);
-          }
-        }
+      futures.add(
+        sendJobExecutionRequest(client, initJobExecutionsRqDto)
+          .map(collection -> collection.getJobExecutions().get(0))
+          .compose(execution ->
+            queueItemDao
+              .addQueueItem(
+                new DataImportQueueItem()
+                  .withJobExecutionId(execution.getId())
+                  .withUploadDefinitionId(parentUploadDefinition.getId())
+                  .withTenant(tenant)
+                  .withOriginalSize(parentJobSize)
+                  .withFilePath(key)
+                  .withTimestamp(Instant.now().toString())
+                  .withPartNumber(thisPartNumber)
+                  .withProcessing(false)
+              )
+              // we don't want the queue item, just the execution, so we discard the result
+              // and return the execution from the earlier step
+              .map(v -> execution)
+          )
       );
+
       partNumber++;
     }
 
@@ -179,5 +243,136 @@ public class SplitFileProcessingService {
     return uploadDefinitionService
       .getJobExecutionById(jobExecutionId, params)
       .map(JobExecution::getSourcePath);
+  }
+
+  /**
+   * Create parent job executions for all files described in the upload definition.
+   * @return a {@link Future} containing a map from filename/key -> {@link JobExecution}
+   */
+  private Future<Map<String, JobExecution>> createParentJobExecutions(
+    ProcessFilesRqDto entity,
+    ChangeManagerClient client
+  ) {
+    InitJobExecutionsRqDto initJobExecutionsRqDto = new InitJobExecutionsRqDto()
+      .withFiles(
+        entity
+          .getUploadDefinition()
+          .getFileDefinitions()
+          .stream()
+          .map(FileDefinition::getName)
+          .map(key -> new File().withName(key))
+          .collect(Collectors.toList())
+      )
+      .withJobProfileInfo(entity.getJobProfileInfo())
+      .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
+      .withUserId(
+        Objects.nonNull(entity.getUploadDefinition().getMetadata())
+          ? entity.getUploadDefinition().getMetadata().getCreatedByUserId()
+          : null
+      );
+
+    return sendJobExecutionRequest(client, initJobExecutionsRqDto)
+      .map(response ->
+        // turn into map from filename -> JobExecution
+        response
+          .getJobExecutions()
+          .stream()
+          .collect(Collectors.toMap(JobExecution::getFileName, exec -> exec))
+      );
+  }
+
+  /**
+   * Sends a InitJobExecutionsRqDto with sufficient error handling
+   *
+   * @param client the {@link ChangeMAnagerClient} to send the request with
+   * @param request the request to send
+   * @return a promise which will succeed with the response body as a {@link InitJobExecutionsRsDto}
+   */
+  private Future<InitJobExecutionsRsDto> sendJobExecutionRequest(
+    ChangeManagerClient client,
+    InitJobExecutionsRqDto request
+  ) {
+    Promise<InitJobExecutionsRsDto> promise = Promise.promise();
+
+    client.postChangeManagerJobExecutions(
+      request,
+      response -> {
+        try {
+          if (
+            response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()
+          ) {
+            LOGGER.warn(
+              "Error creating parent JobExecution from request {}. Status message: {}",
+              request,
+              response.result().statusMessage()
+            );
+            throw new HttpException(
+              response.result().statusCode(),
+              "Error creating new JobExecution"
+            );
+          }
+
+          promise.complete(
+            BufferMapper.mapBufferContentToEntitySync(
+              response.result().bodyAsBuffer(),
+              InitJobExecutionsRsDto.class
+            )
+          );
+        } catch (Exception e) {
+          promise.fail(e);
+        }
+      }
+    );
+
+    return promise.future();
+  }
+
+  /**
+   * Split a file into chunks, returning a {@link SplitFileInformation} object containing
+   * the original key, the total number of records in the file, and the keys of the split chunks
+   */
+  private Future<SplitFileInformation> splitFile(String key) {
+    // object will be hydrated by futures
+    SplitFileInformation result = new SplitFileInformation();
+    result.setKey(key);
+
+    Promise<SplitFileInformation> promise = Promise.promise();
+
+    minioStorageService
+      .readFile(key)
+      // must be done sequentially as splitting deletes the original file
+      .map(stream -> {
+        try {
+          result.setTotalRecords(
+            FileSplitUtilities.countRecordsInMarcFile(stream)
+          );
+          return null;
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      })
+      .compose(v ->
+        fileSplitService.splitFileFromS3(vertx.getOrCreateContext(), key)
+      )
+      .onSuccess(list -> {
+        result.setSplitKeys(list);
+        // all data is now in the object
+        promise.complete(result);
+      })
+      .onFailure(promise::fail);
+
+    return promise.future();
+  }
+
+  /**
+   * Hold information about a split file that will be needed for the creation
+   * of job executions, etc
+   */
+  @Data
+  public static class SplitFileInformation {
+
+    private String key;
+    private Integer totalRecords;
+    private List<String> splitKeys;
   }
 }

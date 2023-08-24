@@ -107,7 +107,13 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
     this.queueItemDao = spy(new DataImportQueueItemDaoImpl(pgClientFactory));
 
     this.service =
-      new SplitFileProcessingService(queueItemDao, uploadDefinitionService);
+      new SplitFileProcessingService(
+        null,
+        null,
+        null,
+        queueItemDao,
+        uploadDefinitionService
+      );
   }
 
   @Test

@@ -292,7 +292,9 @@ public class DataImportImpl implements DataImport {
               params.getTenantId()
             )
             .map(
-              PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()
+              vv -> {
+                LOGGER.info("RESPONDING 204! AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+                return PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204();}
             )
             .map(Response.class::cast)
             .onComplete(asyncResultHandler);

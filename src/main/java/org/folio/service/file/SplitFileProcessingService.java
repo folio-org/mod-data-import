@@ -78,26 +78,32 @@ public class SplitFileProcessingService {
     ChangeManagerClient client,
     String tenant
   ) {
-    CompositeFuture splittingFuture = CompositeFuture.all(
-      entity
-        .getUploadDefinition()
-        .getFileDefinitions()
-        .stream()
-        .map(FileDefinition::getName)
-        .map(this::splitFile)
-        .collect(Collectors.toList())
-    );
-
-    CompositeFuture initializationFuture = CompositeFuture.all(
-      createParentJobExecutions(entity, client),
-      splittingFuture.map(cf ->
-        cf
-          .list()
+    CompositeFuture splittingFuture = CompositeFuture
+      .all(
+        entity
+          .getUploadDefinition()
+          .getFileDefinitions()
           .stream()
-          .map(SplitFileInformation.class::cast)
-          .collect(Collectors.toMap(SplitFileInformation::getKey, el -> el))
+          .map(FileDefinition::getName)
+          .map(this::splitFile)
+          .collect(Collectors.toList())
       )
-    );
+      .onSuccess(v -> LOGGER.info("Finished splittingFuture"))
+      .onFailure(v -> LOGGER.info("Failed splittingFuture"));
+
+    CompositeFuture initializationFuture = CompositeFuture
+      .all(
+        createParentJobExecutions(entity, client),
+        splittingFuture.map(cf ->
+          cf
+            .list()
+            .stream()
+            .map(SplitFileInformation.class::cast)
+            .collect(Collectors.toMap(SplitFileInformation::getKey, el -> el))
+        )
+      )
+      .onSuccess(v -> LOGGER.info("Finished initializationFuture"))
+      .onFailure(v -> LOGGER.info("Failed initializationFuture"));
 
     return initializationFuture
       .compose(result -> {
@@ -114,28 +120,47 @@ public class SplitFileProcessingService {
           .list()
           .get(1);
 
-        return CompositeFuture.all(
-          parentJobExecutions
-            .entrySet()
-            .stream()
-            .map(jobExecEntry -> {
-              // should always be here, but let's orElseThrow to be safe
-              SplitFileInformation split = Optional
-                .ofNullable(splitInformation.get(jobExecEntry.getKey()))
-                .orElseThrow();
+        return CompositeFuture
+          .all(
+            parentJobExecutions
+              .entrySet()
+              .stream()
+              .map(jobExecEntry -> {
+                // should always be here, but let's orElseThrow to be safe
+                SplitFileInformation split = Optional
+                  .ofNullable(splitInformation.get(jobExecEntry.getKey()))
+                  .orElseThrow();
 
-              return registerSplitFileParts(
-                entity.getUploadDefinition(),
-                jobExecEntry.getValue(),
-                entity.getJobProfileInfo(),
-                client,
-                split.getTotalRecords(),
-                tenant,
-                split.getSplitKeys()
-              );
-            })
-            .collect(Collectors.toList())
-        );
+                return registerSplitFileParts(
+                  entity.getUploadDefinition(),
+                  jobExecEntry.getValue(),
+                  entity.getJobProfileInfo(),
+                  client,
+                  split.getTotalRecords(),
+                  tenant,
+                  split.getSplitKeys()
+                )
+                  .onSuccess(v ->
+                    LOGGER.info(
+                      "Finished nested registerSplitFileParts {}",
+                      jobExecEntry.getValue().getJobPartNumber()
+                    )
+                  )
+                  .onFailure(v ->
+                    LOGGER.info(
+                      "Failed nested registerSplitFileParts {}",
+                      jobExecEntry.getValue().getJobPartNumber()
+                    )
+                  );
+              })
+              .collect(Collectors.toList())
+          )
+          .onSuccess(v ->
+            LOGGER.info("Finished nested CF BBBBBBBBBBBBBBBBBBBBBBBB")
+          )
+          .onFailure(v ->
+            LOGGER.info("Failed nested CF BBBBBBBBBBBBBBBBBBBBBBBB")
+          );
       })
       .compose(v -> Future.succeededFuture());
   }

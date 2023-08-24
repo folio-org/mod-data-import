@@ -105,8 +105,9 @@ public class SplitFileProcessingService {
       .onSuccess(v -> LOGGER.info("Finished initializationFuture"))
       .onFailure(v -> LOGGER.info("Failed initializationFuture"));
 
-    return initializationFuture
+    Future<Void> mf = initializationFuture
       .compose(result -> {
+        LOGGER.info("Inside main compose");
         // type erasure for conversion to Map<String, JobExecution> since Java can only check that it's a Map
         // https://stackoverflow.com/questions/2592642/type-safety-unchecked-cast-from-object
         @SuppressWarnings("unchecked")
@@ -120,49 +121,66 @@ public class SplitFileProcessingService {
           .list()
           .get(1);
 
-        return CompositeFuture
-          .all(
-            parentJobExecutions
-              .entrySet()
-              .stream()
-              .map(jobExecEntry -> {
-                // should always be here, but let's orElseThrow to be safe
-                SplitFileInformation split = Optional
-                  .ofNullable(splitInformation.get(jobExecEntry.getKey()))
-                  .orElseThrow();
+        LOGGER.info("Inside main compose; got info");
 
-                return registerSplitFileParts(
-                  entity.getUploadDefinition(),
-                  jobExecEntry.getValue(),
-                  entity.getJobProfileInfo(),
-                  client,
-                  split.getTotalRecords(),
-                  tenant,
-                  split.getSplitKeys()
+        CompositeFuture cf = CompositeFuture.all(
+          parentJobExecutions
+            .entrySet()
+            .stream()
+            .map(jobExecEntry -> {
+              // should always be here, but let's orElseThrow to be safe
+              LOGGER.info(
+                "Starting nested registerSplitFileParts {}",
+                jobExecEntry.getValue().getJobPartNumber()
+              );
+              SplitFileInformation split = Optional
+                .ofNullable(splitInformation.get(jobExecEntry.getKey()))
+                .orElseThrow();
+
+              CompositeFuture f = registerSplitFileParts(
+                entity.getUploadDefinition(),
+                jobExecEntry.getValue(),
+                entity.getJobProfileInfo(),
+                client,
+                split.getTotalRecords(),
+                tenant,
+                split.getSplitKeys()
+              );
+              f.onSuccess(v ->
+                LOGGER.info(
+                  "Finished nested registerSplitFileParts {}",
+                  jobExecEntry.getValue().getJobPartNumber()
                 )
-                  .onSuccess(v ->
-                    LOGGER.info(
-                      "Finished nested registerSplitFileParts {}",
-                      jobExecEntry.getValue().getJobPartNumber()
-                    )
-                  )
-                  .onFailure(v ->
-                    LOGGER.info(
-                      "Failed nested registerSplitFileParts {}",
-                      jobExecEntry.getValue().getJobPartNumber()
-                    )
-                  );
-              })
-              .collect(Collectors.toList())
-          )
+              );
+              f.onFailure(v ->
+                LOGGER.info(
+                  "Failed nested registerSplitFileParts {}",
+                  jobExecEntry.getValue().getJobPartNumber()
+                )
+              );
+              return f;
+            })
+            .collect(Collectors.toList())
+        );
+        cf
           .onSuccess(v ->
             LOGGER.info("Finished nested CF BBBBBBBBBBBBBBBBBBBBBBBB")
           )
           .onFailure(v ->
-            LOGGER.info("Failed nested CF BBBBBBBBBBBBBBBBBBBBBBBB")
+            LOGGER.info("Failed nested CF BBBBBBBBBBBBBBBBBBBBBBBB", v)
           );
+        LOGGER.info("Returning nested CF CCCCCCCCCCCCCCCCCCCCCCCC");
+        return cf;
       })
-      .compose(v -> Future.succeededFuture());
+      .compose(v -> {
+        LOGGER.info("Main future done; returning void");
+        return Future.succeededFuture();
+      });
+
+    mf
+      .onSuccess(v -> LOGGER.info("Finished main future ZZZZZZ"))
+      .onFailure(v -> LOGGER.info("Failed main future ZZZZZZ", v));
+    return mf;
   }
 
   /**

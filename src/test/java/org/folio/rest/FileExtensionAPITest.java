@@ -331,7 +331,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("fileExtension.duplication.invalid"));
+      .body("errors[0].message", is("File extension .varc already exists"));
   }
 
   @Test
@@ -354,7 +354,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .post(FILE_EXTENSION_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("fileExtension.duplication.invalid"));
+      .body("errors[0].message", is("File extension .marc already exists"));
 
     RestAssured.given()
       .spec(spec)
@@ -363,7 +363,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .post(FILE_EXTENSION_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("fileExtension.extension.invalid"));
+      .body("errors[0].message", is("File extension  .marc  is not a valid format"));
   }
 
   @Test
@@ -390,7 +390,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .post(FILE_EXTENSION_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("fileExtension.extension.invalid"));
+      .body("errors[0].message", is("File extension ma rc is not a valid format"));
   }
 
 }

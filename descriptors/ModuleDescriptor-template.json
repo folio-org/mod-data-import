@@ -331,12 +331,12 @@
   "permissionSets": [
   	{
       "permissionName": "data-import.assembleStorageFile.post",
-      "displayName": "Permission to assemble a file out of uploaded fragments",
+      "displayName": "Data Import - assemble a file out of uploaded fragments",
       "description": "Permission to assemble a file out of uploaded fragments"
     },
     {
       "permissionName": "data-import.splitconfig.get",
-      "displayName": "Get the status of file splitting configuration",
+      "displayName": "Data Import - get the status of file splitting configuration",
       "description": "Get the status of file splitting configuration"
     },
     {

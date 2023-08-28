@@ -6,6 +6,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,7 +43,7 @@ public class ModTenantAPI extends TenantAPI {
 
   @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
-    LOGGER.info(attributes);
+    LOGGER.info(JsonObject.mapFrom(attributes).toString());
     LOGGER.info(headers);
     return super.loadData(attributes, tenantId, headers, context)
       .compose(num -> {

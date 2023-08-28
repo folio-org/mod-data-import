@@ -56,8 +56,7 @@ public class UsersClient {
     httpGet.setHeader((HttpHeaders.ACCEPT), MediaType.APPLICATION_JSON);
     try {
       httpGet.setURI(
-        new URIBuilder()
-          .setPath(endpoint)
+        new URIBuilder(String.format("%s/%s", params.getOkapiUrl(), endpoint))
           .addParameters(
             query
               .entrySet()

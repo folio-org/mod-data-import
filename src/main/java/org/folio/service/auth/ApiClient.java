@@ -13,6 +13,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.MediaType;
@@ -68,7 +69,7 @@ public abstract class ApiClient {
       throw new IllegalArgumentException(e);
     }
 
-    LOGGER.info("Sending GET request {}", request);
+    LOGGER.debug("Sending GET request {}", request);
 
     try (
       CloseableHttpResponse response = HttpClients
@@ -87,7 +88,13 @@ public abstract class ApiClient {
     String endpoint,
     Object payload
   ) {
-    return postOrPut(() -> new HttpPost(), params, endpoint, payload);
+    return postOrPut(
+      HttpPost::new,
+      params,
+      endpoint,
+      payload,
+      ApiClient::getResponseEntity
+    );
   }
 
   protected Optional<JsonObject> put(
@@ -95,14 +102,21 @@ public abstract class ApiClient {
     String endpoint,
     Object payload
   ) {
-    return postOrPut(() -> new HttpPut(), params, endpoint, payload);
+    return postOrPut(
+      HttpPut::new,
+      params,
+      endpoint,
+      payload,
+      ApiClient::getResponseEntity
+    );
   }
 
   protected Optional<JsonObject> postOrPut(
     Supplier<HttpEntityEnclosingRequestBase> createRequest,
     OkapiConnectionParams params,
     String endpoint,
-    Object payload
+    Object payload,
+    Function<CloseableHttpResponse, Optional<JsonObject>> responseMapper
   ) {
     HttpEntityEnclosingRequestBase request = createRequest.get();
 
@@ -127,14 +141,14 @@ public abstract class ApiClient {
       throw new IllegalArgumentException(e);
     }
 
-    LOGGER.info("Sending POST request {} with payload {}", request, payload);
+    LOGGER.debug("Sending POST request {} with payload {}", request, payload);
 
     try (
       CloseableHttpResponse response = HttpClients
         .createDefault()
         .execute(request)
     ) {
-      return getResponseEntity(response);
+      return responseMapper.apply(response);
     } catch (IOException e) {
       LOGGER.error("Exception while calling {}", request.getURI(), e);
       throw new UncheckedIOException(e);
@@ -143,18 +157,26 @@ public abstract class ApiClient {
 
   protected static Optional<JsonObject> getResponseEntity(
     CloseableHttpResponse response
-  ) throws IOException {
+  ) {
     HttpEntity entity = response.getEntity();
     if (
       response.getStatusLine().getStatusCode() >= HttpStatus.SC_OK &&
       response.getStatusLine().getStatusCode() < HttpStatus.SC_BAD_REQUEST &&
       entity != null
     ) {
-      String body = EntityUtils.toString(entity);
+      String body;
+
+      try {
+        body = EntityUtils.toString(entity);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+
       LOGGER.debug("Response body: {}", body);
+
       return Optional.of(new JsonObject(body));
     } else {
-      LOGGER.warn("Non-200 status code returned: {}", response.getStatusLine());
+      LOGGER.warn("Non-2xx status code returned: {}", response.getStatusLine());
       return Optional.empty();
     }
   }

@@ -1,8 +1,12 @@
 package org.folio.service.auth;
 
 import io.vertx.core.json.JsonObject;
+import java.util.Optional;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.apache.http.client.methods.HttpPost;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.springframework.stereotype.Component;
 
@@ -18,15 +22,35 @@ public class AuthClient extends ApiClient {
       .getString("okapiToken");
   }
 
-  public JsonObject saveCredentials(
+  public void saveCredentials(
     OkapiConnectionParams params,
     LoginCredentials payload
   ) {
-    return post(params, CREDENTIALS_ENDPOINT, payload).orElseThrow();
+    if (
+      postOrPut(
+        HttpPost::new,
+        params,
+        CREDENTIALS_ENDPOINT,
+        payload,
+        r -> {
+          // return optional so it can be caught and handled after
+          if (r.getStatusLine().getStatusCode() == 201) {
+            return Optional.of(new JsonObject());
+          } else {
+            return Optional.empty();
+          }
+        }
+      )
+        .isEmpty()
+    ) {
+      throw new IllegalStateException();
+    }
   }
 
   @Data
   @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
   public static class LoginCredentials {
 
     private String userId;

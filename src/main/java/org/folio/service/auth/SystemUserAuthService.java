@@ -34,7 +34,7 @@ public class SystemUserAuthService {
   private String username;
   private String password;
 
-  // will be filled when called for cache purposes
+  // will be filled lazily for cache purposes
   private Optional<User> systemUser;
   private Optional<String> authToken;
 
@@ -70,8 +70,11 @@ public class SystemUserAuthService {
 
         User user = getOrCreateSystemUserFromApi(okapiConnectionParams);
         validatePermissions(okapiConnectionParams, user);
+        getAuthToken(okapiConnectionParams);
 
-        LOGGER.info("System user logged in; token: {}", getAuthToken());
+        LOGGER.info("System user logged in successfully!");
+
+        this.systemUser = Optional.of(user);
 
         return user;
       });
@@ -89,11 +92,6 @@ public class SystemUserAuthService {
     Optional<User> user = usersClient.getUserByUsername(
       okapiConnectionParams,
       username
-    );
-
-    authClient.saveCredentials(
-      okapiConnectionParams,
-      getLoginCredentials(okapiConnectionParams, user.get().getId())
     );
 
     return user.orElseGet(() -> {
@@ -169,17 +167,16 @@ public class SystemUserAuthService {
     }
   }
 
-  public String getAuthToken() {
+  public String getAuthToken(OkapiConnectionParams okapiConnectionParams) {
     return this.authToken.orElseGet(() -> {
-        OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(
-          null,
-          null
-        );
-
         String token = authClient.login(
           okapiConnectionParams,
-          getLoginCredentials(okapiConnectionParams, null)
+          getLoginCredentials(
+            okapiConnectionParams,
+            this.systemUser.map(User::getId).orElse(null)
+          )
         );
+
         this.authToken = Optional.of(token);
 
         return token;

@@ -1,28 +1,24 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ConfigurationUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.service.auth.SystemUserAuthService;
 import org.folio.service.cleanup.StorageCleanupService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import javax.ws.rs.core.Response;
-import java.util.Map;
-
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 
 public class ModTenantAPI extends TenantAPI {
 
@@ -37,23 +33,23 @@ public class ModTenantAPI extends TenantAPI {
   @Autowired
   private StorageCleanupService storageCleanupService;
 
+  @Autowired
+  private SystemUserAuthService systemUserAuthService;
+
   public ModTenantAPI() { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
 
   @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
+    LOGGER.info(attributes);
+    LOGGER.info(headers);
     return super.loadData(attributes, tenantId, headers, context)
       .compose(num -> {
         initStorageCleanupService(headers, context);
         return setupDefaultFileExtensions(headers).map(num);
       })
-      .compose(num -> this.prepareSystemUser(tenantId, headers).map(v -> num));
-  }
-
-  private Future<Void> prepareSystemUser(String tenantId, Map<String, String> headers) {
-    LOGGER.info("PREPARING SYSTEM USER!!!! for tenantId={}, got headers {}", tenantId, headers);
-    return Future.succeededFuture();
+      .compose(num -> systemUserAuthService.prepareSystemUser(tenantId, headers).map(v -> num));
   }
 
   private Future<Boolean> setupDefaultFileExtensions(Map<String, String> headers) {

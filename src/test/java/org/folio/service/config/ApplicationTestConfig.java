@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @ComponentScan(basePackages = {
   "org.folio.dao",
   "org.folio.rest.impl",
+  "org.folio.service.auth",
   "org.folio.service.cleanup",
   "org.folio.service.file",
   "org.folio.service.fileextension",

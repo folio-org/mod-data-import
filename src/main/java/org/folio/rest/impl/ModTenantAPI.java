@@ -47,7 +47,10 @@ public class ModTenantAPI extends TenantAPI {
         initStorageCleanupService(headers, context);
         return setupDefaultFileExtensions(headers).map(num);
       })
-      .compose(num -> systemUserAuthService.prepareSystemUser(headers).map(v -> num));
+      .map(v -> {
+        systemUserAuthService.getSystemUser(headers);
+        return v;
+      });
   }
 
   private Future<Boolean> setupDefaultFileExtensions(Map<String, String> headers) {

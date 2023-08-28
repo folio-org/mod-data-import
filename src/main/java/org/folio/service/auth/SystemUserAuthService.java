@@ -1,8 +1,5 @@
 package org.folio.service.auth;
 
-import io.vertx.core.Future;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -13,9 +10,9 @@ import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.rest.jaxrs.model.PermissionUser;
-import org.folio.rest.jaxrs.model.Personal;
-import org.folio.rest.jaxrs.model.User;
+import org.folio.service.auth.AuthClient.LoginCredentials;
+import org.folio.service.auth.PermissionsClient.PermissionUser;
+import org.folio.service.auth.UsersClient.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,18 +24,23 @@ public class SystemUserAuthService {
 
   private static final List<String> PERMISSIONS = Arrays.asList(
     "change-manager.jobexecutions.get",
-    "change-manager.jobexecutions.put",
-    "orders.item.unopen"
+    "change-manager.jobexecutions.put"
   );
 
+  private AuthClient authClient;
   private PermissionsClient permissionsClient;
   private UsersClient usersClient;
 
   private String username;
   private String password;
 
+  // will be filled when called for cache purposes
+  private Optional<User> systemUser;
+  private Optional<String> authToken;
+
   @Autowired
   public SystemUserAuthService(
+    AuthClient authClient,
     PermissionsClient permissionsClient,
     UsersClient usersClient,
     @Value(
@@ -48,26 +50,34 @@ public class SystemUserAuthService {
       "${SYSTEM_PROCESSING_PASSWORD:data-import-system-user}"
     ) String password
   ) {
+    this.authClient = authClient;
     this.permissionsClient = permissionsClient;
     this.usersClient = usersClient;
 
     this.username = username;
     this.password = password;
+
+    this.systemUser = Optional.empty();
+    this.authToken = Optional.empty();
   }
 
-  public Future<Void> prepareSystemUser(Map<String, String> headers) {
-    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(
-      headers,
-      null
-    );
+  public User getSystemUser(Map<String, String> headers) {
+    return this.systemUser.orElseGet(() -> {
+        OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(
+          headers,
+          null
+        );
 
-    User user = getOrCreateSystemUser(okapiConnectionParams);
-    validatePermissions(okapiConnectionParams, user);
+        User user = getOrCreateSystemUserFromApi(okapiConnectionParams);
+        validatePermissions(okapiConnectionParams, user);
 
-    return Future.succeededFuture();
+        LOGGER.info("System user logged in; token: {}", getAuthToken());
+
+        return user;
+      });
   }
 
-  public User getOrCreateSystemUser(
+  protected User getOrCreateSystemUserFromApi(
     OkapiConnectionParams okapiConnectionParams
   ) {
     LOGGER.info(
@@ -75,62 +85,68 @@ public class SystemUserAuthService {
       username,
       okapiConnectionParams.getTenantId()
     );
-    JsonArray users = usersClient
-      .getUserByUsername(okapiConnectionParams, username)
-      .orElseThrow()
-      .getJsonArray("users");
 
-    if (users.isEmpty()) {
+    Optional<User> user = usersClient.getUserByUsername(
+      okapiConnectionParams,
+      username
+    );
+
+    authClient.saveCredentials(
+      okapiConnectionParams,
+      getLoginCredentials(okapiConnectionParams, user.get().getId())
+    );
+
+    return user.orElseGet(() -> {
       LOGGER.info(
         "Creating system user {} in tenant {}",
         username,
         okapiConnectionParams.getTenantId()
       );
-      return usersClient
-        .createUser(okapiConnectionParams, createSystemUserEntity())
-        .orElseThrow()
-        .mapTo(User.class);
-    } else {
-      User user = users.getJsonObject(0).mapTo(User.class);
 
-      LOGGER.info("Found system user with ID {}", user.getId());
+      User result = usersClient.createUser(
+        okapiConnectionParams,
+        createSystemUserEntity()
+      );
 
-      return user;
-    }
+      authClient.saveCredentials(
+        okapiConnectionParams,
+        getLoginCredentials(okapiConnectionParams, result.getId())
+      );
+
+      return result;
+    });
   }
 
-  public PermissionUser validatePermissions(
+  protected PermissionUser validatePermissions(
     OkapiConnectionParams okapiConnectionParams,
     User user
   ) {
-    JsonArray permissions = permissionsClient
-      .getPermissionsUserByUserId(okapiConnectionParams, user.getId())
-      .orElseThrow()
-      .getJsonArray("permissionUsers");
+    Optional<PermissionUser> permissionUser = permissionsClient.getPermissionsUserByUserId(
+      okapiConnectionParams,
+      user.getId()
+    );
 
-    if (permissions.isEmpty()) {
+    if (permissionUser.isEmpty()) {
       LOGGER.info(
         "Creating permissions for system user {} in tenant {}",
         user.getId(),
         okapiConnectionParams.getTenantId()
       );
 
-      PermissionUser permissionUser = new PermissionUser()
-        .withId(UUID.randomUUID().toString())
-        .withUserId(user.getId())
-        .withPermissions(PERMISSIONS);
+      PermissionUser payload = PermissionUser
+        .builder()
+        .id(UUID.randomUUID().toString())
+        .userId(user.getId())
+        .permissions(PERMISSIONS)
+        .build();
 
-      return permissionsClient
-        .createPermissionsUser(okapiConnectionParams, permissionUser)
-        .orElseThrow()
-        .mapTo(PermissionUser.class);
+      return permissionsClient.createPermissionsUser(
+        okapiConnectionParams,
+        payload
+      );
     } else {
-      PermissionUser permissionUser = permissions
-        .getJsonObject(0)
-        .mapTo(PermissionUser.class);
-
       Set<String> missingPermissions = new HashSet<>(PERMISSIONS);
-      missingPermissions.removeAll(permissionUser.getPermissions());
+      missingPermissions.removeAll(permissionUser.get().getPermissions());
 
       if (!missingPermissions.isEmpty()) {
         LOGGER.warn(
@@ -139,26 +155,57 @@ public class SystemUserAuthService {
           user.getId()
         );
 
-        permissionUser.getPermissions().addAll(missingPermissions);
+        PermissionUser payload = permissionUser.get();
+        payload.getPermissions().addAll(missingPermissions);
 
-        permissionUser =
-          permissionsClient
-            .updatePermissionsUser(okapiConnectionParams, permissionUser)
-            .orElseThrow()
-            .mapTo(PermissionUser.class);
+        return permissionsClient.updatePermissionsUser(
+          okapiConnectionParams,
+          payload
+        );
       } else {
         LOGGER.info("System user's permissions look good");
+        return permissionUser.get();
       }
-
-      return permissionUser;
     }
   }
 
+  public String getAuthToken() {
+    return this.authToken.orElseGet(() -> {
+        OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(
+          null,
+          null
+        );
+
+        String token = authClient.login(
+          okapiConnectionParams,
+          getLoginCredentials(okapiConnectionParams, null)
+        );
+        this.authToken = Optional.of(token);
+
+        return token;
+      });
+  }
+
+  private LoginCredentials getLoginCredentials(
+    OkapiConnectionParams okapiConnectionParams,
+    String userId
+  ) {
+    return LoginCredentials
+      .builder()
+      .userId(userId)
+      .username(username)
+      .password(password)
+      .tenant(okapiConnectionParams.getTenantId())
+      .build();
+  }
+
   public User createSystemUserEntity() {
-    return new User()
-      .withId(UUID.randomUUID().toString())
-      .withActive(true)
-      .withUsername(username)
-      .withPersonal(new Personal().withLastName("SystemDataImport"));
+    return User
+      .builder()
+      .id(UUID.randomUUID().toString())
+      .active(true)
+      .username(username)
+      .personal(User.Personal.builder().lastName("SystemDataImport").build())
+      .build();
   }
 }

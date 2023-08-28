@@ -1,10 +1,13 @@
 package org.folio.service.auth;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.vertx.core.json.JsonObject;
 import java.util.Map;
 import java.util.Optional;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +40,9 @@ public class UsersClient extends ApiClient {
 
   @Data
   @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class User {
 
     private String id;
@@ -46,6 +52,9 @@ public class UsersClient extends ApiClient {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Personal {
 
       private String lastName;

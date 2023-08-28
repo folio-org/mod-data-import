@@ -6,7 +6,6 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,20 +36,18 @@ public class ModTenantAPI extends TenantAPI {
   @Autowired
   private SystemUserAuthService systemUserAuthService;
 
-  public ModTenantAPI() { //NOSONAR
+  public ModTenantAPI() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
 
   @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
-    LOGGER.info(JsonObject.mapFrom(attributes).toString());
-    LOGGER.info(headers);
     return super.loadData(attributes, tenantId, headers, context)
       .compose(num -> {
         initStorageCleanupService(headers, context);
         return setupDefaultFileExtensions(headers).map(num);
       })
-      .compose(num -> systemUserAuthService.prepareSystemUser(tenantId, headers).map(v -> num));
+      .compose(num -> systemUserAuthService.prepareSystemUser(headers).map(v -> num));
   }
 
   private Future<Boolean> setupDefaultFileExtensions(Map<String, String> headers) {

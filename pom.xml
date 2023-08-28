@@ -232,6 +232,18 @@
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
+      <artifactId>mod-users</artifactId>
+      <version>19.1.1</version>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>mod-permissions</artifactId>
+      <version>6.3.2</version>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
       <version>2.7.1</version>
     </dependency>

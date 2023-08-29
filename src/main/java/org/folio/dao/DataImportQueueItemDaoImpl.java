@@ -40,9 +40,9 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static final String GET_BY_ID_SQL =
     "SELECT * FROM %s.%s WHERE id = $1";
   private static final String INSERT_SQL =
-    "INSERT INTO %s.%s (id, job_execution_id, upload_definition_id, tenant, original_size, file_path, timestamp, part_number, processing) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
+    "INSERT INTO %s.%s (id, job_execution_id, upload_definition_id, tenant, original_size, file_path, timestamp, part_number, processing, okapi_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
   private static final String UPDATE_BY_ID_SQL =
-    "UPDATE %s.%s SET job_execution_id = $2, upload_definition_id = $3, tenant = $4, original_size = $5, file_path = $6, timestamp = $7, part_number = $8, processing = $9 WHERE id = $1";
+    "UPDATE %s.%s SET job_execution_id = $2, upload_definition_id = $3, tenant = $4, original_size = $5, file_path = $6, timestamp = $7, part_number = $8, processing = $9, okapi_url = $10 WHERE id = $1";
   private static final String DELETE_BY_ID_SQL =
     "DELETE FROM %s.%s WHERE id = $1";
   private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
@@ -223,7 +223,8 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
             timeZone.toZoneId()
           ),
           dataImportQueueItem.getPartNumber(),
-          dataImportQueueItem.getProcessing()
+          dataImportQueueItem.getProcessing(),
+          dataImportQueueItem.getOkapiUrl()
         ),
         promise
       );
@@ -257,7 +258,8 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
               timeZone.toZoneId()
             ),
             dataImportQueueItem.getPartNumber(),
-            dataImportQueueItem.getProcessing()
+            dataImportQueueItem.getProcessing(),
+            dataImportQueueItem.getOkapiUrl()
           ),
           promise
         );
@@ -308,7 +310,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private DataImportQueueItem mapRowJsonToQueueItem(Row rowAsJson) {
     DataImportQueueItem queueItem = new DataImportQueueItem();
     queueItem.setId(rowAsJson.getString("id"));
-    queueItem.setJobExecutionId(rowAsJson.getString("job_exeution_id"));
+    queueItem.setJobExecutionId(rowAsJson.getString("job_execution_id"));
     queueItem.setUploadDefinitionId(
       rowAsJson.getString("upload_definition_id")
     );
@@ -324,6 +326,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     }
     queueItem.setPartNumber(rowAsJson.getInteger("part_number"));
     queueItem.setProcessing(rowAsJson.getBoolean("processing"));
+    queueItem.setOkapiUrl(rowAsJson.getString("okapi_url"));
     return queueItem;
   }
 

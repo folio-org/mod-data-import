@@ -2,7 +2,7 @@
   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
-  <changeSet id="2023-08-24--00-00-create-queue-item-table" author="EricValuk">
+  <changeSet id="2023-08-28--00-00-create-queue-item-table" author="EricValuk+ncovercash">
     <createTable tableName="queue_items">
       <column name="id" type="uuid">
         <constraints primaryKey="true" nullable="false" />
@@ -15,6 +15,8 @@
       <column name="tenant" type="text" />
       <column name="part_number" type="int" />
       <column name="processing" type="boolean" defaultValueBoolean="false" />
+      <column name="okapi_url" type="text"
+        remarks="Included as some items may be started by instances which have not received API calls" />
     </createTable>
     <createIndex indexName="idx_queue_processing" tableName="queue_items">
       <column name="processing" />

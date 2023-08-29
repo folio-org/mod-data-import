@@ -82,7 +82,7 @@ public class SplitFileProcessingService {
   public Future<Void> startJob(
     ProcessFilesRqDto entity,
     ChangeManagerClient client,
-    String tenant
+    OkapiConnectionParams params
   ) {
     CompositeFuture splittingFuture = CompositeFuture.all(
       entity
@@ -136,7 +136,7 @@ public class SplitFileProcessingService {
                 entity.getJobProfileInfo(),
                 client,
                 split.getTotalRecords(),
-                tenant,
+                params,
                 split.getSplitKeys()
               );
             })
@@ -157,7 +157,7 @@ public class SplitFileProcessingService {
    * @param client the {@link ChangeManagerClient} to make API calls to
    * @param jobProfileId the ID of the job profile to be used for later processing
    * @param parentJobSize the size of the parent job, as calculated by {@code FileSplitUtilities}
-   * @param tenant the tenant of the request
+   * @param params the headers from the original request
    * @param keys the list of S3 keys to register, as returned by {@code FileSplitService}
    *
    * @return a {@link CompositeFuture} of {@link JobExecution}
@@ -168,7 +168,7 @@ public class SplitFileProcessingService {
     JobProfileInfo jobProfileInfo,
     ChangeManagerClient client,
     int parentJobSize,
-    String tenant,
+    OkapiConnectionParams params,
     List<String> keys
   ) {
     List<Future<JobExecution>> futures = new ArrayList<>();
@@ -201,12 +201,13 @@ public class SplitFileProcessingService {
                   .withId(UUID.randomUUID().toString())
                   .withJobExecutionId(execution.getId())
                   .withUploadDefinitionId(parentUploadDefinition.getId())
-                  .withTenant(tenant)
+                  .withTenant(params.getTenantId())
                   .withOriginalSize(parentJobSize)
                   .withFilePath(key)
                   .withTimestamp(new Date())
                   .withPartNumber(thisPartNumber)
                   .withProcessing(false)
+                  .withOkapiUrl(params.getOkapiUrl())
               )
               // we don't want the queue item, just the execution, so we discard the result
               // and return the execution from the earlier step

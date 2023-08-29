@@ -89,7 +89,7 @@ public class SplitFileProcessingService {
         .getUploadDefinition()
         .getFileDefinitions()
         .stream()
-        .map(FileDefinition::getName)
+        .map(FileDefinition::getSourcePath)
         .map(this::splitFile)
         .collect(Collectors.toList())
     );

@@ -255,6 +255,11 @@ public class S3JobRunningVerticle extends AbstractVerticle {
               .withStatus(StatusDto.Status.ERROR),
             params
           );
+        } else {
+          LOGGER.info(
+            "Completed processing job execution {}!",
+            queueItem.getJobExecutionId()
+          );
         }
       });
   }

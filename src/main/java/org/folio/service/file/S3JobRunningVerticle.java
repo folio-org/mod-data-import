@@ -119,22 +119,20 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
           return promise.future();
         })
-        .onSuccess(didProcess -> {
-          if (Boolean.TRUE.equals(didProcess)) {
+        .onComplete(result -> {
+          if (result.succeeded() && Boolean.TRUE.equals(result.result())) {
             this.run();
-          } else {
+          } else if (result.succeeded()) {
             // wait before checking again
             LOGGER.info(
               "No queue items available to run, checking again in {}ms",
               MS_BETWEEN_IDLE_POLLS
             );
             vertx.setTimer(MS_BETWEEN_IDLE_POLLS, v -> this.run());
+          } else {
+            LOGGER.error("Error running queue item...", result.cause());
+            vertx.setTimer(MS_BETWEEN_IDLE_POLLS, v -> this.run());
           }
-        })
-        .onFailure(err -> {
-          LOGGER.error("Error running queue item...", err);
-          // immediately retry
-          this.run();
         });
     } catch (InterruptedException e) {
       LOGGER.fatal("Interrupted while waiting for semaphore", e);

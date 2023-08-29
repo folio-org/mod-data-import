@@ -68,6 +68,8 @@ public class SystemUserAuthService {
   }
 
   public String getAuthToken(OkapiConnectionParams okapiConnectionParams) {
+    LOGGER.info("Attempting {}", getLoginCredentials(okapiConnectionParams));
+
     return authClient.login(
       okapiConnectionParams,
       getLoginCredentials(okapiConnectionParams)

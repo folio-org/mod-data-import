@@ -34,10 +34,6 @@ public class SystemUserAuthService {
   private String username;
   private String password;
 
-  // will be filled lazily for cache purposes
-  private Optional<User> systemUser;
-  private Optional<String> authToken;
-
   @Autowired
   public SystemUserAuthService(
     AuthClient authClient,
@@ -56,28 +52,26 @@ public class SystemUserAuthService {
 
     this.username = username;
     this.password = password;
-
-    this.systemUser = Optional.empty();
-    this.authToken = Optional.empty();
   }
 
-  public User getSystemUser(Map<String, String> headers) {
-    return this.systemUser.orElseGet(() -> {
-        OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(
-          headers,
-          null
-        );
+  public void initializeSystemUser(Map<String, String> headers) {
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(
+      headers,
+      null
+    );
 
-        User user = getOrCreateSystemUserFromApi(okapiConnectionParams);
-        validatePermissions(okapiConnectionParams, user);
-        getAuthToken(okapiConnectionParams);
+    User user = getOrCreateSystemUserFromApi(okapiConnectionParams);
+    validatePermissions(okapiConnectionParams, user);
+    getAuthToken(okapiConnectionParams);
 
-        LOGGER.info("System user logged in successfully!");
+    LOGGER.info("System user created successfully!");
+  }
 
-        this.systemUser = Optional.of(user);
-
-        return user;
-      });
+  public String getAuthToken(OkapiConnectionParams okapiConnectionParams) {
+    return authClient.login(
+      okapiConnectionParams,
+      getLoginCredentials(okapiConnectionParams)
+    );
   }
 
   protected User getOrCreateSystemUserFromApi(
@@ -108,7 +102,7 @@ public class SystemUserAuthService {
 
       authClient.saveCredentials(
         okapiConnectionParams,
-        getLoginCredentials(okapiConnectionParams, result.getId())
+        getLoginCredentials(okapiConnectionParams)
       );
 
       return result;
@@ -167,36 +161,18 @@ public class SystemUserAuthService {
     }
   }
 
-  public String getAuthToken(OkapiConnectionParams okapiConnectionParams) {
-    return this.authToken.orElseGet(() -> {
-        String token = authClient.login(
-          okapiConnectionParams,
-          getLoginCredentials(
-            okapiConnectionParams,
-            this.systemUser.map(User::getId).orElse(null)
-          )
-        );
-
-        this.authToken = Optional.of(token);
-
-        return token;
-      });
-  }
-
-  private LoginCredentials getLoginCredentials(
-    OkapiConnectionParams okapiConnectionParams,
-    String userId
+  protected LoginCredentials getLoginCredentials(
+    OkapiConnectionParams okapiConnectionParams
   ) {
     return LoginCredentials
       .builder()
-      .userId(userId)
       .username(username)
       .password(password)
       .tenant(okapiConnectionParams.getTenantId())
       .build();
   }
 
-  public User createSystemUserEntity() {
+  protected User createSystemUserEntity() {
     return User
       .builder()
       .id(UUID.randomUUID().toString())

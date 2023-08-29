@@ -14,6 +14,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -309,10 +310,12 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
 
   private DataImportQueueItem mapRowJsonToQueueItem(Row rowAsJson) {
     DataImportQueueItem queueItem = new DataImportQueueItem();
-    queueItem.setId(rowAsJson.getString("id"));
-    queueItem.setJobExecutionId(rowAsJson.getString("job_execution_id"));
+    queueItem.setId(rowAsJson.get(UUID.class, "id").toString());
+    queueItem.setJobExecutionId(
+      rowAsJson.get(UUID.class, "job_execution_id").toString()
+    );
     queueItem.setUploadDefinitionId(
-      rowAsJson.getString("upload_definition_id")
+      rowAsJson.get(UUID.class, "upload_definition_id").toString()
     );
     queueItem.setTenant(rowAsJson.getString("tenant"));
     queueItem.setFilePath(rowAsJson.getString("file_path"));

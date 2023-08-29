@@ -69,7 +69,7 @@ public abstract class ApiClient {
       throw new IllegalArgumentException(e);
     }
 
-    LOGGER.debug("Sending GET request {}", request);
+    LOGGER.debug("Sending request {}", request);
 
     try (
       CloseableHttpResponse response = HttpClients

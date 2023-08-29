@@ -141,12 +141,7 @@ public abstract class ApiClient {
       throw new IllegalArgumentException(e);
     }
 
-    LOGGER.warn(
-      "Sending request {} with payload {} and headers {}",
-      request,
-      payload,
-      request.getAllHeaders()
-    );
+    LOGGER.debug("Sending request {} with payload {}", request, payload);
 
     try (
       CloseableHttpResponse response = HttpClients

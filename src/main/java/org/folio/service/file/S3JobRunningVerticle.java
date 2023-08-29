@@ -19,6 +19,7 @@ import lombok.With;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
@@ -45,6 +46,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
+  private DataImportQueueItemDao queueItemDao;
+
   private MinioStorageService minioStorageService;
   private ScoreService scoreService;
   private SystemUserAuthService systemUserService;
@@ -58,6 +61,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   @Autowired
   public S3JobRunningVerticle(
     Vertx vertx,
+    DataImportQueueItemDao queueItemDao,
     MinioStorageService minioStorageService,
     ScoreService scoreService,
     SystemUserAuthService systemUserService,
@@ -67,6 +71,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     LOGGER.info("Constructing S3JobRunningVerticle");
 
     this.vertx = vertx;
+
+    this.queueItemDao = queueItemDao;
 
     this.minioStorageService = minioStorageService;
     this.systemUserService = systemUserService;
@@ -131,6 +137,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             vertx.setTimer(MS_BETWEEN_IDLE_POLLS, v -> this.run());
           } else {
             LOGGER.error("Error running queue item...", result.cause());
+            result.cause().printStackTrace();
             vertx.setTimer(MS_BETWEEN_IDLE_POLLS, v -> this.run());
           }
         });
@@ -161,7 +168,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
     return uploadDefinitionService
       .getJobExecutionById(queueItem.getJobExecutionId(), params)
-      .map(jobExecution -> new QueueJob().withJobExecution(jobExecution))
+      .map(jobExecution ->
+        new QueueJob().withJobExecution(jobExecution).withFile(localFile)
+      )
       .compose(job ->
         uploadDefinitionService
           .updateJobExecutionStatus(
@@ -206,6 +215,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         );
         return job;
       })
+      .onComplete(v -> queueItemDao.deleteDataImportQueueItem(queueItem.getId())
+      )
       .onComplete(v -> {
         try {
           FileUtils.delete(localFile);
@@ -225,7 +236,11 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             .withStatus(StatusDto.Status.ERROR),
           params
         )
-      );
+      )
+      .onFailure(err -> {
+        LOGGER.error(err);
+        err.printStackTrace();
+      });
   }
 
   /**

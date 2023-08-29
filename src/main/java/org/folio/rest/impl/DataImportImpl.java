@@ -9,6 +9,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ExceptionHelper;
@@ -544,25 +545,48 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportAssembleStorageFile(AssembleFileDto entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileId(String uploadDefinitionId,
+                              String fileId, AssembleFileDto entity, Map<String, String> okapiHeaders,
+                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug(
-          "postDataImportAssembleStorageFile:: Assemble Storage File to complete upload {}",
+          "postDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileId:: Assemble Storage File to complete upload def={} file={} key={}",
+          uploadDefinitionId,
+          fileId,
           entity.getKey()
         );
-        minioStorageService.completeMultipartFileUpload(entity.getKey(),  entity.getUploadId(),entity.getTags())
-          .map(  completed -> Boolean.TRUE.equals(completed) ? PostDataImportAssembleStorageFileResponse.respond204() : PostDataImportAssembleStorageFileResponse.respond400WithTextPlain("Failed to assemble Data Import upload file") )
+        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+        fileService.beforeFileSave(fileId, uploadDefinitionId, params)
+          .map(uploadDefinition ->
+            uploadDefinition
+              .getFileDefinitions()
+              .stream()
+              .filter(f -> f.getId().equals(fileId))
+              .findFirst()
+              .orElseThrow()
+          )
+          .compose(fileDefinition ->
+            minioStorageService.completeMultipartFileUpload(entity.getKey(), entity.getUploadId(), entity.getTags())
+              .map(completed -> Pair.of(fileDefinition, completed))
+          )
+          .compose(result -> {
+            if (Boolean.FALSE.equals(result.getRight())) {
+              return Future.failedFuture("Failed to assemble Data Import upload file");
+            }
+            return Future.succeededFuture(result.getLeft());
+          })
+          .compose(fileDefinition -> fileService.afterFileSave(fileDefinition.withSourcePath(entity.getKey()), params))
+          .map(vv -> PostDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileIdResponse.respond204())
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOGGER.warn("getDataImportUploadUrl:: Failed to assemble file upload", e);
+        LOGGER.warn("postDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileId:: Failed to assemble file upload", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
-    
+
   }
   /**
    * Validate {@link FileExtension} before save or update

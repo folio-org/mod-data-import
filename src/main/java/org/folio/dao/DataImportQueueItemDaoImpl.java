@@ -11,7 +11,10 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -320,13 +323,9 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     queueItem.setTenant(rowAsJson.getString("tenant"));
     queueItem.setFilePath(rowAsJson.getString("file_path"));
     queueItem.setOriginalSize(rowAsJson.getInteger("original_size"));
-    try {
-      queueItem.setTimestamp(
-        dateFormatter.parse(rowAsJson.getString("timestamp"))
-      );
-    } catch (ParseException e) {
-      throw new IllegalArgumentException("Unable to parse timestamp");
-    }
+    queueItem.setTimestamp(
+      Date.from(LocalDateTime.now().toInstant(ZoneOffset.UTC))
+    );
     queueItem.setPartNumber(rowAsJson.getInteger("part_number"));
     queueItem.setProcessing(rowAsJson.getBoolean("processing"));
     queueItem.setOkapiUrl(rowAsJson.getString("okapi_url"));

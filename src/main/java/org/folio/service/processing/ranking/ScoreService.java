@@ -94,18 +94,20 @@ public class ScoreService {
 
     set.addAll(waiting.getDataImportQueueItems());
 
-    LOGGER.info("Calculated scores:");
-    set
-      .stream()
-      .forEach(item ->
-        LOGGER.info(
-          "  {}/{}#{}: {}",
-          item.getTenant(),
-          item.getId(),
-          item.getPartNumber(),
-          calculateScoreCached(cache, item, tenantUsageMap)
-        )
-      );
+    if (!set.isEmpty()) {
+      LOGGER.info("Calculated scores:");
+      set
+        .stream()
+        .forEach(item ->
+          LOGGER.info(
+            "  {}/{}#{}: {}",
+            item.getTenant(),
+            item.getId(),
+            item.getPartNumber(),
+            calculateScoreCached(cache, item, tenantUsageMap)
+          )
+        );
+    }
 
     return set;
   }

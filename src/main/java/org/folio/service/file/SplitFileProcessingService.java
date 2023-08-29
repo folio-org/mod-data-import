@@ -208,6 +208,7 @@ public class SplitFileProcessingService {
                   .withPartNumber(thisPartNumber)
                   .withProcessing(false)
                   .withOkapiUrl(params.getOkapiUrl())
+                  .withDataType(jobProfileInfo.getDataType().toString())
               )
               // we don't want the queue item, just the execution, so we discard the result
               // and return the execution from the earlier step

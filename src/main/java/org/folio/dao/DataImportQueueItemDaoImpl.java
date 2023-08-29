@@ -9,9 +9,7 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Date;
@@ -44,9 +42,9 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static final String GET_BY_ID_SQL =
     "SELECT * FROM %s.%s WHERE id = $1";
   private static final String INSERT_SQL =
-    "INSERT INTO %s.%s (id, job_execution_id, upload_definition_id, tenant, original_size, file_path, timestamp, part_number, processing, okapi_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
+    "INSERT INTO %s.%s (id, job_execution_id, upload_definition_id, tenant, original_size, file_path, timestamp, part_number, processing, okapi_url, data_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)";
   private static final String UPDATE_BY_ID_SQL =
-    "UPDATE %s.%s SET job_execution_id = $2, upload_definition_id = $3, tenant = $4, original_size = $5, file_path = $6, timestamp = $7, part_number = $8, processing = $9, okapi_url = $10 WHERE id = $1";
+    "UPDATE %s.%s SET job_execution_id = $2, upload_definition_id = $3, tenant = $4, original_size = $5, file_path = $6, timestamp = $7, part_number = $8, processing = $9, okapi_url = $10, data_type = $11 WHERE id = $1";
   private static final String DELETE_BY_ID_SQL =
     "DELETE FROM %s.%s WHERE id = $1";
   private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
@@ -228,7 +226,8 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           ),
           dataImportQueueItem.getPartNumber(),
           dataImportQueueItem.getProcessing(),
-          dataImportQueueItem.getOkapiUrl()
+          dataImportQueueItem.getOkapiUrl(),
+          dataImportQueueItem.getDataType()
         ),
         promise
       );
@@ -263,7 +262,8 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
             ),
             dataImportQueueItem.getPartNumber(),
             dataImportQueueItem.getProcessing(),
-            dataImportQueueItem.getOkapiUrl()
+            dataImportQueueItem.getOkapiUrl(),
+            dataImportQueueItem.getDataType()
           ),
           promise
         );
@@ -329,6 +329,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     queueItem.setPartNumber(rowAsJson.getInteger("part_number"));
     queueItem.setProcessing(rowAsJson.getBoolean("processing"));
     queueItem.setOkapiUrl(rowAsJson.getString("okapi_url"));
+    queueItem.setDataType(rowAsJson.getString("data_type"));
     return queueItem;
   }
 

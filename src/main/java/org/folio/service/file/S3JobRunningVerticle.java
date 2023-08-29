@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 import lombok.AllArgsConstructor;
@@ -24,6 +25,7 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.StatusDto.ErrorStatus;
 import org.folio.service.auth.SystemUserAuthService;
@@ -161,15 +163,24 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     File localFile;
     try {
       localFile =
-        File.createTempFile("data-import-dl", queueItem.getJobExecutionId());
+        File.createTempFile(
+          "di-tmp-",
+          // later stage requires correct file extension
+          Path.of(queueItem.getFilePath()).getFileName().toString()
+        );
+      LOGGER.info("Created temporary file {}", localFile.toPath());
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
 
-    return uploadDefinitionService
-      .getJobExecutionById(queueItem.getJobExecutionId(), params)
-      .map(jobExecution ->
-        new QueueJob().withJobExecution(jobExecution).withFile(localFile)
+    return Future
+      .succeededFuture(
+        new QueueJob().withQueueItem(queueItem).withFile(localFile)
+      )
+      .compose(job ->
+        uploadDefinitionService
+          .getJobExecutionById(queueItem.getJobExecutionId(), params)
+          .map(jobExecution -> job.withJobExecution(jobExecution))
       )
       .compose(job ->
         uploadDefinitionService
@@ -210,14 +221,19 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         fileProcessor.processFile(
           job.getFile(),
           job.getJobExecution().getId(),
-          job.getJobExecution().getJobProfileInfo(),
+          // this is the only part used on our end
+          new JobProfileInfo()
+            .withDataType(
+              JobProfileInfo.DataType.fromValue(
+                job.getQueueItem().getDataType()
+              )
+            ),
           params
         );
         return job;
       })
-      .onComplete(v -> queueItemDao.deleteDataImportQueueItem(queueItem.getId())
-      )
-      .onComplete(v -> {
+      .onComplete(ar -> {
+        queueItemDao.deleteDataImportQueueItem(queueItem.getId());
         try {
           FileUtils.delete(localFile);
         } catch (IOException e) {
@@ -227,19 +243,19 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             e
           );
         }
-      })
-      .onFailure(v ->
-        uploadDefinitionService.updateJobExecutionStatus(
-          queueItem.getJobExecutionId(),
-          new StatusDto()
-            .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
-            .withStatus(StatusDto.Status.ERROR),
-          params
-        )
-      )
-      .onFailure(err -> {
-        LOGGER.error(err);
-        err.printStackTrace();
+
+        if (ar.failed()) {
+          LOGGER.error(ar.cause());
+          ar.cause().printStackTrace();
+
+          uploadDefinitionService.updateJobExecutionStatus(
+            queueItem.getJobExecutionId(),
+            new StatusDto()
+              .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
+              .withStatus(StatusDto.Status.ERROR),
+            params
+          );
+        }
       });
   }
 

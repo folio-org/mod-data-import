@@ -180,7 +180,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       )
       .compose(job ->
         minioStorageService
-          .readFile(job.getJobExecution().getFileName())
+          .readFile(job.getJobExecution().getSourcePath())
           .map(inputStream -> job.withInputStream(inputStream))
       )
       .map(job -> {

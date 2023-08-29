@@ -17,6 +17,8 @@
       <column name="processing" type="boolean" defaultValueBoolean="false" />
       <column name="okapi_url" type="text"
         remarks="Included as some items may be started by instances which have not received API calls" />
+      <column name="data_type" type="text"
+        remarks="The dataType property from the original job profile" />
     </createTable>
     <createIndex indexName="idx_queue_processing" tableName="queue_items">
       <column name="processing" />

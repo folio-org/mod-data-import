@@ -48,7 +48,7 @@ public class ModTenantAPI extends TenantAPI {
         return setupDefaultFileExtensions(headers).map(num);
       })
       .map(v -> {
-        systemUserAuthService.getSystemUser(headers);
+        systemUserAuthService.initializeSystemUser(headers);
         return v;
       });
   }

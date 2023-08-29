@@ -236,7 +236,14 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     String okapiUrl
   ) {
     OkapiConnectionParams provisionalParams = new OkapiConnectionParams(
-      Map.of("x-okapi-url", okapiUrl, "x-okapi-tenant", tenant),
+      Map.of(
+        "x-okapi-url",
+        okapiUrl,
+        "x-okapi-tenant",
+        tenant,
+        "x-okapi-token",
+        ""
+      ),
       vertx
     );
 

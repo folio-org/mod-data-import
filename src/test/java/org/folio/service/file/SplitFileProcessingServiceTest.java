@@ -25,10 +25,13 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dao.DataImportQueueItemDaoImpl;
 import org.folio.dao.util.PostgresClientFactory;
+import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
@@ -84,8 +87,8 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
       spy(
         new ChangeManagerClient(
           "http://localhost:" + mockServer.port(),
-          this.TENANT_ID,
-          this.TOKEN
+          TENANT_ID,
+          TOKEN
         )
       );
 
@@ -126,7 +129,10 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         null,
         changeManagerClient,
         0,
-        TENANT_ID,
+        new OkapiConnectionParams(
+          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+          null
+        ),
         Arrays.asList()
       )
       .onComplete(
@@ -168,7 +174,10 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         null,
         changeManagerClient,
         123,
-        TENANT_ID,
+        new OkapiConnectionParams(
+          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+          null
+        ),
         Arrays.asList("key1")
       )
       .onComplete(
@@ -225,7 +234,10 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         null,
         changeManagerClient,
         123,
-        TENANT_ID,
+        new OkapiConnectionParams(
+          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+          null
+        ),
         Arrays.asList("key1", "key2", "key3")
       )
       .onComplete(
@@ -278,7 +290,10 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         null,
         changeManagerClient,
         123,
-        TENANT_ID,
+        new OkapiConnectionParams(
+          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+          null
+        ),
         Arrays.asList("key1")
       )
       .onComplete(

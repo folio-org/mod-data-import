@@ -289,7 +289,7 @@ public class DataImportImpl implements DataImport {
             .startJob(
               entity,
               new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken()),
-              params.getTenantId()
+              params
             )
             .map(
               vv -> PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()

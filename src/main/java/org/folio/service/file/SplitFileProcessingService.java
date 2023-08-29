@@ -57,13 +57,16 @@ public class SplitFileProcessingService {
   private DataImportQueueItemDao queueItemDao;
   private UploadDefinitionService uploadDefinitionService;
 
+  private S3JobRunningVerticle jobRunner;
+
   @Autowired
   public SplitFileProcessingService(
     Vertx vertx,
     FileSplitService fileSplitService,
     MinioStorageService minioStorageService,
     DataImportQueueItemDao queueItemDao,
-    UploadDefinitionService uploadDefinitionService
+    UploadDefinitionService uploadDefinitionService,
+    S3JobRunningVerticle jobRunner
   ) {
     this.vertx = vertx;
 
@@ -72,6 +75,8 @@ public class SplitFileProcessingService {
 
     this.queueItemDao = queueItemDao;
     this.uploadDefinitionService = uploadDefinitionService;
+
+    this.jobRunner = jobRunner;
   }
 
   public Future<Void> startJob(
@@ -138,6 +143,7 @@ public class SplitFileProcessingService {
             .collect(Collectors.toList())
         );
       })
+      .andThen(v -> jobRunner.run())
       .compose(v -> Future.succeededFuture());
   }
 
@@ -286,7 +292,7 @@ public class SplitFileProcessingService {
   /**
    * Sends a InitJobExecutionsRqDto with sufficient error handling
    *
-   * @param client the {@link ChangeMAnagerClient} to send the request with
+   * @param client the {@link ChangeManagerClient} to send the request with
    * @param request the request to send
    * @return a promise which will succeed with the response body as a {@link InitJobExecutionsRsDto}
    */

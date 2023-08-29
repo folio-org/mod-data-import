@@ -123,7 +123,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -142,7 +142,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, null, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), null,new OkapiConnectionParams(okapiHeaders, vertx));
     // then
     future.onComplete(ar -> {
       assertTrue(ar.failed());
@@ -160,7 +160,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -179,7 +179,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -200,7 +200,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -223,7 +223,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -244,7 +244,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -263,7 +263,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -282,7 +282,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -303,7 +303,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -326,7 +326,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {

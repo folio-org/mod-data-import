@@ -24,7 +24,8 @@ public class SystemUserAuthService {
 
   private static final List<String> PERMISSIONS = Arrays.asList(
     "change-manager.jobexecutions.get",
-    "change-manager.jobexecutions.put"
+    "change-manager.jobexecutions.put",
+    "source-storage.snapshots.post"
   );
 
   private AuthClient authClient;

@@ -221,6 +221,13 @@ public class SplitFileProcessingService {
             ? parentUploadDefinition.getMetadata().getCreatedByUserId()
             : null
         );
+      LOGGER.info(
+        "child {} uid {}",
+        key,
+        Objects.nonNull(parentUploadDefinition.getMetadata())
+          ? parentUploadDefinition.getMetadata().getCreatedByUserId()
+          : null
+      );
 
       // outer scope variable could change before lambda execution, so we make it final here
       int thisPartNumber = partNumber;
@@ -314,6 +321,12 @@ public class SplitFileProcessingService {
           ? entity.getUploadDefinition().getMetadata().getCreatedByUserId()
           : null
       );
+    LOGGER.info(
+      "parent uid {}",
+      Objects.nonNull(entity.getUploadDefinition().getMetadata())
+        ? entity.getUploadDefinition().getMetadata().getCreatedByUserId()
+        : null
+    );
 
     return sendJobExecutionRequest(client, initJobExecutionsRqDto)
       .map(response ->

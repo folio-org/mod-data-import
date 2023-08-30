@@ -340,9 +340,10 @@
             "users.item.post",
             "users.item.put",
             "login.item.post",
-            "perms.users.item.post",
             "perms.users.get",
-            "perms.users.assign.immutable"
+            "perms.users.assign.immutable",
+            "perms.users.item.post",
+            "perms.users.item.put"
           ]
         },
         {

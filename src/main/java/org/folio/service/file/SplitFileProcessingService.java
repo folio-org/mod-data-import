@@ -150,7 +150,7 @@ public class SplitFileProcessingService {
                       .map(jobExec ->
                         new JobExecutionDto().withId(jobExec.getId())
                       )
-                      .toList(),
+                      .collect(Collectors.toList()),
                     entity.getJobProfileInfo(),
                     params
                   )

@@ -201,7 +201,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     vertx.executeBlocking(
       (Promise<Void> blockingFuture) -> {
         try {
-          LOGGER.info("Deleting file {}", key);
+          LOGGER.info("Deleting source file {}", key);
           client.remove(key);
           blockingFuture.complete();
         } catch (S3ClientException e) {

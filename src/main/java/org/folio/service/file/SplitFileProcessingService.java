@@ -32,6 +32,7 @@ import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
+import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.processing.split.FileSplitService;
 import org.folio.service.processing.split.FileSplitUtilities;
@@ -57,16 +58,13 @@ public class SplitFileProcessingService {
   private DataImportQueueItemDao queueItemDao;
   private UploadDefinitionService uploadDefinitionService;
 
-  private S3JobRunningVerticle jobRunner;
-
   @Autowired
   public SplitFileProcessingService(
     Vertx vertx,
     FileSplitService fileSplitService,
     MinioStorageService minioStorageService,
     DataImportQueueItemDao queueItemDao,
-    UploadDefinitionService uploadDefinitionService,
-    S3JobRunningVerticle jobRunner
+    UploadDefinitionService uploadDefinitionService
   ) {
     this.vertx = vertx;
 
@@ -75,8 +73,6 @@ public class SplitFileProcessingService {
 
     this.queueItemDao = queueItemDao;
     this.uploadDefinitionService = uploadDefinitionService;
-
-    this.jobRunner = jobRunner;
   }
 
   public Future<Void> startJob(
@@ -138,13 +134,20 @@ public class SplitFileProcessingService {
                 split.getTotalRecords(),
                 params,
                 split.getSplitKeys()
-              );
+              )
+                .compose(r ->
+                  uploadDefinitionService.updateJobExecutionStatus(
+                    jobExecEntry.getValue().getId(),
+                    new StatusDto()
+                      .withStatus(StatusDto.Status.COMMIT_IN_PROGRESS),
+                    params
+                  )
+                );
             })
             .collect(Collectors.toList())
         );
       })
       .andThen(v -> LOGGER.info("Job split and queued successfully!"))
-      .andThen(v -> jobRunner.run())
       .compose(v -> Future.succeededFuture());
   }
 

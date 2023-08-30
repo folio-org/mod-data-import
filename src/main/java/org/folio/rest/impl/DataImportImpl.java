@@ -508,7 +508,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportJobExecutionsDownloadUrlByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
+  public void getDataImportJobExecutionsDownloadUrlByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -519,7 +519,7 @@ public class DataImportImpl implements DataImport {
         splitFileProcessingService
           .getKey(jobExecutionId, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
           .compose(key -> minioStorageService.getFileDownloadUrl(key))
-          .map(PostDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse::respond200WithApplicationJson)
+          .map(GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

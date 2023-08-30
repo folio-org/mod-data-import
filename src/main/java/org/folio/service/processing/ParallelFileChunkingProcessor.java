@@ -126,7 +126,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   }
 
   /**
-   * Process file, synchronously
+   * Process file, in a future
    *
    * @param file               file on disk
    * @param jobExecutionId     job execution ID
@@ -219,7 +219,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params     parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobsProfile(List<JobExecutionDto> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
+  public Future<Void> updateJobsProfile(List<JobExecutionDto> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Promise<Void> promise = Promise.promise();
     List<Future<Void>> updateJobProfileFutures = new ArrayList<>(jobs.size());
     for (JobExecutionDto job : jobs) {

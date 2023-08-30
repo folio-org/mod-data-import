@@ -30,10 +30,12 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
+import org.folio.rest.jaxrs.model.JobExecutionDto;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.processing.ParallelFileChunkingProcessor;
 import org.folio.service.processing.split.FileSplitService;
 import org.folio.service.processing.split.FileSplitUtilities;
 import org.folio.service.s3storage.MinioStorageService;
@@ -58,6 +60,8 @@ public class SplitFileProcessingService {
   private DataImportQueueItemDao queueItemDao;
   private UploadDefinitionService uploadDefinitionService;
 
+  private ParallelFileChunkingProcessor fileProcessor;
+
   @Autowired
   public SplitFileProcessingService(
     Vertx vertx,
@@ -73,6 +77,8 @@ public class SplitFileProcessingService {
 
     this.queueItemDao = queueItemDao;
     this.uploadDefinitionService = uploadDefinitionService;
+
+    this.fileProcessor = new ParallelFileChunkingProcessor();
   }
 
   public Future<Void> startJob(
@@ -135,6 +141,30 @@ public class SplitFileProcessingService {
                 params,
                 split.getSplitKeys()
               )
+                .compose(childExecs ->
+                  fileProcessor.updateJobsProfile(
+                    childExecs
+                      .list()
+                      .stream()
+                      .map(JobExecution.class::cast)
+                      .map(jobExec ->
+                        new JobExecutionDto().withId(jobExec.getId())
+                      )
+                      .toList(),
+                    entity.getJobProfileInfo(),
+                    params
+                  )
+                )
+                .compose(r ->
+                  fileProcessor.updateJobsProfile(
+                    Arrays.asList(
+                      new JobExecutionDto()
+                        .withId(jobExecEntry.getValue().getId())
+                    ),
+                    entity.getJobProfileInfo(),
+                    params
+                  )
+                )
                 .compose(r ->
                   uploadDefinitionService.updateJobExecutionStatus(
                     jobExecEntry.getValue().getId(),

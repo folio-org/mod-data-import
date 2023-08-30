@@ -115,8 +115,7 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
         null,
         null,
         queueItemDao,
-        uploadDefinitionService,
-        null
+        uploadDefinitionService
       );
   }
 

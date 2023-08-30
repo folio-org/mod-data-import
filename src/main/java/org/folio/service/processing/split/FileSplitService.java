@@ -123,6 +123,8 @@ public class FileSplitService {
           LOGGER.error("Could not delete temporary folder", e);
         }
 
+        LOGGER.info("All done splitting! Got chunks {}", innerResult);
+
         return innerResult;
       });
   }

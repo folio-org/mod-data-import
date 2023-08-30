@@ -143,6 +143,7 @@ public class SplitFileProcessingService {
             .collect(Collectors.toList())
         );
       })
+      .andThen(v -> LOGGER.info("Job split and queued successfully!"))
       .andThen(v -> jobRunner.run())
       .compose(v -> Future.succeededFuture());
   }
@@ -269,7 +270,7 @@ public class SplitFileProcessingService {
           .getUploadDefinition()
           .getFileDefinitions()
           .stream()
-          .map(FileDefinition::getName)
+          .map(FileDefinition::getSourcePath)
           .map(key -> new File().withName(key))
           .collect(Collectors.toList())
       )

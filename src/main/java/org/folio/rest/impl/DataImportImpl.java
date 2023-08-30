@@ -292,11 +292,12 @@ public class DataImportImpl implements DataImport {
               new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken()),
               params
             )
-            .map(
-              vv -> PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()
+            .onSuccess(v -> 
+              Future.succeededFuture(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
+                .map(Response.class::cast)
+                .onComplete(asyncResultHandler)
             )
-            .map(Response.class::cast)
-            .onComplete(asyncResultHandler);
+            .onFailure(err -> asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(err))));
         } else {
           fileProcessor.process(
             JsonObject.mapFrom(entity),

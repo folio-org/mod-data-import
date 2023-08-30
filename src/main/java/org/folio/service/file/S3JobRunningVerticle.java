@@ -217,20 +217,26 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           throw new UncheckedIOException(e);
         }
       })
-      .map(job -> {
-        fileProcessor.processFile(
-          job.getFile(),
-          job.getJobExecution().getId(),
-          // this is the only part used on our end
-          new JobProfileInfo()
-            .withDataType(
-              JobProfileInfo.DataType.fromValue(
-                job.getQueueItem().getDataType()
-              )
-            ),
-          params
-        );
-        return job;
+      .compose(job -> {
+        Promise<QueueJob> promise = Promise.promise();
+
+        fileProcessor
+          .processFile(
+            job.getFile(),
+            job.getJobExecution().getId(),
+            // this is the only part used on our end
+            new JobProfileInfo()
+              .withDataType(
+                JobProfileInfo.DataType.fromValue(
+                  job.getQueueItem().getDataType()
+                )
+              ),
+            params
+          )
+          .onSuccess(v -> promise.complete(job))
+          .onFailure(promise::fail);
+
+        return promise.future();
       })
       .onComplete(ar -> {
         queueItemDao.deleteDataImportQueueItem(queueItem.getId());

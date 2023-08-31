@@ -4,9 +4,9 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.ext.web.handler.HttpException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -123,7 +123,7 @@ public class SplitFileProcessingService {
                         .withTenant(tenant)
                         .withOriginalSize(parentJobSize)
                         .withFilePath(key)
-                        .withTimestamp(Instant.now().toString())
+                        .withTimestamp(new Date())
                         .withPartNumber(thisPartNumber)
                         .withProcessing(false)
                     )

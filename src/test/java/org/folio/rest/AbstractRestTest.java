@@ -49,7 +49,7 @@ import org.folio.service.auth.UsersClient.User;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -156,11 +156,11 @@ public abstract class AbstractRestTest {
   )
     .withServices(LocalStackContainer.Service.S3);
 
-  @Rule
-  public WireMockRule mockServer = new WireMockRule(
+  @ClassRule
+  public static WireMockRule mockServer = new WireMockRule(
     WireMockConfiguration.wireMockConfig()
       .dynamicPort()
-      .notifier(new Slf4jNotifier(true)));
+      .notifier(new Slf4jNotifier(true)), true);
 
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
@@ -280,6 +280,9 @@ public abstract class AbstractRestTest {
 
   @Before
   public void setUp(TestContext context) throws IOException {
+    WireMock.reset();
+    WireMock.configureFor(mockServer.port());
+
     clearTable(context);
     String okapiUserIdHeader = UUID.randomUUID().toString();
     spec = new RequestSpecBuilder()

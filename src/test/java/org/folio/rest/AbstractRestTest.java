@@ -55,6 +55,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -278,7 +279,7 @@ public abstract class AbstractRestTest {
   }
 
   @Before
-  public void setUp(TestContext context) {
+  public void setUp(TestContext context) throws IOException {
     clearTable(context);
     String okapiUserIdHeader = UUID.randomUUID().toString();
     spec = new RequestSpecBuilder()
@@ -320,7 +321,7 @@ public abstract class AbstractRestTest {
       .willReturn(okJson(JsonObject.mapFrom(childrenJobExecutions).toString())));
   }
 
-  private void clearTable(TestContext context) {
+  protected void clearTable(TestContext context) {
     Async async = context.async();
     PostgresClient.getInstance(vertx, TENANT_ID).delete(FILE_EXTENSIONS_TABLE, new Criterion(), event1 -> {
       PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), event2 -> {

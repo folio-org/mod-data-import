@@ -5,6 +5,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.io.FileUtils;
 import org.folio.dao.UploadDefinitionDao;
@@ -20,6 +22,7 @@ import org.folio.spring.SpringContextUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.File;
@@ -35,6 +38,7 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.LOADED;
 
+@RunWith(VertxUnitRunner.class)
 public class StorageCleanupServiceImplTest extends AbstractRestTest {
 
   private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";

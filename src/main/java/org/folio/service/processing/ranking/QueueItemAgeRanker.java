@@ -42,7 +42,7 @@ public class QueueItemAgeRanker implements QueueItemRanker {
     DataImportQueueItem queueItem,
     Map<String, Long> tenantUsage
   ) {
-    Instant createdAt = Instant.parse(queueItem.getTimestamp());
+    Instant createdAt = queueItem.getTimestamp().toInstant();
     Instant now = Instant.now();
 
     long age =

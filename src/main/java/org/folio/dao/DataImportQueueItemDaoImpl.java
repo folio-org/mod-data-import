@@ -9,11 +9,18 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.Optional;
+import java.util.TimeZone;
+import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.NotFoundException;
+import org.apache.commons.lang3.time.TimeZones;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.PostgresClientFactory;
@@ -35,19 +42,28 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static final String GET_BY_ID_SQL =
     "SELECT * FROM %s.%s WHERE id = $1";
   private static final String INSERT_SQL =
-    "INSERT INTO %s.%s (id, jobExecutionId, uploadDefinitionId, tenant, originalSize, filePath, timestamp, partNumber, processing) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
+    "INSERT INTO %s.%s (id, job_execution_id, upload_definition_id, tenant, original_size, file_path, timestamp, part_number, processing, okapi_url, data_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)";
   private static final String UPDATE_BY_ID_SQL =
-    "UPDATE %s.%s SET jobExecutionId = $2, uploadDefinitionId = $3, tenant = $4, originalSize = $5, filePath = $6, timestamp = $7, partNumber = $8, processing = $9 WHERE id = $1";
+    "UPDATE %s.%s SET job_execution_id = $2, upload_definition_id = $3, tenant = $4, original_size = $5, file_path = $6, timestamp = $7, part_number = $8, processing = $9, okapi_url = $10, data_type = $11 WHERE id = $1";
   private static final String DELETE_BY_ID_SQL =
     "DELETE FROM %s.%s WHERE id = $1";
   private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
     "LOCK TABLE %s.%s IN ACCESS EXCLUSIVE MODE";
 
+  private static final String DATE_FORMAT_PATTERN =
+    "yyyy-MM-dd'T'HH:mm:ss.SSSX";
+
   private PostgresClientFactory pgClientFactory;
+  private SimpleDateFormat dateFormatter;
+  private TimeZone timeZone;
 
   @Autowired
   public DataImportQueueItemDaoImpl(PostgresClientFactory pgClientFactory) {
     this.pgClientFactory = pgClientFactory;
+
+    this.timeZone = TimeZone.getTimeZone(TimeZones.GMT_ID);
+    this.dateFormatter = new SimpleDateFormat(DATE_FORMAT_PATTERN);
+    this.dateFormatter.setTimeZone(this.timeZone);
   }
 
   @Override
@@ -200,13 +216,18 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
         Tuple.of(
           dataImportQueueItem.getId(),
           dataImportQueueItem.getJobExecutionId(),
-          dataImportQueueItem.getTenant(),
           dataImportQueueItem.getUploadDefinitionId(),
+          dataImportQueueItem.getTenant(),
           dataImportQueueItem.getOriginalSize(),
           dataImportQueueItem.getFilePath(),
-          dataImportQueueItem.getTimestamp(),
+          LocalDateTime.ofInstant(
+            dataImportQueueItem.getTimestamp().toInstant(),
+            timeZone.toZoneId()
+          ),
           dataImportQueueItem.getPartNumber(),
-          dataImportQueueItem.getProcessing()
+          dataImportQueueItem.getProcessing(),
+          dataImportQueueItem.getOkapiUrl(),
+          dataImportQueueItem.getDataType()
         ),
         promise
       );
@@ -235,9 +256,14 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
             dataImportQueueItem.getTenant(),
             dataImportQueueItem.getOriginalSize(),
             dataImportQueueItem.getFilePath(),
-            dataImportQueueItem.getTimestamp(),
+            LocalDateTime.ofInstant(
+              dataImportQueueItem.getTimestamp().toInstant(),
+              timeZone.toZoneId()
+            ),
             dataImportQueueItem.getPartNumber(),
-            dataImportQueueItem.getProcessing()
+            dataImportQueueItem.getProcessing(),
+            dataImportQueueItem.getOkapiUrl(),
+            dataImportQueueItem.getDataType()
           ),
           promise
         );
@@ -287,15 +313,23 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
 
   private DataImportQueueItem mapRowJsonToQueueItem(Row rowAsJson) {
     DataImportQueueItem queueItem = new DataImportQueueItem();
-    queueItem.setId(rowAsJson.getString("id"));
-    queueItem.setJobExecutionId(rowAsJson.getString("jobExeutionId"));
-    queueItem.setUploadDefinitionId(rowAsJson.getString("uploadDefinitionId"));
+    queueItem.setId(rowAsJson.get(UUID.class, "id").toString());
+    queueItem.setJobExecutionId(
+      rowAsJson.get(UUID.class, "job_execution_id").toString()
+    );
+    queueItem.setUploadDefinitionId(
+      rowAsJson.get(UUID.class, "upload_definition_id").toString()
+    );
     queueItem.setTenant(rowAsJson.getString("tenant"));
-    queueItem.setFilePath(rowAsJson.getString("filePath"));
-    queueItem.setOriginalSize(rowAsJson.getInteger("originalSize"));
-    queueItem.setTimestamp(rowAsJson.getString("timeStamp"));
-    queueItem.setPartNumber(rowAsJson.getInteger("partNumber"));
+    queueItem.setFilePath(rowAsJson.getString("file_path"));
+    queueItem.setOriginalSize(rowAsJson.getInteger("original_size"));
+    queueItem.setTimestamp(
+      Date.from(LocalDateTime.now().toInstant(ZoneOffset.UTC))
+    );
+    queueItem.setPartNumber(rowAsJson.getInteger("part_number"));
     queueItem.setProcessing(rowAsJson.getBoolean("processing"));
+    queueItem.setOkapiUrl(rowAsJson.getString("okapi_url"));
+    queueItem.setDataType(rowAsJson.getString("data_type"));
     return queueItem;
   }
 

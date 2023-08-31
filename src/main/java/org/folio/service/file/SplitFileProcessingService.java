@@ -16,7 +16,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.With;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
@@ -172,11 +175,28 @@ public class SplitFileProcessingService {
                       .withStatus(StatusDto.Status.COMMIT_IN_PROGRESS),
                     params
                   )
+                )
+                .andThen(v ->
+                  LOGGER.info(
+                    "Created child job executions for {}",
+                    jobExecEntry.getKey()
+                  )
                 );
             })
             .collect(Collectors.toList())
         );
       })
+      // do this after everything has been queued successfully
+      .compose(v ->
+        uploadDefinitionService.updateBlocking(
+          entity.getUploadDefinition().getId(),
+          definition ->
+            Future.succeededFuture(
+              definition.withStatus(UploadDefinition.Status.COMPLETED)
+            ),
+          params.getTenantId()
+        )
+      )
       .andThen(v -> LOGGER.info("Job split and queued successfully!"))
       .compose(v -> Future.succeededFuture());
   }
@@ -221,13 +241,6 @@ public class SplitFileProcessingService {
             ? parentUploadDefinition.getMetadata().getCreatedByUserId()
             : null
         );
-      LOGGER.info(
-        "child {} uid {}",
-        key,
-        Objects.nonNull(parentUploadDefinition.getMetadata())
-          ? parentUploadDefinition.getMetadata().getCreatedByUserId()
-          : null
-      );
 
       // outer scope variable could change before lambda execution, so we make it final here
       int thisPartNumber = partNumber;
@@ -321,20 +334,17 @@ public class SplitFileProcessingService {
           ? entity.getUploadDefinition().getMetadata().getCreatedByUserId()
           : null
       );
-    LOGGER.info(
-      "parent uid {}",
-      Objects.nonNull(entity.getUploadDefinition().getMetadata())
-        ? entity.getUploadDefinition().getMetadata().getCreatedByUserId()
-        : null
-    );
 
     return sendJobExecutionRequest(client, initJobExecutionsRqDto)
-      .map(response ->
+      .map(response -> {
+        LOGGER.info("Created parent job execution: {}", response);
         // turn into map from filename -> JobExecution
-        response
+        return response
           .getJobExecutions()
           .stream()
-          .collect(Collectors.toMap(JobExecution::getSourcePath, exec -> exec))
+          .collect(Collectors.toMap(JobExecution::getSourcePath, exec -> exec));
+      })
+      .onFailure(err -> LOGGER.error("Error creating parent job execution", err)
       );
   }
 
@@ -411,11 +421,8 @@ public class SplitFileProcessingService {
       .compose(v ->
         fileSplitService.splitFileFromS3(vertx.getOrCreateContext(), key)
       )
-      .onSuccess(list -> {
-        result.setSplitKeys(list);
-        // all data is now in the object
-        promise.complete(result);
-      })
+      // all data is now in the object
+      .onSuccess(list -> promise.complete(result.withSplitKeys(list)))
       .onFailure(promise::fail);
 
     return promise.future();
@@ -426,6 +433,9 @@ public class SplitFileProcessingService {
    * of job executions, etc
    */
   @Data
+  @With
+  @NoArgsConstructor
+  @AllArgsConstructor
   public static class SplitFileInformation {
 
     private String key;

@@ -238,7 +238,19 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
         return promise.future();
       })
-      .onComplete(ar -> {
+      .onFailure(err -> {
+        LOGGER.error("Unable to start chunk {}", queueItem, err);
+        err.printStackTrace();
+
+        uploadDefinitionService.updateJobExecutionStatus(
+          queueItem.getJobExecutionId(),
+          new StatusDto()
+            .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
+            .withStatus(StatusDto.Status.ERROR),
+          params
+        );
+      })
+      .onSuccess(result -> {
         queueItemDao.deleteDataImportQueueItem(queueItem.getId());
         try {
           FileUtils.delete(localFile);
@@ -250,23 +262,10 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           );
         }
 
-        if (ar.failed()) {
-          LOGGER.error(ar.cause());
-          ar.cause().printStackTrace();
-
-          uploadDefinitionService.updateJobExecutionStatus(
-            queueItem.getJobExecutionId(),
-            new StatusDto()
-              .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
-              .withStatus(StatusDto.Status.ERROR),
-            params
-          );
-        } else {
-          LOGGER.info(
-            "Completed processing job execution {}!",
-            queueItem.getJobExecutionId()
-          );
-        }
+        LOGGER.info(
+          "Completed processing job execution {}!",
+          queueItem.getJobExecutionId()
+        );
       });
   }
 

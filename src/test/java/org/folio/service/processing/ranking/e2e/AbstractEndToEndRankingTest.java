@@ -9,6 +9,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NavigableSet;
@@ -91,7 +92,7 @@ public abstract class AbstractEndToEndRankingTest
       .withTenant(tenant)
       .withOriginalSize(size)
       .withTimestamp(
-        Instant.now().minus(ageMinutes, ChronoUnit.MINUTES).toString()
+        Date.from(Instant.now().minus(ageMinutes, ChronoUnit.MINUTES))
       )
       .withPartNumber(partNumber);
   }

@@ -182,7 +182,7 @@
     <dependency>
       <groupId>com.github.tomakehurst</groupId>
       <artifactId>wiremock</artifactId>
-      <version>2.27.2</version>
+      <version>3.0.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>

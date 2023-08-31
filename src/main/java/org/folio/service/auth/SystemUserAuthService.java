@@ -22,7 +22,7 @@ public class SystemUserAuthService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private static final List<String> PERMISSIONS = Arrays.asList(
+  public static final List<String> PERMISSIONS = Arrays.asList(
     "change-manager.jobexecutions.get",
     "change-manager.jobexecutions.put",
     "mapping-metadata.get",

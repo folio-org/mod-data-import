@@ -1,5 +1,16 @@
 package org.folio.rest;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.created;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+
+import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -32,6 +43,9 @@ import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.s3.client.S3ClientFactory;
 import org.folio.s3.client.S3ClientProperties;
+import org.folio.service.auth.SystemUserAuthService;
+import org.folio.service.auth.PermissionsClient.PermissionUser;
+import org.folio.service.auth.UsersClient.User;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -45,6 +59,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
@@ -163,7 +178,7 @@ public abstract class AbstractRestTest {
 
     log.info("Starting LocalStack/S3...");
     localStackContainer.start();
-    log.info(localStackContainer.getEndpoint().toString());
+    log.info("Started LocalStack/S3 at {}", localStackContainer.getEndpoint().toString());
     System.setProperty("minio.endpoint", localStackContainer.getEndpoint().toString());
     System.setProperty("minio.region", localStackContainer.getRegion());
     System.setProperty("minio.accessKey", localStackContainer.getAccessKey());
@@ -214,7 +229,9 @@ public abstract class AbstractRestTest {
         throw new Exception(message);
     }
 
-    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN);
+    WireMockServer tenantMockServer = mockTenantUserCalls(okapiUrl);
+
+    TenantClient tenantClient = new TenantClient(tenantMockServer.baseUrl(), TENANT_ID, TOKEN);
 
     final DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put(HTTP_PORT, port));
     vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
@@ -223,17 +240,22 @@ public abstract class AbstractRestTest {
         tenantAttributes.setModuleTo(ModuleName.getModuleName() + TEST_MODULE_VERSION);
         tenantClient.postTenant(tenantAttributes, res2 -> {
           if (res2.result().statusCode() == 204) {
+            tenantMockServer.stop();
+            async.complete();
             return;
-          } if (res2.result().statusCode() == 201) {
+          } else if (res2.result().statusCode() == 201) {
             tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
+              tenantMockServer.stop();
+
               context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
               String error = res3.bodyAsJson(TenantJob.class).getError();
               if (error != null) {
-                context.assertEquals("Failed to make post tenant. Received status code 400", error);
+                context.fail("Failed to make post tenant. Received error: " + res3.bodyAsString());
               }
             }));
           } else {
-            context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
+            context.fail("Failed to make post tenant. Received non-2xx status code: " + res2.result().bodyAsString());
+            tenantMockServer.stop();
           }
           async.complete();
         });
@@ -275,26 +297,27 @@ public abstract class AbstractRestTest {
       .setBaseUri("http://localhost:" + port)
       .addHeader("Accept", "text/plain, application/json")
       .build();
-      WireMock.stubFor(WireMock.get(GET_USER_URL + okapiUserIdHeader)
-        .willReturn(WireMock.okJson(userResponse.toString())));
-      WireMock.stubFor(WireMock.get("/configurations/entries?query="
-        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")", StandardCharsets.UTF_8)
-        + "&offset=0&limit=3&")
-        .willReturn(WireMock.okJson(config.toString())));
-      WireMock.stubFor(WireMock.get("/configurations/entries?query="
-        + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", StandardCharsets.UTF_8)
-        + "&offset=0&limit=3&")
-        .willReturn(WireMock.okJson(config2.toString())));
-      WireMock.stubFor(WireMock.post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
-        .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionCreateSingleFile).toString())));
-      WireMock.stubFor(WireMock.post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 2)]"))
-        .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionCreateMultipleFiles).toString())));
-      WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*"), true))
-        .willReturn(WireMock.ok()));
-      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
-        .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).toString())));
-      WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))
-        .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(childrenJobExecutions).toString())));
+
+    WireMock.stubFor(get(GET_USER_URL + okapiUserIdHeader)
+      .willReturn(okJson(userResponse.toString())));
+    WireMock.stubFor(get("/configurations/entries?query="
+      + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")", StandardCharsets.UTF_8)
+      + "&offset=0&limit=3&")
+      .willReturn(okJson(config.toString())));
+    WireMock.stubFor(get("/configurations/entries?query="
+      + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", StandardCharsets.UTF_8)
+      + "&offset=0&limit=3&")
+      .willReturn(okJson(config2.toString())));
+    WireMock.stubFor(post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
+      .willReturn(created().withBody(JsonObject.mapFrom(jobExecutionCreateSingleFile).toString())));
+    WireMock.stubFor(post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 2)]"))
+      .willReturn(created().withBody(JsonObject.mapFrom(jobExecutionCreateMultipleFiles).toString())));
+    WireMock.stubFor(put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*"), true))
+      .willReturn(ok()));
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
+      .willReturn(okJson(JsonObject.mapFrom(jobExecution).toString())));
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))
+      .willReturn(okJson(JsonObject.mapFrom(childrenJobExecutions).toString())));
   }
 
   private void clearTable(TestContext context) {
@@ -309,4 +332,57 @@ public abstract class AbstractRestTest {
     });
   }
 
+  // done as a separate WireMock server to prevent these from polluting future tests
+  private static WireMockServer mockTenantUserCalls(String realUrl) {
+    WireMockServer tenantMockServer = new WireMockServer(new WireMockConfiguration().dynamicPort().notifier(new Slf4jNotifier(true)));
+    tenantMockServer.start();
+
+    log.info("Started mocking system user creation API calls on port {} in preparation for /_/tenant", tenantMockServer.port());
+
+    // send /_/tenant calls to the real ModTenantApi
+    log.info("Forwarding /_/tenant to real API at {}", realUrl);
+    tenantMockServer.stubFor(
+      get(new UrlPathPattern(new RegexPattern("/_/tenant.*"), true))
+        .willReturn(aResponse().proxiedFrom(realUrl))
+    );
+    tenantMockServer.stubFor(post("/_/tenant")
+      .willReturn(aResponse().proxiedFrom(realUrl))
+    );
+
+    tenantMockServer.stubFor(
+      get(urlPathEqualTo("/users"))
+        .withQueryParam("query", equalTo("username=\"data-import-system-user\""))
+        .willReturn(
+          okJson(new JsonObject(
+            Map.of("users", new JsonArray().add(User.builder().id("system-user-id").build()))
+          ).toString())
+        )
+    );
+
+    tenantMockServer.stubFor(
+      get(urlPathEqualTo("/perms/users"))
+        .withQueryParam("query", equalTo("userId==system-user-id"))
+        .willReturn(
+          okJson(new JsonObject(
+            Map.of(
+              "permissionUsers",
+              new JsonArray().add(
+                PermissionUser.builder()
+                  .permissions(SystemUserAuthService.PERMISSIONS)
+                  .build()
+              )
+            )
+          ).toString())
+        )
+    );
+
+    tenantMockServer.stubFor(
+      post(urlPathEqualTo("/authn/login"))
+        .willReturn(
+          okJson(new JsonObject(Map.of("okapiToken", "token")).toString())
+        )
+    );
+
+    return tenantMockServer;
+  }
 }

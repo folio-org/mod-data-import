@@ -109,7 +109,7 @@ public class SplitFileProcessingService {
               );
             } else {
               BufferMapper
-                .mapBufferContentToEntity(
+                .mapBufferContentToEntityAsync(
                   response.result().bodyAsBuffer(),
                   InitJobExecutionsRsDto.class
                 )

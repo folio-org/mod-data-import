@@ -251,7 +251,7 @@ public class SystemUserAuthService {
         );
 
         PermissionUser payload = permissionUser.get();
-        payload.getPermissions().addAll(missingPermissions);
+        payload.setPermissions(PERMISSIONS);
 
         return permissionsClient.updatePermissionsUser(
           okapiConnectionParams,

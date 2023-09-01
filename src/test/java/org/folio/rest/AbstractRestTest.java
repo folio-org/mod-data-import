@@ -51,6 +51,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.springframework.core.io.ClassPathResource;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -391,7 +392,16 @@ public abstract class AbstractRestTest {
             "permissionUsers",
             new JsonArray().add(
               PermissionUser.builder()
-                .permissions(SystemUserAuthService.PERMISSIONS)
+                .permissions(
+                  new SystemUserAuthService(
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    new ClassPathResource("permissions.txt")
+                  ).getPermissionsList()
+                )
                 .build()
             )
           ).toString())

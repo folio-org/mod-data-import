@@ -37,6 +37,8 @@ import org.junit.Test;
 
 public class ApiClientTest {
 
+  Map<String, String> emptyMap = Map.of();
+
   ApiClientProxy client = new ApiClientProxy();
 
   public WireMockServer mockServer = new WireMockServer(
@@ -92,7 +94,7 @@ public class ApiClientTest {
         .willReturn(okJson(new JsonObject().toString()))
     );
 
-    client.get(params, "endpoint", new HashMap<>());
+    client.get(params, "endpoint", emptyMap);
 
     mockServer.verify(1, anyRequestedFor(urlPathEqualTo("/endpoint")));
   }
@@ -101,7 +103,7 @@ public class ApiClientTest {
   public void testGetUriException() {
     assertThrows(
       IllegalArgumentException.class,
-      () -> client.get(badUriParams, "", new HashMap<>())
+      () -> client.get(badUriParams, "", emptyMap)
     );
   }
 
@@ -109,7 +111,7 @@ public class ApiClientTest {
   public void testGetRequestFailure() {
     assertThrows(
       UncheckedIOException.class,
-      () -> client.get(badRequestParams, "", new HashMap<>())
+      () -> client.get(badRequestParams, "", emptyMap)
     );
   }
 
@@ -139,13 +141,7 @@ public class ApiClientTest {
     assertThrows(
       IllegalArgumentException.class,
       () ->
-        client.postOrPut(
-          HttpPost::new,
-          badUriParams,
-          "",
-          new HashMap<>(),
-          v -> null
-        )
+        client.postOrPut(HttpPost::new, badUriParams, "", emptyMap, v -> null)
     );
   }
 
@@ -158,7 +154,7 @@ public class ApiClientTest {
           HttpPost::new,
           badRequestParams,
           "",
-          new HashMap<>(),
+          emptyMap,
           v -> null
         )
     );
@@ -166,16 +162,10 @@ public class ApiClientTest {
 
   @Test
   public void testPostRequestBodyFailure() {
+    Object obj = new Object();
     assertThrows(
       IllegalArgumentException.class,
-      () ->
-        client.postOrPut(
-          HttpPost::new,
-          params,
-          "endpoint",
-          new Object(),
-          v -> null
-        )
+      () -> client.postOrPut(HttpPost::new, params, "endpoint", obj, v -> null)
     );
   }
 
@@ -188,7 +178,7 @@ public class ApiClientTest {
       get(urlPathEqualTo("/endpoint")).willReturn(okJson(test.toString()))
     );
 
-    assertThat(client.get(params, "endpoint", new HashMap<>()).get(), is(test));
+    assertThat(client.get(params, "endpoint", emptyMap).get(), is(test));
   }
 
   @Test

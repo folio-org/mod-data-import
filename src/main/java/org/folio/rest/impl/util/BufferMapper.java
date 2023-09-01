@@ -24,7 +24,7 @@ public class BufferMapper {
   ) {
     Promise<T> promise = Promise.promise();
     try {
-      promise.complete(buffer.toJsonObject().mapTo(entityType));
+      promise.complete(mapBufferContentToEntitySync(buffer, entityType));
     } catch (Exception e) {
       promise.fail(e);
     }

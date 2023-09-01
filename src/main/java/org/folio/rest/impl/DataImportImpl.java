@@ -489,22 +489,17 @@ public class DataImportImpl implements DataImport {
   public void getDataImportJobExecutionsDownloadUrlByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      try {
-        LOGGER.debug(
-          "getDataImportJobExecutionsDownloadUrlByJobExecutionId:: getting download URL for job execution {}",
-          jobExecutionId
-        );
-        splitFileProcessingService
-          .getKey(jobExecutionId, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
-          .compose(key -> minioStorageService.getFileDownloadUrl(key))
-          .map(GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse::respond200WithApplicationJson)
-          .map(Response.class::cast)
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .onComplete(asyncResultHandler);
-      } catch (Exception e) {
-        LOGGER.warn("getDataImportJobExecutionsDownloadUrlByJobExecutionId:: Failed to get download url", e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
-      }
+      LOGGER.debug(
+        "getDataImportJobExecutionsDownloadUrlByJobExecutionId:: getting download URL for job execution {}",
+        jobExecutionId
+      );
+      splitFileProcessingService
+        .getKey(jobExecutionId, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
+        .compose(key -> minioStorageService.getFileDownloadUrl(key))
+        .map(GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse::respond200WithApplicationJson)
+        .map(Response.class::cast)
+        .otherwise(vv -> GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse.respond404WithTextPlain("Job execution not found"))
+        .onComplete(asyncResultHandler);
     });
   }
 

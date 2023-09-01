@@ -205,6 +205,11 @@ resourceTypes:
             body:
               application/json:
                 type: fileDownloadInfo
+          404:
+            description: "Job execution not found"
+            body:
+              text/plain:
+                example: "Job execution not found"
   /fileExtensions:
     displayName: File Extension
     description: API for managing file extensions

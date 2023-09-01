@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class UsersClient extends ApiClient {
 
   private static final String BASE_ENDPOINT = "users";
+  private static final String ARRAY_KEY = "users";
   private static final String GET_USERS_BY_USERNAME_QUERY = "username=\"%s\"";
 
   public Optional<User> getUserByUsername(
@@ -27,7 +28,7 @@ public class UsersClient extends ApiClient {
       Map.of("query", String.format(GET_USERS_BY_USERNAME_QUERY, username))
     )
       .orElseThrow()
-      .getJsonArray("users")
+      .getJsonArray(ARRAY_KEY)
       .stream()
       .findFirst()
       .map(o -> (JsonObject) o)

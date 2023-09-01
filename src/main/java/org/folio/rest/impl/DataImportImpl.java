@@ -448,17 +448,12 @@ public class DataImportImpl implements DataImport {
   @Override
   public void getDataImportUploadUrl(String fileName, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      try {
-        LOGGER.debug("getDataImportUploadUrl:: getting upload url for filename {}", fileName);
-        minioStorageService.getFileUploadFirstPartUrl(fileName, tenantId)
-          .map(GetDataImportUploadUrlResponse::respond200WithApplicationJson)
-          .map(Response.class::cast)
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .onComplete(asyncResultHandler);
-      } catch (Exception e) {
-        LOGGER.warn("getDataImportUploadUrl:: Failed to get upload url", e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
-      }
+      LOGGER.debug("getDataImportUploadUrl:: getting upload url for filename {}", fileName);
+      minioStorageService.getFileUploadFirstPartUrl(fileName, tenantId)
+        .map(GetDataImportUploadUrlResponse::respond200WithApplicationJson)
+        .map(Response.class::cast)
+        .otherwise(ExceptionHelper::mapExceptionToResponse)
+        .onComplete(asyncResultHandler);
     });
   }
 
@@ -466,22 +461,17 @@ public class DataImportImpl implements DataImport {
   public void getDataImportUploadUrlSubsequent(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
                                                Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      try {
-        LOGGER.debug(
-          "getDataImportUploadUrlSubsequent:: getting subsequent upload url, part #{} of key {} (upload ID {})",
-          partNumber,
-          key,
-          uploadId
-        );
-        minioStorageService.getFileUploadPartUrl(key, uploadId, partNumber)
-          .map(GetDataImportUploadUrlSubsequentResponse::respond200WithApplicationJson)
-          .map(Response.class::cast)
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .onComplete(asyncResultHandler);
-      } catch (Exception e) {
-        LOGGER.warn("getDataImportUploadUrl:: Failed to get upload url", e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
-      }
+      LOGGER.debug(
+        "getDataImportUploadUrlSubsequent:: getting subsequent upload url, part #{} of key {} (upload ID {})",
+        partNumber,
+        key,
+        uploadId
+      );
+      minioStorageService.getFileUploadPartUrl(key, uploadId, partNumber)
+        .map(GetDataImportUploadUrlSubsequentResponse::respond200WithApplicationJson)
+        .map(Response.class::cast)
+        .otherwise(ExceptionHelper::mapExceptionToResponse)
+        .onComplete(asyncResultHandler);
     });
   }
 

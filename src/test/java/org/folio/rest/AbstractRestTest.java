@@ -57,11 +57,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Map;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
@@ -323,13 +320,13 @@ public abstract class AbstractRestTest {
       .withQueryParam("limit", equalTo("3"))
       .willReturn(okJson(configurationStoragePath.toString())));
 
-      WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
+    WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
       .withQueryParam("query", equalTo("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")"))
       .withQueryParam("offset", equalTo("0"))
       .withQueryParam("limit", equalTo("3"))
       .willReturn(okJson(configurationStorageType.toString())));
 
-      WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
+    WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
       .withQueryParam("query", equalTo("module==DATA_IMPORT AND ( code==\"data.import.cleanup.time\")"))
       .withQueryParam("offset", equalTo("0"))
       .withQueryParam("limit", equalTo("3"))
@@ -380,8 +377,8 @@ public abstract class AbstractRestTest {
       get(urlPathEqualTo("/users"))
         .withQueryParam("query", equalTo("username=\"data-import-system-user\""))
         .willReturn(
-          okJson(new JsonObject(
-            Map.of("users", new JsonArray().add(User.builder().id("system-user-id").build()))
+          okJson(JsonObject.of(
+            "users", new JsonArray().add(User.builder().id("system-user-id").build())
           ).toString())
         )
     );
@@ -390,14 +387,12 @@ public abstract class AbstractRestTest {
       get(urlPathEqualTo("/perms/users"))
         .withQueryParam("query", equalTo("userId==system-user-id"))
         .willReturn(
-          okJson(new JsonObject(
-            Map.of(
-              "permissionUsers",
-              new JsonArray().add(
-                PermissionUser.builder()
-                  .permissions(SystemUserAuthService.PERMISSIONS)
-                  .build()
-              )
+          okJson(JsonObject.of(
+            "permissionUsers",
+            new JsonArray().add(
+              PermissionUser.builder()
+                .permissions(SystemUserAuthService.PERMISSIONS)
+                .build()
             )
           ).toString())
         )
@@ -406,7 +401,7 @@ public abstract class AbstractRestTest {
     tenantMockServer.stubFor(
       post(urlPathEqualTo("/authn/login"))
         .willReturn(
-          okJson(new JsonObject(Map.of("okapiToken", "token")).toString())
+          okJson(JsonObject.of("okapiToken", "token").toString())
         )
     );
 

@@ -109,6 +109,12 @@ public class StorageCleanupServiceImplTest extends AbstractRestTest {
     FileUtils.deleteDirectory(new File(STORAGE_PATH));
   }
 
+  @After
+  @Override
+  public void resetWiremock() {
+    // no-op
+  }
+
   @Test
   public void shouldRemoveFileAndReturnSucceededFutureWithTrueWhenUploadDefinitionHasStatusCompleted(TestContext context) {
     Async async = context.async();

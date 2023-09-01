@@ -46,6 +46,7 @@ import org.folio.s3.client.S3ClientProperties;
 import org.folio.service.auth.SystemUserAuthService;
 import org.folio.service.auth.PermissionsClient.PermissionUser;
 import org.folio.service.auth.UsersClient.User;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -123,19 +124,26 @@ public abstract class AbstractRestTest {
       jobExecution.withId(UUID.randomUUID().toString()).withSubordinationType(JobExecutionDto.SubordinationType.CHILD)))
     .withTotalRecords(2);
 
-  private JsonObject config = new JsonObject().put("totalRecords", 1)
+  private JsonObject configurationStoragePath = new JsonObject().put("totalRecords", 1)
     .put("configs", new JsonArray().add(new JsonObject()
       .put("module", "DATA_IMPORT")
       .put("code", "data.import.storage.path")
       .put("value", "./storage")
     ));
 
-  private JsonObject config2 = new JsonObject().put("totalRecords", 1)
-    .put("configs", new JsonArray().add(new JsonObject()
-      .put("module", "DATA_IMPORT")
-      .put("code", "data.import.storage.type")
-      .put("value", "LOCAL_STORAGE")
-    ));
+    private JsonObject configurationStorageType = new JsonObject().put("totalRecords", 1)
+      .put("configs", new JsonArray().add(new JsonObject()
+        .put("module", "DATA_IMPORT")
+        .put("code", "data.import.storage.type")
+        .put("value", "LOCAL_STORAGE")
+      ));
+
+    private JsonObject configurationCleanupTime = new JsonObject().put("totalRecords", 1)
+      .put("configs", new JsonArray().add(new JsonObject()
+        .put("module", "DATA_IMPORT")
+        .put("code", "data.import.cleanup.time")
+        .put("value", "3600000")
+      ));
 
   private InitJobExecutionsRsDto jobExecutionCreateSingleFile = new InitJobExecutionsRsDto()
     .withParentJobExecutionId(UUID.randomUUID().toString())
@@ -266,6 +274,11 @@ public abstract class AbstractRestTest {
     });
   }
 
+  @After
+  public void resetWiremock() {
+    WireMock.reset();
+  }
+
   @AfterClass
   public static void tearDownClass(final TestContext context) {
     Async async = context.async();
@@ -280,7 +293,6 @@ public abstract class AbstractRestTest {
 
   @Before
   public void setUp(TestContext context) throws IOException {
-    WireMock.reset();
     WireMock.configureFor(mockServer.port());
 
     clearTable(context);
@@ -304,14 +316,25 @@ public abstract class AbstractRestTest {
 
     WireMock.stubFor(get(GET_USER_URL + okapiUserIdHeader)
       .willReturn(okJson(userResponse.toString())));
-    WireMock.stubFor(get("/configurations/entries?query="
-      + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")", StandardCharsets.UTF_8)
-      + "&offset=0&limit=3&")
-      .willReturn(okJson(config.toString())));
-    WireMock.stubFor(get("/configurations/entries?query="
-      + URLEncoder.encode("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")", StandardCharsets.UTF_8)
-      + "&offset=0&limit=3&")
-      .willReturn(okJson(config2.toString())));
+
+    WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
+      .withQueryParam("query", equalTo("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")"))
+      .withQueryParam("offset", equalTo("0"))
+      .withQueryParam("limit", equalTo("3"))
+      .willReturn(okJson(configurationStoragePath.toString())));
+
+      WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
+      .withQueryParam("query", equalTo("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")"))
+      .withQueryParam("offset", equalTo("0"))
+      .withQueryParam("limit", equalTo("3"))
+      .willReturn(okJson(configurationStorageType.toString())));
+
+      WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
+      .withQueryParam("query", equalTo("module==DATA_IMPORT AND ( code==\"data.import.cleanup.time\")"))
+      .withQueryParam("offset", equalTo("0"))
+      .withQueryParam("limit", equalTo("3"))
+      .willReturn(okJson(configurationCleanupTime.toString())));
+
     WireMock.stubFor(post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
       .willReturn(created().withBody(JsonObject.mapFrom(jobExecutionCreateSingleFile).toString())));
     WireMock.stubFor(post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 2)]"))

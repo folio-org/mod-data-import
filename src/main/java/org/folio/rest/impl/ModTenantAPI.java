@@ -42,14 +42,11 @@ public class ModTenantAPI extends TenantAPI {
 
   @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
+    systemUserAuthService.initializeSystemUser(headers);
     return super.loadData(attributes, tenantId, headers, context)
       .compose(num -> {
         initStorageCleanupService(headers, context);
         return setupDefaultFileExtensions(headers).map(num);
-      })
-      .map(v -> {
-        systemUserAuthService.initializeSystemUser(headers);
-        return v;
       });
   }
 

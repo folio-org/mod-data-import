@@ -303,7 +303,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           return Future.succeededFuture();
         }
         String message = format(
-          "Error deleting Queue Item with event job id '%s'",
+          "Error deleting queue item with job execution id '%s'",
           id
         );
         NotFoundException notFoundException = new NotFoundException(message);
@@ -326,7 +326,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           return Future.succeededFuture();
         }
         String message = format(
-          "Error deleting Queue Item with event id '%s'",
+          "Error deleting queue item with id '%s'",
           id
         );
         NotFoundException notFoundException = new NotFoundException(message);

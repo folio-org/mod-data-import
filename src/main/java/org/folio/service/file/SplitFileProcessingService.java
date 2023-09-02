@@ -200,7 +200,10 @@ public class SplitFileProcessingService {
         List<Future<Void>> deleteQueueFutures = new ArrayList<>();
         for (JobExecutionDto exec : collection.getJobExecutions()) {
           deleteQueueFutures.add(
-            queueItemDao.deleteDataImportQueueItemByJobExecutionId(exec.getId())
+            queueItemDao
+              .deleteDataImportQueueItemByJobExecutionId(exec.getId())
+              // the delete call can fail if the queue item doesn't exist (has already been processed)
+              .recover(err -> Future.succeededFuture())
           );
 
           deleteQueueFutures.add(
@@ -225,7 +228,7 @@ public class SplitFileProcessingService {
   }
 
   protected Future<Buffer> verifyOkStatus(HttpResponse<Buffer> response) {
-    if (response.statusCode() < 200 || response.statusCode() > 299) {
+    if (response.statusCode() >= 200 || response.statusCode() <= 299) {
       return Future.succeededFuture(response.bodyAsBuffer());
     } else {
       return Future.failedFuture(

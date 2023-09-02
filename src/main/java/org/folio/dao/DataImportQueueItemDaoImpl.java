@@ -47,6 +47,8 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     "UPDATE %s.%s SET job_execution_id = $2, upload_definition_id = $3, tenant = $4, original_size = $5, file_path = $6, timestamp = $7, part_number = $8, processing = $9, okapi_url = $10, data_type = $11 WHERE id = $1";
   private static final String DELETE_BY_ID_SQL =
     "DELETE FROM %s.%s WHERE id = $1";
+  private static final String DELETE_BY_JOB_ID_SQL =
+      "DELETE FROM %s.%s WHERE job_execution_id = $1";
   private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
     "LOCK TABLE %s.%s IN ACCESS EXCLUSIVE MODE";
 
@@ -286,7 +288,29 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           )
       );
   }
-
+  @Override
+  public Future<Void> deleteDataImportQueueItemByJobExecutionId(String id) {
+    String query = format(
+      DELETE_BY_JOB_ID_SQL,
+      MODULE_GLOBAL_SCHEMA,
+      QUEUE_ITEM_TABLE
+    );
+    return pgClientFactory
+      .getInstance()
+      .execute(query, Tuple.of(id))
+      .flatMap(result -> {
+        if (result.rowCount() == 1) {
+          return Future.succeededFuture();
+        }
+        String message = format(
+          "Error deleting Queue Item with event job id '%s'",
+          id
+        );
+        NotFoundException notFoundException = new NotFoundException(message);
+        LOGGER.error(message, notFoundException);
+        return Future.failedFuture(notFoundException);
+      });
+  }
   @Override
   public Future<Void> deleteDataImportQueueItem(String id) {
     String query = format(

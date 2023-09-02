@@ -17,6 +17,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import lombok.extern.log4j.Log4j2;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import org.folio.liquibase.LiquibaseUtil;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
@@ -206,6 +207,7 @@ public abstract class AbstractRestTest {
         break;
       case "embedded":
         PostgresClient.setPostgresTester(new PostgresTesterContainer());
+        LiquibaseUtil.initializeSchemaForModule(vertx, "data_import_global");
         break;
       default:
         String message = "No understood database choice made." +

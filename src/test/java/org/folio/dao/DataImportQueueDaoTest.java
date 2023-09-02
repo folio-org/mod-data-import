@@ -384,4 +384,26 @@ public class DataImportQueueDaoTest {
         })
       );
   }
+
+  @Test
+  public void testDeleteQueueItemByJobExecutionId(TestContext context) {
+    // given
+    when(postgresClient.execute(anyString(), any(Tuple.class)))
+      .thenReturn(Future.succeededFuture(new LocalRowSet(1)));
+
+    // when
+    queueItemDaoImpl
+      .deleteDataImportQueueItemByJobExecutionId("sample-id")
+      // then
+      .onComplete(
+        context.asyncAssertSuccess(x -> {
+          verify(postgresClient, times(1))
+            .execute(
+              eq("DELETE FROM data_import_global.queue_items WHERE job_execution_id = $1"),
+              any(Tuple.class)
+            );
+          verifyNoMoreInteractions(postgresClient);
+        })
+      );
+  }
 }

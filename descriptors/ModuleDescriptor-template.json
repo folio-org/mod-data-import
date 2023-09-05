@@ -138,7 +138,6 @@
             "data-import.assembleStorageFile.post"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get",
             "change-manager.jobexecutions.put"
           ]
         },

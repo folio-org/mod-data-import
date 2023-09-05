@@ -4,14 +4,11 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.handler.HttpException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +34,6 @@ import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionDto;
-import org.folio.rest.jaxrs.model.JobExecutionDtoCollection;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.StatusDto;
@@ -227,7 +223,7 @@ public class SplitFileProcessingService {
     ChangeManagerClient client,
     int parentJobSize,
     OkapiConnectionParams params,
-    Collection<String> keys
+    List<String> keys
   ) {
     List<Future<JobExecution>> futures = new ArrayList<>();
 
@@ -274,37 +270,6 @@ public class SplitFileProcessingService {
           )
       );
 
-      Promise<JobExecution> promise = Promise.promise();
-      futures.add(promise.future());
-
-      client.postChangeManagerJobExecutions(
-        initJobExecutionsRqDto,
-        response ->
-          verifyOkStatus(response.result())
-            .map(result ->
-              BufferMapper.mapBufferContentToEntitySync(
-                result,
-                InitJobExecutionsRsDto.class
-              )
-            )
-            .map(collection -> collection.getJobExecutions().get(0))
-            .compose(execution ->
-              queueItemDao
-                .addQueueItem(
-                  new DataImportQueueItem()
-                    .withJobExecutionId(execution.getId())
-                    .withUploadDefinitionId(parentUploadDefinition.getId())
-                    .withTenant(params.getTenantId())
-                    .withOriginalSize(parentJobSize)
-                    .withFilePath(key)
-                    .withTimestamp(new Date())
-                    .withPartNumber(thisPartNumber)
-                    .withProcessing(false)
-                )
-                .map(v -> execution)
-            )
-            .onComplete(promise::handle)
-      );
       partNumber++;
     }
 
@@ -345,69 +310,42 @@ public class SplitFileProcessingService {
   }
 
   /**
-   * Delete all queue items (DI) and child job executions (SRM) for a given job execution ID
+   * Create parent job executions for all files described in the upload definition.
+   * @return a {@link Future} containing a map from filename/key -> {@link JobExecution}
    */
-  public Future<Void> cancelJob(
-    String jobExecutionId,
-    OkapiConnectionParams params,
+  private Future<Map<String, JobExecution>> createParentJobExecutions(
+    ProcessFilesRqDto entity,
     ChangeManagerClient client
   ) {
-    return uploadDefinitionService
-      .getJobExecutionById(jobExecutionId, params)
-      // we have the job execution here
-      .compose(jobExecutionResponse -> {
-        if (
-          JobExecution.SubordinationType.PARENT_MULTIPLE.equals(
-            jobExecutionResponse.getSubordinationType()
-          )
-        ) {
-          return client.getChangeManagerJobExecutionsChildrenById(
-            jobExecutionId,
-            Integer.MAX_VALUE,
-            0
-          );
-        } else {
-          throw new IllegalStateException("JobExecution is not a parent job");
-        }
-      })
-      // we have the response buffer
-      .compose(this::verifyOkStatus)
-      .map(buffer ->
-        BufferMapper.mapBufferContentToEntitySync(
-          buffer,
-          JobExecutionDtoCollection.class
-        )
+    InitJobExecutionsRqDto initJobExecutionsRqDto = new InitJobExecutionsRqDto()
+      .withFiles(
+        entity
+          .getUploadDefinition()
+          .getFileDefinitions()
+          .stream()
+          .map(FileDefinition::getSourcePath)
+          .map(key -> new File().withName(key))
+          .collect(Collectors.toList())
       )
-      // we have the list of children
-      .compose(collection -> {
-        List<Future<Void>> deleteQueueFutures = new ArrayList<>();
-        for (JobExecutionDto exec : collection.getJobExecutions()) {
-          deleteQueueFutures.add(
-            queueItemDao
-              .deleteDataImportQueueItemByJobExecutionId(exec.getId())
-              // the delete call can fail if the queue item doesn't exist (has already been processed)
-              .recover(err -> Future.succeededFuture())
-          );
+      .withJobProfileInfo(entity.getJobProfileInfo())
+      .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
+      .withUserId(
+        Objects.nonNull(entity.getUploadDefinition().getMetadata())
+          ? entity.getUploadDefinition().getMetadata().getCreatedByUserId()
+          : null
+      );
 
-          deleteQueueFutures.add(
-            client
-              .putChangeManagerJobExecutionsStatusById(
-                exec.getId(),
-                new StatusDto().withStatus(StatusDto.Status.CANCELLED)
-              )
-              .compose(this::verifyOkStatus)
-              .mapEmpty()
-          );
-        }
-
-        return CompositeFuture.all(
-          deleteQueueFutures
-            .stream()
-            .map(Future.class::cast)
-            .collect(Collectors.toList())
-        );
+    return sendJobExecutionRequest(client, initJobExecutionsRqDto)
+      .map(response -> {
+        LOGGER.info("Created parent job execution: {}", response);
+        // turn into map from filename -> JobExecution
+        return response
+          .getJobExecutions()
+          .stream()
+          .collect(Collectors.toMap(JobExecution::getSourcePath, exec -> exec));
       })
-      .mapEmpty();
+      .onFailure(err -> LOGGER.error("Error creating parent job execution", err)
+      );
   }
 
   /**
@@ -417,7 +355,7 @@ public class SplitFileProcessingService {
    * @param request the request to send
    * @return a promise which will succeed with the response body as a {@link InitJobExecutionsRsDto}
    */
-  private static Future<InitJobExecutionsRsDto> sendJobExecutionRequest(
+  private Future<InitJobExecutionsRsDto> sendJobExecutionRequest(
     ChangeManagerClient client,
     InitJobExecutionsRqDto request
   ) {
@@ -488,59 +426,6 @@ public class SplitFileProcessingService {
       .onFailure(promise::fail);
 
     return promise.future();
-  }
-
-  /**
-   * Create parent job executions for all files described in the upload definition.
-   * @return a {@link Future} containing a map from filename/key -> {@link JobExecution}
-   */
-  private Future<Map<String, JobExecution>> createParentJobExecutions(
-    ProcessFilesRqDto entity,
-    ChangeManagerClient client
-  ) {
-    InitJobExecutionsRqDto initJobExecutionsRqDto = new InitJobExecutionsRqDto()
-      .withFiles(
-        entity
-          .getUploadDefinition()
-          .getFileDefinitions()
-          .stream()
-          .map(FileDefinition::getSourcePath)
-          .map(key -> new File().withName(key))
-          .collect(Collectors.toList())
-      )
-      .withJobProfileInfo(entity.getJobProfileInfo())
-      .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
-      .withUserId(
-        Objects.nonNull(entity.getUploadDefinition().getMetadata())
-          ? entity.getUploadDefinition().getMetadata().getCreatedByUserId()
-          : null
-      );
-
-    return sendJobExecutionRequest(client, initJobExecutionsRqDto)
-      .map(response -> {
-        LOGGER.info("Created parent job execution: {}", response);
-        // turn into map from filename -> JobExecution
-        return response
-          .getJobExecutions()
-          .stream()
-          .collect(Collectors.toMap(JobExecution::getSourcePath, exec -> exec));
-      })
-      .onFailure(err -> LOGGER.error("Error creating parent job execution", err)
-      );
-  }
-
-  protected Future<Buffer> verifyOkStatus(HttpResponse<Buffer> response) {
-    if (response.statusCode() >= 200 || response.statusCode() <= 299) {
-      return Future.succeededFuture(response.bodyAsBuffer());
-    } else {
-      return Future.failedFuture(
-        LOGGER.throwing(
-          new IllegalStateException(
-            "Response came back with status code " + response.statusCode()
-          )
-        )
-      );
-    }
   }
 
   /**

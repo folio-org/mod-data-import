@@ -28,6 +28,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import lombok.extern.log4j.Log4j2;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import org.folio.liquibase.LiquibaseUtil;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
@@ -51,6 +52,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.springframework.core.io.ClassPathResource;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -227,6 +229,7 @@ public abstract class AbstractRestTest {
         break;
       case "embedded":
         PostgresClient.setPostgresTester(new PostgresTesterContainer());
+        LiquibaseUtil.initializeSchemaForModule(vertx, "data_import_global");
         break;
       default:
         String message = "No understood database choice made." +
@@ -391,7 +394,16 @@ public abstract class AbstractRestTest {
             "permissionUsers",
             new JsonArray().add(
               PermissionUser.builder()
-                .permissions(SystemUserAuthService.PERMISSIONS)
+                .permissions(
+                  new SystemUserAuthService(
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    new ClassPathResource("permissions.txt")
+                  ).getPermissionsList()
+                )
                 .build()
             )
           ).toString())

@@ -1,6 +1,8 @@
 package org.folio.service.auth;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -19,6 +21,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SystemUserAuthServiceTest {
@@ -47,7 +51,8 @@ public class SystemUserAuthServiceTest {
         permissionsClient,
         usersClient,
         "username",
-        "password"
+        "password",
+        new ClassPathResource("permissions.txt")
       );
   }
 
@@ -92,7 +97,7 @@ public class SystemUserAuthServiceTest {
 
     PermissionUser response = PermissionUser
       .builder()
-      .permissions(SystemUserAuthService.PERMISSIONS)
+      .permissions(service.getPermissionsList())
       .build();
 
     when(permissionsClient.getPermissionsUserByUserId(params, "user-id"))
@@ -114,7 +119,7 @@ public class SystemUserAuthServiceTest {
 
     PermissionUser initialResponse = PermissionUser
       .builder()
-      .permissions(SystemUserAuthService.PERMISSIONS.subList(0, 5))
+      .permissions(service.getPermissionsList().subList(0, 5))
       .build();
 
     when(permissionsClient.getPermissionsUserByUserId(params, "user-id"))
@@ -123,7 +128,7 @@ public class SystemUserAuthServiceTest {
       .thenAnswer(input -> {
         PermissionUser pu = (PermissionUser) input.getArgument(1);
 
-        assertThat(pu.getPermissions(), is(SystemUserAuthService.PERMISSIONS));
+        assertThat(pu.getPermissions(), is(service.getPermissionsList()));
 
         return pu;
       });
@@ -131,7 +136,7 @@ public class SystemUserAuthServiceTest {
     // updated version should have all
     assertThat(
       service.validatePermissions(params, user).getPermissions(),
-      is(SystemUserAuthService.PERMISSIONS)
+      is(service.getPermissionsList())
     );
 
     verify(permissionsClient, times(1))
@@ -154,7 +159,7 @@ public class SystemUserAuthServiceTest {
       .thenAnswer(input -> {
         PermissionUser pu = (PermissionUser) input.getArgument(1);
 
-        assertThat(pu.getPermissions(), is(SystemUserAuthService.PERMISSIONS));
+        assertThat(pu.getPermissions(), is(service.getPermissionsList()));
 
         return pu;
       });
@@ -162,7 +167,7 @@ public class SystemUserAuthServiceTest {
     // created version should have all
     assertThat(
       service.validatePermissions(params, user).getPermissions(),
-      is(SystemUserAuthService.PERMISSIONS)
+      is(service.getPermissionsList())
     );
 
     verify(permissionsClient, times(1))
@@ -175,6 +180,40 @@ public class SystemUserAuthServiceTest {
     verifyNoMoreInteractions(usersClient);
   }
 
+  @Test
+  public void testPermissionFileLoading() {
+    assertThat(
+      service.getPermissionsList(),
+      contains(
+        "test-perm-1",
+        "test-perm-2",
+        "test-perm-3",
+        "test-perm-4",
+        "test-perm-5",
+        "test-perm-6",
+        "test-perm-7",
+        "test-perm-8",
+        "test-perm-9",
+        "test-perm-10"
+      )
+    );
+  }
+
+  @Test
+  public void testInvalidPermissionFileLoading() {
+    SystemUserAuthService testService = new SystemUserAuthService(
+      null,
+      null,
+      null,
+      null,
+      null,
+      new ClassPathResource("this-file-does-not-exist")
+    );
+
+    // fallback results in empty list
+    assertThat(testService.getPermissionsList(), is(empty()));
+  }
+
   // allow access to private methods
   private static class SystemUserAuthServiceTestProxy
     extends SystemUserAuthService {
@@ -184,9 +223,17 @@ public class SystemUserAuthServiceTest {
       PermissionsClient permissionsClient,
       UsersClient usersClient,
       String username,
-      String password
+      String password,
+      Resource permissionsResource
     ) {
-      super(authClient, permissionsClient, usersClient, username, password);
+      super(
+        authClient,
+        permissionsClient,
+        usersClient,
+        username,
+        password,
+        permissionsResource
+      );
     }
 
     protected User getOrCreateSystemUserFromApi(

@@ -34,6 +34,7 @@ import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -55,6 +56,8 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHU
  * After the target file gets split into records, ParallelFileChunkingProcessor sends records to the mod-source-record-manager
  * for further processing.
  */
+// autowirable for async processing outside the normal Vert.x eventbus
+@Component
 public class ParallelFileChunkingProcessor implements FileProcessor {
 
   private static final Logger LOGGER = LogManager.getLogger();

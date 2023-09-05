@@ -6,8 +6,8 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
-import io.vertx.ext.web.handler.HttpException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,13 +19,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.With;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.HttpStatus;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.client.ChangeManagerClient;
@@ -39,6 +39,7 @@ import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionDto;
 import org.folio.rest.jaxrs.model.JobExecutionDtoCollection;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -75,7 +76,8 @@ public class SplitFileProcessingService {
     FileSplitService fileSplitService,
     MinioStorageService minioStorageService,
     DataImportQueueItemDao queueItemDao,
-    UploadDefinitionService uploadDefinitionService
+    UploadDefinitionService uploadDefinitionService,
+    ParallelFileChunkingProcessor fileProcessor
   ) {
     this.vertx = vertx;
 
@@ -85,7 +87,7 @@ public class SplitFileProcessingService {
     this.queueItemDao = queueItemDao;
     this.uploadDefinitionService = uploadDefinitionService;
 
-    this.fileProcessor = new ParallelFileChunkingProcessor();
+    this.fileProcessor = fileProcessor;
   }
 
   public Future<Void> startJob(
@@ -115,7 +117,7 @@ public class SplitFileProcessingService {
     );
 
     return initializationFuture
-      .compose(result -> {
+      .compose((CompositeFuture result) -> {
         // type erasure for conversion to Map<String, JobExecution> since Java can only check that it's a Map
         // https://stackoverflow.com/questions/2592642/type-safety-unchecked-cast-from-object
         @SuppressWarnings("unchecked")
@@ -133,7 +135,7 @@ public class SplitFileProcessingService {
           parentJobExecutions
             .entrySet()
             .stream()
-            .map(jobExecEntry -> {
+            .map((Map.Entry<String, JobExecution> jobExecEntry) -> {
               // should always be here, but let's orElseThrow to be safe
               SplitFileInformation split = Optional
                 .ofNullable(splitInformation.get(jobExecEntry.getKey()))
@@ -241,9 +243,7 @@ public class SplitFileProcessingService {
         .withTotalJobParts(keys.size())
         .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
         .withUserId(
-          Objects.nonNull(parentUploadDefinition.getMetadata())
-            ? parentUploadDefinition.getMetadata().getCreatedByUserId()
-            : null
+          getUserIdFromMetadata(parentUploadDefinition.getMetadata())
         );
 
       // outer scope variable could change before lambda execution, so we make it final here
@@ -324,11 +324,10 @@ public class SplitFileProcessingService {
     return uploadDefinitionService
       .getJobExecutionById(jobExecutionId, params)
       // we have the job execution here
-      .compose(jobExecutionResponse -> {
+      .compose((JobExecution jobExecution) -> {
         if (
-          JobExecution.SubordinationType.PARENT_MULTIPLE.equals(
-            jobExecutionResponse.getSubordinationType()
-          )
+          jobExecution.getSubordinationType() ==
+          JobExecution.SubordinationType.PARENT_MULTIPLE
         ) {
           return client.getChangeManagerJobExecutionsChildrenById(
             jobExecutionId,
@@ -336,11 +335,11 @@ public class SplitFileProcessingService {
             0
           );
         } else {
-          throw new IllegalStateException("JobExecution is not a parent job");
+          throw new IllegalStateException("Job execution is not a parent job!");
         }
       })
       // we have the response buffer
-      .compose(this::verifyOkStatus)
+      .map(this::verifyOkStatus)
       .map(buffer ->
         BufferMapper.mapBufferContentToEntitySync(
           buffer,
@@ -348,7 +347,7 @@ public class SplitFileProcessingService {
         )
       )
       // we have the list of children
-      .compose(collection -> {
+      .compose((JobExecutionDtoCollection collection) -> {
         List<Future<Void>> deleteQueueFutures = new ArrayList<>();
         for (JobExecutionDto exec : collection.getJobExecutions()) {
           deleteQueueFutures.add(
@@ -364,7 +363,7 @@ public class SplitFileProcessingService {
                 exec.getId(),
                 new StatusDto().withStatus(StatusDto.Status.CANCELLED)
               )
-              .compose(this::verifyOkStatus)
+              .map(this::verifyOkStatus)
               .mapEmpty()
           );
         }
@@ -386,84 +385,30 @@ public class SplitFileProcessingService {
    * @param request the request to send
    * @return a promise which will succeed with the response body as a {@link InitJobExecutionsRsDto}
    */
-  private static Future<InitJobExecutionsRsDto> sendJobExecutionRequest(
+  protected Future<InitJobExecutionsRsDto> sendJobExecutionRequest(
     ChangeManagerClient client,
     InitJobExecutionsRqDto request
   ) {
-    Promise<InitJobExecutionsRsDto> promise = Promise.promise();
+    Promise<HttpResponse<Buffer>> promise = Promise.promise();
 
-    client.postChangeManagerJobExecutions(
-      request,
-      response -> {
-        try {
-          if (
-            response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()
-          ) {
-            LOGGER.warn(
-              "Error creating parent JobExecution from request {}. Status message: {}",
-              request,
-              response.result().statusMessage()
-            );
-            throw new HttpException(
-              response.result().statusCode(),
-              "Error creating new JobExecution"
-            );
-          }
+    client.postChangeManagerJobExecutions(request, promise::handle);
 
-          promise.complete(
-            BufferMapper.mapBufferContentToEntitySync(
-              response.result().bodyAsBuffer(),
-              InitJobExecutionsRsDto.class
-            )
-          );
-        } catch (Exception e) {
-          promise.fail(e);
-        }
-      }
-    );
-
-    return promise.future();
-  }
-
-  /**
-   * Split a file into chunks, returning a {@link SplitFileInformation} object containing
-   * the original key, the total number of records in the file, and the keys of the split chunks
-   */
-  private Future<SplitFileInformation> splitFile(String key) {
-    // object will be hydrated by futures
-    SplitFileInformation result = new SplitFileInformation();
-    result.setKey(key);
-
-    Promise<SplitFileInformation> promise = Promise.promise();
-
-    minioStorageService
-      .readFile(key)
-      // must be done sequentially as splitting deletes the original file
-      .map(stream -> {
-        try {
-          result.setTotalRecords(
-            FileSplitUtilities.countRecordsInMarcFile(stream)
-          );
-          return null;
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
-        }
-      })
-      .compose(v ->
-        fileSplitService.splitFileFromS3(vertx.getOrCreateContext(), key)
-      )
-      // all data is now in the object
-      .onSuccess(list -> promise.complete(result.withSplitKeys(list)))
-      .onFailure(promise::fail);
-
-    return promise.future();
+    return promise
+      .future()
+      .map(this::verifyOkStatus)
+      .map(buffer ->
+        BufferMapper.mapBufferContentToEntitySync(
+          buffer,
+          InitJobExecutionsRsDto.class
+        )
+      );
   }
 
   /**
    * Create parent job executions for all files described in the upload definition.
    * @return a {@link Future} containing a map from filename/key -> {@link JobExecution}
    */
-  private Future<Map<String, JobExecution>> createParentJobExecutions(
+  protected Future<Map<String, JobExecution>> createParentJobExecutions(
     ProcessFilesRqDto entity,
     ChangeManagerClient client
   ) {
@@ -480,13 +425,11 @@ public class SplitFileProcessingService {
       .withJobProfileInfo(entity.getJobProfileInfo())
       .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
       .withUserId(
-        Objects.nonNull(entity.getUploadDefinition().getMetadata())
-          ? entity.getUploadDefinition().getMetadata().getCreatedByUserId()
-          : null
+        getUserIdFromMetadata(entity.getUploadDefinition().getMetadata())
       );
 
     return sendJobExecutionRequest(client, initJobExecutionsRqDto)
-      .map(response -> {
+      .map((InitJobExecutionsRsDto response) -> {
         LOGGER.info("Created parent job execution: {}", response);
         // turn into map from filename -> JobExecution
         return response
@@ -498,17 +441,52 @@ public class SplitFileProcessingService {
       );
   }
 
-  protected Future<Buffer> verifyOkStatus(HttpResponse<Buffer> response) {
-    if (response.statusCode() >= 200 || response.statusCode() <= 299) {
-      return Future.succeededFuture(response.bodyAsBuffer());
+  /**
+   * Split a file into chunks, returning a {@link SplitFileInformation} object containing
+   * the original key, the total number of records in the file, and the keys of the split chunks
+   */
+  protected Future<SplitFileInformation> splitFile(String key) {
+    return Future
+      .succeededFuture(new SplitFileInformation().withKey(key))
+      // splitting and counting must be done sequentially as splitting deletes the original file
+      .compose(result ->
+        minioStorageService
+          .readFile(key)
+          .map((InputStream stream) -> {
+            try {
+              return result.withTotalRecords(
+                FileSplitUtilities.countRecordsInMarcFile(stream)
+              );
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          })
+      )
+      .compose(result ->
+        fileSplitService
+          .splitFileFromS3(vertx.getOrCreateContext(), key)
+          .map(result::withSplitKeys)
+      );
+  }
+
+  protected Buffer verifyOkStatus(HttpResponse<Buffer> response) {
+    if (response.statusCode() >= 200 && response.statusCode() <= 299) {
+      return response.bodyAsBuffer();
     } else {
-      return Future.failedFuture(
-        LOGGER.throwing(
-          new IllegalStateException(
-            "Response came back with status code " + response.statusCode()
-          )
+      throw LOGGER.throwing(
+        new IllegalStateException(
+          "Response came back with status code " + response.statusCode()
         )
       );
+    }
+  }
+
+  @CheckForNull
+  protected String getUserIdFromMetadata(@CheckForNull Metadata metadata) {
+    if (Objects.nonNull(metadata)) {
+      return metadata.getCreatedByUserId();
+    } else {
+      return null;
     }
   }
 

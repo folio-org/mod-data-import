@@ -130,7 +130,6 @@
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
-            "change-manager.jobexecutions.post",
             "change-manager.jobexecutions.put"
           ]
         },

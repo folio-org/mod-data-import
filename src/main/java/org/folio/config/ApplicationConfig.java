@@ -11,15 +11,16 @@ import org.springframework.context.annotation.PropertySource;
 
 @Configuration
 @ComponentScan(basePackages = {
-  "org.folio.rest.impl",
   "org.folio.dao",
+  "org.folio.rest.impl",
   "org.folio.service.auth",
+  "org.folio.service.cleanup",
   "org.folio.service.file",
   "org.folio.service.fileextension",
-  "org.folio.service.upload",
-  "org.folio.service.cleanup",
+  "org.folio.service.processing.ranking",
+  "org.folio.service.processing.split",
   "org.folio.service.s3storage",
-  "org.folio.service.processing.split"
+  "org.folio.service.upload",
 })
 @PropertySource("classpath:minio.properties")
 public class ApplicationConfig {

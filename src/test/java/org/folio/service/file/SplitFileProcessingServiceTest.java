@@ -25,14 +25,18 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dao.DataImportQueueItemDaoImpl;
 import org.folio.dao.util.PostgresClientFactory;
+import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.PostgresClient;
@@ -107,18 +111,28 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
     this.queueItemDao = spy(new DataImportQueueItemDaoImpl(pgClientFactory));
 
     this.service =
-      new SplitFileProcessingService(queueItemDao, uploadDefinitionService);
+      new SplitFileProcessingService(
+        null,
+        null,
+        null,
+        queueItemDao,
+        uploadDefinitionService
+      );
   }
 
   @Test
   public void testNoSplitRegistration(TestContext context) {
     service
-      .registerSplitFiles(
+      .registerSplitFileParts(
         null,
         null,
+        new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC),
         changeManagerClient,
         0,
-        TENANT_ID,
+        new OkapiConnectionParams(
+          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+          null
+        ),
         Arrays.asList()
       )
       .onComplete(
@@ -154,12 +168,16 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
     );
 
     service
-      .registerSplitFiles(
+      .registerSplitFileParts(
         PARENT_UPLOAD_DEFINITION_WITH_USER,
         PARENT_JOB_EXECUTION,
+        new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC),
         changeManagerClient,
         123,
-        TENANT_ID,
+        new OkapiConnectionParams(
+          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+          null
+        ),
         Arrays.asList("key1")
       )
       .onComplete(
@@ -210,12 +228,16 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
     );
 
     service
-      .registerSplitFiles(
+      .registerSplitFileParts(
         PARENT_UPLOAD_DEFINITION,
         PARENT_JOB_EXECUTION,
+        new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC),
         changeManagerClient,
         123,
-        TENANT_ID,
+        new OkapiConnectionParams(
+          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+          null
+        ),
         Arrays.asList("key1", "key2", "key3")
       )
       .onComplete(
@@ -262,12 +284,16 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
     );
 
     service
-      .registerSplitFiles(
+      .registerSplitFileParts(
         PARENT_UPLOAD_DEFINITION,
         PARENT_JOB_EXECUTION,
+        new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC),
         changeManagerClient,
         123,
-        TENANT_ID,
+        new OkapiConnectionParams(
+          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+          null
+        ),
         Arrays.asList("key1")
       )
       .onComplete(

@@ -11,9 +11,11 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -188,14 +190,18 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   /** Start processing a new chunk */
   private void startChunk() {
     String fileName = FileSplitUtilities.buildChunkKey(outputKey, chunkIndex++);
-    Path path = Path.of(chunkFolder, new File(fileName).getName());
-    currentChunkPath = path.toString();
+    if (!deleteLocalFiles) {
+      currentChunkPath =
+        Path.of(chunkFolder, new File(fileName).getName()).toString();
+    } else {
+      currentChunkPath = new File(fileName).getName();
+    }
     currentChunkKey = fileName;
     currentChunkStream = new ByteArrayOutputStream(lastChunkSize);
     LOGGER.info(
       "{}: startChunk:{} time:{}",
       Thread.currentThread().getName(),
-      currentChunkPath,
+      currentChunkKey,
       System.currentTimeMillis()
     );
   }
@@ -204,11 +210,20 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private void endChunk() throws IOException {
     if (currentChunkStream != null) {
       currentChunkStream.close();
-      currentChunkStream.writeTo(
-        Files.newOutputStream(Path.of(currentChunkPath), CREATE)
+      if (!deleteLocalFiles) {
+        currentChunkStream.writeTo(
+          Files.newOutputStream(Path.of(currentChunkPath), CREATE)
+        );
+      }
+
+      // avoid intermediate file-writing
+      uploadChunkAsync(
+        new ByteArrayInputStream(currentChunkStream.toByteArray()),
+        currentChunkKey,
+        currentChunkPath
       );
+
       lastChunkSize = currentChunkStream.size();
-      uploadChunkAsync(currentChunkPath, currentChunkKey);
 
       // this will trigger a startChunk when more data is received
       currentChunkStream = null;
@@ -218,61 +233,49 @@ public class FileSplitWriter implements WriteStream<Buffer> {
         "{}: finished chunk of size {} written to {}",
         Thread.currentThread().getName(),
         lastChunkSize,
-        currentChunkPath
+        currentChunkKey
       );
     }
   }
 
-  private void uploadChunkAsync(String chunkPath, String chunkKey) {
+  private void uploadChunkAsync(
+    InputStream is,
+    String chunkKey,
+    String chunkPath
+  ) {
     Promise<String> chunkPromise = Promise.promise();
     chunkProcessingFutures.add(chunkPromise.future());
     vertxContext.executeBlocking(
       event -> {
-        Path cp = Path.of(chunkPath);
         // chunk file uploading to S3
         if (uploadFilesToS3) {
           LOGGER.info(
-            "{}: Uploading file: {}, key={}, time={}",
+            "{}: Uploading file {}, time={}",
             Thread.currentThread().getName(),
-            chunkPath,
             chunkKey,
             System.currentTimeMillis()
           );
 
           try {
             minioStorageService
-              .write(chunkKey, Files.newInputStream(cp))
-              .onComplete(s3Path -> {
-                if (s3Path.failed()) {
+              .write(chunkKey, is)
+              .onComplete(ar -> {
+                if (ar.failed()) {
                   LOGGER.info(
                     "{}: Failed uploading file: {}",
                     Thread.currentThread().getName(),
-                    chunkPath
+                    chunkKey,
+                    ar.cause()
                   );
 
-                  chunkPromise.fail(s3Path.cause());
-                } else if (s3Path.succeeded()) {
+                  chunkPromise.fail(ar.cause());
+                } else if (ar.succeeded()) {
                   LOGGER.info(
                     "{}: Successfully uploaded file: {} time:{}",
                     Thread.currentThread().getName(),
-                    chunkPath,
+                    chunkKey,
                     System.currentTimeMillis()
                   );
-
-                  if (deleteLocalFiles) {
-                    try {
-                      LOGGER.info(
-                        "{}: Deleting local file: {}",
-                        Thread.currentThread().getName(),
-                        cp
-                      );
-                      Files.delete(cp);
-                    } catch (IOException e) {
-                      event.fail(e);
-                      chunkPromise.fail(e);
-                      return;
-                    }
-                  }
 
                   chunkPromise.complete(chunkKey);
                 }
@@ -281,50 +284,25 @@ public class FileSplitWriter implements WriteStream<Buffer> {
             LOGGER.error(
               "{}: Exception uploading file: {}",
               Thread.currentThread().getName(),
-              chunkPath
+              chunkKey
             );
             LOGGER.error(e);
             event.fail(e);
             chunkPromise.fail(e);
             return;
           }
-        }
-        onFileComplete();
-        if (!uploadFilesToS3 && deleteLocalFiles) {
-          try {
-            LOGGER.info(
-              "{}: Deleting local file: {}",
-              Thread.currentThread().getName(),
-              cp
-            );
-            Files.delete(cp);
-          } catch (IOException e) {
-            event.fail(e);
-            chunkPromise.fail(e);
-            return;
-          }
+        } else {
+          event.complete();
+          chunkPromise.complete(chunkPath);
         }
         LOGGER.info(
           "{}: Finished processing chunk: {} Completed time: {}",
           Thread.currentThread().getName(),
-          chunkPath,
+          chunkKey,
           System.currentTimeMillis()
         );
-        if (!uploadFilesToS3) {
-          event.complete();
-          chunkPromise.complete(chunkPath);
-        }
       },
       false
     );
-  }
-
-  private void onFileComplete() {
-    // Do any work here that is required once the fragment file is written to disk
-    // At this point, it is guaranteed to exist, but if async work is done here it
-    // very well could be deleted.  It also may or may not have been uploaded to
-    // S3 (as that happens async).  Deletion and upload both rely on options passed
-    // into this class, so be sure to check those if doing anything async.
-    // TODO: is this needed?
   }
 }

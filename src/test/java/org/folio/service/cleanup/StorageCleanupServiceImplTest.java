@@ -5,21 +5,24 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.io.FileUtils;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.service.AbstractIntegrationTest;
 import org.folio.service.config.ApplicationTestConfig;
 import org.folio.spring.SpringContextUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.File;
@@ -35,7 +38,8 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.LOADED;
 
-public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
+@RunWith(VertxUnitRunner.class)
+public class StorageCleanupServiceImplTest extends AbstractRestTest {
 
   private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
   private static final String STORAGE_PATH = "./storage";
@@ -103,6 +107,12 @@ public class StorageCleanupServiceImplTest extends AbstractIntegrationTest {
   @After
   public void tearDownFileSystem() throws IOException {
     FileUtils.deleteDirectory(new File(STORAGE_PATH));
+  }
+
+  @After
+  @Override
+  public void resetWiremock() {
+    // no-op
   }
 
   @Test

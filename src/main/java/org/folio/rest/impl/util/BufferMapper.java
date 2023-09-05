@@ -1,7 +1,6 @@
 package org.folio.rest.impl.util;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import lombok.experimental.UtilityClass;
 
@@ -18,17 +17,17 @@ public class BufferMapper {
    * @param entityType type of entity which will be created
    * @return a future of instantiated T entity object from a buffer content
    */
-  public static <T> Future<T> mapBufferContentToEntity(
+  public static <T> Future<T> mapBufferContentToEntityAsync(
     Buffer buffer,
     Class<T> entityType
   ) {
-    Promise<T> promise = Promise.promise();
     try {
-      promise.complete(buffer.toJsonObject().mapTo(entityType));
+      return Future.succeededFuture(
+        mapBufferContentToEntitySync(buffer, entityType)
+      );
     } catch (Exception e) {
-      promise.fail(e);
+      return Future.failedFuture(e);
     }
-    return promise.future();
   }
 
   /**

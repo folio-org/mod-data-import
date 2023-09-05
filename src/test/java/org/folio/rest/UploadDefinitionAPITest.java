@@ -765,7 +765,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withJobProfileInfo(jobProf);
 
     JsonObject paramsJson = new JsonObject()
-      .put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
+      .put(OKAPI_URL_HEADER, OKAPI_URL)
       .put(OKAPI_TENANT_HEADER, TENANT_ID)
       .put(OKAPI_TOKEN_HEADER, TOKEN);
 
@@ -832,7 +832,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withJobProfileInfo(jobProf);
 
     JsonObject paramsJson = new JsonObject()
-      .put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
+      .put(OKAPI_URL_HEADER, OKAPI_URL)
       .put(OKAPI_TENANT_HEADER, TENANT_ID)
       .put(OKAPI_TOKEN_HEADER, TOKEN);
 

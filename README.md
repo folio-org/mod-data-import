@@ -17,6 +17,7 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
   * [Module properties to set up at mod-configuration](#module-properties-to-set-up-at-mod-configuration)
 * [Interaction with AWS S3/Minio](#interaction-with-aws-s3minio)
 * [Interaction with Kafka](#interaction-with-kafka)
+* [Queue prioritization algorithm](#queue-prioritization-algorithm)
 * [Other system properties](#other-system-properties)
 * [Issue tracker](#issue-tracker)
 * [Additional information](#additional-information)
@@ -146,7 +147,7 @@ This module uses S3-compatible storage as part of the file upload process.  The 
 | `AWS_SDK`               | If AWS S3 is being used (should be `"true"` if so and `"false"` otherwise) |
 | `S3_FORCEPATHSTYLE`     | If path-style requests should be used instead of virtual-hosted-style      |
 
-## Queue scoring algorithm
+## Queue prioritization algorithm
 
 This covers the following environment variables:
 
@@ -164,6 +165,21 @@ This covers the following environment variables:
 * `SCORE_PART_NUMBER_LAST_REFERENCE`
 
 For information on what these mean and how to configure them, please see [this wiki page](https://wiki.folio.org/display/FOLIOtips/Queue+and+chunk+processing+customization).
+
+## System user
+
+To enable asynchronous job launching (as part of the file splitting process), the module creates
+a system user upon installation.  By default, the system user is named `data-import-system-user`,
+however, its credentials may be customized with the following environment variables:
+
+| Name                         | Description          | Default                   |
+|------------------------------|----------------------|---------------------------|
+| `SYSTEM_PROCESSING_USERNAME` | System user username | `data-import-system-user` |
+| `SYSTEM_PROCESSING_PASSWORD` | System user password | `data-import-system-user` |
+
+This user is granted the same permissions as the module for the
+`/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles` endpoint.  This enables this
+user to complete any import-related tasks across compatible modules.
 
 ## Interaction with Kafka
 

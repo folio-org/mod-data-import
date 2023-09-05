@@ -7,6 +7,18 @@
       "version": "3.0"
     },
     {
+      "id": "login",
+      "version": "7.0"
+    },
+    {
+      "id": "authtoken",
+      "version": "2.0"
+    },
+    {
+      "id": "permissions",
+      "version": "5.3"
+    },
+    {
       "id": "users",
       "version": "15.0 16.0"
     }
@@ -298,7 +310,7 @@
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/data-import//jobExecutions/{id}/downloadUrl",
+          "pathPattern": "/data-import/jobExecutions/{id}/downloadUrl",
           "permissionsRequired": ["data-import.downloadUrl.get"]
         },
         {
@@ -317,7 +329,17 @@
           "methods": [
             "POST"
           ],
-          "pathPattern": "/_/tenant"
+          "pathPattern": "/_/tenant",
+          "modulePermissions": [
+            "users.collection.get",
+            "users.item.post",
+            "users.item.put",
+            "login.item.post",
+            "perms.users.get",
+            "perms.users.assign.immutable",
+            "perms.users.item.post",
+            "perms.users.item.put"
+          ]
         },
         {
           "methods": [
@@ -331,12 +353,12 @@
   "permissionSets": [
   	{
       "permissionName": "data-import.assembleStorageFile.post",
-      "displayName": "Permission to assemble a file out of uploaded fragments",
+      "displayName": "Data Import - assemble a file out of uploaded fragments",
       "description": "Permission to assemble a file out of uploaded fragments"
     },
     {
       "permissionName": "data-import.splitconfig.get",
-      "displayName": "Get the status of file splitting configuration",
+      "displayName": "Data Import - get the status of file splitting configuration",
       "description": "Get the status of file splitting configuration"
     },
     {
@@ -480,7 +502,9 @@
       { "name": "SCORE_TENANT_USAGE_MAX", "value": "-200" },
       { "name": "SCORE_PART_NUMBER_FIRST", "value": "1" },
       { "name": "SCORE_PART_NUMBER_LAST", "value": "0" },
-      { "name": "SCORE_PART_NUMBER_LAST_REFERENCE", "value": "100" }
+      { "name": "SCORE_PART_NUMBER_LAST_REFERENCE", "value": "100" },
+      { "name": "SYSTEM_PROCESSING_USERNAME", "value": "data-import-system-user" },
+      { "name": "SYSTEM_PROCESSING_PASSWORD", "value": "data-import-system-user" }
     ]
   }
 }

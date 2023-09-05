@@ -13,6 +13,7 @@ import org.springframework.context.annotation.PropertySource;
 @ComponentScan(basePackages = {
   "org.folio.rest.impl",
   "org.folio.dao",
+  "org.folio.service.auth",
   "org.folio.service.file",
   "org.folio.service.fileextension",
   "org.folio.service.upload",

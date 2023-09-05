@@ -30,6 +30,15 @@
       "handlers": [
       	{
           "methods": [
+            "DELETE"
+          ],
+          "pathPattern": "/data-import/jobexecutions/{jobExecutionId}/cancel",
+          "permissionsRequired": [
+            "data-import.jobexecution.cancel"
+          ]
+        },
+      	{
+          "methods": [
             "GET"
           ],
           "pathPattern": "/data-import/splitStatus",
@@ -435,6 +444,11 @@
       "permissionName": "data-import.downloadUrl.get",
       "displayName": "Data Import - get S3 download URL",
       "description": "Get S3 download URL"
+    },
+    {
+      "permissionName": "data-import.jobexecution.cancel",
+      "displayName": "Data Import - cancel running job",
+      "description": "Cancel running job"
     },
     {
       "permissionName": "data-import.upload.all",

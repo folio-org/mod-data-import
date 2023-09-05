@@ -3,7 +3,8 @@ package org.folio.service.file;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.ext.web.handler.HttpException;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.web.client.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -12,7 +13,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.HttpStatus;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.client.ChangeManagerClient;
@@ -22,6 +22,9 @@ import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
+import org.folio.rest.jaxrs.model.JobExecutionDto;
+import org.folio.rest.jaxrs.model.JobExecutionDtoCollection;
+import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,48 +96,31 @@ public class SplitFileProcessingService {
 
       client.postChangeManagerJobExecutions(
         initJobExecutionsRqDto,
-        response -> {
-          try {
-            if (
-              response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()
-            ) {
-              LOGGER.warn(
-                "registerSplitFiles:: Error creating new child JobExecution for key {}. Status message: {}",
-                key,
-                response.result().statusMessage()
-              );
-              throw new HttpException(
-                response.result().statusCode(),
-                "Error creating new JobExecution"
-              );
-            } else {
-              BufferMapper
-                .mapBufferContentToEntityAsync(
-                  response.result().bodyAsBuffer(),
-                  InitJobExecutionsRsDto.class
+        response ->
+          verifyOkStatus(response.result())
+            .map(result ->
+              BufferMapper.mapBufferContentToEntitySync(
+                result,
+                InitJobExecutionsRsDto.class
+              )
+            )
+            .map(collection -> collection.getJobExecutions().get(0))
+            .compose(execution ->
+              queueItemDao
+                .addQueueItem(
+                  new DataImportQueueItem()
+                    .withJobExecutionId(execution.getId())
+                    .withUploadDefinitionId(parentUploadDefinition.getId())
+                    .withTenant(tenant)
+                    .withOriginalSize(parentJobSize)
+                    .withFilePath(key)
+                    .withTimestamp(new Date())
+                    .withPartNumber(thisPartNumber)
+                    .withProcessing(false)
                 )
-                .map(collection -> collection.getJobExecutions().get(0))
-                .compose(execution ->
-                  queueItemDao
-                    .addQueueItem(
-                      new DataImportQueueItem()
-                        .withJobExecutionId(execution.getId())
-                        .withUploadDefinitionId(parentUploadDefinition.getId())
-                        .withTenant(tenant)
-                        .withOriginalSize(parentJobSize)
-                        .withFilePath(key)
-                        .withTimestamp(new Date())
-                        .withPartNumber(thisPartNumber)
-                        .withProcessing(false)
-                    )
-                    .onSuccess(v -> promise.complete(execution))
-                )
-                .onFailure(promise::fail);
-            }
-          } catch (Exception e) {
-            promise.fail(e);
-          }
-        }
+                .map(v -> execution)
+            )
+            .onComplete(promise::handle)
       );
       partNumber++;
     }
@@ -173,5 +159,85 @@ public class SplitFileProcessingService {
     return uploadDefinitionService
       .getJobExecutionById(jobExecutionId, params)
       .map(JobExecution::getSourcePath);
+  }
+
+  /**
+   * Delete all queue items (DI) and child job executions (SRM) for a given job execution ID
+   */
+  public Future<Void> cancelJob(
+    String jobExecutionId,
+    OkapiConnectionParams params,
+    ChangeManagerClient client
+  ) {
+    return uploadDefinitionService
+      .getJobExecutionById(jobExecutionId, params)
+      // we have the job execution here
+      .compose(jobExecutionResponse -> {
+        if (
+          JobExecution.SubordinationType.PARENT_MULTIPLE.equals(
+            jobExecutionResponse.getSubordinationType()
+          )
+        ) {
+          return client.getChangeManagerJobExecutionsChildrenById(
+            jobExecutionId,
+            Integer.MAX_VALUE,
+            0
+          );
+        } else {
+          throw new IllegalStateException("JobExecution is not a parent job");
+        }
+      })
+      // we have the response buffer
+      .compose(this::verifyOkStatus)
+      .map(buffer ->
+        BufferMapper.mapBufferContentToEntitySync(
+          buffer,
+          JobExecutionDtoCollection.class
+        )
+      )
+      // we have the list of children
+      .compose(collection -> {
+        List<Future<Void>> deleteQueueFutures = new ArrayList<>();
+        for (JobExecutionDto exec : collection.getJobExecutions()) {
+          deleteQueueFutures.add(
+            queueItemDao
+              .deleteDataImportQueueItemByJobExecutionId(exec.getId())
+              // the delete call can fail if the queue item doesn't exist (has already been processed)
+              .recover(err -> Future.succeededFuture())
+          );
+
+          deleteQueueFutures.add(
+            client
+              .putChangeManagerJobExecutionsStatusById(
+                exec.getId(),
+                new StatusDto().withStatus(StatusDto.Status.CANCELLED)
+              )
+              .compose(this::verifyOkStatus)
+              .mapEmpty()
+          );
+        }
+
+        return CompositeFuture.all(
+          deleteQueueFutures
+            .stream()
+            .map(Future.class::cast)
+            .collect(Collectors.toList())
+        );
+      })
+      .mapEmpty();
+  }
+
+  protected Future<Buffer> verifyOkStatus(HttpResponse<Buffer> response) {
+    if (response.statusCode() >= 200 || response.statusCode() <= 299) {
+      return Future.succeededFuture(response.bodyAsBuffer());
+    } else {
+      return Future.failedFuture(
+        LOGGER.throwing(
+          new IllegalStateException(
+            "Response came back with status code " + response.statusCode()
+          )
+        )
+      );
+    }
   }
 }

@@ -79,4 +79,12 @@ public interface DataImportQueueItemDao {
    * @return future with true if succeeded
    */
   Future<Void> deleteDataImportQueueItem(String id);
+  
+  /**
+   * Deletes {@link DataImportQueueItem} from database
+   *
+   * @param id DataImportQueueItem id
+   * @return future with true if succeeded
+   */
+  Future<Void> deleteDataImportQueueItemByJobExecutionId(String id);
 }

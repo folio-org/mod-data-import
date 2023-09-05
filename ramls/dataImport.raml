@@ -186,6 +186,20 @@ resourceTypes:
             body:
               application/json:
                 type: fileDownloadInfo
+    /cancel:
+      displayName: Cancel a split Job
+      description: removes incomplete files from DI queue and marks the jobs cancelled
+      delete:
+        responses:
+          200:
+            body:
+              application/json:
+                type: string
+          500:
+            body:
+              application/json:
+                type: string
+
   /fileExtensions:
     displayName: File Extension
     description: API for managing file extensions

@@ -86,9 +86,9 @@ public class SplitFileProcessingServiceTest extends AbstractRestTest {
     this.changeManagerClient =
       spy(
         new ChangeManagerClient(
-          "http://localhost:" + mockServer.port(),
-          TENANT_ID,
-          TOKEN
+          mockServer.baseUrl(),
+          this.TENANT_ID,
+          this.TOKEN
         )
       );
 

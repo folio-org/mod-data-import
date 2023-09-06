@@ -41,8 +41,6 @@ import org.springframework.beans.factory.annotation.Value;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;

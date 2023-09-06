@@ -34,6 +34,7 @@ import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -66,9 +67,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   private KafkaConfig kafkaConfig;
 
-  public ParallelFileChunkingProcessor() {
-  }
+  public ParallelFileChunkingProcessor() {}
 
+  @Autowired
   public ParallelFileChunkingProcessor(Vertx vertx, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
     this.kafkaConfig = kafkaConfig;

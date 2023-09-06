@@ -151,6 +151,25 @@ resourceTypes:
                 body:
                   text/plain:
                     example: "Internal server error"
+          /assembleStorageFile:
+            post:
+              description: Assemble the large file uploaded to storage by the UI
+              is: [validate]
+              body:
+                application/json:
+                  type: assembleFileDto
+              responses:
+                204:
+                400:
+                  description: "Bad request"
+                  body:
+                    text/plain:
+                      example: "Bad request"
+                500:
+                  description: "Internal server error"
+                  body:
+                    text/plain:
+                      example: "Internal server error"
       /processFiles:
         displayName: File processing service
         description: File processing API
@@ -178,14 +197,6 @@ resourceTypes:
                 text/plain:
                   example: "Internal server error"
   /jobExecutions/{jobExecutionId}:
-    /downloadUrl:
-      description: Get a presigned S3 download URL
-      get:
-        responses:
-          200:
-            body:
-              application/json:
-                type: fileDownloadInfo
     /cancel:
       displayName: Cancel a split Job
       description: removes incomplete files from DI queue and marks the jobs cancelled
@@ -199,7 +210,19 @@ resourceTypes:
             body:
               application/json:
                 type: string
-
+    /downloadUrl:
+      description: Get a presigned S3 download URL
+      get:
+        responses:
+          200:
+            body:
+              application/json:
+                type: fileDownloadInfo
+          404:
+            description: "Job execution not found"
+            body:
+              text/plain:
+                example: "Job execution not found"
   /fileExtensions:
     displayName: File Extension
     description: API for managing file extensions
@@ -323,25 +346,6 @@ resourceTypes:
           body:
             application/json:
               type: fileUploadInfo
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error"
-  /assembleStorageFile:
-    post:
-      description: Assemble the large file uploaded to storage by the UI
-      is: [validate]
-      body:
-        application/json:
-          type: assembleFileDto
-      responses:
-        204:
         400:
           description: "Bad request"
           body:

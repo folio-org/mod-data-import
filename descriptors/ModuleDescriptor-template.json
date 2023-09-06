@@ -70,15 +70,6 @@
         },
         {
           "methods": [
-            "POST"
-          ],
-          "pathPattern": "/data-import/assembleStorageFile",
-          "permissionsRequired": [
-            "data-import.assembleStorageFile.post"
-          ]
-        },
-        {
-          "methods": [
             "GET"
           ],
           "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}",
@@ -136,6 +127,18 @@
           "modulePermissions": [
             "configuration.entries.collection.get",
             "change-manager.jobexecutions.post"
+          ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}/files/{fileId}/assembleStorageFile",
+          "permissionsRequired": [
+            "data-import.assembleStorageFile.post"
+          ],
+          "modulePermissions": [
+            "change-manager.jobexecutions.put"
           ]
         },
         {

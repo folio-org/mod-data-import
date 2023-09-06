@@ -10,10 +10,8 @@ import static org.hamcrest.Matchers.notNullValue;
 import io.restassured.RestAssured;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.MockitoAnnotations;
 
 @RunWith(VertxUnitRunner.class)
 public class UploadUrlAPITest extends AbstractRestTest {
@@ -21,11 +19,6 @@ public class UploadUrlAPITest extends AbstractRestTest {
   private static final String UPLOAD_URL_PATH = "/data-import/uploadUrl";
   private static final String UPLOAD_URL_CONTINUE_PATH =
     "/data-import/uploadUrl/subsequent";
-
-  @Before
-  public void setUp() {
-    MockitoAnnotations.openMocks(this);
-  }
 
   @Test
   public void testSuccessfulFirstRequest() {

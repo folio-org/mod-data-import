@@ -62,6 +62,14 @@ public interface MinioStorageService {
    */
   Future<FileDownloadInfo> getFileDownloadUrl(String key);
 
+  /**
+   * Assemble a multipart upload
+   *
+   * @param key the file key
+   * @param uploadId the upload ID
+   * @param etags the list of etags returned from part uploads
+   * @return
+   */
   Future<Boolean> completeMultipartFileUpload(
     String key,
     String uploadId,

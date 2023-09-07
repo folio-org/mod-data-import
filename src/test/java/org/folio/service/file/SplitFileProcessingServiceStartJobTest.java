@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -199,8 +200,7 @@ public class SplitFileProcessingServiceStartJobTest
 
   @Test
   public void testInitializeJob(TestContext context) {
-    when(service.splitFile(any()))
-      .thenAnswer(invocation ->
+    doAnswer(invocation ->
         Future.succeededFuture(
           SplitFileInformation
             .builder()
@@ -210,7 +210,7 @@ public class SplitFileProcessingServiceStartJobTest
             .build()
         )
       )
-      .thenAnswer(invocation ->
+      .doAnswer(invocation ->
         Future.succeededFuture(
           SplitFileInformation
             .builder()
@@ -220,7 +220,7 @@ public class SplitFileProcessingServiceStartJobTest
             .build()
         )
       )
-      .thenAnswer(invocation ->
+      .doAnswer(invocation ->
         Future.succeededFuture(
           SplitFileInformation
             .builder()
@@ -229,7 +229,9 @@ public class SplitFileProcessingServiceStartJobTest
             .totalRecords(10)
             .build()
         )
-      );
+      )
+      .when(service)
+      .splitFile(any());
 
     doAnswer(invocation -> {
         InitJobExecutionsRqDto request = invocation.getArgument(0);
@@ -324,8 +326,14 @@ public class SplitFileProcessingServiceStartJobTest
 
   @Test
   public void testInitializeChildren(TestContext context) {
-    when(
-      service.registerSplitFileParts(
+    doReturn(
+      CompositeFuture.all(
+        Future.succeededFuture(JOB_EXECUTION_2),
+        Future.succeededFuture(JOB_EXECUTION_3)
+      )
+    )
+      .when(service)
+      .registerSplitFileParts(
         any(),
         eq(JOB_EXECUTION_1),
         eq(JOB_PROFILE_INFO),
@@ -333,13 +341,6 @@ public class SplitFileProcessingServiceStartJobTest
         eq(10),
         any(),
         anyList()
-      )
-    )
-      .thenReturn(
-        CompositeFuture.all(
-          Future.succeededFuture(JOB_EXECUTION_2),
-          Future.succeededFuture(JOB_EXECUTION_3)
-        )
       );
 
     when(fileProcessor.updateJobsProfile(any(), eq(JOB_PROFILE_INFO), any()))
@@ -433,8 +434,9 @@ public class SplitFileProcessingServiceStartJobTest
 
   @Test
   public void testInitializeChildrenFailure(TestContext context) {
-    when(
-      service.registerSplitFileParts(
+    doReturn(CompositeFuture.all(new ArrayList<>()))
+      .when(service)
+      .registerSplitFileParts(
         any(),
         any(),
         any(),
@@ -442,9 +444,7 @@ public class SplitFileProcessingServiceStartJobTest
         anyInt(),
         any(),
         anyList()
-      )
-    )
-      .thenReturn(CompositeFuture.all(new ArrayList<>()));
+      );
 
     when(fileProcessor.updateJobsProfile(any(), eq(JOB_PROFILE_INFO), any()))
       .thenReturn(Future.succeededFuture());
@@ -482,34 +482,34 @@ public class SplitFileProcessingServiceStartJobTest
 
   @Test
   public void testStartJob() {
-    when(service.initializeJob(any(), eq(changeManagerClient)))
-      .thenReturn(
-        Future.succeededFuture(
-          Map.of(
-            "key/file-1-key",
-            SplitFileInformation
-              .builder()
-              .key("key/file-1-key")
-              .splitKeys(Arrays.asList("a1", "a2", "a3"))
-              .totalRecords(10)
-              .jobExecution(JOB_EXECUTION_1)
-              .build(),
-            "key/file-2-key",
-            SplitFileInformation
-              .builder()
-              .key("key/file-2-key")
-              .splitKeys(Arrays.asList("b1"))
-              .totalRecords(10)
-              .jobExecution(JOB_EXECUTION_2)
-              .build()
-          )
+    doReturn(
+      Future.succeededFuture(
+        Map.of(
+          "key/file-1-key",
+          SplitFileInformation
+            .builder()
+            .key("key/file-1-key")
+            .splitKeys(Arrays.asList("a1", "a2", "a3"))
+            .totalRecords(10)
+            .jobExecution(JOB_EXECUTION_1)
+            .build(),
+          "key/file-2-key",
+          SplitFileInformation
+            .builder()
+            .key("key/file-2-key")
+            .splitKeys(Arrays.asList("b1"))
+            .totalRecords(10)
+            .jobExecution(JOB_EXECUTION_2)
+            .build()
         )
-      );
-
-    when(
-      service.initializeChildren(any(), eq(changeManagerClient), any(), any())
+      )
     )
-      .thenReturn(Future.succeededFuture());
+      .when(service)
+      .initializeJob(any(), eq(changeManagerClient));
+
+    doReturn(Future.succeededFuture())
+      .when(service)
+      .initializeChildren(any(), eq(changeManagerClient), any(), any());
 
     when(uploadDefinitionService.updateBlocking(any(), any(), any()))
       .thenAnswer(v -> {
@@ -523,5 +523,22 @@ public class SplitFileProcessingServiceStartJobTest
 
         return Future.succeededFuture();
       });
+
+    service.startJob(
+      new ProcessFilesRqDto()
+        .withJobProfileInfo(JOB_PROFILE_INFO)
+        .withUploadDefinition(
+          new UploadDefinition()
+            .withFileDefinitions(
+              Arrays.asList(
+                FILE_DEFINITION_1,
+                FILE_DEFINITION_2,
+                FILE_DEFINITION_3
+              )
+            )
+        ),
+      changeManagerClient,
+      new OkapiConnectionParams(Map.of("x-okapi-tenant", "tenant"), null)
+    );
   }
 }

@@ -7,13 +7,16 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.HttpResponse;
+import java.util.Collection;
 import java.util.Map;
 import org.folio.dao.DataImportQueueItemDao;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -26,6 +29,7 @@ import org.folio.service.processing.ParallelFileChunkingProcessor;
 import org.folio.service.processing.split.FileSplitService;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -66,10 +70,13 @@ public abstract class SplitFileProcessingServiceAbstractTest
     .withSourcePath("key/file-3-key");
 
   protected static final JobExecution JOB_EXECUTION_1 = new JobExecution()
+    .withId("c90e2023-0668-55f9-beba-0d42f7ee3e18")
     .withSourcePath("key/file-1-key");
   protected static final JobExecution JOB_EXECUTION_2 = new JobExecution()
+    .withId("30da2d31-eca8-578d-b5e6-ceba28469085")
     .withSourcePath("key/file-2-key");
   protected static final JobExecution JOB_EXECUTION_3 = new JobExecution()
+    .withId("3c4add55-cb78-5056-860f-5df0d1aa83ca")
     .withSourcePath("key/file-3-key");
 
   @Mock
@@ -90,9 +97,11 @@ public abstract class SplitFileProcessingServiceAbstractTest
   protected ChangeManagerClient changeManagerClient;
   protected SplitFileProcessingServiceProxy service;
 
+  private AutoCloseable closeable;
+
   @Before
   public void setUp() {
-    MockitoAnnotations.openMocks(this);
+    closeable = MockitoAnnotations.openMocks(this);
 
     this.changeManagerClient =
       spy(
@@ -104,14 +113,21 @@ public abstract class SplitFileProcessingServiceAbstractTest
       );
 
     this.service =
-      new SplitFileProcessingServiceProxy(
-        vertx,
-        fileSplitService,
-        minioStorageService,
-        queueItemDao,
-        uploadDefinitionService,
-        fileProcessor
+      spy(
+        new SplitFileProcessingServiceProxy(
+          vertx,
+          fileSplitService,
+          minioStorageService,
+          queueItemDao,
+          uploadDefinitionService,
+          fileProcessor
+        )
       );
+  }
+
+  @After
+  public void releaseMocks() throws Exception {
+    closeable.close();
   }
 
   @SuppressWarnings("unchecked")
@@ -167,6 +183,42 @@ public abstract class SplitFileProcessingServiceAbstractTest
 
     public String getUserIdFromMetadata(Metadata metadata) {
       return super.getUserIdFromMetadata(metadata);
+    }
+
+    public Future<Map<String, SplitFileInformation>> initializeJob(
+      ProcessFilesRqDto entity,
+      ChangeManagerClient client
+    ) {
+      return super.initializeJob(entity, client);
+    }
+
+    public Future<Void> initializeChildren(
+      ProcessFilesRqDto entity,
+      ChangeManagerClient client,
+      OkapiConnectionParams params,
+      SplitFileInformation splitInfo
+    ) {
+      return super.initializeChildren(entity, client, params, splitInfo);
+    }
+
+    public CompositeFuture registerSplitFileParts(
+      UploadDefinition parentUploadDefinition,
+      JobExecution parentJobExecution,
+      JobProfileInfo jobProfileInfo,
+      ChangeManagerClient client,
+      int parentJobSize,
+      OkapiConnectionParams params,
+      Collection<String> keys
+    ) {
+      return super.registerSplitFileParts(
+        parentUploadDefinition,
+        parentJobExecution,
+        jobProfileInfo,
+        client,
+        parentJobSize,
+        params,
+        keys
+      );
     }
   }
 }

@@ -26,7 +26,6 @@ import lombok.NoArgsConstructor;
 import lombok.With;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.HttpStatus;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.client.ChangeManagerClient;
@@ -51,18 +50,6 @@ import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service containing methods to manage the lifecycle and initiate processing of
@@ -340,11 +327,11 @@ public class SplitFileProcessingService {
   }
 
   /**
-   * Create parent job executions for all files described in the upload definition.
-   * @return a {@link Future} containing a map from filename/key -> {@link JobExecution}
+   * Delete all queue items (DI) and child job executions (SRM) for a given job execution ID
    */
-  private Future<Map<String, JobExecution>> createParentJobExecutions(
-    ProcessFilesRqDto entity,
+  public Future<Void> cancelJob(
+    String jobExecutionId,
+    OkapiConnectionParams params,
     ChangeManagerClient client
   ) {
     return uploadDefinitionService
@@ -392,19 +379,16 @@ public class SplitFileProcessingService {
               .map(this::verifyOkStatus)
               .mapEmpty()
           );
-          return null;
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
         }
-      })
-      .compose(v ->
-        fileSplitService.splitFileFromS3(vertx.getOrCreateContext(), key)
-      )
-      // all data is now in the object
-      .onSuccess(list -> promise.complete(result.withSplitKeys(list)))
-      .onFailure(promise::fail);
 
-    return promise.future();
+        return CompositeFuture.all(
+          deleteQueueFutures
+            .stream()
+            .map(Future.class::cast)
+            .collect(Collectors.toList())
+        );
+      })
+      .mapEmpty();
   }
 
   /**

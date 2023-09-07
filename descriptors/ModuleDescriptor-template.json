@@ -120,20 +120,6 @@
           "methods": [
             "POST"
           ],
-          "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}/files/{fileId}/assembleStorageFile",
-          "permissionsRequired": [
-            "data-import.assembleStorageFile.post"
-          ],
-          "modulePermissions": [
-            "configuration.entries.collection.get",
-            "change-manager.jobexecutions.post",
-            "change-manager.jobexecutions.put"
-          ]
-        },
-        {
-          "methods": [
-            "POST"
-          ],
           "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}/files",
           "permissionsRequired": [
             "data-import.uploaddefinitions.files.post"

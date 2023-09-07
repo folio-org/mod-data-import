@@ -4,6 +4,8 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import java.io.InputStream;
+import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.FileDownloadInfo;
@@ -12,9 +14,6 @@ import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.io.InputStream;
-import java.util.List;
 
 @Service
 public class MinioStorageServiceImpl implements MinioStorageService {
@@ -202,7 +201,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     vertx.executeBlocking(
       (Promise<Void> blockingFuture) -> {
         try {
-          LOGGER.info("Deleting source file {}", key);
+          LOGGER.info("Deleting file {}", key);
           client.remove(key);
           blockingFuture.complete();
         } catch (S3ClientException e) {

@@ -1,5 +1,7 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
+
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -7,16 +9,6 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
-import org.apache.commons.lang3.time.TimeZones;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.dao.util.PostgresClientFactory;
-import org.folio.rest.jaxrs.model.DataImportQueueItem;
-import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
-
-import javax.ws.rs.NotFoundException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -27,8 +19,15 @@ import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static java.lang.String.format;
+import javax.ws.rs.NotFoundException;
+import org.apache.commons.lang3.time.TimeZones;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.PostgresClientFactory;
+import org.folio.rest.jaxrs.model.DataImportQueueItem;
+import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 @Repository
 public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {

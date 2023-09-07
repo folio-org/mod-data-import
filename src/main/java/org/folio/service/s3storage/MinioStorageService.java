@@ -1,13 +1,12 @@
 package org.folio.service.s3storage;
 
 import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.FileDownloadInfo;
-import org.folio.rest.jaxrs.model.FileUploadInfo;
-
-import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import javax.validation.constraints.NotNull;
+import org.folio.rest.jaxrs.model.FileDownloadInfo;
+import org.folio.rest.jaxrs.model.FileUploadInfo;
 
 public interface MinioStorageService {
   /**

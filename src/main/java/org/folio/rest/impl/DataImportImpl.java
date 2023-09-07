@@ -578,15 +578,12 @@ public class DataImportImpl implements DataImport {
     OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(),params.getTenantId(),params.getToken());
 
-
-    //TODO: Merge Job Cancellation branch correctly MODDATAIMP-893
-
-//    vertxContext.runOnContext(v ->
-//      splitFileProcessingService.cancelJob(jobExecutionId, params, client)
-//        .map(vv -> DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson("Job successfully cancelled"))
-//        .map(Response.class::cast)
-//        .onComplete(asyncResultHandler)
-//    );
+    vertxContext.runOnContext(v ->
+      splitFileProcessingService.cancelJob(jobExecutionId, params, client)
+        .map(vv -> DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson("Job successfully cancelled"))
+        .map(Response.class::cast)
+        .onComplete(asyncResultHandler)
+    );
   }
 
   /**

@@ -198,12 +198,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     }
     currentChunkKey = fileName;
     currentChunkStream = new ByteArrayOutputStream(lastChunkSize);
-    LOGGER.info(
-      "{}: startChunk:{} time:{}",
-      Thread.currentThread().getName(),
-      currentChunkKey,
-      System.currentTimeMillis()
-    );
+    LOGGER.debug("starting chunk {}", currentChunkKey);
   }
 
   /** Finalize the current chunk */
@@ -229,9 +224,8 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       currentChunkStream = null;
       recordCount = 0;
 
-      LOGGER.info(
-        "{}: finished chunk of size {} written to {}",
-        Thread.currentThread().getName(),
+      LOGGER.debug(
+        "finished chunk of size {} written to {}",
         lastChunkSize,
         currentChunkKey
       );
@@ -249,43 +243,28 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       event -> {
         // chunk file uploading to S3
         if (uploadFilesToS3) {
-          LOGGER.info(
-            "{}: Uploading file {}, time={}",
-            Thread.currentThread().getName(),
-            chunkKey,
-            System.currentTimeMillis()
-          );
+          LOGGER.debug("Uploading file {} to S3", chunkKey);
 
           try {
             minioStorageService
               .write(chunkKey, is)
               .onComplete(ar -> {
                 if (ar.failed()) {
-                  LOGGER.info(
-                    "{}: Failed uploading file: {}",
-                    Thread.currentThread().getName(),
+                  LOGGER.error(
+                    "Failed uploading file {}:",
                     chunkKey,
                     ar.cause()
                   );
 
                   chunkPromise.fail(ar.cause());
                 } else if (ar.succeeded()) {
-                  LOGGER.info(
-                    "{}: Successfully uploaded file: {} time:{}",
-                    Thread.currentThread().getName(),
-                    chunkKey,
-                    System.currentTimeMillis()
-                  );
+                  LOGGER.info("Successfully uploaded file {} to S3", chunkKey);
 
                   chunkPromise.complete(chunkKey);
                 }
               });
           } catch (IOException e) {
-            LOGGER.error(
-              "{}: Exception uploading file: {}",
-              Thread.currentThread().getName(),
-              chunkKey
-            );
+            LOGGER.error("Exception uploading file {} to S3", chunkKey);
             LOGGER.error(e);
             event.fail(e);
             chunkPromise.fail(e);
@@ -295,12 +274,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           event.complete();
           chunkPromise.complete(chunkPath);
         }
-        LOGGER.info(
-          "{}: Finished processing chunk: {} Completed time: {}",
-          Thread.currentThread().getName(),
-          chunkKey,
-          System.currentTimeMillis()
-        );
+        LOGGER.debug("Finished processing chunk: {}", chunkKey);
       },
       false
     );

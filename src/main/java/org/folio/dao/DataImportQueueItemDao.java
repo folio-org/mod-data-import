@@ -1,10 +1,11 @@
 package org.folio.dao;
 
 import io.vertx.core.Future;
-import java.util.Optional;
-import java.util.function.BiFunction;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
+
+import java.util.Optional;
+import java.util.function.BiFunction;
 
 public interface DataImportQueueItemDao {
   /**
@@ -79,4 +80,12 @@ public interface DataImportQueueItemDao {
    * @return future with true if succeeded
    */
   Future<Void> deleteDataImportQueueItem(String id);
+
+  /**
+   * Deletes {@link DataImportQueueItem} from database
+   *
+   * @param id DataImportQueueItem id
+   * @return future with true if succeeded
+   */
+  Future<Void> deleteDataImportQueueItemByJobExecutionId(String id);
 }

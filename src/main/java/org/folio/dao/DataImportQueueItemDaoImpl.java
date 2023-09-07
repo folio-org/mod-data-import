@@ -1,7 +1,5 @@
 package org.folio.dao;
 
-import static java.lang.String.format;
-
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -9,6 +7,16 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import org.apache.commons.lang3.time.TimeZones;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.PostgresClientFactory;
+import org.folio.rest.jaxrs.model.DataImportQueueItem;
+import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import javax.ws.rs.NotFoundException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -19,15 +27,8 @@ import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.ws.rs.NotFoundException;
-import org.apache.commons.lang3.time.TimeZones;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.dao.util.PostgresClientFactory;
-import org.folio.rest.jaxrs.model.DataImportQueueItem;
-import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
+
+import static java.lang.String.format;
 
 @Repository
 public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
@@ -47,6 +48,8 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     "UPDATE %s.%s SET job_execution_id = $2, upload_definition_id = $3, tenant = $4, original_size = $5, file_path = $6, timestamp = $7, part_number = $8, processing = $9, okapi_url = $10, data_type = $11 WHERE id = $1";
   private static final String DELETE_BY_ID_SQL =
     "DELETE FROM %s.%s WHERE id = $1";
+  private static final String DELETE_BY_JOB_ID_SQL =
+      "DELETE FROM %s.%s WHERE job_execution_id = $1";
   private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
     "LOCK TABLE %s.%s IN ACCESS EXCLUSIVE MODE";
 
@@ -286,7 +289,29 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           )
       );
   }
-
+  @Override
+  public Future<Void> deleteDataImportQueueItemByJobExecutionId(String id) {
+    String query = format(
+      DELETE_BY_JOB_ID_SQL,
+      MODULE_GLOBAL_SCHEMA,
+      QUEUE_ITEM_TABLE
+    );
+    return pgClientFactory
+      .getInstance()
+      .execute(query, Tuple.of(id))
+      .flatMap(result -> {
+        if (result.rowCount() == 1) {
+          return Future.succeededFuture();
+        }
+        String message = format(
+          "Error deleting queue item with job execution id '%s'",
+          id
+        );
+        NotFoundException notFoundException = new NotFoundException(message);
+        LOGGER.error(message, notFoundException);
+        return Future.failedFuture(notFoundException);
+      });
+  }
   @Override
   public Future<Void> deleteDataImportQueueItem(String id) {
     String query = format(
@@ -302,7 +327,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
           return Future.succeededFuture();
         }
         String message = format(
-          "Error deleting Queue Item with event id '%s'",
+          "Error deleting queue item with id '%s'",
           id
         );
         NotFoundException notFoundException = new NotFoundException(message);

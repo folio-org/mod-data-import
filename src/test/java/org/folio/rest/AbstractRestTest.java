@@ -1,15 +1,5 @@
 package org.folio.rest;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.created;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.ok;
-import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
-import static com.github.tomakehurst.wiremock.client.WireMock.put;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
@@ -28,6 +18,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import lombok.extern.log4j.Log4j2;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import org.folio.liquibase.LiquibaseUtil;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
@@ -43,8 +34,8 @@ import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.s3.client.S3ClientFactory;
 import org.folio.s3.client.S3ClientProperties;
-import org.folio.service.auth.SystemUserAuthService;
 import org.folio.service.auth.PermissionsClient.PermissionUser;
+import org.folio.service.auth.SystemUserAuthService;
 import org.folio.service.auth.UsersClient.User;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -62,7 +53,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.UUID;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.created;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
@@ -228,6 +228,7 @@ public abstract class AbstractRestTest {
         break;
       case "embedded":
         PostgresClient.setPostgresTester(new PostgresTesterContainer());
+        LiquibaseUtil.initializeSchemaForModule(vertx, "data_import_global");
         break;
       default:
         String message = "No understood database choice made." +

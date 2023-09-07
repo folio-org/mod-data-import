@@ -1,5 +1,37 @@
 package org.folio.dao;
 
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.pgclient.PgConnection;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.Tuple;
+import io.vertx.sqlclient.impl.ArrayTuple;
+import org.folio.dao.util.PostgresClientFactory;
+import org.folio.rest.jaxrs.model.DataImportQueueItem;
+import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
+import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.helpers.LocalRowSet;
+import org.joda.time.DateTime;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+
+import java.util.Arrays;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.instanceOf;
@@ -16,37 +48,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.pgclient.PgConnection;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.Tuple;
-import io.vertx.sqlclient.impl.ArrayTuple;
-import java.util.Arrays;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.regex.Pattern;
-import org.folio.dao.util.PostgresClientFactory;
-import org.folio.rest.jaxrs.model.DataImportQueueItem;
-import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
-import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.helpers.LocalRowSet;
-import org.joda.time.DateTime;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentMatchers;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.mockito.invocation.InvocationOnMock;
 
 @RunWith(VertxUnitRunner.class)
 public class DataImportQueueDaoTest {
@@ -378,6 +379,28 @@ public class DataImportQueueDaoTest {
           verify(postgresClient, times(1))
             .execute(
               eq("DELETE FROM data_import_global.queue_items WHERE id = $1"),
+              any(Tuple.class)
+            );
+          verifyNoMoreInteractions(postgresClient);
+        })
+      );
+  }
+
+  @Test
+  public void testDeleteQueueItemByJobExecutionId(TestContext context) {
+    // given
+    when(postgresClient.execute(anyString(), any(Tuple.class)))
+      .thenReturn(Future.succeededFuture(new LocalRowSet(1)));
+
+    // when
+    queueItemDaoImpl
+      .deleteDataImportQueueItemByJobExecutionId("sample-id")
+      // then
+      .onComplete(
+        context.asyncAssertSuccess(x -> {
+          verify(postgresClient, times(1))
+            .execute(
+              eq("DELETE FROM data_import_global.queue_items WHERE job_execution_id = $1"),
               any(Tuple.class)
             );
           verifyNoMoreInteractions(postgresClient);

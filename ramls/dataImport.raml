@@ -197,6 +197,19 @@ resourceTypes:
                 text/plain:
                   example: "Internal server error"
   /jobExecutions/{jobExecutionId}:
+    /cancel:
+      displayName: Cancel a split Job
+      description: removes incomplete files from DI queue and marks the jobs cancelled
+      delete:
+        responses:
+          200:
+            body:
+              application/json:
+                type: string
+          500:
+            body:
+              application/json:
+                type: string
     /downloadUrl:
       description: Get a presigned S3 download URL
       get:
@@ -205,6 +218,11 @@ resourceTypes:
             body:
               application/json:
                 type: fileDownloadInfo
+          404:
+            description: "Job execution not found"
+            body:
+              text/plain:
+                example: "Job execution not found"
   /fileExtensions:
     displayName: File Extension
     description: API for managing file extensions

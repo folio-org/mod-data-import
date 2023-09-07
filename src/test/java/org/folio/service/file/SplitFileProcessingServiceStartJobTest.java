@@ -516,7 +516,7 @@ public class SplitFileProcessingServiceStartJobTest
         assertThat(
           v
             .<Function<UploadDefinition, UploadDefinition>>getArgument(1)
-            .apply(null)
+            .apply(new UploadDefinition())
             .getStatus(),
           is(UploadDefinition.Status.COMPLETED)
         );

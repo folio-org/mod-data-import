@@ -12,7 +12,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
@@ -32,7 +31,6 @@ import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.file.SplitFileProcessingService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
-import org.folio.service.processing.split.FileSplitService;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
@@ -71,11 +69,7 @@ public class DataImportImpl implements DataImport {
   @Autowired
   private MinioStorageService minioStorageService;
   @Autowired
-  private FileSplitService fileSplitService;
-  @Autowired
   private SplitFileProcessingService splitFileProcessingService;
-  @Autowired
-  private DataImportQueueItemDao queueItemDao;
 
   @Value("${SPLIT_FILES_ENABLED:false}")
   private boolean fileSplittingEnabled;

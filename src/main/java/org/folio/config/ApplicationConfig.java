@@ -17,6 +17,7 @@ import org.springframework.context.annotation.PropertySource;
   "org.folio.service.cleanup",
   "org.folio.service.file",
   "org.folio.service.fileextension",
+  "org.folio.service.processing",
   "org.folio.service.processing.ranking",
   "org.folio.service.processing.split",
   "org.folio.service.s3storage",

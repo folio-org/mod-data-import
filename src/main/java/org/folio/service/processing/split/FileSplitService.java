@@ -47,12 +47,12 @@ public class FileSplitService {
   public Future<List<String>> splitFileFromS3(Context context, String key) {
     return minioStorageService
       .readFile(key)
-      .compose(stream -> {
+      .compose((InputStream stream) -> {
         try {
           return splitStream(context, stream, key)
-            .compose(originalResult -> {
+            .compose((List<String> result) -> {
               LOGGER.info("Split from S3 completed...deleting original file");
-              return minioStorageService.remove(key).map(v -> originalResult);
+              return minioStorageService.remove(key).map(v -> result);
             });
         } catch (IOException e) {
           LOGGER.error("Unable to split file", e);
@@ -113,7 +113,7 @@ public class FileSplitService {
         list.stream().map(String.class::cast).collect(Collectors.toList())
       )
       // and since we're all done, we can delete the temporary folder
-      .map(innerResult -> {
+      .map((List<String> innerResult) -> {
         LOGGER.info("Deleting temporary folder={}", tempDir);
 
         try {

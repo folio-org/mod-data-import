@@ -13,6 +13,12 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.matchesRegex;
 import static org.hamcrest.Matchers.notNullValue;
 
+import io.restassured.RestAssured;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.apache.http.HttpStatus;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 @RunWith(VertxUnitRunner.class)
 public class UploadUrlAPITest extends AbstractRestTest {
 

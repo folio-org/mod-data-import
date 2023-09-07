@@ -1,5 +1,10 @@
 package org.folio.rest;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static org.hamcrest.Matchers.containsString;
+
 import com.github.tomakehurst.wiremock.client.WireMock;
 import io.restassured.RestAssured;
 import io.vertx.core.json.JsonObject;
@@ -8,11 +13,6 @@ import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
-import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
-import static org.hamcrest.Matchers.containsString;
 
 @RunWith(VertxUnitRunner.class)
 public class DownloadUrlAPITest extends AbstractRestTest {

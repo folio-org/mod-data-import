@@ -1,26 +1,5 @@
 package org.folio.rest;
 
-import com.github.tomakehurst.wiremock.client.WireMock;
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.AssembleFileDto;
-import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.FileUploadInfo;
-import org.folio.rest.jaxrs.model.JobExecution;
-import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
@@ -31,8 +10,28 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.fail;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.AssembleFileDto;
+import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.FileUploadInfo;
+import org.folio.rest.jaxrs.model.JobExecution;
+import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 @RunWith(VertxUnitRunner.class)
-public class DataImportAssembleFileTest extends AbstractRestTest {
+public class AssembleFileTest extends AbstractRestTest {
 
   private static final String DEFINITION_PATH =
     "/data-import/uploadDefinitions";

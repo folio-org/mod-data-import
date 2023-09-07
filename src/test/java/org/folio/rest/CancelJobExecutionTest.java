@@ -32,7 +32,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 
 @RunWith(VertxUnitRunner.class)
-public class DataImportCancelJobExecutionTest extends AbstractRestTest {
+public class CancelJobExecutionTest extends AbstractRestTest {
 
   private static final String JOB_EXECUTION_CANCEL_PATH =
     "/data-import/jobExecutions/{jobExecutionId}/cancel";

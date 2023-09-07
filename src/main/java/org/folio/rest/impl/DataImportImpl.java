@@ -41,6 +41,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -294,7 +295,7 @@ public class DataImportImpl implements DataImport {
               new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken()),
               params
             )
-            .onSuccess(v ->
+            .onSuccess(v -> 
               Future.succeededFuture(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
                 .map(Response.class::cast)
                 .onComplete(asyncResultHandler)
@@ -634,23 +635,5 @@ public class DataImportImpl implements DataImport {
   private static String getJson(String strEncoded) {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
-  }
-
-  @Override
-  public void getDataImportTestFileSplit(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        fileSplitService
-          .splitFileFromS3(vertxContext, key)
-          .map(vv -> GetDataImportTestFileSplitResponse.respond200WithApplicationJson("Testing Complete"))
-          .map(Response.class::cast)
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .onComplete(asyncResultHandler);
-      } catch (Exception err) {
-        LOGGER.error("getDataImportTestFileSplit:: Failed to split and upload chunks", err);
-        asyncResultHandler
-          .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-      }
-    });
   }
 }

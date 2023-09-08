@@ -388,6 +388,7 @@ public class SplitFileProcessingService {
             .collect(Collectors.toList())
         );
       })
+      .onFailure(err -> LOGGER.error("Error cancelling job", err))
       .mapEmpty();
   }
 

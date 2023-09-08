@@ -32,7 +32,7 @@
           "methods": [
             "DELETE"
           ],
-          "pathPattern": "/data-import/jobexecutions/{jobExecutionId}/cancel",
+          "pathPattern": "/data-import/jobExecutions/{jobExecutionId}/cancel",
           "permissionsRequired": [
             "data-import.jobexecution.cancel"
           ]

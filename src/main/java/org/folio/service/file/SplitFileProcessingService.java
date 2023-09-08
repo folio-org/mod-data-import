@@ -340,7 +340,7 @@ public class SplitFileProcessingService {
       .compose((JobExecution jobExecution) -> {
         if (
           jobExecution.getSubordinationType() ==
-          JobExecution.SubordinationType.PARENT_MULTIPLE
+          JobExecution.SubordinationType.COMPOSITE_PARENT
         ) {
           return client.getChangeManagerJobExecutionsChildrenById(
             jobExecutionId,

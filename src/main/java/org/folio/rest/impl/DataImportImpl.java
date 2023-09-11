@@ -19,7 +19,6 @@ import org.folio.rest.annotations.Stream;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.AssembleFileDto;
 import org.folio.rest.jaxrs.model.CancelResponse;
-import org.folio.rest.jaxrs.model.DataImportJobExecutionsJobExecutionIdCancelDelete200ApplicationJson;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;

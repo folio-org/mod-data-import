@@ -18,6 +18,8 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.AssembleFileDto;
+import org.folio.rest.jaxrs.model.CancelResponse;
+import org.folio.rest.jaxrs.model.DataImportJobExecutionsJobExecutionIdCancelDelete200ApplicationJson;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -574,7 +576,9 @@ public class DataImportImpl implements DataImport {
 
     vertxContext.runOnContext(v ->
       splitFileProcessingService.cancelJob(jobExecutionId, params, client)
-        .map(vv -> DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson("Job successfully cancelled"))
+        .map(vv -> DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson(
+          new CancelResponse().withOk(true)
+        ))
         .map(Response.class::cast)
         .onComplete(asyncResultHandler)
     );

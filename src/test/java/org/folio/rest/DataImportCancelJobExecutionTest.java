@@ -4,6 +4,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static org.hamcrest.Matchers.is;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import io.restassured.RestAssured;
@@ -159,7 +160,8 @@ public class DataImportCancelJobExecutionTest extends AbstractRestTest {
             .then()
             .log()
             .all()
-            .statusCode(HttpStatus.SC_OK);
+            .statusCode(HttpStatus.SC_OK)
+            .body("ok", is(true));
         })
       );
   }

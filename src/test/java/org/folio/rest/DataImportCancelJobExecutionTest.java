@@ -1,9 +1,13 @@
 package org.folio.rest;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.hamcrest.Matchers.is;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -97,14 +101,16 @@ public class DataImportCancelJobExecutionTest extends AbstractRestTest {
 
     //mock response to parent
     WireMock.stubFor(
-      get(urlMatching("/change-manager/jobExecutions/" + parentId))
+      get(urlPathMatching("/change-manager/jobExecutions/" + parentId))
         .willReturn(okJson(JsonObject.mapFrom(cancelJob).encode()))
     );
 
     //mock response to children
     WireMock.stubFor(
       get(
-        urlMatching("/change-manager/jobExecutions/" + parentId + "/children")
+        urlPathMatching(
+          "/change-manager/jobExecutions/" + parentId + "/children"
+        )
       )
         .willReturn(
           okJson(
@@ -162,6 +168,31 @@ public class DataImportCancelJobExecutionTest extends AbstractRestTest {
             .all()
             .statusCode(HttpStatus.SC_OK)
             .body("ok", is(true));
+
+          queueItemDao
+            .getAllQueueItems()
+            .onComplete(
+              context.asyncAssertSuccess(items -> {
+                context.assertEquals(0, items.getDataImportQueueItems().size());
+              })
+            );
+
+          verify(
+            exactly(2),
+            getRequestedFor(urlPathMatching("/change-manager/jobExecutions/.*"))
+          );
+          verify(
+            exactly(1),
+            getRequestedFor(
+              urlPathMatching("/change-manager/jobExecutions/.*/children")
+            )
+          );
+          verify(
+            exactly(4),
+            putRequestedFor(
+              urlPathMatching("/change-manager/jobExecutions/.*/status")
+            )
+          );
         })
       );
   }
@@ -177,7 +208,7 @@ public class DataImportCancelJobExecutionTest extends AbstractRestTest {
 
     //mock response to parent
     WireMock.stubFor(
-      get(urlMatching("/change-manager/jobExecutions/" + parentId))
+      get(urlPathMatching("/change-manager/jobExecutions/" + parentId))
         .willReturn(okJson(JsonObject.mapFrom(job).encode()))
     );
 
@@ -200,7 +231,7 @@ public class DataImportCancelJobExecutionTest extends AbstractRestTest {
 
     //mock response to parent
     WireMock.stubFor(
-      get(urlMatching("/change-manager/jobExecutions/" + parentId))
+      get(urlPathMatching("/change-manager/jobExecutions/" + parentId))
         .willReturn(notFound())
     );
 

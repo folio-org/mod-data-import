@@ -291,7 +291,6 @@ public abstract class AbstractRestTest {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopPostgresTester();
       }
-      localStackContainer.stop();
       kafkaCluster.close();
       async.complete();
     }));

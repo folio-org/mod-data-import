@@ -128,57 +128,86 @@ To allow multiple instance deployment, for every instance the same persistent vo
 
 The file-splitting process may be configured with the following environment variables:
 
-| Name                      | Description                                                                       |
-|---------------------------|-----------------------------------------------------------------------------------|
-| `SPLIT_FILES_ENABLED`     | Whether files should be split into chunks and processed separately; default false |
-| `RECORDS_PER_SPLIT_FILE`  | The maximum number of records to include in a single file; default is 1000        |
+| Name                               | Type              | Default | Description                                                                                |
+| ---------------------------------- | ----------------- | ------- | ------------------------------------------------------------------------------------------ |
+| `SPLIT_FILES_ENABLED`              | `true` or `false` | `false` | Whether files should be split into chunks and processed separately                         |
+| `RECORDS_PER_SPLIT_FILE`           | integer > 0       | `1000`  | The maximum number of records to include in a single file                                  |
+| `ASYNC_PROCESSOR_POLL_INTERVAL_MS` | integer (msec)    | `5000`  | The number of milliseconds between times when the module checks the queue for waiting jobs |
+
+For the polling interval, a lower number results in decreased latency between when a job is added to the queue and when it is processed. However, this also results in more frequent database queries, which may impact performance. Note that the number set here is the "worst case" — average waiting would be half of it — and that a few seconds delay on a large import is hardly noticable.
+
+> [!NOTE]
+> Highlights information that users should take into account, even when skimming.
 
 ## Interaction with AWS S3/Minio
 
-This module uses S3-compatible storage as part of the file upload process.  The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
+This module uses S3-compatible storage as part of the file upload process. The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
 
-| Name                    | Description                                                                |
-|-------------------------|----------------------------------------------------------------------------|
-| `AWS_URL`               | URL of S3-compatible storage, e.g. `http://127.0.0.1:9000/`                |
-| `AWS_REGION`            | S3 region                                                                  |
-| `AWS_BUCKET`            | Bucket to store and retrieve data                                          |
-| `AWS_ACCESS_KEY_ID`     | S3 access key                                                              |
-| `AWS_SECRET_ACCESS_KEY` | S3 secret key                                                              |
-| `AWS_SDK`               | If AWS S3 is being used (should be `"true"` if so and `"false"` otherwise) |
-| `S3_FORCEPATHSTYLE`     | If path-style requests should be used instead of virtual-hosted-style      |
+| Name                    | Type              | Default                  | Description                                                                   |
+| ----------------------- | ----------------- | ------------------------ | ----------------------------------------------------------------------------- |
+| `AWS_URL`               | URL as string     | `http://127.0.0.1:9000/` | URL of S3-compatible storage                                                  |
+| `AWS_REGION`            | string            | _none_                   | S3 region                                                                     |
+| `AWS_BUCKET`            | string            | _none_                   | Bucket to store and retrieve data                                             |
+| `AWS_ACCESS_KEY_ID`     | string            | _none_                   | S3 access key                                                                 |
+| `AWS_SECRET_ACCESS_KEY` | string            | _none_                   | S3 secret key                                                                 |
+| `AWS_SDK`               | `true` or `false` | `false`                  | If AWS S3 is being used (`true` if so, `false` other platforms such as MinIO) |
+| `S3_FORCEPATHSTYLE`     | `true` or `false` | `false`                  | If path-style requests should be used instead of virtual-hosted style         |
+
+Path-style vs virtual-hosted style requests are described [on the AWS S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access).
+
+> [!WARNING]
+> It is possible for files to be partially uploaded but abandoned in the UI. This module makes no effort to detect these cases and proactively delete them.
+>
+> Instead, use the retention policies built into AWS S3 and MinIO, as described [here](https://wiki.folio.org/display/FOLIOtips/Detailed+Release+Notes+for+Data+Import+Splitting+Feature#DetailedReleaseNotesforDataImportSplittingFeature-Garbagecollectionofcloudstoredfiles:).
 
 ## Queue prioritization algorithm
 
 This covers the following environment variables:
 
-* `SCORE_JOB_SMALLEST`
-* `SCORE_JOB_LARGEST`
-* `SCORE_JOB_REFERENCE`
-* `SCORE_AGE_NEWEST`
-* `SCORE_AGE_OLDEST`
-* `SCORE_AGE_EXTREME_THRESHOLD_MINUTES`
-* `SCORE_AGE_EXTREME_VALUE`
-* `SCORE_TENANT_USAGE_MIN`
-* `SCORE_TENANT_USAGE_MAX`
-* `SCORE_PART_NUMBER_FIRST`
-* `SCORE_PART_NUMBER_LAST`
-* `SCORE_PART_NUMBER_LAST_REFERENCE`
+| Name                                  | Type (unit)       | Default | Suggested | Reasoning                                                                                                                                                                                    |
+| ------------------------------------- | ----------------- | ------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SCORE_JOB_SMALLEST`                  | integer           | `0`     | `40`      |                                                                                                                                                                                              |
+| `SCORE_JOB_LARGEST`                   | integer           | `0`     | `-40`     | Larger jobs should be deprioritized                                                                                                                                                          |
+| `SCORE_JOB_REFERENCE`                 | integer (records) | `0`     | `100000`  |                                                                                                                                                                                              |
+| `SCORE_AGE_NEWEST`                    | integer           | `0`     | `0`       | New jobs begin with no boost                                                                                                                                                                 |
+| `SCORE_AGE_OLDEST`                    | integer           | `0`     | `50`      | As jobs age, their score increases rapidly, so this does not have to be too high. We want small jobs to "cut" in line effectively.                                                           |
+| `SCORE_AGE_EXTREME_THRESHOLD_MINUTES` | integer (minutes) | `0`     | `480`     | 8 hours                                                                                                                                                                                      |
+| `SCORE_AGE_EXTREME_VALUE`             | integer           | `0`     | `10000`   | Jump to the top of the queue if waiting more than 8 hours                                                                                                                                    |
+| `SCORE_TENANT_USAGE_MIN`              | integer           | `0`     | `100`     | If the tenant has no jobs running, then it should be prioritized                                                                                                                             |
+| `SCORE_TENANT_USAGE_MAX`              | integer           | `0`     | `-200`    | If the tenant is using all available workers, it should be **significantly** deprioritized. If no other tenants are competing, this will not matter (since all jobs would be offset by this) |
+| `SCORE_PART_NUMBER_FIRST`             | integer           | `0`     | `1`       | Very small; we only want to order parts amongst others within a job (which would likely have the same score otherwise)                                                                       |
+| `SCORE_PART_NUMBER_LAST`              | integer           | `0`     | `0`       |                                                                                                                                                                                              |
+| `SCORE_PART_NUMBER_LAST_REFERENCE`    | integer           | `0`     | `100`     | Does not really matter due to the small range                                                                                                                                                |
 
-For information on what these mean and how to configure them, please see [this wiki page](https://wiki.folio.org/display/FOLIOtips/Queue+and+chunk+processing+customization).
+For information on what these mean, how to configure them, how scores are calculated, and even a playground to try experiment with different values, please see [this wiki page](https://wiki.folio.org/display/FOLIOtips/Detailed+Release+Notes+for+Data+Import+Splitting+Feature#DetailedReleaseNotesforDataImportSplittingFeature-QueuePrioritizationAlgorithm).
+
+> [!IMPORTANT]
+> These all default to 0, meaning the prioritization algorithm is effectively disabled if none of these are set (and jobs will run in indeterminate order). If any of these are set, the algorithm will be enabled and the values will be used to calculate a score for each job. The job with the highest score will be run first.
+
+> [!NOTE]
+> We recommend the suggested values above, however, there is a lot of room for customization and extension as needed.
 
 ## System user
 
+> [!WARNING]
+> This module creates a system user upon installation with the following:
+>
+> - Name `SystemDataImport`
+> - Username `data-import-system-user` (customizable via env variable `SYSTEM_PROCESSING_USERNAME`)
+> - Password `data-import-system-user` (customizable via env variable `SYSTEM_PROCESSING_PASSWORD`)
+> - [permissions to perform any import-related activities](/src/main/resources/permissions.txt).
+
 To enable asynchronous job launching (as part of the file splitting process), the module creates
-a system user upon installation.  By default, the system user is named `data-import-system-user`,
-however, its credentials may be customized with the following environment variables:
+a system user upon installation. The system user is named `SystemDataImport`,
+and its credentials may be customized with the following environment variables:
 
-| Name                         | Description          | Default                   |
-|------------------------------|----------------------|---------------------------|
-| `SYSTEM_PROCESSING_USERNAME` | System user username | `data-import-system-user` |
-| `SYSTEM_PROCESSING_PASSWORD` | System user password | `data-import-system-user` |
+| Name                         | Type   | Default                   | Description          |
+| ---------------------------- | ------ | ------------------------- | -------------------- |
+| `SYSTEM_PROCESSING_USERNAME` | string | `data-import-system-user` | System user username |
+| `SYSTEM_PROCESSING_PASSWORD` | string | `data-import-system-user` | System user password |
 
-This user is granted the same permissions as the module for the
-`/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles` endpoint.  This enables this
+This user is granted [many of the same permissions](/src/main/resources/permissions.txt) as the module for the
+`/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles` endpoint. This enables this
 user to complete any import-related tasks across compatible modules.
 
 ## Interaction with Kafka

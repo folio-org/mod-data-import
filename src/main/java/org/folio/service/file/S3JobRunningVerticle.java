@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
-import java.util.concurrent.Semaphore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -69,7 +68,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     SystemUserAuthService systemUserService,
     UploadDefinitionService uploadDefinitionService,
     KafkaConfig kafkaConfig,
-    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:0}") int pollInterval
+    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval
   ) {
     LOGGER.info("Constructing S3JobRunningVerticle");
 

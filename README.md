@@ -139,7 +139,7 @@ The file-splitting process may be configured with the following environment vari
 For the polling interval, a lower number results in decreased latency between when a job is added to the queue and when it is processed. However, this also results in more frequent database queries, which may impact performance. Note that the number set here is the "worst case" — average waiting would be half of it — and that a few seconds delay on a large import is hardly noticable.
 
 > [!NOTE]
-> Highlights information that users should take into account, even when skimming.
+> For full information about this feature, please view [the release notes](https://wiki.folio.org/display/FOLIOtips/Detailed+Release+Notes+for+Data+Import+Splitting+Feature)
 
 ## Interaction with AWS S3/Minio
 

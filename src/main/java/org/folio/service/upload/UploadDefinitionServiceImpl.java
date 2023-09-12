@@ -51,6 +51,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     "validation.uploadDefinition.fileExtension.blocked";
 
   @Autowired
+  private Vertx vertx;
+
+  @Autowired
   private UploadDefinitionDao uploadDefinitionDao;
 
   @Autowired
@@ -220,7 +223,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(
       params.getOkapiUrl(),
       params.getTenantId(),
-      params.getToken()
+      params.getToken(),
+      vertx.createHttpClient()
     );
     try {
       client.putChangeManagerJobExecutionsStatusById(
@@ -256,7 +260,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     OkapiConnectionParams params
   ) {
     return FileStorageServiceBuilder
-      .build(params.getVertx(), params.getTenantId(), params)
+      .build(vertx, params.getTenantId(), params)
       .compose(service -> service.deleteFile(fileDefinition));
   }
 
@@ -383,7 +387,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(
       params.getOkapiUrl(),
       params.getTenantId(),
-      params.getToken()
+      params.getToken(),
+      vertx.createHttpClient()
     );
     try {
       client.postChangeManagerJobExecutions(
@@ -520,7 +525,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(
       params.getOkapiUrl(),
       params.getTenantId(),
-      params.getToken()
+      params.getToken(),
+      vertx.createHttpClient()
     );
     try {
       client.getChangeManagerJobExecutionsChildrenById(
@@ -560,7 +566,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(
       params.getOkapiUrl(),
       params.getTenantId(),
-      params.getToken()
+      params.getToken(),
+      vertx.createHttpClient()
     );
     try {
       client.getChangeManagerJobExecutionsById(

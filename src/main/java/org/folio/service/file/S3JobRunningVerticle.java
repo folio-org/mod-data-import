@@ -42,7 +42,7 @@ import org.springframework.stereotype.Component;
 /**
  * Worker verticle to handle running jobs from S3 storage.
  *
- * This is configured as a verticle to enable
+ * This is configured as a verticle to enable asynchronous processing apart from all normal HTTP/API threads
  */
 @Component
 public class S3JobRunningVerticle extends AbstractVerticle {
@@ -59,9 +59,6 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   private ParallelFileChunkingProcessor fileProcessor;
 
   private int pollInterval;
-
-  // used to allow wake-ups from other threads and the timer
-  private final Semaphore semaphore;
 
   @Autowired
   public S3JobRunningVerticle(
@@ -88,70 +85,52 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     this.pollInterval = pollInterval;
 
     this.fileProcessor = new ParallelFileChunkingProcessor(vertx, kafkaConfig);
-
-    this.semaphore = new Semaphore(1);
   }
 
   @Override
   public void start() {
     LOGGER.info("Running S3JobRunningVerticle");
 
-    this.run();
-  }
-
-  public void run() {
-    semaphore.release();
     this.pollForJobs();
   }
 
   /**
    * Loops indefinitely, polling for available jobs.
    * This is the best approach, as the only other option is to use a trigger in the DB, which also requires polling.
-   * The semaphore is used to allow us to wake this loop up on an interval and when a job is sent to this worker.
    */
   private synchronized void pollForJobs() {
-    try {
-      semaphore.acquire();
+    this.scoreService.getBestQueueItemAndMarkInProgress()
+      .compose(optional -> {
+        // a promise with result of if a queue item was processed or not
+        // this determines cool down before next check
+        Promise<Boolean> promise = Promise.promise();
 
-      // we want to drain all permits so that only one is available at a time
-      // e.g. if we're manually invoked and the timer ends, we don't want to loop extra
-      semaphore.drainPermits();
+        if (optional.isEmpty()) {
+          promise.complete(false);
+        } else {
+          processQueueItem(optional.get())
+            .map(v -> true)
+            .onComplete(promise::handle);
+        }
 
-      this.scoreService.getBestQueueItemAndMarkInProgress()
-        .compose(optional -> {
-          // a promise with result of if a queue item was processed or not
-          // this determines cool down before next check
-          Promise<Boolean> promise = Promise.promise();
-
-          if (optional.isEmpty()) {
-            promise.complete(false);
-          } else {
-            processQueueItem(optional.get())
-              .map(v -> true)
-              .onComplete(promise::handle);
-          }
-
-          return promise.future();
-        })
-        .onComplete(result -> {
-          if (result.succeeded() && Boolean.TRUE.equals(result.result())) {
-            this.run();
-          } else if (result.succeeded()) {
-            // wait before checking again
-            LOGGER.info(
-              "No queue items available to run, checking again in {}ms",
-              this.pollInterval
-            );
-            vertx.setTimer(this.pollInterval, v -> this.run());
-          } else {
-            LOGGER.error("Error running queue item...", result.cause());
-            vertx.setTimer(this.pollInterval, v -> this.run());
-          }
-        });
-    } catch (InterruptedException e) {
-      LOGGER.fatal("Interrupted while waiting for semaphore", e);
-      Thread.currentThread().interrupt();
-    }
+        return promise.future();
+      })
+      .onComplete(result -> {
+        if (result.succeeded() && Boolean.TRUE.equals(result.result())) {
+          // use setTimer to avoid a stack overflow on multiple repeats
+          vertx.setTimer(0, v -> this.pollForJobs());
+        } else if (result.succeeded()) {
+          // wait before checking again
+          LOGGER.info(
+            "No queue items available to run, checking again in {}ms",
+            this.pollInterval
+          );
+          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
+        } else {
+          LOGGER.error("Error running queue item...", result.cause());
+          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
+        }
+      });
   }
 
   protected Future<QueueJob> processQueueItem(DataImportQueueItem queueItem) {

@@ -286,7 +286,7 @@ public class DataImportImpl implements DataImport {
           splitFileProcessingService
             .startJob(
               entity,
-              new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken()),
+              new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertxContext.owner().createHttpClient()),
               params
             )
             .onSuccess(v -> 
@@ -570,7 +570,7 @@ public class DataImportImpl implements DataImport {
   public void deleteDataImportJobExecutionsCancelByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(),params.getTenantId(),params.getToken());
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(),params.getTenantId(),params.getToken(),vertxContext.owner().createHttpClient());
 
     vertxContext.runOnContext(v ->
       splitFileProcessingService.cancelJob(jobExecutionId, params, client)

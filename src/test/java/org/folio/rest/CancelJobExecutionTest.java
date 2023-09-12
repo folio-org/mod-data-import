@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
 
 @RunWith(VertxUnitRunner.class)
-public class DataImportCancelJobExecutionTest extends AbstractRestTest {
+public class CancelJobExecutionTest extends AbstractRestTest {
 
   private static final String JOB_EXECUTION_CANCEL_PATH =
     "/data-import/jobExecutions/{jobExecutionId}/cancel";

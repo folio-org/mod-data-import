@@ -1,6 +1,7 @@
 package org.folio.service.split;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -65,29 +66,39 @@ public class FileSplitServiceTest {
           )
         )
       );
+    when(minioStorageService.remove("test-key"))
+      .thenReturn(Future.succeededFuture());
 
     fileSplitService
       .splitFileFromS3(vertx.getOrCreateContext(), "test-key")
       .onComplete(
-        context.asyncAssertSuccess(result ->
-          result.onComplete(
-            context.asyncAssertSuccess(innerResult ->
-              innerResult.onComplete(
-                context.asyncAssertSuccess(finalResult -> {
-                  try {
-                    verify(minioStorageService, times(1)).readFile("test-key");
-                    verify(minioStorageService, times(10)).write(any(), any());
-                    verify(minioStorageService, times(1)).remove("test-key");
-
-                    verifyNoMoreInteractions(minioStorageService);
-                  } catch (IOException e) {
-                    context.fail(e);
-                  }
-                })
+        context.asyncAssertSuccess(result -> {
+          try {
+            assertThat(
+              result,
+              containsInAnyOrder(
+                "test-key_1",
+                "test-key_2",
+                "test-key_3",
+                "test-key_4",
+                "test-key_5",
+                "test-key_6",
+                "test-key_7",
+                "test-key_8",
+                "test-key_9",
+                "test-key_10"
               )
-            )
-          )
-        )
+            );
+
+            verify(minioStorageService, times(1)).readFile("test-key");
+            verify(minioStorageService, times(10)).write(any(), any());
+            verify(minioStorageService, times(1)).remove("test-key");
+
+            verifyNoMoreInteractions(minioStorageService);
+          } catch (IOException e) {
+            context.fail(e);
+          }
+        })
       );
   }
 
@@ -134,11 +145,7 @@ public class FileSplitServiceTest {
       )
       .onComplete(
         context.asyncAssertSuccess(result ->
-          result.onComplete(
-            context.asyncAssertSuccess(innerResult ->
-              innerResult.onComplete(context.asyncAssertSuccess())
-            )
-          )
+          assertThat(result, containsInAnyOrder("test-key_1"))
         )
       );
   }
@@ -169,16 +176,7 @@ public class FileSplitServiceTest {
           new ByteArrayInputStream(new byte[1]),
           "test-key"
         )
-        .onComplete(
-          context.asyncAssertSuccess(result ->
-            result.onComplete(
-              context.asyncAssertSuccess(innerResult ->
-                // should still succeed
-                innerResult.onComplete(context.asyncAssertSuccess())
-              )
-            )
-          )
-        );
+        .onComplete(context.asyncAssertSuccess());
     }
   }
 }

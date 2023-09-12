@@ -30,15 +30,6 @@
       "handlers": [
       	{
           "methods": [
-            "DELETE"
-          ],
-          "pathPattern": "/data-import/jobexecutions/{jobExecutionId}/cancel",
-          "permissionsRequired": [
-            "data-import.jobexecution.cancel"
-          ]
-        },
-      	{
-          "methods": [
             "GET"
           ],
           "pathPattern": "/data-import/splitStatus",
@@ -324,6 +315,11 @@
           "methods": ["GET"],
           "pathPattern": "/data-import/jobExecutions/{id}/downloadUrl",
           "permissionsRequired": ["data-import.downloadUrl.get"]
+        },
+      	{
+          "methods": ["DELETE"],
+          "pathPattern": "/data-import/jobExecutions/{jobExecutionId}/cancel",
+          "permissionsRequired": ["data-import.jobexecution.cancel"]
         },
         {
           "methods": ["GET"],

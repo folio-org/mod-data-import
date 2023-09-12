@@ -155,6 +155,7 @@
           ],
           "modulePermissions": [
             "change-manager.jobexecutions.get",
+            "change-manager.jobexecutions.post",
             "change-manager.jobexecutions.put",
             "mapping-metadata.get",
             "source-storage.records.get",

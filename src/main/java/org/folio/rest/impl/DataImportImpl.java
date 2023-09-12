@@ -12,7 +12,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.RestVerticle;
@@ -33,7 +32,6 @@ import org.folio.service.file.FileUploadLifecycleService;
 import org.folio.service.file.SplitFileProcessingService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.service.processing.FileProcessor;
-import org.folio.service.processing.split.FileSplitService;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.spring.SpringContextUtil;
@@ -43,8 +41,6 @@ import org.springframework.beans.factory.annotation.Value;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -74,11 +70,7 @@ public class DataImportImpl implements DataImport {
   @Autowired
   private MinioStorageService minioStorageService;
   @Autowired
-  private FileSplitService fileSplitService;
-  @Autowired
   private SplitFileProcessingService splitFileProcessingService;
-  @Autowired
-  private DataImportQueueItemDao queueItemDao;
 
   @Value("${SPLIT_FILES_ENABLED:false}")
   private boolean fileSplittingEnabled;
@@ -289,11 +281,34 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         LOGGER.info("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Starting file processing for upload definition {}", uploadDefinitionId);
-        fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders));
-        Future.succeededFuture()
-          .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
-          .map(Response.class::cast)
-          .onComplete(asyncResultHandler);
+
+        if (this.fileSplittingEnabled) {
+          OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+          splitFileProcessingService
+            .startJob(
+              entity,
+              new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken()),
+              params
+            )
+            .onSuccess(v -> 
+              Future.succeededFuture(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
+                .map(Response.class::cast)
+                .onComplete(asyncResultHandler)
+            )
+            .onFailure(err -> asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(err))));
+        } else {
+          fileProcessor.process(
+            JsonObject.mapFrom(entity),
+            JsonObject.mapFrom(okapiHeaders)
+          );
+          Future
+            .succeededFuture()
+            .map(
+              PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()
+            )
+            .map(Response.class::cast)
+            .onComplete(asyncResultHandler);
+        }
       } catch (Exception e) {
         LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Cannot upload definitions process files by uploadDefinitionId {}", uploadDefinitionId);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -614,70 +629,5 @@ public class DataImportImpl implements DataImport {
   private static String getJson(String strEncoded) {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
-  }
-
-  @Override
-  public void getDataImportTestFileSplit(String key, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        fileSplitService
-          .splitFileFromS3(vertxContext, key)
-          .onSuccess(composite -> composite.onSuccess(success -> {
-            LOGGER.debug("All chunks uploaded successfully!");
-            asyncResultHandler.handle(Future.succeededFuture("Testing Complete")
-                .map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
-          })
-          .onFailure(err -> {
-            LOGGER.error("Chunks did not upload successfully", err);
-            asyncResultHandler
-              .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-          }));
-      } catch (Exception err) {
-        LOGGER.error("getDataImportTestFileSplit:: Failed to split and upload chunks", err);
-        asyncResultHandler
-          .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-      }
-    });
-  }
-
-  @Override
-  public void getDataImportTestFileSplitLocal(String path, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        vertxContext
-          .owner()
-          .fileSystem()
-          .readFile(path)
-          .onSuccess(file -> {
-            try {
-              fileSplitService
-                .splitStream(vertxContext, new ByteArrayInputStream(file.getBytes()), path)
-                .onSuccess(composite -> composite.onSuccess(success -> {
-                  LOGGER.debug("All chunks uploaded successfully!");
-                  asyncResultHandler.handle(Future.succeededFuture("Testing Complete")
-                      .map(GetDataImportTestFileSplitResponse::respond200WithApplicationJson));
-                })
-                .onFailure(err -> {
-                  LOGGER.error("Chunks did not upload successfully", err);
-                  asyncResultHandler
-                    .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-                }));
-            } catch (IOException err) {
-              LOGGER.error("Could not split file", err);
-              asyncResultHandler
-                .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-            }
-          })
-          .onFailure(err -> {
-            LOGGER.error("Could not open file", err);
-            asyncResultHandler
-              .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-          });
-      } catch (Exception err) {
-        LOGGER.error("getDataImportTestFileSplitLocal:: Failed to split and upload chunks", err);
-        asyncResultHandler
-          .handle(Future.failedFuture(err).map(GetDataImportTestFileSplitResponse::respond500WithTextPlain));
-      }
-    });
   }
 }

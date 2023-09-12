@@ -62,7 +62,7 @@ public class FileSplitUtilities {
 
   public static Path createTemporaryDir(String key) throws IOException {
     return Files.createTempDirectory(
-      String.format("mod-data-import-splits-%s", key.replace('/', '-')),
+      String.format("di-split-%s", key.replace('/', '-')),
       PosixFilePermissions.asFileAttribute(
         PosixFilePermissions.fromString("rwx------")
       )

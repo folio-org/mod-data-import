@@ -34,6 +34,8 @@ import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -55,6 +57,8 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHU
  * After the target file gets split into records, ParallelFileChunkingProcessor sends records to the mod-source-record-manager
  * for further processing.
  */
+// autowirable for async processing outside the normal Vert.x eventbus
+@Component
 public class ParallelFileChunkingProcessor implements FileProcessor {
 
   private static final Logger LOGGER = LogManager.getLogger();
@@ -63,9 +67,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   private KafkaConfig kafkaConfig;
 
-  public ParallelFileChunkingProcessor() {
-  }
+  public ParallelFileChunkingProcessor() {}
 
+  @Autowired
   public ParallelFileChunkingProcessor(Vertx vertx, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
     this.kafkaConfig = kafkaConfig;
@@ -219,7 +223,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params     parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobsProfile(List<JobExecutionDto> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
+  public Future<Void> updateJobsProfile(List<JobExecutionDto> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Promise<Void> promise = Promise.promise();
     List<Future<Void>> updateJobProfileFutures = new ArrayList<>(jobs.size());
     for (JobExecutionDto job : jobs) {

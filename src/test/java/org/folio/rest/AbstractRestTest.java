@@ -42,6 +42,7 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.client.S3ClientFactory;
 import org.folio.s3.client.S3ClientProperties;
 import org.folio.service.auth.SystemUserAuthService;
@@ -163,6 +164,8 @@ public abstract class AbstractRestTest {
   )
     .withServices(LocalStackContainer.Service.S3);
 
+  protected static FolioS3Client s3Client;
+
   @ClassRule
   public static WireMockRule mockServer = new WireMockRule(
     WireMockConfiguration.wireMockConfig()
@@ -193,7 +196,8 @@ public abstract class AbstractRestTest {
     System.setProperty("minio.secretKey", localStackContainer.getSecretKey());
     System.setProperty("minio.bucket", MINIO_BUCKET);
     System.setProperty("minio.awsSdk", "false");
-    S3ClientFactory.getS3Client(
+
+    s3Client = S3ClientFactory.getS3Client(
       S3ClientProperties
         .builder()
         .endpoint(localStackContainer.getEndpoint().toString())
@@ -203,7 +207,8 @@ public abstract class AbstractRestTest {
         .awsSdk(false)
         .region(localStackContainer.getRegion())
         .build()
-    ).createBucketIfNotExists();
+    );
+    s3Client.createBucketIfNotExists();
 
     port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
@@ -348,15 +353,13 @@ public abstract class AbstractRestTest {
   }
 
   protected void clearTable(TestContext context) {
-    Async async = context.async();
-    PostgresClient.getInstance(vertx, TENANT_ID).delete(FILE_EXTENSIONS_TABLE, new Criterion(), event1 -> {
-      PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), event2 -> {
-        if (event1.failed()) {
-          context.fail(event1.cause());
-        }
-        async.complete();
-      });
-    });
+    s3Client.createBucketIfNotExists();
+    s3Client.remove(s3Client.list(MINIO_BUCKET).toArray(size -> new String[size]));
+    PostgresClient.getInstance(vertx, TENANT_ID).delete(FILE_EXTENSIONS_TABLE, new Criterion(), context.asyncAssertSuccess(event1 ->
+      PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), context.asyncAssertSuccess(event2 ->
+        PostgresClient.getInstance(vertx).execute("DELETE FROM data_import_global.queue_items;", context.asyncAssertSuccess())
+      ))
+    ));
   }
 
   // done as a separate WireMock server to prevent these from polluting future tests

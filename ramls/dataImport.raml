@@ -366,7 +366,6 @@ resourceTypes:
           body:
             application/json:
               type: splitStatus
-
         400:
           description: "Bad request"
           body:
@@ -377,35 +376,3 @@ resourceTypes:
           body:
             text/plain:
               example: "Internal server error"
-  /testFileSplit:
-    get:
-      description: Test File Split
-      queryParameters:
-        key:
-          description: "The key of file on S3 to be split"
-          required: true
-      responses:
-        200:
-          body:
-            application/json:
-              type: string
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-  /testFileSplitLocal:
-    get:
-      description: Test File Split
-      queryParameters:
-        path:
-          description: "The path of file locally to be split"
-          required: true
-      responses:
-        200:
-          body:
-            application/json:
-              type: string
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:

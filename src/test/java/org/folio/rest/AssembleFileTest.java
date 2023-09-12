@@ -31,7 +31,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
-public class DataImportAssembleFileTest extends AbstractRestTest {
+public class AssembleFileTest extends AbstractRestTest {
 
   private static final String DEFINITION_PATH =
     "/data-import/uploadDefinitions";

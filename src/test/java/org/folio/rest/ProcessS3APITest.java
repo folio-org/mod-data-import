@@ -7,12 +7,15 @@ import io.restassured.RestAssured;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Arrays;
-import java.util.Collections;
+import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.AssembleFileDto;
 import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.FileUploadInfo;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
@@ -26,50 +29,95 @@ import org.junit.runner.RunWith;
 @RunWith(VertxUnitRunner.class)
 public class ProcessS3APITest extends AbstractRestTest {
 
-  private static FileDefinition FILE_DEFINITION = new FileDefinition()
-    .withJobExecutionId("9907701d-dd5e-5e9e-8ae6-4dbf7ef10e5d")
-    .withUiKey("1.mrc1547160916680")
-    .withName("1.mrc")
-    .withSourcePath("key/s3-key")
-    .withSize(209);
-
   @BeforeClass
   public static void configureEnv() {
     System.setProperty("SPLIT_FILES_ENABLED", "true");
   }
 
   @Test
-  public void testProcessing() throws IOException {
-    UploadDefinition uploadDefinition = new UploadDefinition()
-      .withMetaJobExecutionId("53db5d43-9f47-521f-8a1a-ffb9dcac11c7")
-      .withFileDefinitions(Collections.singletonList(FILE_DEFINITION));
-
-    uploadDefinition.setId(
-      RestAssured
-        .given()
-        .spec(spec)
-        .body(uploadDefinition)
-        .when()
-        .post("/data-import/uploadDefinitions")
-        .then()
-        .statusCode(HttpStatus.SC_CREATED)
-        .extract()
-        .body()
-        .jsonPath()
-        .get("id")
-    );
-
-    s3Client.write(
-      FILE_DEFINITION.getSourcePath(),
-      new FileInputStream(
-        new File(
-          getClass()
-            .getClassLoader()
-            .getResource(FILE_DEFINITION.getName())
-            .getFile()
-        )
+  public void testProcessingSuccess() throws IOException {
+    UploadDefinition uploadDefinition = RestAssured
+      .given()
+      .spec(spec)
+      .body(
+        new UploadDefinition()
+          .withFileDefinitions(
+            Arrays.asList(
+              new FileDefinition()
+                .withJobExecutionId("9907701d-dd5e-5e9e-8ae6-4dbf7ef10e5d")
+                .withUiKey("1.mrc1547160916680")
+                .withName("1.mrc")
+                .withSize(10)
+            )
+          )
       )
-    );
+      .when()
+      .post("/data-import/uploadDefinitions")
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract()
+      .body()
+      .as(UploadDefinition.class);
+
+    FileUploadInfo uploadInfo = RestAssured
+      .given()
+      .spec(spec)
+      .when()
+      .queryParam(
+        "fileName",
+        uploadDefinition.getFileDefinitions().get(0).getName()
+      )
+      .get("/data-import/uploadUrl")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract()
+      .body()
+      .as(FileUploadInfo.class);
+
+    HttpURLConnection con = (HttpURLConnection) new URL(uploadInfo.getUrl())
+      .openConnection();
+    con.setRequestMethod("PUT");
+    con.setDoOutput(true);
+    con
+      .getOutputStream()
+      .write(
+        FileUtils.readFileToByteArray(
+          new File(
+            getClass()
+              .getClassLoader()
+              .getResource(
+                uploadDefinition.getFileDefinitions().get(0).getName()
+              )
+              .getFile()
+          )
+        )
+      );
+    String eTag = con.getHeaderField("eTag");
+
+    RestAssured
+      .given()
+      .spec(spec)
+      .body(
+        new AssembleFileDto()
+          .withKey(uploadInfo.getKey())
+          .withUploadId(uploadInfo.getUploadId())
+          .withTags(Arrays.asList(eTag))
+      )
+      .pathParam("uploadDefinitionId", uploadDefinition.getId())
+      .pathParam(
+        "fileDefinitionId",
+        uploadDefinition.getFileDefinitions().get(0).getId()
+      )
+      .when()
+      .post(
+        "/data-import/uploadDefinitions/{uploadDefinitionId}/files/{fileDefinitionId}/assembleStorageFile"
+      )
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    uploadDefinition
+      .getFileDefinitions()
+      .forEach(fd -> fd.setSourcePath(uploadInfo.getKey()));
 
     WireMock.stubFor(
       WireMock
@@ -85,7 +133,7 @@ public class ProcessS3APITest extends AbstractRestTest {
                       Arrays.asList(
                         new JobExecution()
                           .withId("445308a4-d3e0-562e-a7fe-28b2ef5ceb23")
-                          .withSourcePath("key/s3-key")
+                          .withSourcePath(uploadInfo.getKey())
                       )
                     )
                 )

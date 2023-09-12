@@ -24,6 +24,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.With;
+import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.DataImportQueueItemDao;
@@ -90,6 +91,7 @@ public class SplitFileProcessingService {
     this.fileProcessor = fileProcessor;
   }
 
+  /** Start a job based on information passed to the /processFiles endpoint */
   public Future<Void> startJob(
     ProcessFilesRqDto entity,
     ChangeManagerClient client,
@@ -119,7 +121,8 @@ public class SplitFileProcessingService {
         )
       )
       .andThen(v -> LOGGER.info("Job split and queued successfully!"))
-      .compose(v -> Future.succeededFuture());
+      .onFailure(err -> LOGGER.error("Unable to start job: ", err))
+      .mapEmpty();
   }
 
   /** Split file and create parent job executions for a new job */
@@ -159,7 +162,8 @@ public class SplitFileProcessingService {
           );
 
         return splitInformation;
-      });
+      })
+      .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
 
   /** Register split file parts and fill split job execution job profile/status */
@@ -214,6 +218,7 @@ public class SplitFileProcessingService {
         }
         return result;
       })
+      .onFailure(err -> LOGGER.error("Unable to initialize children", err))
       .<Void>mapEmpty()
       .andThen(v ->
         LOGGER.info("Created child job executions for {}", splitInfo.getKey())
@@ -284,6 +289,13 @@ public class SplitFileProcessingService {
               // we don't want the queue item, just the execution, so we discard the result
               // and return the execution from the earlier step
               .map(v -> execution)
+          )
+          .onFailure(err ->
+            LOGGER.error(
+              "Unable to register split file execution for {}: ",
+              key,
+              err
+            )
           )
       );
 
@@ -486,12 +498,18 @@ public class SplitFileProcessingService {
   }
 
   protected Buffer verifyOkStatus(HttpResponse<Buffer> response) {
-    if (response.statusCode() >= 200 && response.statusCode() <= 299) {
+    if (
+      response.statusCode() >= HttpStatus.SC_OK &&
+      response.statusCode() <= HttpStatus.SC_NO_CONTENT
+    ) {
       return response.bodyAsBuffer();
     } else {
       throw LOGGER.throwing(
         new IllegalStateException(
-          "Response came back with status code " + response.statusCode()
+          "Response came back with status code " +
+          response.statusCode() +
+          " and body " +
+          response.bodyAsString()
         )
       );
     }

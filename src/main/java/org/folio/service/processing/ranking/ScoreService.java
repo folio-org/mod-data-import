@@ -101,7 +101,7 @@ public class ScoreService {
         LOGGER.info(
           "  {}/{}#{}: {}",
           item.getTenant(),
-          item.getId(),
+          item.getJobExecutionId(),
           item.getPartNumber(),
           calculateScoreCached(cache, item, tenantUsageMap)
         )

@@ -6,6 +6,19 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -38,20 +51,6 @@ import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import javax.annotation.CheckForNull;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service containing methods to manage the lifecycle and initiate processing of
@@ -104,7 +103,8 @@ public class SplitFileProcessingService {
           splitPieces
             .values()
             .stream()
-            .map(splitFileInformation -> initializeChildren(entity, client, params, splitFileInformation)
+            .map(splitFileInformation ->
+              initializeChildren(entity, client, params, splitFileInformation)
             )
             .collect(Collectors.toList())
         )
@@ -154,18 +154,36 @@ public class SplitFileProcessingService {
       .map((CompositeFuture cf) -> {
         Map<String, JobExecution> executions = cf.resultAt(0);
         Map<String, SplitFileInformation> splitInformation = cf.resultAt(1);
-        splitInformation.forEach((key, value) -> value.setJobExecution(executions.get(key)));
+
+        splitInformation.forEach((key, value) ->
+          value.setJobExecution(executions.get(key))
+        );
+
         return splitInformation;
       })
-      .compose(si -> {
-        List<Future> jobExecutionUpdateFutures = new ArrayList<>();
-        si.forEach((key, value) -> {
-          var jobExecution = value.getJobExecution();
-          jobExecution.setTotalRecordsInFile(value.getTotalRecords());
-          jobExecutionUpdateFutures.add(client.putChangeManagerJobExecutionsById(jobExecution.getId(), null, jobExecution));
-        });
-        return CompositeFuture.all(jobExecutionUpdateFutures).map(unused -> si);
-      })
+      .compose(result ->
+        CompositeFuture
+          .all(
+            result
+              .values()
+              .stream()
+              .map((SplitFileInformation splitInfo) -> {
+                JobExecution execution = splitInfo.getJobExecution();
+                execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
+
+                return client
+                  .putChangeManagerJobExecutionsById(
+                    execution.getId(),
+                    null,
+                    execution
+                  )
+                  .map(this::verifyOkStatus);
+              })
+              .map(Future.class::cast)
+              .collect(Collectors.toList())
+          )
+          .map(v -> result)
+      )
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
 

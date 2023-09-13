@@ -120,7 +120,7 @@ public class SplitFileProcessingService {
           params.getTenantId()
         )
       )
-      .andThen(v -> LOGGER.info("Job split and queued successfully!"))
+      .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
       .onFailure(err -> LOGGER.error("Unable to start job: ", err))
       .mapEmpty();
   }
@@ -219,10 +219,10 @@ public class SplitFileProcessingService {
         return result;
       })
       .onFailure(err -> LOGGER.error("Unable to initialize children", err))
-      .<Void>mapEmpty()
-      .andThen(v ->
+      .onSuccess(v ->
         LOGGER.info("Created child job executions for {}", splitInfo.getKey())
-      );
+      )
+      .mapEmpty();
   }
 
   /**

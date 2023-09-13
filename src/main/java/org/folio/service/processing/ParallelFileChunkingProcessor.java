@@ -250,7 +250,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    */
   private Future<Void> updateJobProfile(String jobId, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Promise<Void> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_OK.toInt()) {

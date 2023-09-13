@@ -43,8 +43,9 @@ public class MinioStorageServiceImpl implements MinioStorageService {
 
     String key = buildKey(tenantId, uploadFileName);
 
-    vertx.executeBlocking(
-      (Promise<String> blockingFuture) -> {
+    uploadIdPromise.handle(
+      vertx.executeBlocking((Promise<String> blockingFuture) -> {
+        // we just built the key; no need to verify
         try {
           String uploadId = client.initiateMultipartUpload(key);
           LOGGER.info("Created upload ID {} for key {}", uploadId, key);
@@ -52,14 +53,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
         } catch (S3ClientException e) {
           blockingFuture.fail(e);
         }
-      },
-      (AsyncResult<String> asyncResult) -> {
-        if (asyncResult.failed()) {
-          uploadIdPromise.fail(asyncResult.cause());
-        } else {
-          uploadIdPromise.complete(asyncResult.result());
-        }
-      }
+      })
     );
 
     return uploadIdPromise
@@ -79,6 +73,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     vertx.executeBlocking(
       (Promise<String> blockingFuture) -> {
         try {
+          verifyKey(key);
+
           LOGGER.info(
             "Getting presigned URL for part {} of key {}/upload ID {}",
             partNumber,
@@ -117,6 +113,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     vertx.executeBlocking(
       (Promise<String> blockingFuture) -> {
         try {
+          verifyKey(key);
+
           LOGGER.info("Getting presigned URL for key {}", key);
           blockingFuture.complete(client.getPresignedUrl(key));
         } catch (S3ClientException e) {
@@ -145,6 +143,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     vertx.executeBlocking(
       (Promise<InputStream> blockingFuture) -> {
         try {
+          verifyKey(key);
+
           LOGGER.info(
             "Created input stream to read remote file for key {}",
             key
@@ -175,6 +175,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     vertx.executeBlocking(
       (Promise<String> blockingFuture) -> {
         try {
+          verifyKey(path);
+
           LOGGER.info("Writing remote file for path {}", path);
           String filePath = client.write(path, is);
           blockingFuture.complete(filePath);
@@ -201,6 +203,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     vertx.executeBlocking(
       (Promise<Void> blockingFuture) -> {
         try {
+          verifyKey(key);
+
           LOGGER.info("Deleting file {}", key);
           client.remove(key);
           blockingFuture.complete();
@@ -230,6 +234,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
 
     vertx.executeBlocking((Promise<String> blockingFuture) -> {
       try {
+        verifyKey(path);
+
         client.completeMultipartUpload(path, uploadId, partEtags);
         blockingFuture.complete();
         promise.complete(true);
@@ -242,9 +248,17 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     return promise.future();
   }
 
+  private static void verifyKey(String key) {
+    if (!key.startsWith("data-import/")) {
+      throw new IllegalArgumentException(
+        "Key must be located in folder 'data-import/' but was " + key
+      );
+    }
+  }
+
   private static String buildKey(String tenantId, String fileName) {
     return String.format(
-      "%s/%d-%s",
+      "data-import/%s/%d-%s",
       tenantId,
       System.currentTimeMillis(),
       fileName

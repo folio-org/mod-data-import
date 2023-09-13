@@ -95,7 +95,7 @@ public class MinioStorageServiceTest {
         );
         assertTrue(
           "Key format is correct",
-          fileInfo.getKey().matches("^test-tenant/\\d*-test-file$")
+          fileInfo.getKey().matches("^data-import/test-tenant/\\d+-test-file$")
         );
       })
     );
@@ -158,12 +158,16 @@ public class MinioStorageServiceTest {
   @Test
   public void testLaterPartSuccessful(TestContext context) {
     when(
-      folioS3Client.getPresignedMultipartUploadUrl("test-key", "upload-id", 100)
+      folioS3Client.getPresignedMultipartUploadUrl(
+        "data-import/test-key",
+        "upload-id",
+        100
+      )
     )
       .thenReturn("upload-url-100");
 
     Future<FileUploadInfo> result = minioStorageService.getFileUploadPartUrl(
-      "test-key",
+      "data-import/test-key",
       "upload-id",
       100
     );
@@ -184,7 +188,11 @@ public class MinioStorageServiceTest {
           "upload-id",
           fileInfo.getUploadId()
         );
-        assertEquals("Key did not change", "test-key", fileInfo.getKey());
+        assertEquals(
+          "Key did not change",
+          "data-import/test-key",
+          fileInfo.getKey()
+        );
       })
     );
   }

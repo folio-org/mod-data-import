@@ -188,7 +188,7 @@ public class CancelJobExecutionTest extends AbstractRestTest {
             )
           );
           verify(
-            exactly(4),
+            exactly(5),
             putRequestedFor(
               urlPathMatching("/change-manager/jobExecutions/.*/status")
             )

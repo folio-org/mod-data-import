@@ -395,15 +395,24 @@ public class SplitFileProcessingService {
               .recover(err -> Future.succeededFuture())
           );
 
-          futures.add(
-            client
-              .putChangeManagerJobExecutionsStatusById(
-                exec.getId(),
-                new StatusDto().withStatus(StatusDto.Status.CANCELLED)
-              )
-              .map(this::verifyOkStatus)
-              .mapEmpty()
-          );
+          switch (exec.getStatus()) {
+            case COMMITTED:
+            case ERROR:
+            case DISCARDED:
+            case CANCELLED:
+              // don't cancel jobs that are already completed
+              break;
+            default:
+              futures.add(
+                client
+                  .putChangeManagerJobExecutionsStatusById(
+                    exec.getId(),
+                    new StatusDto().withStatus(StatusDto.Status.CANCELLED)
+                  )
+                  .map(this::verifyOkStatus)
+                  .mapEmpty()
+              );
+          }
         }
 
         return CompositeFuture.all(

@@ -103,8 +103,8 @@ public class SplitFileProcessingService {
           splitPieces
             .entrySet()
             .stream()
-            .map(entry ->
-              initializeChildren(entity, client, params, entry.getValue())
+            .map(splitFileInformation ->
+              initializeChildren(entity, client, params, splitFileInformation)
             )
             .collect(Collectors.toList())
         )
@@ -155,14 +155,35 @@ public class SplitFileProcessingService {
         Map<String, JobExecution> executions = cf.resultAt(0);
         Map<String, SplitFileInformation> splitInformation = cf.resultAt(1);
 
-        splitInformation
-          .entrySet()
-          .forEach(entry ->
-            entry.getValue().setJobExecution(executions.get(entry.getKey()))
-          );
+        splitInformation.forEach((key, value) ->
+          value.setJobExecution(executions.get(key))
+        );
 
         return splitInformation;
       })
+      .compose(result ->
+        CompositeFuture
+          .all(
+            result
+              .values()
+              .stream()
+              .map((SplitFileInformation splitInfo) -> {
+                JobExecution execution = splitInfo.getJobExecution();
+                execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
+
+                return client
+                  .putChangeManagerJobExecutionsById(
+                    execution.getId(),
+                    null,
+                    execution
+                  )
+                  .map(this::verifyOkStatus);
+              })
+              .map(Future.class::cast)
+              .collect(Collectors.toList())
+          )
+          .map(v -> result)
+      )
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
 

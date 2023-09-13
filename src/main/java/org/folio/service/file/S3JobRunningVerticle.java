@@ -10,7 +10,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 import lombok.AllArgsConstructor;
@@ -139,7 +141,6 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             vertx.setTimer(MS_BETWEEN_IDLE_POLLS, v -> this.run());
           } else {
             LOGGER.error("Error running queue item...", result.cause());
-            result.cause().printStackTrace();
             vertx.setTimer(MS_BETWEEN_IDLE_POLLS, v -> this.run());
           }
         });
@@ -163,11 +164,16 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     File localFile;
     try {
       localFile =
-        File.createTempFile(
-          "di-tmp-",
-          // later stage requires correct file extension
-          Path.of(queueItem.getFilePath()).getFileName().toString()
-        );
+        Files
+          .createTempFile(
+            "di-tmp-",
+            // later stage requires correct file extension
+            Path.of(queueItem.getFilePath()).getFileName().toString(),
+            PosixFilePermissions.asFileAttribute(
+              PosixFilePermissions.fromString("rwx------")
+            )
+          )
+          .toFile();
       LOGGER.info("Created temporary file {}", localFile.toPath());
     } catch (IOException e) {
       throw new UncheckedIOException(e);

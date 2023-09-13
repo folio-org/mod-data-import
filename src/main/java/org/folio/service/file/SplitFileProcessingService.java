@@ -101,7 +101,7 @@ public class SplitFileProcessingService {
       .compose(splitPieces ->
         CompositeFuture.all(
           splitPieces
-            .entrySet()
+            .values()
             .stream()
             .map(splitFileInformation ->
               initializeChildren(entity, client, params, splitFileInformation)

@@ -1,5 +1,36 @@
 package org.folio.service.file;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.ext.web.client.HttpResponse;
+import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.rest.jaxrs.model.File;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
+import org.folio.rest.jaxrs.model.JobExecutionDto;
+import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
+import org.folio.rest.jaxrs.model.StatusDto;
+import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.file.SplitFileProcessingService.SplitFileInformation;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.allOf;
@@ -17,36 +48,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-
-import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.ext.web.client.HttpResponse;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.rest.jaxrs.model.File;
-import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
-import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
-import org.folio.rest.jaxrs.model.JobExecutionDto;
-import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
-import org.folio.rest.jaxrs.model.StatusDto;
-import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.service.file.SplitFileProcessingService.SplitFileInformation;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 
 @RunWith(VertxUnitRunner.class)
 public class SplitFileProcessingServiceStartJobTest
@@ -289,8 +290,8 @@ public class SplitFileProcessingServiceStartJobTest
 
           assertThat(map.get("key/file-1-key").getKey(), is("key/file-1-key"));
           assertThat(
-            map.get("key/file-1-key").getJobExecution(),
-            is(JOB_EXECUTION_1)
+            map.get("key/file-1-key").getJobExecution().getId(),
+            is(JOB_EXECUTION_1.getId())
           );
           assertThat(
             map.get("key/file-1-key").getSplitKeys(),
@@ -300,16 +301,16 @@ public class SplitFileProcessingServiceStartJobTest
 
           assertThat(map.get("key/file-2-key").getKey(), is("key/file-2-key"));
           assertThat(
-            map.get("key/file-2-key").getJobExecution(),
-            is(JOB_EXECUTION_2)
+            map.get("key/file-2-key").getJobExecution().getId(),
+            is(JOB_EXECUTION_2.getId())
           );
           assertThat(map.get("key/file-2-key").getSplitKeys(), contains("b1"));
           assertThat(map.get("key/file-2-key").getTotalRecords(), is(10));
 
           assertThat(map.get("key/file-3-key").getKey(), is("key/file-3-key"));
           assertThat(
-            map.get("key/file-3-key").getJobExecution(),
-            is(JOB_EXECUTION_3)
+            map.get("key/file-3-key").getJobExecution().getId(),
+            is(JOB_EXECUTION_3.getId())
           );
           assertThat(
             map.get("key/file-3-key").getSplitKeys(),

@@ -6,19 +6,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import javax.annotation.CheckForNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -52,6 +39,20 @@ import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.CheckForNull;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 /**
  * Service containing methods to manage the lifecycle and initiate processing of
  * split files.
@@ -61,15 +62,15 @@ public class SplitFileProcessingService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private Vertx vertx;
+  private final Vertx vertx;
 
-  private FileSplitService fileSplitService;
-  private MinioStorageService minioStorageService;
+  private final FileSplitService fileSplitService;
+  private final MinioStorageService minioStorageService;
 
-  private DataImportQueueItemDao queueItemDao;
-  private UploadDefinitionService uploadDefinitionService;
+  private final DataImportQueueItemDao queueItemDao;
+  private final UploadDefinitionService uploadDefinitionService;
 
-  private ParallelFileChunkingProcessor fileProcessor;
+  private final ParallelFileChunkingProcessor fileProcessor;
 
   @Autowired
   public SplitFileProcessingService(
@@ -101,10 +102,9 @@ public class SplitFileProcessingService {
       .compose(splitPieces ->
         CompositeFuture.all(
           splitPieces
-            .entrySet()
+            .values()
             .stream()
-            .map(entry ->
-              initializeChildren(entity, client, params, entry.getValue())
+            .map(splitFileInformation -> initializeChildren(entity, client, params, splitFileInformation)
             )
             .collect(Collectors.toList())
         )
@@ -154,14 +154,17 @@ public class SplitFileProcessingService {
       .map((CompositeFuture cf) -> {
         Map<String, JobExecution> executions = cf.resultAt(0);
         Map<String, SplitFileInformation> splitInformation = cf.resultAt(1);
-
-        splitInformation
-          .entrySet()
-          .forEach(entry ->
-            entry.getValue().setJobExecution(executions.get(entry.getKey()))
-          );
-
+        splitInformation.forEach((key, value) -> value.setJobExecution(executions.get(key)));
         return splitInformation;
+      })
+      .compose(si -> {
+        List<Future> jobExecutionUpdateFutures = new ArrayList<>();
+        si.forEach((key, value) -> {
+          var jobExecution = value.getJobExecution();
+          jobExecution.setTotalRecordsInFile(value.getTotalRecords());
+          jobExecutionUpdateFutures.add(client.putChangeManagerJobExecutionsById(jobExecution.getId(), null, jobExecution));
+        });
+        return CompositeFuture.all(jobExecutionUpdateFutures).map(unused -> si);
       })
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
@@ -427,7 +430,7 @@ public class SplitFileProcessingService {
   ) {
     Promise<HttpResponse<Buffer>> promise = Promise.promise();
 
-    client.postChangeManagerJobExecutions(request, promise::handle);
+    client.postChangeManagerJobExecutions(request, promise);
 
     return promise
       .future()

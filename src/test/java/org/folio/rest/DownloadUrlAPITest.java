@@ -47,7 +47,7 @@ public class DownloadUrlAPITest extends AbstractRestTest {
       .get(DOWNLOAD_URL_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("url", containsString("test-bucket/test-key-response"));
+      .body("url", containsString("test-bucket/data-import/test-key-response"));
   }
 
   @Test
@@ -73,8 +73,7 @@ public class DownloadUrlAPITest extends AbstractRestTest {
       .pathParam("jobExecutionId", JOB_EXEC_ID)
       .get(DOWNLOAD_URL_PATH)
       .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("url", containsString("test-bucket/test-key-response"));
+      .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
   @Test

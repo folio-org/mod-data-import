@@ -30,7 +30,10 @@ public class DownloadUrlAPITest extends AbstractRestTest {
         .willReturn(
           okJson(
             JsonObject
-              .mapFrom(new JobExecution().withSourcePath("test-key-response"))
+              .mapFrom(
+                new JobExecution()
+                  .withSourcePath("data-import/test-key-response")
+              )
               .toString()
           )
         )
@@ -44,7 +47,33 @@ public class DownloadUrlAPITest extends AbstractRestTest {
       .get(DOWNLOAD_URL_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("url", containsString("test-bucket/test-key-response"));
+      .body("url", containsString("test-bucket/data-import/test-key-response"));
+  }
+
+  @Test
+  public void testOutOfScopeRequest() {
+    WireMock.stubFor(
+      get("/change-manager/jobExecutions/" + JOB_EXEC_ID)
+        .willReturn(
+          okJson(
+            JsonObject
+              .mapFrom(
+                new JobExecution()
+                  .withSourcePath("not-correct-prefix/test-key-response")
+              )
+              .toString()
+          )
+        )
+    );
+
+    RestAssured
+      .given()
+      .spec(spec)
+      .when()
+      .pathParam("jobExecutionId", JOB_EXEC_ID)
+      .get(DOWNLOAD_URL_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
   @Test

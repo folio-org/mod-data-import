@@ -9,7 +9,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ExceptionHelper;
@@ -551,14 +550,8 @@ public class DataImportImpl implements DataImport {
         )
         .compose(fileDefinition ->
           minioStorageService.completeMultipartFileUpload(entity.getKey(), entity.getUploadId(), entity.getTags())
-            .map(completed -> Pair.of(fileDefinition, completed))
+            .map(vv -> fileDefinition)
         )
-        .compose(result -> {
-          if (Boolean.FALSE.equals(result.getRight())) {
-            return Future.failedFuture("Failed to assemble Data Import upload file");
-          }
-          return Future.succeededFuture(result.getLeft());
-        })
         .compose(fileDefinition -> fileService.afterFileSave(fileDefinition.withSourcePath(entity.getKey()), params))
         .map(vv -> PostDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileIdResponse.respond204())
         .map(Response.class::cast)

@@ -303,7 +303,7 @@ public class SplitFileProcessingServiceStartJobTest
           assertThat(map.get("key/file-1-key").getKey(), is("key/file-1-key"));
           assertThat(
             map.get("key/file-1-key").getJobExecution(),
-            is(JOB_EXECUTION_1)
+            is(JOB_EXECUTION_1.withTotalRecordsInFile(10))
           );
           assertThat(
             map.get("key/file-1-key").getSplitKeys(),
@@ -314,7 +314,7 @@ public class SplitFileProcessingServiceStartJobTest
           assertThat(map.get("key/file-2-key").getKey(), is("key/file-2-key"));
           assertThat(
             map.get("key/file-2-key").getJobExecution(),
-            is(JOB_EXECUTION_2)
+            is(JOB_EXECUTION_2.withTotalRecordsInFile(10))
           );
           assertThat(map.get("key/file-2-key").getSplitKeys(), contains("b1"));
           assertThat(map.get("key/file-2-key").getTotalRecords(), is(10));
@@ -322,7 +322,7 @@ public class SplitFileProcessingServiceStartJobTest
           assertThat(map.get("key/file-3-key").getKey(), is("key/file-3-key"));
           assertThat(
             map.get("key/file-3-key").getJobExecution(),
-            is(JOB_EXECUTION_3)
+            is(JOB_EXECUTION_3.withTotalRecordsInFile(10))
           );
           assertThat(
             map.get("key/file-3-key").getSplitKeys(),

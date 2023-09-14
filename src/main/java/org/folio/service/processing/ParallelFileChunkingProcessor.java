@@ -67,8 +67,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   private KafkaConfig kafkaConfig;
 
-  public ParallelFileChunkingProcessor() {}
-
   @Autowired
   public ParallelFileChunkingProcessor(Vertx vertx, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
@@ -93,7 +91,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
             definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
             params.getTenantId());
           return succeededFuture();
-        }).onFailure(e -> LOGGER.warn("process:: Can`t process file. Cause: {}", e.getMessage()));
+        }).onFailure(e -> LOGGER.error("process:: Unable to process file:", e));
   }
 
   /**
@@ -250,7 +248,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    */
   private Future<Void> updateJobProfile(String jobId, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Promise<Void> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_OK.toInt()) {

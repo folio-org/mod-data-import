@@ -120,7 +120,7 @@ public class SplitFileProcessingService {
           params.getTenantId()
         )
       )
-      .andThen(v -> LOGGER.info("Job split and queued successfully!"))
+      .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
       .onFailure(err -> LOGGER.error("Unable to start job: ", err))
       .mapEmpty();
   }
@@ -161,29 +161,6 @@ public class SplitFileProcessingService {
 
         return splitInformation;
       })
-      .compose(result ->
-        CompositeFuture
-          .all(
-            result
-              .values()
-              .stream()
-              .map((SplitFileInformation splitInfo) -> {
-                JobExecution execution = splitInfo.getJobExecution();
-                execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
-
-                return client
-                  .putChangeManagerJobExecutionsById(
-                    execution.getId(),
-                    null,
-                    execution
-                  )
-                  .map(this::verifyOkStatus);
-              })
-              .map(Future.class::cast)
-              .collect(Collectors.toList())
-          )
-          .map(v -> result)
-      )
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
 
@@ -240,10 +217,10 @@ public class SplitFileProcessingService {
         return result;
       })
       .onFailure(err -> LOGGER.error("Unable to initialize children", err))
-      .<Void>mapEmpty()
-      .andThen(v ->
+      .onSuccess(v ->
         LOGGER.info("Created child job executions for {}", splitInfo.getKey())
-      );
+      )
+      .mapEmpty();
   }
 
   /**

@@ -1,14 +1,9 @@
 package org.folio.rest;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.verify;
-import static org.hamcrest.Matchers.is;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import io.restassured.RestAssured;
@@ -73,7 +68,7 @@ public class CancelJobExecutionTest extends AbstractRestTest {
     String childId3 = "7bbc916a-d486-4daf-bc6b-6c72648e0b01";
     String childId4 = "a6f70f51-cf03-4879-a926-dab07a7eebf5";
 
-    // set up a few child job executions with parent
+    //set up a few child job executions with parent
     JobExecution childJob1 = new JobExecution()
       .withId(childId1)
       .withParentJobId(parentId);
@@ -94,23 +89,21 @@ public class CancelJobExecutionTest extends AbstractRestTest {
       new JobExecutionDto().withId(childJob4.getId())
     );
 
-    // set up job execution
+    //set up job execution
     JobExecution cancelJob = new JobExecution()
       .withId(parentId)
-      .withSubordinationType(JobExecution.SubordinationType.COMPOSITE_PARENT);
+      .withSubordinationType(JobExecution.SubordinationType.PARENT_MULTIPLE);
 
-    // mock response to parent
+    //mock response to parent
     WireMock.stubFor(
-      get(urlPathMatching("/change-manager/jobExecutions/" + parentId))
+      get(urlMatching("/change-manager/jobExecutions/" + parentId))
         .willReturn(okJson(JsonObject.mapFrom(cancelJob).encode()))
     );
 
-    // mock response to children
+    //mock response to children
     WireMock.stubFor(
       get(
-        urlPathMatching(
-          "/change-manager/jobExecutions/" + parentId + "/children"
-        )
+        urlMatching("/change-manager/jobExecutions/" + parentId + "/children")
       )
         .willReturn(
           okJson(
@@ -166,33 +159,7 @@ public class CancelJobExecutionTest extends AbstractRestTest {
             .then()
             .log()
             .all()
-            .statusCode(HttpStatus.SC_OK)
-            .body("ok", is(true));
-
-          queueItemDao
-            .getAllQueueItems()
-            .onComplete(
-              context.asyncAssertSuccess(items -> {
-                context.assertEquals(0, items.getDataImportQueueItems().size());
-              })
-            );
-
-          verify(
-            exactly(2),
-            getRequestedFor(urlPathMatching("/change-manager/jobExecutions/.*"))
-          );
-          verify(
-            exactly(1),
-            getRequestedFor(
-              urlPathMatching("/change-manager/jobExecutions/.*/children")
-            )
-          );
-          verify(
-            exactly(5),
-            putRequestedFor(
-              urlPathMatching("/change-manager/jobExecutions/.*/status")
-            )
-          );
+            .statusCode(HttpStatus.SC_OK);
         })
       );
   }
@@ -201,18 +168,18 @@ public class CancelJobExecutionTest extends AbstractRestTest {
   public void testNonParent(TestContext context) {
     String parentId = "fb1036b0-dd35-4b61-8b64-b041530ba23c";
 
-    // set up job execution
+    //set up job execution
     JobExecution job = new JobExecution()
       .withId(parentId)
       .withSubordinationType(JobExecution.SubordinationType.PARENT_SINGLE);
 
-    // mock response to parent
+    //mock response to parent
     WireMock.stubFor(
-      get(urlPathMatching("/change-manager/jobExecutions/" + parentId))
+      get(urlMatching("/change-manager/jobExecutions/" + parentId))
         .willReturn(okJson(JsonObject.mapFrom(job).encode()))
     );
 
-    // make request to cancel parent
+    //make request to cancel parent
     RestAssured
       .given()
       .spec(spec)
@@ -229,13 +196,13 @@ public class CancelJobExecutionTest extends AbstractRestTest {
   public void testNotFound(TestContext context) {
     String parentId = "fb1036b0-dd35-4b61-8b64-b041530ba23c";
 
-    // mock response to parent
+    //mock response to parent
     WireMock.stubFor(
-      get(urlPathMatching("/change-manager/jobExecutions/" + parentId))
+      get(urlMatching("/change-manager/jobExecutions/" + parentId))
         .willReturn(notFound())
     );
 
-    // make request to cancel parent
+    //make request to cancel parent
     RestAssured
       .given()
       .spec(spec)

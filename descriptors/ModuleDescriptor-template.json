@@ -320,7 +320,8 @@
       	{
           "methods": ["DELETE"],
           "pathPattern": "/data-import/jobExecutions/{jobExecutionId}/cancel",
-          "permissionsRequired": ["data-import.jobexecution.cancel"]
+          "permissionsRequired": ["data-import.jobexecution.cancel"],
+          "modulePermissions": ["change-manager.jobexecutions.put"]
         },
         {
           "methods": ["GET"],

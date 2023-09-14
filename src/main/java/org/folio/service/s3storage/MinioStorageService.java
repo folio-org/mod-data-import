@@ -70,7 +70,7 @@ public interface MinioStorageService {
    * @param etags the list of etags returned from part uploads
    * @return
    */
-  Future<Void> completeMultipartFileUpload(
+  Future<Boolean> completeMultipartFileUpload(
     String key,
     String uploadId,
     List<String> etags

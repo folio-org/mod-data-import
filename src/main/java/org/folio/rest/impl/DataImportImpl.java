@@ -549,8 +549,14 @@ public class DataImportImpl implements DataImport {
         )
         .compose(fileDefinition ->
           minioStorageService.completeMultipartFileUpload(entity.getKey(), entity.getUploadId(), entity.getTags())
-            .map(vv -> fileDefinition)
+            .map(completed -> Pair.of(fileDefinition, completed))
         )
+        .compose(result -> {
+          if (Boolean.FALSE.equals(result.getRight())) {
+            return Future.failedFuture("Failed to assemble Data Import upload file");
+          }
+          return Future.succeededFuture(result.getLeft());
+        })
         .compose(fileDefinition -> fileService.afterFileSave(fileDefinition.withSourcePath(entity.getKey()), params))
         .map(vv -> PostDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileIdResponse.respond204())
         .map(Response.class::cast)

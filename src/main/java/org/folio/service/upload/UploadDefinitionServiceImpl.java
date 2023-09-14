@@ -50,7 +50,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private static final String UPLOAD_FILE_EXTENSION_BLOCKED_ERROR_MESSAGE =
     "validation.uploadDefinition.fileExtension.blocked";
 
-  @Autowired
   private Vertx vertx;
 
   @Autowired
@@ -59,8 +58,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Autowired
   private FileExtensionService fileExtensionService;
 
-  public UploadDefinitionServiceImpl() {}
-
   /**
    * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
    * will be rewritten with DI support.
@@ -68,6 +65,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
    * @param vertx - Vertx argument
    */
   public UploadDefinitionServiceImpl(Vertx vertx) {
+    this.vertx = vertx;
+
     this.uploadDefinitionDao = new UploadDefinitionDaoImpl(vertx);
     this.fileExtensionService = new FileExtensionServiceImpl(vertx);
   }

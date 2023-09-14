@@ -38,6 +38,7 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
+import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionDto;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.StatusDto;
@@ -267,6 +268,18 @@ public class SplitFileProcessingServiceStartJobTest
       .when(changeManagerClient)
       .postChangeManagerJobExecutions(any(), any());
 
+    when(
+      changeManagerClient.putChangeManagerJobExecutionsById(any(), any(), any())
+    )
+      .thenAnswer(invocation -> {
+        assertThat(
+          invocation.<JobExecution>getArgument(2).getTotalRecordsInFile(),
+          is(10)
+        );
+
+        return getSuccessArBuffer(null);
+      });
+
     service
       .initializeJob(
         new ProcessFilesRqDto()
@@ -289,8 +302,8 @@ public class SplitFileProcessingServiceStartJobTest
 
           assertThat(map.get("key/file-1-key").getKey(), is("key/file-1-key"));
           assertThat(
-            map.get("key/file-1-key").getJobExecution(),
-            is(JOB_EXECUTION_1)
+            map.get("key/file-1-key").getJobExecution().getId(),
+            is(JOB_EXECUTION_1.getId())
           );
           assertThat(
             map.get("key/file-1-key").getSplitKeys(),
@@ -300,16 +313,16 @@ public class SplitFileProcessingServiceStartJobTest
 
           assertThat(map.get("key/file-2-key").getKey(), is("key/file-2-key"));
           assertThat(
-            map.get("key/file-2-key").getJobExecution(),
-            is(JOB_EXECUTION_2)
+            map.get("key/file-2-key").getJobExecution().getId(),
+            is(JOB_EXECUTION_2.getId())
           );
           assertThat(map.get("key/file-2-key").getSplitKeys(), contains("b1"));
           assertThat(map.get("key/file-2-key").getTotalRecords(), is(10));
 
           assertThat(map.get("key/file-3-key").getKey(), is("key/file-3-key"));
           assertThat(
-            map.get("key/file-3-key").getJobExecution(),
-            is(JOB_EXECUTION_3)
+            map.get("key/file-3-key").getJobExecution().getId(),
+            is(JOB_EXECUTION_3.getId())
           );
           assertThat(
             map.get("key/file-3-key").getSplitKeys(),

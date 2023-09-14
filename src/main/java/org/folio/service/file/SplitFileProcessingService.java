@@ -61,15 +61,15 @@ public class SplitFileProcessingService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private Vertx vertx;
+  private final Vertx vertx;
 
-  private FileSplitService fileSplitService;
-  private MinioStorageService minioStorageService;
+  private final FileSplitService fileSplitService;
+  private final MinioStorageService minioStorageService;
 
-  private DataImportQueueItemDao queueItemDao;
-  private UploadDefinitionService uploadDefinitionService;
+  private final DataImportQueueItemDao queueItemDao;
+  private final UploadDefinitionService uploadDefinitionService;
 
-  private ParallelFileChunkingProcessor fileProcessor;
+  private final ParallelFileChunkingProcessor fileProcessor;
 
   @Autowired
   public SplitFileProcessingService(
@@ -101,10 +101,10 @@ public class SplitFileProcessingService {
       .compose(splitPieces ->
         CompositeFuture.all(
           splitPieces
-            .entrySet()
+            .values()
             .stream()
-            .map(entry ->
-              initializeChildren(entity, client, params, entry.getValue())
+            .map(splitFileInformation ->
+              initializeChildren(entity, client, params, splitFileInformation)
             )
             .collect(Collectors.toList())
         )
@@ -155,14 +155,35 @@ public class SplitFileProcessingService {
         Map<String, JobExecution> executions = cf.resultAt(0);
         Map<String, SplitFileInformation> splitInformation = cf.resultAt(1);
 
-        splitInformation
-          .entrySet()
-          .forEach(entry ->
-            entry.getValue().setJobExecution(executions.get(entry.getKey()))
-          );
+        splitInformation.forEach((key, value) ->
+          value.setJobExecution(executions.get(key))
+        );
 
         return splitInformation;
       })
+      .compose(result ->
+        CompositeFuture
+          .all(
+            result
+              .values()
+              .stream()
+              .map((SplitFileInformation splitInfo) -> {
+                JobExecution execution = splitInfo.getJobExecution();
+                execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
+
+                return client
+                  .putChangeManagerJobExecutionsById(
+                    execution.getId(),
+                    null,
+                    execution
+                  )
+                  .map(this::verifyOkStatus);
+              })
+              .map(Future.class::cast)
+              .collect(Collectors.toList())
+          )
+          .map(v -> result)
+      )
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
 
@@ -427,7 +448,7 @@ public class SplitFileProcessingService {
   ) {
     Promise<HttpResponse<Buffer>> promise = Promise.promise();
 
-    client.postChangeManagerJobExecutions(request, promise::handle);
+    client.postChangeManagerJobExecutions(request, promise);
 
     return promise
       .future()

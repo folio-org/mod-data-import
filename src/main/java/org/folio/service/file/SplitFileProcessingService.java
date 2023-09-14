@@ -162,6 +162,29 @@ public class SplitFileProcessingService {
 
         return splitInformation;
       })
+      .compose(result ->
+        CompositeFuture
+          .all(
+            result
+              .values()
+              .stream()
+              .map((SplitFileInformation splitInfo) -> {
+                JobExecution execution = splitInfo.getJobExecution();
+                execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
+
+                return client
+                  .putChangeManagerJobExecutionsById(
+                    execution.getId(),
+                    null,
+                    execution
+                  )
+                  .map(this::verifyOkStatus);
+              })
+              .map(Future.class::cast)
+              .collect(Collectors.toList())
+          )
+          .map(v -> result)
+      )
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
 

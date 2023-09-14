@@ -62,15 +62,15 @@ public class SplitFileProcessingService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private Vertx vertx;
+  private final Vertx vertx;
 
-  private FileSplitService fileSplitService;
-  private MinioStorageService minioStorageService;
+  private final FileSplitService fileSplitService;
+  private final MinioStorageService minioStorageService;
 
-  private DataImportQueueItemDao queueItemDao;
-  private UploadDefinitionService uploadDefinitionService;
+  private final DataImportQueueItemDao queueItemDao;
+  private final UploadDefinitionService uploadDefinitionService;
 
-  private ParallelFileChunkingProcessor fileProcessor;
+  private final ParallelFileChunkingProcessor fileProcessor;
 
   @Autowired
   public SplitFileProcessingService(
@@ -188,7 +188,11 @@ public class SplitFileProcessingService {
           .list()
           .stream()
           .map(JobExecution.class::cast)
-          .map(jobExec -> new JobExecutionDto().withId(jobExec.getId()))
+          .map(jobExec ->
+            new JobExecutionDto()
+              .withId(jobExec.getId())
+              .withSourcePath(jobExec.getSourcePath())
+          )
           .collect(Collectors.toList())
       )
       // update all children
@@ -226,7 +230,7 @@ public class SplitFileProcessingService {
               // we use an IntStream here to have access to i, as the index (and therefore part number)
               IntStream
                 .range(0, childExecs.size())
-                .mapToObj(i -> {
+                .mapToObj((int i) -> {
                   JobExecutionDto execution = childExecs.get(i);
                   return queueItemDao.addQueueItem(
                     new DataImportQueueItem()
@@ -237,7 +241,7 @@ public class SplitFileProcessingService {
                       )
                       .withTenant(params.getTenantId())
                       .withOriginalSize(splitInfo.getTotalRecords())
-                      .withFilePath(execution.getFileName())
+                      .withFilePath(execution.getSourcePath())
                       .withTimestamp(new Date())
                       .withPartNumber(i + 1)
                       .withProcessing(false)

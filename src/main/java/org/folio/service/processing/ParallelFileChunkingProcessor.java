@@ -93,7 +93,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
             definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
             params.getTenantId());
           return succeededFuture();
-        }).onFailure(e -> LOGGER.warn("process:: Can`t process file. Cause: {}", e.getMessage()));
+        }).onFailure(e -> LOGGER.error("process:: Unable to process file:", e));
   }
 
   /**

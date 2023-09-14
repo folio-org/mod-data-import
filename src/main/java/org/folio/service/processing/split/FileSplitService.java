@@ -4,10 +4,10 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,15 +23,19 @@ public class FileSplitService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
+  private Vertx vertx;
+
   private MinioStorageService minioStorageService;
 
   private int maxRecordsPerChunk;
 
   @Autowired
   public FileSplitService(
+    Vertx vertx,
     MinioStorageService minioStorageService,
     @Value("${RECORDS_PER_SPLIT_FILE:1000}") int maxRecordsPerChunk
   ) {
+    this.vertx = vertx;
     this.minioStorageService = minioStorageService;
     this.maxRecordsPerChunk = maxRecordsPerChunk;
   }
@@ -113,19 +117,17 @@ public class FileSplitService {
         list.stream().map(String.class::cast).collect(Collectors.toList())
       )
       // and since we're all done, we can delete the temporary folder
-      .map((List<String> innerResult) -> {
+      .compose((List<String> innerResult) -> {
         LOGGER.info("Deleting temporary folder={}", tempDir);
 
-        try {
-          Files.delete(tempDir);
-        } catch (IOException e) {
-          // not severe enough to fail the whole upload, though
-          LOGGER.error("Could not delete temporary folder", e);
-        }
-
-        LOGGER.info("All done splitting! Got chunks {}", innerResult);
-
-        return innerResult;
-      });
+        return vertx
+          .fileSystem()
+          .deleteRecursive(tempDir.toString(), true)
+          .map(v -> innerResult);
+      })
+      .onSuccess(result ->
+        LOGGER.info("All done splitting! Got chunks {}", result)
+      )
+      .onFailure(err -> LOGGER.error("Unable to split file: ", err));
   }
 }

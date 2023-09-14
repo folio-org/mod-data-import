@@ -1,6 +1,5 @@
 package org.folio.service.s3storage;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -38,13 +37,12 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     String uploadFileName,
     String tenantId
   ) {
-    Promise<String> uploadIdPromise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
     String key = buildKey(tenantId, uploadFileName);
 
-    uploadIdPromise.handle(
-      vertx.executeBlocking((Promise<String> blockingFuture) -> {
+    return vertx
+      .executeBlocking((Promise<String> blockingFuture) -> {
         // we just built the key; no need to verify
         try {
           String uploadId = client.initiateMultipartUpload(key);
@@ -54,10 +52,6 @@ public class MinioStorageServiceImpl implements MinioStorageService {
           blockingFuture.fail(e);
         }
       })
-    );
-
-    return uploadIdPromise
-      .future()
       .compose(outcome -> getFileUploadPartUrl(key, outcome, 1));
   }
 
@@ -67,11 +61,10 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     String uploadId,
     int partNumber
   ) {
-    Promise<FileUploadInfo> promise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    vertx.executeBlocking(
-      (Promise<String> blockingFuture) -> {
+    return vertx
+      .executeBlocking((Promise<String> blockingFuture) -> {
         try {
           verifyKey(key);
 
@@ -87,31 +80,18 @@ public class MinioStorageServiceImpl implements MinioStorageService {
         } catch (S3ClientException e) {
           blockingFuture.fail(e);
         }
-      },
-      (AsyncResult<String> asyncResult) -> {
-        if (asyncResult.failed()) {
-          promise.fail(asyncResult.cause());
-        } else {
-          String url = asyncResult.result();
-          FileUploadInfo fileUpload = new FileUploadInfo();
-          fileUpload.setUrl(url);
-          fileUpload.setKey(key);
-          fileUpload.setUploadId(uploadId);
-          promise.complete(fileUpload);
-        }
-      }
-    );
-
-    return promise.future();
+      })
+      .map(url ->
+        new FileUploadInfo().withUrl(url).withKey(key).withUploadId(uploadId)
+      );
   }
 
   @Override
   public Future<FileDownloadInfo> getFileDownloadUrl(String key) {
-    Promise<FileDownloadInfo> promise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    vertx.executeBlocking(
-      (Promise<String> blockingFuture) -> {
+    return vertx
+      .executeBlocking((Promise<String> blockingFuture) -> {
         try {
           verifyKey(key);
 
@@ -120,132 +100,82 @@ public class MinioStorageServiceImpl implements MinioStorageService {
         } catch (S3ClientException e) {
           blockingFuture.fail(e);
         }
-      },
-      (AsyncResult<String> asyncResult) -> {
-        if (asyncResult.failed()) {
-          promise.fail(asyncResult.cause());
-        } else {
-          promise.complete(
-            new FileDownloadInfo().withUrl(asyncResult.result())
-          );
-        }
-      }
-    );
-
-    return promise.future();
+      })
+      .map(url -> new FileDownloadInfo().withUrl(url));
   }
 
   @Override
   public Future<InputStream> readFile(String key) {
-    Promise<InputStream> inStreamPromise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    vertx.executeBlocking(
-      (Promise<InputStream> blockingFuture) -> {
-        try {
-          verifyKey(key);
+    return vertx.executeBlocking((Promise<InputStream> blockingFuture) -> {
+      try {
+        verifyKey(key);
 
-          LOGGER.info(
-            "Created input stream to read remote file for key {}",
-            key
-          );
-          InputStream inStream = client.read(key);
-          blockingFuture.complete(inStream);
-        } catch (S3ClientException e) {
-          LOGGER.error("Could not read from S3:", e);
-          blockingFuture.fail(e);
-        }
-      },
-      (AsyncResult<InputStream> asyncResult) -> {
-        if (asyncResult.failed()) {
-          inStreamPromise.fail(asyncResult.cause());
-        } else {
-          inStreamPromise.complete(asyncResult.result());
-        }
+        LOGGER.info("Created input stream to read remote file for key {}", key);
+        InputStream inStream = client.read(key);
+        blockingFuture.complete(inStream);
+      } catch (S3ClientException e) {
+        LOGGER.error("Could not read from S3:", e);
+        blockingFuture.fail(e);
       }
-    );
-    return inStreamPromise.future();
+    });
   }
 
   @Override
   public Future<String> write(String path, InputStream is) {
-    Promise<String> stringPromise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    vertx.executeBlocking(
-      (Promise<String> blockingFuture) -> {
-        try {
-          verifyKey(path);
+    return vertx.executeBlocking((Promise<String> blockingFuture) -> {
+      try {
+        verifyKey(path);
 
-          LOGGER.info("Writing remote file for path {}", path);
-          String filePath = client.write(path, is);
-          blockingFuture.complete(filePath);
-        } catch (S3ClientException e) {
-          blockingFuture.fail(e);
-        }
-      },
-      (AsyncResult<String> asyncResult) -> {
-        if (asyncResult.failed()) {
-          stringPromise.fail(asyncResult.cause());
-        } else {
-          stringPromise.complete(asyncResult.result());
-        }
+        LOGGER.info("Writing remote file for path {}", path);
+        String filePath = client.write(path, is);
+        blockingFuture.complete(filePath);
+      } catch (S3ClientException e) {
+        blockingFuture.fail(e);
       }
-    );
-    return stringPromise.future();
+    });
   }
 
   @Override
   public Future<Void> remove(String key) {
-    Promise<Void> promise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    vertx.executeBlocking(
-      (Promise<Void> blockingFuture) -> {
-        try {
-          verifyKey(key);
+    return vertx.executeBlocking((Promise<Void> blockingFuture) -> {
+      try {
+        verifyKey(key);
 
-          LOGGER.info("Deleting file {}", key);
-          client.remove(key);
-          blockingFuture.complete();
-        } catch (S3ClientException e) {
-          LOGGER.error("Could not remove from S3:", e);
-          blockingFuture.fail(e);
-        }
-      },
-      (AsyncResult<Void> asyncResult) -> {
-        if (asyncResult.failed()) {
-          promise.fail(asyncResult.cause());
-        } else {
-          promise.complete(asyncResult.result());
-        }
+        LOGGER.info("Deleting file {}", key);
+        client.remove(key);
+        blockingFuture.complete();
+      } catch (S3ClientException e) {
+        LOGGER.error("Could not remove from S3:", e);
+        blockingFuture.fail(e);
       }
-    );
-    return promise.future();
+    });
   }
 
-  public Future<Boolean> completeMultipartFileUpload(
+  public Future<Void> completeMultipartFileUpload(
     String path,
     String uploadId,
     List<String> partEtags
   ) {
-    Promise<Boolean> promise = Promise.promise();
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    vertx.executeBlocking((Promise<String> blockingFuture) -> {
+    return vertx.executeBlocking((Promise<Void> blockingFuture) -> {
       try {
         verifyKey(path);
 
         client.completeMultipartUpload(path, uploadId, partEtags);
+
         blockingFuture.complete();
-        promise.complete(true);
-      } catch (Exception e) {
+      } catch (S3ClientException e) {
         LOGGER.error("Failed to complete multipart upload", e);
         blockingFuture.fail(e);
-        promise.complete(false);
       }
     });
-    return promise.future();
   }
 
   private static void verifyKey(String key) {

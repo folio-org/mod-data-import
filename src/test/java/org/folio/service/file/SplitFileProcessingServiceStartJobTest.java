@@ -15,6 +15,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +44,7 @@ import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.file.SplitFileProcessingService.SplitFileInformation;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.core.io.ClassPathResource;
@@ -53,6 +55,12 @@ public class SplitFileProcessingServiceStartJobTest
   extends SplitFileProcessingServiceAbstractTest {
 
   private static final Resource TEST_FILE = new ClassPathResource("10.mrc");
+
+  @Before
+  public void mockDao() {
+    when(this.queueItemDao.addQueueItem(any()))
+      .thenReturn(Future.succeededFuture("new-id"));
+  }
 
   @Test
   public void testCreateParentJobExecutions(TestContext context) {
@@ -428,6 +436,10 @@ public class SplitFileProcessingServiceStartJobTest
 
           verifyNoMoreInteractions(fileProcessor);
           verifyNoMoreInteractions(uploadDefinitionService);
+
+          verify(queueItemDao, times(2)).addQueueItem(any());
+
+          verifyNoMoreInteractions(queueItemDao);
         })
       );
   }
@@ -477,7 +489,9 @@ public class SplitFileProcessingServiceStartJobTest
           .splitKeys(Arrays.asList("a1", "a2"))
           .build()
       )
-      .onComplete(context.asyncAssertFailure());
+      .onComplete(
+        context.asyncAssertFailure(v -> verifyNoInteractions(queueItemDao))
+      );
   }
 
   @Test

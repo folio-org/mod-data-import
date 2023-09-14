@@ -249,6 +249,12 @@ public class SplitFileProcessingService {
                 .range(0, childExecs.size())
                 .mapToObj(i -> {
                   JobExecutionDto execution = childExecs.get(i);
+                  LOGGER.info(
+                    "EEEEEE {} {} {}",
+                    i,
+                    splitInfo.getSplitKeys().get(i),
+                    execution
+                  );
                   return queueItemDao.addQueueItem(
                     new DataImportQueueItem()
                       .withId(UUID.randomUUID().toString())
@@ -258,7 +264,7 @@ public class SplitFileProcessingService {
                       )
                       .withTenant(params.getTenantId())
                       .withOriginalSize(splitInfo.getTotalRecords())
-                      .withFilePath(execution.getSourcePath())
+                      .withFilePath(splitInfo.getSplitKeys().get(i))
                       .withTimestamp(new Date())
                       .withPartNumber(i + 1)
                       .withProcessing(false)

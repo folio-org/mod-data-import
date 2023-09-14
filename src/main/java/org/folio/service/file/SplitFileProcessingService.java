@@ -258,7 +258,7 @@ public class SplitFileProcessingService {
                       )
                       .withTenant(params.getTenantId())
                       .withOriginalSize(splitInfo.getTotalRecords())
-                      .withFilePath(execution.getFileName())
+                      .withFilePath(execution.getSourcePath())
                       .withTimestamp(new Date())
                       .withPartNumber(i + 1)
                       .withProcessing(false)

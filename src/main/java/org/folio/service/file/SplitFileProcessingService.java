@@ -409,9 +409,10 @@ public class SplitFileProcessingService {
             case ERROR:
             case DISCARDED:
             case CANCELLED:
-              break; // don't cancel jobs that are already completed
+              // don't cancel jobs that are already completed
+              break;
             default:
-              deleteQueueFutures.add(
+              futures.add(
                 client
                   .putChangeManagerJobExecutionsStatusById(
                     exec.getId(),

@@ -251,7 +251,7 @@ public class SplitFileProcessingService {
               // we use an IntStream here to have access to i, as the index (and therefore part number)
               IntStream
                 .range(0, childExecs.size())
-                .mapToObj(i -> {
+                .mapToObj((int i) -> {
                   JobExecutionDto execution = childExecs.get(i);
                   return queueItemDao.addQueueItem(
                     new DataImportQueueItem()

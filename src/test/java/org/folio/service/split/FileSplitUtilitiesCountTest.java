@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.service.processing.split.FileSplitUtilities;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,30 +19,47 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class FileSplitUtilitiesCountTest {
 
-  // tuples of [path, number of records]
+  private static final JobProfileInfo MARC_PROFILE = new JobProfileInfo()
+    .withDataType(JobProfileInfo.DataType.MARC);
+  private static final JobProfileInfo EDIFACT_PROFILE = new JobProfileInfo()
+    .withDataType(JobProfileInfo.DataType.EDIFACT);
+
+  // tuples of [path, number of records, profile]
   @Parameters
   public static Collection<Object[]> getCases() {
     return Arrays.asList(
-      new Object[] { "src/test/resources/0.mrc", 0 },
+      new Object[] { "0.mrc", 0, MARC_PROFILE },
       // 1 buffer read
-      new Object[] { "src/test/resources/1.mrc", 1 },
+      new Object[] { "1.mrc", 1, MARC_PROFILE },
       // multiple buffer reads
-      new Object[] { "src/test/resources/100.mrc", 100 },
-      new Object[] { "src/test/resources/2500.mrc", 2500 },
-      new Object[] { "src/test/resources/5000.mrc", 5000 },
-      new Object[] { "src/test/resources/10000.mrc", 10000 },
-      new Object[] { "src/test/resources/22778.mrc", 22778 },
-      new Object[] { "src/test/resources/50000.mrc", 50000 },
-      new Object[] { "src/test/resources/invalidMarcFile.mrc", 0 }
+      new Object[] { "100.mrc", 100, MARC_PROFILE },
+      new Object[] { "2500.mrc", 2500, MARC_PROFILE },
+      new Object[] { "5000.mrc", 5000, MARC_PROFILE },
+      new Object[] { "10000.mrc", 10000, MARC_PROFILE },
+      new Object[] { "22778.mrc", 22778, MARC_PROFILE },
+      new Object[] { "50000.mrc", 50000, MARC_PROFILE },
+      new Object[] { "invalidMarcFile.mrc", 0, MARC_PROFILE },
+      // MARC XML
+      new Object[] { "UChicago_SampleBibs.xml", 62, MARC_PROFILE },
+      // MARC JSON
+      new Object[] { "ChalmersFOLIOExamples.json", 62, MARC_PROFILE },
+      // Edifact
+      new Object[] { "edifact/TAMU-HRSW20200808072013.EDI", 7, EDIFACT_PROFILE }
     );
   }
 
   private String path;
   private int count;
+  private JobProfileInfo profile;
 
-  public FileSplitUtilitiesCountTest(String path, int count) {
-    this.path = path;
+  public FileSplitUtilitiesCountTest(
+    String path,
+    int count,
+    JobProfileInfo profile
+  ) {
+    this.path = "src/test/resources/" + path;
     this.count = count;
+    this.profile = profile;
   }
 
   @Test
@@ -51,7 +69,7 @@ public class FileSplitUtilitiesCountTest {
     );
 
     assertThat(
-      FileSplitUtilities.countRecordsInMarcFile(inputStream),
+      FileSplitUtilities.countRecordsInFile(path, inputStream, profile),
       is(count)
     );
 

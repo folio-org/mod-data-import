@@ -16,12 +16,14 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.service.processing.split.FileSplitUtilities;
 import org.folio.service.processing.split.FileSplitWriter;
 import org.folio.service.processing.split.FileSplitWriterOptions;
@@ -322,7 +324,7 @@ public class FileSplitWriterRegularTest {
                                   assertThat(actual, is(expected));
 
                                   // verify counts of records in each are correct
-                                  int totalRecords = FileSplitUtilities.countRecordsInMarcFile(
+                                  int totalRecords = countRecordsInMarcFile(
                                     new ByteArrayInputStream(actual)
                                   );
 
@@ -334,7 +336,7 @@ public class FileSplitWriterRegularTest {
                                     if (i == fileContents.size() - 1) {
                                       // the last slice should have all remaining records
                                       assertThat(
-                                        FileSplitUtilities.countRecordsInMarcFile(
+                                        countRecordsInMarcFile(
                                           new ByteArrayInputStream(
                                             fileContents.get(i)
                                           )
@@ -344,7 +346,7 @@ public class FileSplitWriterRegularTest {
                                     } else {
                                       // all other slices should have a full chunk
                                       assertThat(
-                                        FileSplitUtilities.countRecordsInMarcFile(
+                                        countRecordsInMarcFile(
                                           new ByteArrayInputStream(
                                             fileContents.get(i)
                                           )
@@ -369,5 +371,13 @@ public class FileSplitWriterRegularTest {
             );
         })
       );
+  }
+
+  private int countRecordsInMarcFile(InputStream stream) throws IOException {
+    return FileSplitUtilities.countRecordsInFile(
+      "placeholder.mrc",
+      stream,
+      new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC)
+    );
   }
 }

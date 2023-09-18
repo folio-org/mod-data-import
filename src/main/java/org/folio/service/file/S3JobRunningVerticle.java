@@ -191,23 +191,19 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           .readFile(job.getJobExecution().getSourcePath())
           .map(inputStream -> job.withInputStream(inputStream))
       )
-      .map(job -> {
-        try {
-          OutputStream outputStream = new FileOutputStream(job.getFile());
-
-          job.getInputStream().transferTo(outputStream);
-
-          job.getInputStream().close();
-          outputStream.close();
+      .map((QueueJob job) -> {
+        try (
+          InputStream inputStream = job.getInputStream();
+          OutputStream outputStream = new FileOutputStream(job.getFile())
+        ) {
+          inputStream.transferTo(outputStream);
 
           return job;
         } catch (IOException e) {
           throw new UncheckedIOException(e);
         }
       })
-      .compose(job -> {
-        Promise<QueueJob> promise = Promise.promise();
-
+      .compose(job ->
         fileProcessor
           .processFile(
             job.getFile(),
@@ -221,11 +217,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
               ),
             params
           )
-          .onSuccess(v -> promise.complete(job))
-          .onFailure(promise::fail);
-
-        return promise.future();
-      })
+          .map(v -> job)
+      )
       .onFailure(err -> {
         LOGGER.error("Unable to start chunk {}", queueItem, err);
         err.printStackTrace();

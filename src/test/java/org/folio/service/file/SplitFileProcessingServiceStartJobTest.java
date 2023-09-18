@@ -41,6 +41,8 @@ import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionDto;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
+import org.folio.rest.jaxrs.model.JobProfileInfo.DataType;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -177,7 +179,7 @@ public class SplitFileProcessingServiceStartJobTest
       );
 
     service
-      .splitFile("test-key")
+      .splitFile("test-key", JOB_PROFILE_MARC)
       .onComplete(
         context.asyncAssertSuccess(result -> {
           assertThat(result.getKey(), is("test-key"));
@@ -185,6 +187,27 @@ public class SplitFileProcessingServiceStartJobTest
             result.getSplitKeys(),
             contains("result1", "result2", "result3")
           );
+          assertThat(result.getTotalRecords(), is(10));
+        })
+      );
+  }
+
+  @Test
+  public void testSplitNonMarcFile(TestContext context) throws IOException {
+    when(minioStorageService.readFile("test-key"))
+      .thenReturn(Future.succeededFuture(TEST_FILE.getInputStream()));
+
+    when(fileSplitService.splitFileFromS3(any(), any()))
+      .thenReturn(
+        Future.succeededFuture(Arrays.asList("result1", "result2", "result3"))
+      );
+
+    service
+      .splitFile("test-key", JOB_PROFILE_EDIFACT)
+      .onComplete(
+        context.asyncAssertSuccess(result -> {
+          assertThat(result.getKey(), is("test-key"));
+          assertThat(result.getSplitKeys(), contains("test-key"));
           assertThat(result.getTotalRecords(), is(10));
         })
       );
@@ -204,7 +227,9 @@ public class SplitFileProcessingServiceStartJobTest
         )
       );
 
-    service.splitFile("test-key").onComplete(context.asyncAssertFailure());
+    service
+      .splitFile("test-key", JOB_PROFILE_MARC)
+      .onComplete(context.asyncAssertFailure());
   }
 
   @Test
@@ -240,7 +265,7 @@ public class SplitFileProcessingServiceStartJobTest
         )
       )
       .when(service)
-      .splitFile(any());
+      .splitFile(any(), any());
 
     doAnswer(invocation -> {
         InitJobExecutionsRqDto request = invocation.getArgument(0);
@@ -338,7 +363,7 @@ public class SplitFileProcessingServiceStartJobTest
           );
           assertThat(map.get("key/file-3-key").getTotalRecords(), is(10));
 
-          verify(service, times(3)).splitFile(any());
+          verify(service, times(3)).splitFile(any(), any());
           verify(changeManagerClient, times(1))
             .postChangeManagerJobExecutions(any(), any());
         })

@@ -545,12 +545,7 @@ public class SplitFileProcessingService {
           .map((InputStream stream) -> {
             try {
               return result.withTotalRecords(
-                FileSplitUtilities.countRecordsInFile(
-                  key,
-                  stream,
-                  new JobProfileInfo()
-                    .withDataType(JobProfileInfo.DataType.MARC)
-                )
+                FileSplitUtilities.countRecordsInFile(key, stream, profile)
               );
             } catch (IOException e) {
               throw new UncheckedIOException(e);

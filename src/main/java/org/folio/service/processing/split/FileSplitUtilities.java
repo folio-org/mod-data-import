@@ -50,23 +50,30 @@ public class FileSplitUtilities {
     InputStream inStream,
     JobProfileInfo profile
   ) throws IOException {
-    try {
-      byte[] byteBuffer = new byte[8192];
-      int numberOfBytes;
-      int numRecords = 0;
+    File tempFile = Files
+      .createTempFile(
+        "di-tmp-",
+        // later stage requires correct file extension
+        Path.of(filename).getFileName().toString(),
+        PosixFilePermissions.asFileAttribute(
+          PosixFilePermissions.fromString("rwx------")
+        )
+      )
+      .toFile();
 
-      int offset = 0;
-      do {
-        numberOfBytes = inStream.read(byteBuffer, offset, 8192);
-        for (int i = 0; i < numberOfBytes; i++) if (
-          byteBuffer[i] == MARC_RECORD_TERMINATOR
-        ) {
-          ++numRecords;
-        }
-      } while (numberOfBytes >= 0);
-      return numRecords;
+    try (
+      InputStream autoCloseMe = inStream;
+      OutputStream fileOutputStream = new FileOutputStream(tempFile)
+    ) {
+      inStream.transferTo(fileOutputStream);
+      fileOutputStream.flush();
+
+      return ParallelFileChunkingProcessor.countTotalRecordsInFile(
+        tempFile,
+        profile
+      );
     } finally {
-      inStream.close();
+      Files.deleteIfExists(tempFile.toPath());
     }
   }
 

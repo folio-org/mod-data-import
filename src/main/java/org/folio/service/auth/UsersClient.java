@@ -48,6 +48,7 @@ public class UsersClient extends ApiClient {
 
     private String id;
     private String username;
+    private String type;
     private boolean active;
     private Personal personal;
 

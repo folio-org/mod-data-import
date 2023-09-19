@@ -78,64 +78,62 @@ public class FileSplitService {
     InputStream stream,
     String key
   ) throws IOException {
-    try (
-      AsyncInputStream asyncStream = new AsyncInputStream(
-        context.owner(),
-        context,
-        stream
+    Promise<CompositeFuture> promise = Promise.promise();
+
+    Path tempDir = FileSplitUtilities.createTemporaryDir(key);
+
+    LOGGER.info(
+      "Streaming stream with key={} to writer, temporary folder={}...",
+      key,
+      tempDir
+    );
+
+    FileSplitWriter writer = new FileSplitWriter(
+      FileSplitWriterOptions
+        .builder()
+        .vertxContext(context)
+        .minioStorageService(minioStorageService)
+        .chunkUploadingCompositeFuturePromise(promise)
+        .outputKey(key)
+        .chunkFolder(tempDir.toString())
+        .maxRecordsPerChunk(maxRecordsPerChunk)
+        .uploadFilesToS3(true)
+        .deleteLocalFiles(true)
+        .build()
+    );
+
+    AsyncInputStream asyncStream = new AsyncInputStream(
+      context.owner(),
+      context,
+      stream
+    );
+    asyncStream
+      .pipeTo(writer)
+      .onComplete(ar1 -> LOGGER.info("File split for key={} completed", key));
+
+    return promise
+      // original future resolves once the chunks are split, but NOT uploaded
+      .future()
+      // this composite future resolves once all are uploaded
+      .compose(cf -> cf)
+      // now let's turn this back into a List<String>
+      .map(cf -> cf.list())
+      .map(list ->
+        list.stream().map(String.class::cast).collect(Collectors.toList())
       )
-    ) {
-      Promise<CompositeFuture> promise = Promise.promise();
+      // and since we're all done, we can delete the temporary folder
+      .compose((List<String> innerResult) -> {
+        LOGGER.info("Deleting temporary folder={}", tempDir);
 
-      Path tempDir = FileSplitUtilities.createTemporaryDir(key);
-
-      LOGGER.info(
-        "Streaming stream with key={} to writer, temporary folder={}...",
-        key,
-        tempDir
-      );
-
-      FileSplitWriter writer = new FileSplitWriter(
-        FileSplitWriterOptions
-          .builder()
-          .vertxContext(context)
-          .minioStorageService(minioStorageService)
-          .chunkUploadingCompositeFuturePromise(promise)
-          .outputKey(key)
-          .chunkFolder(tempDir.toString())
-          .maxRecordsPerChunk(maxRecordsPerChunk)
-          .uploadFilesToS3(true)
-          .deleteLocalFiles(true)
-          .build()
-      );
-
-      asyncStream
-        .pipeTo(writer)
-        .onComplete(ar1 -> LOGGER.info("File split for key={} completed", key));
-
-      return promise
-        // original future resolves once the chunks are split, but NOT uploaded
-        .future()
-        // this composite future resolves once all are uploaded
-        .compose(cf -> cf)
-        // now let's turn this back into a List<String>
-        .map(cf -> cf.list())
-        .map(list ->
-          list.stream().map(String.class::cast).collect(Collectors.toList())
-        )
-        // and since we're all done, we can delete the temporary folder
-        .compose((List<String> innerResult) -> {
-          LOGGER.info("Deleting temporary folder={}", tempDir);
-
-          return vertx
-            .fileSystem()
-            .deleteRecursive(tempDir.toString(), true)
-            .map(v -> innerResult);
-        })
-        .onSuccess(result ->
-          LOGGER.info("All done splitting! Got chunks {}", result)
-        )
-        .onFailure(err -> LOGGER.error("Unable to split file: ", err));
-    }
+        return vertx
+          .fileSystem()
+          .deleteRecursive(tempDir.toString(), true)
+          .map(v -> innerResult);
+      })
+      .onSuccess(result ->
+        LOGGER.info("All done splitting! Got chunks {}", result)
+      )
+      .onFailure(err -> LOGGER.error("Unable to split file: ", err))
+      .onComplete(v -> asyncStream.close());
   }
 }

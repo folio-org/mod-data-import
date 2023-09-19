@@ -26,19 +26,12 @@ import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class SplitFileProcessingServiceRegistrationTest
   extends SplitFileProcessingServiceAbstractTest {
-
-  @Before
-  public void mockDao() {
-    when(this.queueItemDao.addQueueItem(any()))
-      .thenReturn(Future.succeededFuture("new-id"));
-  }
 
   @Test
   public void testNoSplitRegistration(TestContext context) {
@@ -118,8 +111,7 @@ public class SplitFileProcessingServiceRegistrationTest
           verify(changeManagerClient, times(1))
             .postChangeManagerJobExecutions(any(), any());
 
-          verify(queueItemDao, times(1)).addQueueItem(any());
-          verifyNoMoreInteractions(queueItemDao);
+          verifyNoInteractions(queueItemDao);
         })
       );
   }
@@ -189,8 +181,7 @@ public class SplitFileProcessingServiceRegistrationTest
           verify(changeManagerClient, times(3))
             .postChangeManagerJobExecutions(any(), any());
 
-          verify(queueItemDao, times(3)).addQueueItem(any());
-          verifyNoMoreInteractions(queueItemDao);
+          verifyNoInteractions(queueItemDao);
         })
       );
   }
@@ -228,7 +219,7 @@ public class SplitFileProcessingServiceRegistrationTest
           verify(changeManagerClient, times(1))
             .postChangeManagerJobExecutions(any(), any());
 
-          verifyNoMoreInteractions(queueItemDao);
+          verifyNoInteractions(queueItemDao);
         })
       );
   }

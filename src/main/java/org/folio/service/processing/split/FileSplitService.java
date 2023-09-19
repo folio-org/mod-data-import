@@ -52,7 +52,7 @@ public class FileSplitService {
     return minioStorageService
       .readFile(key)
       .compose((InputStream stream) -> {
-        try {
+        try (InputStream autoCloseMe = stream) {
           return splitStream(context, stream, key)
             .compose((List<String> result) -> {
               LOGGER.info("Split from S3 completed...deleting original file");
@@ -66,11 +66,11 @@ public class FileSplitService {
   }
 
   /**
-   * Take a file, as an {@link InputStream}, and split it into parts, closing upon completion.
+   * Take a file, as an {@link InputStream}, and split it into parts.
    *
    * @return a {@link Future} which will resolve with a list of strings once every
    *         split chunk has been uploaded to MinIO/S3.
-   * @throws UncheckedIOException if the stream cannot be read or if temporary files cannot
+   * @throws IOException if the stream cannot be read or if temporary files cannot
    *                     be created
    */
   public Future<List<String>> splitStream(

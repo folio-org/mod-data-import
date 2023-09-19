@@ -18,7 +18,7 @@ import java.util.Objects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class AsyncInputStream implements ReadStream<Buffer>, AutoCloseable {
+public class AsyncInputStream implements ReadStream<Buffer> {
 
   public static final int DEFAULT_READ_BUFFER_SIZE = 8192;
   private static final Logger LOGGER = LogManager.getLogger();

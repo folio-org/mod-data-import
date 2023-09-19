@@ -33,11 +33,11 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .body(
         "url",
         allOf(
-          matchesRegex(".*/test-bucket/diku/\\d+-test-name.*"),
+          matchesRegex(".*/test-bucket/data-import/diku/\\d+-test-name.*"),
           containsString("partNumber=1")
         )
       )
-      .body("key", matchesRegex("^diku/[0-9]+-test-name$"))
+      .body("key", matchesRegex("^data-import/diku/[0-9]+-test-name$"))
       .body("uploadId", notNullValue());
   }
 
@@ -47,7 +47,7 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .given()
       .spec(spec)
       .when()
-      .queryParam("key", "diku/1234-test-name")
+      .queryParam("key", "data-import/diku/1234-test-name")
       .queryParam("uploadId", "upload-id-here")
       .queryParam("partNumber", "5")
       .get(UPLOAD_URL_CONTINUE_PATH)
@@ -56,12 +56,26 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .body(
         "url",
         allOf(
-          containsString("/test-bucket/diku/1234-test-name"),
+          containsString("/test-bucket/data-import/diku/1234-test-name"),
           containsString("partNumber=5"),
           containsString("uploadId=upload-id-here")
         )
       )
-      .body("key", is(equalTo("diku/1234-test-name")))
+      .body("key", is(equalTo("data-import/diku/1234-test-name")))
       .body("uploadId", is(equalTo("upload-id-here")));
+  }
+
+  @Test
+  public void testBadSubsequentRequest() {
+    RestAssured
+      .given()
+      .spec(spec)
+      .when()
+      .queryParam("key", "invalid-key-out-of-permitted-folder")
+      .queryParam("uploadId", "upload-id-here")
+      .queryParam("partNumber", "5")
+      .get(UPLOAD_URL_CONTINUE_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
   }
 }

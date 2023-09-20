@@ -24,7 +24,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
@@ -60,6 +59,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private int pollInterval;
 
+  // constructs the processor automatically
   @Autowired
   public S3JobRunningVerticle(
     Vertx vertx,
@@ -68,11 +68,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     ScoreService scoreService,
     SystemUserAuthService systemUserService,
     UploadDefinitionService uploadDefinitionService,
-    KafkaConfig kafkaConfig,
+    ParallelFileChunkingProcessor fileProcessor,
     @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval
   ) {
-    LOGGER.info("Constructing S3JobRunningVerticle");
-
     this.vertx = vertx;
 
     this.queueItemDao = queueItemDao;
@@ -84,7 +82,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
     this.pollInterval = pollInterval;
 
-    this.fileProcessor = new ParallelFileChunkingProcessor(vertx, kafkaConfig);
+    this.fileProcessor = fileProcessor;
   }
 
   @Override

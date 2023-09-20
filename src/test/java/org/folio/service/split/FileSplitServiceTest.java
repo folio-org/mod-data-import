@@ -51,7 +51,8 @@ public class FileSplitServiceTest {
   public void setUp() throws IOException {
     MockitoAnnotations.openMocks(this);
 
-    this.fileSplitService = new FileSplitService(minioStorageService, 1000);
+    this.fileSplitService =
+      new FileSplitService(vertx, minioStorageService, 1000);
     when(minioStorageService.write(any(), any()))
       .thenReturn(Future.succeededFuture());
   }

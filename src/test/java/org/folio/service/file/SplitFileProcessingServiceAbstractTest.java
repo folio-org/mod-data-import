@@ -114,7 +114,8 @@ public abstract class SplitFileProcessingServiceAbstractTest
         new ChangeManagerClient(
           mockServer.baseUrl(),
           AbstractRestTest.TENANT_ID,
-          AbstractRestTest.TOKEN
+          AbstractRestTest.TOKEN,
+          vertx.createHttpClient()
         )
       );
 

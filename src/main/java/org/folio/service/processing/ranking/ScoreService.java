@@ -20,6 +20,8 @@ public class ScoreService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
+  private static final int SCORE_LOGGING_MAX_JOBS = 100;
+
   private QueueItemHolisticRanker ranker;
   private DataImportQueueItemDao queueItemDao;
 
@@ -94,18 +96,24 @@ public class ScoreService {
 
     set.addAll(waiting.getDataImportQueueItems());
 
-    LOGGER.info("Calculated scores:");
-    set
-      .stream()
-      .forEach(item ->
-        LOGGER.info(
-          "  {}/{}#{}: {}",
-          item.getTenant(),
-          item.getId(),
-          item.getPartNumber(),
-          calculateScoreCached(cache, item, tenantUsageMap)
-        )
+    if (!set.isEmpty()) {
+      LOGGER.info(
+        "Top 100 calculated scores (score: tenant/job execution#part (filename)):"
       );
+      set
+        .stream()
+        .limit(SCORE_LOGGING_MAX_JOBS)
+        .forEach(item ->
+          LOGGER.info(
+            " {}: {}/{}#{} ({})",
+            calculateScoreCached(cache, item, tenantUsageMap),
+            item.getTenant(),
+            item.getJobExecutionId(),
+            item.getPartNumber(),
+            item.getFilePath()
+          )
+        );
+    }
 
     return set;
   }

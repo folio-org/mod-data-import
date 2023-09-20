@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import javax.annotation.CheckForNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -61,15 +62,15 @@ public class SplitFileProcessingService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private Vertx vertx;
+  private final Vertx vertx;
 
-  private FileSplitService fileSplitService;
-  private MinioStorageService minioStorageService;
+  private final FileSplitService fileSplitService;
+  private final MinioStorageService minioStorageService;
 
-  private DataImportQueueItemDao queueItemDao;
-  private UploadDefinitionService uploadDefinitionService;
+  private final DataImportQueueItemDao queueItemDao;
+  private final UploadDefinitionService uploadDefinitionService;
 
-  private ParallelFileChunkingProcessor fileProcessor;
+  private final ParallelFileChunkingProcessor fileProcessor;
 
   @Autowired
   public SplitFileProcessingService(
@@ -101,10 +102,10 @@ public class SplitFileProcessingService {
       .compose(splitPieces ->
         CompositeFuture.all(
           splitPieces
-            .entrySet()
+            .values()
             .stream()
-            .map(entry ->
-              initializeChildren(entity, client, params, entry.getValue())
+            .map(splitFileInformation ->
+              initializeChildren(entity, client, params, splitFileInformation)
             )
             .collect(Collectors.toList())
         )
@@ -120,7 +121,7 @@ public class SplitFileProcessingService {
           params.getTenantId()
         )
       )
-      .andThen(v -> LOGGER.info("Job split and queued successfully!"))
+      .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
       .onFailure(err -> LOGGER.error("Unable to start job: ", err))
       .mapEmpty();
   }
@@ -155,14 +156,35 @@ public class SplitFileProcessingService {
         Map<String, JobExecution> executions = cf.resultAt(0);
         Map<String, SplitFileInformation> splitInformation = cf.resultAt(1);
 
-        splitInformation
-          .entrySet()
-          .forEach(entry ->
-            entry.getValue().setJobExecution(executions.get(entry.getKey()))
-          );
+        splitInformation.forEach((key, value) ->
+          value.setJobExecution(executions.get(key))
+        );
 
         return splitInformation;
       })
+      .compose(result ->
+        CompositeFuture
+          .all(
+            result
+              .values()
+              .stream()
+              .map((SplitFileInformation splitInfo) -> {
+                JobExecution execution = splitInfo.getJobExecution();
+                execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
+
+                return client
+                  .putChangeManagerJobExecutionsById(
+                    execution.getId(),
+                    null,
+                    execution
+                  )
+                  .map(this::verifyOkStatus);
+              })
+              .map(Future.class::cast)
+              .collect(Collectors.toList())
+          )
+          .map(v -> result)
+      )
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
 
@@ -182,47 +204,84 @@ public class SplitFileProcessingService {
       params,
       splitInfo.getSplitKeys()
     )
+      .map(childExecs ->
+        childExecs
+          .list()
+          .stream()
+          .map(JobExecution.class::cast)
+          .map(jobExec ->
+            new JobExecutionDto()
+              .withId(jobExec.getId())
+              .withSourcePath(jobExec.getSourcePath())
+          )
+          .collect(Collectors.toList())
+      )
       // update all children
       .compose(childExecs ->
-        fileProcessor.updateJobsProfile(
-          childExecs
-            .list()
-            .stream()
-            .map(JobExecution.class::cast)
-            .map(jobExec -> new JobExecutionDto().withId(jobExec.getId()))
-            .collect(Collectors.toList()),
-          entity.getJobProfileInfo(),
-          params
-        )
+        fileProcessor
+          .updateJobsProfile(childExecs, entity.getJobProfileInfo(), params)
+          // update parent
+          .compose(r ->
+            fileProcessor.updateJobsProfile(
+              Arrays.asList(
+                new JobExecutionDto()
+                  .withId(splitInfo.getJobExecution().getId())
+              ),
+              entity.getJobProfileInfo(),
+              params
+            )
+          )
+          .compose(r ->
+            uploadDefinitionService.updateJobExecutionStatus(
+              splitInfo.getJobExecution().getId(),
+              new StatusDto().withStatus(StatusDto.Status.COMMIT_IN_PROGRESS),
+              params
+            )
+          )
+          .map((Boolean result) -> {
+            if (Boolean.FALSE.equals(result)) {
+              throw new IllegalStateException(
+                "Could not mark job as in progress"
+              );
+            }
+            return result;
+          })
+          .compose(v ->
+            CompositeFuture.all(
+              // we use an IntStream here to have access to i, as the index (and therefore part number)
+              IntStream
+                .range(0, childExecs.size())
+                .mapToObj((int i) -> {
+                  JobExecutionDto execution = childExecs.get(i);
+                  return queueItemDao.addQueueItem(
+                    new DataImportQueueItem()
+                      .withId(UUID.randomUUID().toString())
+                      .withJobExecutionId(execution.getId())
+                      .withUploadDefinitionId(
+                        entity.getUploadDefinition().getId()
+                      )
+                      .withTenant(params.getTenantId())
+                      .withOriginalSize(splitInfo.getTotalRecords())
+                      .withFilePath(execution.getSourcePath())
+                      .withTimestamp(new Date())
+                      .withPartNumber(i + 1)
+                      .withProcessing(false)
+                      .withOkapiUrl(params.getOkapiUrl())
+                      .withDataType(
+                        entity.getJobProfileInfo().getDataType().toString()
+                      )
+                  );
+                })
+                .map(Future.class::cast)
+                .collect(Collectors.toList())
+            )
+          )
       )
-      // update parent
-      .compose(r ->
-        fileProcessor.updateJobsProfile(
-          Arrays.asList(
-            new JobExecutionDto().withId(splitInfo.getJobExecution().getId())
-          ),
-          entity.getJobProfileInfo(),
-          params
-        )
-      )
-      .compose(r ->
-        uploadDefinitionService.updateJobExecutionStatus(
-          splitInfo.getJobExecution().getId(),
-          new StatusDto().withStatus(StatusDto.Status.COMMIT_IN_PROGRESS),
-          params
-        )
-      )
-      .map((Boolean result) -> {
-        if (Boolean.FALSE.equals(result)) {
-          throw new IllegalStateException("Could not mark job as in progress");
-        }
-        return result;
-      })
-      .onFailure(err -> LOGGER.error("Unable to initialize children", err))
-      .<Void>mapEmpty()
-      .andThen(v ->
+      .onSuccess(v ->
         LOGGER.info("Created child job executions for {}", splitInfo.getKey())
-      );
+      )
+      .onFailure(err -> LOGGER.error("Unable to initialize children", err))
+      .mapEmpty();
   }
 
   /**
@@ -264,32 +323,9 @@ public class SplitFileProcessingService {
           getUserIdFromMetadata(parentUploadDefinition.getMetadata())
         );
 
-      // outer scope variable could change before lambda execution, so we make it final here
-      int thisPartNumber = partNumber;
-
       futures.add(
         sendJobExecutionRequest(client, initJobExecutionsRqDto)
           .map(collection -> collection.getJobExecutions().get(0))
-          .compose(execution ->
-            queueItemDao
-              .addQueueItem(
-                new DataImportQueueItem()
-                  .withId(UUID.randomUUID().toString())
-                  .withJobExecutionId(execution.getId())
-                  .withUploadDefinitionId(parentUploadDefinition.getId())
-                  .withTenant(params.getTenantId())
-                  .withOriginalSize(parentJobSize)
-                  .withFilePath(key)
-                  .withTimestamp(new Date())
-                  .withPartNumber(thisPartNumber)
-                  .withProcessing(false)
-                  .withOkapiUrl(params.getOkapiUrl())
-                  .withDataType(jobProfileInfo.getDataType().toString())
-              )
-              // we don't want the queue item, just the execution, so we discard the result
-              // and return the execution from the earlier step
-              .map(v -> execution)
-          )
           .onFailure(err ->
             LOGGER.error(
               "Unable to register split file execution for {}: ",
@@ -382,15 +418,23 @@ public class SplitFileProcessingService {
               .recover(err -> Future.succeededFuture())
           );
 
-          deleteQueueFutures.add(
-            client
-              .putChangeManagerJobExecutionsStatusById(
-                exec.getId(),
-                new StatusDto().withStatus(StatusDto.Status.CANCELLED)
-              )
-              .map(this::verifyOkStatus)
-              .mapEmpty()
-          );
+          switch (exec.getStatus()) {
+            case COMMITTED:
+            case ERROR:
+            case DISCARDED:
+            case CANCELLED:
+              break; // don't cancel jobs that are already completed
+            default:
+              deleteQueueFutures.add(
+                client
+                  .putChangeManagerJobExecutionsStatusById(
+                    exec.getId(),
+                    new StatusDto().withStatus(StatusDto.Status.CANCELLED)
+                  )
+                  .map(this::verifyOkStatus)
+                  .mapEmpty()
+              );
+          }
         }
 
         return CompositeFuture.all(

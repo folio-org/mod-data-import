@@ -14,7 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
-import java.util.concurrent.Semaphore;
+import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,7 +24,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
@@ -36,17 +35,16 @@ import org.folio.service.processing.ranking.ScoreService;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
  * Worker verticle to handle running jobs from S3 storage.
  *
- * This is configured as a verticle to enable
+ * This is configured as a verticle to enable asynchronous processing apart from all normal HTTP/API threads
  */
 @Component
 public class S3JobRunningVerticle extends AbstractVerticle {
-
-  private static final int MS_BETWEEN_IDLE_POLLS = 5000;
 
   private static final Logger LOGGER = LogManager.getLogger();
 
@@ -59,9 +57,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private ParallelFileChunkingProcessor fileProcessor;
 
-  // used to allow wake-ups from other threads and the timer
-  private final Semaphore semaphore;
+  private int pollInterval;
 
+  // constructs the processor automatically
   @Autowired
   public S3JobRunningVerticle(
     Vertx vertx,
@@ -70,10 +68,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     ScoreService scoreService,
     SystemUserAuthService systemUserService,
     UploadDefinitionService uploadDefinitionService,
-    KafkaConfig kafkaConfig
+    ParallelFileChunkingProcessor fileProcessor,
+    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval
   ) {
-    LOGGER.info("Constructing S3JobRunningVerticle");
-
     this.vertx = vertx;
 
     this.queueItemDao = queueItemDao;
@@ -83,71 +80,55 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     this.scoreService = scoreService;
     this.uploadDefinitionService = uploadDefinitionService;
 
-    this.fileProcessor = new ParallelFileChunkingProcessor(vertx, kafkaConfig);
+    this.pollInterval = pollInterval;
 
-    this.semaphore = new Semaphore(1);
+    this.fileProcessor = fileProcessor;
   }
 
   @Override
   public void start() {
     LOGGER.info("Running S3JobRunningVerticle");
 
-    this.run();
-  }
-
-  public void run() {
-    semaphore.release();
     this.pollForJobs();
   }
 
   /**
    * Loops indefinitely, polling for available jobs.
    * This is the best approach, as the only other option is to use a trigger in the DB, which also requires polling.
-   * The semaphore is used to allow us to wake this loop up on an interval and when a job is sent to this worker.
    */
-  private synchronized void pollForJobs() {
-    try {
-      semaphore.acquire();
+  protected synchronized void pollForJobs() {
+    this.scoreService.getBestQueueItemAndMarkInProgress()
+      .compose((Optional<DataImportQueueItem> optional) -> {
+        // a promise with result of if a queue item was processed or not
+        // this determines cool down before next check
+        Promise<Boolean> promise = Promise.promise();
 
-      // we want to drain all permits so that only one is available at a time
-      // e.g. if we're manually invoked and the timer ends, we don't want to loop extra
-      semaphore.drainPermits();
+        optional.ifPresentOrElse(
+          item ->
+            processQueueItem(item).map(v -> true).onComplete(promise::handle),
+          () -> promise.complete(false)
+        );
 
-      this.scoreService.getBestQueueItemAndMarkInProgress()
-        .compose(optional -> {
-          // a promise with result of if a queue item was processed or not
-          // this determines cool down before next check
-          Promise<Boolean> promise = Promise.promise();
+        return promise.future();
+      })
+      .onSuccess((Boolean didRunJob) -> {
+        if (Boolean.TRUE.equals(didRunJob)) {
+          // use setTimer to avoid a stack overflow on multiple repeats
+          vertx.setTimer(0, v -> this.pollForJobs());
+        } else {
+          // wait before checking again
+          LOGGER.info(
+            "No queue items available to run, checking again in {}ms",
+            this.pollInterval
+          );
 
-          if (optional.isEmpty()) {
-            promise.complete(false);
-          } else {
-            processQueueItem(optional.get())
-              .map(v -> true)
-              .onComplete(promise::handle);
-          }
-
-          return promise.future();
-        })
-        .onComplete(result -> {
-          if (result.succeeded() && Boolean.TRUE.equals(result.result())) {
-            this.run();
-          } else if (result.succeeded()) {
-            // wait before checking again
-            LOGGER.info(
-              "No queue items available to run, checking again in {}ms",
-              MS_BETWEEN_IDLE_POLLS
-            );
-            vertx.setTimer(MS_BETWEEN_IDLE_POLLS, v -> this.run());
-          } else {
-            LOGGER.error("Error running queue item...", result.cause());
-            vertx.setTimer(MS_BETWEEN_IDLE_POLLS, v -> this.run());
-          }
-        });
-    } catch (InterruptedException e) {
-      LOGGER.fatal("Interrupted while waiting for semaphore", e);
-      Thread.currentThread().interrupt();
-    }
+          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
+        }
+      })
+      .onFailure((Throwable err) -> {
+        LOGGER.error("Error running queue item...", err);
+        vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
+      });
   }
 
   protected Future<QueueJob> processQueueItem(DataImportQueueItem queueItem) {
@@ -156,11 +137,118 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       queueItem.getJobExecutionId()
     );
 
-    OkapiConnectionParams params = getConnectionParams(
-      queueItem.getTenant(),
-      queueItem.getOkapiUrl()
-    );
+    OkapiConnectionParams params = getConnectionParams(queueItem);
 
+    File localFile = createLocalFile(queueItem);
+
+    return Future
+      .succeededFuture(
+        new QueueJob().withQueueItem(queueItem).withFile(localFile)
+      )
+      .compose(job ->
+        uploadDefinitionService
+          .getJobExecutionById(queueItem.getJobExecutionId(), params)
+          .map(jobExecution -> job.withJobExecution(jobExecution))
+      )
+      .compose(job ->
+        updateJobExecutionStatusSafely(
+          job.getJobExecution().getId(),
+          new StatusDto().withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS),
+          params
+        )
+          .map(v -> job)
+      )
+      .compose(this::downloadFromS3)
+      .compose(job ->
+        fileProcessor
+          .processFile(
+            job.getFile(),
+            job.getJobExecution().getId(),
+            // this is the only part used on our end
+            new JobProfileInfo()
+              .withDataType(
+                JobProfileInfo.DataType.fromValue(
+                  job.getQueueItem().getDataType()
+                )
+              ),
+            params
+          )
+          .map(v -> job)
+      )
+      .onFailure((Throwable err) -> {
+        LOGGER.error("Unable to start chunk {}", queueItem, err);
+        err.printStackTrace();
+
+        updateJobExecutionStatusSafely(
+          queueItem.getJobExecutionId(),
+          new StatusDto()
+            .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
+            .withStatus(StatusDto.Status.ERROR),
+          params
+        );
+      })
+      .onSuccess((QueueJob result) -> {
+        queueItemDao.deleteDataImportQueueItem(queueItem.getId());
+
+        LOGGER.info(
+          "Completed processing job execution {}!",
+          queueItem.getJobExecutionId()
+        );
+      })
+      .onComplete(v -> {
+        try {
+          FileUtils.delete(localFile);
+        } catch (IOException e) {
+          LOGGER.error(
+            "Could not clean up temporary file {}: ",
+            localFile.toPath(),
+            e
+          );
+        }
+      });
+  }
+
+  protected Future<Void> updateJobExecutionStatusSafely(
+    String jobExecutionId,
+    StatusDto status,
+    OkapiConnectionParams params
+  ) {
+    return uploadDefinitionService
+      .updateJobExecutionStatus(jobExecutionId, status, params)
+      .map((Boolean successful) -> {
+        if (Boolean.FALSE.equals(successful)) {
+          LOGGER.error(
+            "Unable to change job {} status to {}",
+            jobExecutionId,
+            status
+          );
+          throw new IllegalStateException(
+            "Unable to update job execution status"
+          );
+        }
+        return successful;
+      })
+      .mapEmpty();
+  }
+
+  protected Future<QueueJob> downloadFromS3(QueueJob job) {
+    return minioStorageService
+      .readFile(job.getJobExecution().getSourcePath())
+      .map((InputStream inputStream) -> {
+        try (
+          InputStream autoCloseMe = inputStream;
+          OutputStream outputStream = new FileOutputStream(job.getFile())
+        ) {
+          inputStream.transferTo(outputStream);
+
+          return job;
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      });
+  }
+
+  protected File createLocalFile(DataImportQueueItem queueItem) {
     File localFile;
     try {
       localFile =
@@ -178,116 +266,22 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
-
-    return Future
-      .succeededFuture(
-        new QueueJob().withQueueItem(queueItem).withFile(localFile)
-      )
-      .compose(job ->
-        uploadDefinitionService
-          .getJobExecutionById(queueItem.getJobExecutionId(), params)
-          .map(jobExecution -> job.withJobExecution(jobExecution))
-      )
-      .compose(job ->
-        uploadDefinitionService
-          .updateJobExecutionStatus(
-            job.getJobExecution().getId(),
-            new StatusDto().withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS),
-            params
-          )
-          .map(successful -> {
-            if (Boolean.FALSE.equals(successful)) {
-              throw new IllegalStateException(
-                "Unable to mark job as in progress"
-              );
-            }
-            return job;
-          })
-      )
-      .compose(job ->
-        minioStorageService
-          .readFile(job.getJobExecution().getSourcePath())
-          .map(inputStream -> job.withInputStream(inputStream))
-      )
-      .map(job -> {
-        try {
-          OutputStream outputStream = new FileOutputStream(job.getFile());
-
-          job.getInputStream().transferTo(outputStream);
-
-          job.getInputStream().close();
-          outputStream.close();
-
-          return job;
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
-        }
-      })
-      .compose(job -> {
-        Promise<QueueJob> promise = Promise.promise();
-
-        fileProcessor
-          .processFile(
-            job.getFile(),
-            job.getJobExecution().getId(),
-            // this is the only part used on our end
-            new JobProfileInfo()
-              .withDataType(
-                JobProfileInfo.DataType.fromValue(
-                  job.getQueueItem().getDataType()
-                )
-              ),
-            params
-          )
-          .onSuccess(v -> promise.complete(job))
-          .onFailure(promise::fail);
-
-        return promise.future();
-      })
-      .onFailure(err -> {
-        LOGGER.error("Unable to start chunk {}", queueItem, err);
-        err.printStackTrace();
-
-        uploadDefinitionService.updateJobExecutionStatus(
-          queueItem.getJobExecutionId(),
-          new StatusDto()
-            .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
-            .withStatus(StatusDto.Status.ERROR),
-          params
-        );
-      })
-      .onSuccess(result -> {
-        queueItemDao.deleteDataImportQueueItem(queueItem.getId());
-        try {
-          FileUtils.delete(localFile);
-        } catch (IOException e) {
-          LOGGER.error(
-            "Could not clean up temporary file {}: ",
-            localFile.toPath(),
-            e
-          );
-        }
-
-        LOGGER.info(
-          "Completed processing job execution {}!",
-          queueItem.getJobExecutionId()
-        );
-      });
+    return localFile;
   }
 
   /**
    * Authenticate and get connection parameters (Okapi URL/token)
    */
-  private OkapiConnectionParams getConnectionParams(
-    String tenant,
-    String okapiUrl
+  protected OkapiConnectionParams getConnectionParams(
+    DataImportQueueItem queueItem
   ) {
     OkapiConnectionParams provisionalParams = new OkapiConnectionParams(
       Map.of(
         "x-okapi-url",
-        okapiUrl,
+        queueItem.getOkapiUrl(),
         "x-okapi-tenant",
-        tenant,
+        queueItem.getTenant(),
+        // filled right after, but we need tenant/URL to get the token
         "x-okapi-token",
         ""
       ),
@@ -299,9 +293,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     return new OkapiConnectionParams(
       Map.of(
         "x-okapi-url",
-        okapiUrl,
+        queueItem.getOkapiUrl(),
         "x-okapi-tenant",
-        tenant,
+        queueItem.getTenant(),
         "x-okapi-token",
         token
       ),
@@ -318,11 +312,10 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   @With
   @NoArgsConstructor
   @AllArgsConstructor
-  private static class QueueJob {
+  protected static class QueueJob {
 
     private DataImportQueueItem queueItem;
     private JobExecution jobExecution;
-    private InputStream inputStream;
     private File file;
   }
 }

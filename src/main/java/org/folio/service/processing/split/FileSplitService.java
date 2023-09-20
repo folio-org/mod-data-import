@@ -52,7 +52,7 @@ public class FileSplitService {
     return minioStorageService
       .readFile(key)
       .compose((InputStream stream) -> {
-        try {
+        try (InputStream autoCloseMe = stream) {
           return splitStream(context, stream, key)
             .compose((List<String> result) -> {
               LOGGER.info("Split from S3 completed...deleting original file");

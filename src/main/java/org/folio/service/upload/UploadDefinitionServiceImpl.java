@@ -50,13 +50,13 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private static final String UPLOAD_FILE_EXTENSION_BLOCKED_ERROR_MESSAGE =
     "validation.uploadDefinition.fileExtension.blocked";
 
+  private Vertx vertx;
+
   @Autowired
   private UploadDefinitionDao uploadDefinitionDao;
 
   @Autowired
   private FileExtensionService fileExtensionService;
-
-  public UploadDefinitionServiceImpl() {}
 
   /**
    * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
@@ -65,6 +65,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
    * @param vertx - Vertx argument
    */
   public UploadDefinitionServiceImpl(Vertx vertx) {
+    this.vertx = vertx;
+
     this.uploadDefinitionDao = new UploadDefinitionDaoImpl(vertx);
     this.fileExtensionService = new FileExtensionServiceImpl(vertx);
   }
@@ -220,7 +222,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(
       params.getOkapiUrl(),
       params.getTenantId(),
-      params.getToken()
+      params.getToken(),
+      vertx.createHttpClient()
     );
     try {
       client.putChangeManagerJobExecutionsStatusById(
@@ -256,7 +259,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     OkapiConnectionParams params
   ) {
     return FileStorageServiceBuilder
-      .build(params.getVertx(), params.getTenantId(), params)
+      .build(vertx, params.getTenantId(), params)
       .compose(service -> service.deleteFile(fileDefinition));
   }
 
@@ -383,7 +386,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(
       params.getOkapiUrl(),
       params.getTenantId(),
-      params.getToken()
+      params.getToken(),
+      vertx.createHttpClient()
     );
     try {
       client.postChangeManagerJobExecutions(
@@ -520,7 +524,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(
       params.getOkapiUrl(),
       params.getTenantId(),
-      params.getToken()
+      params.getToken(),
+      vertx.createHttpClient()
     );
     try {
       client.getChangeManagerJobExecutionsChildrenById(
@@ -560,7 +565,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     ChangeManagerClient client = new ChangeManagerClient(
       params.getOkapiUrl(),
       params.getTenantId(),
-      params.getToken()
+      params.getToken(),
+      vertx.createHttpClient()
     );
     try {
       client.getChangeManagerJobExecutionsById(

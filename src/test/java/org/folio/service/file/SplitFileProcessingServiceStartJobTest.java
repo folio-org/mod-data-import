@@ -15,6 +15,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
@@ -38,11 +39,13 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
+import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionDto;
 import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.file.SplitFileProcessingService.SplitFileInformation;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.core.io.ClassPathResource;
@@ -53,6 +56,12 @@ public class SplitFileProcessingServiceStartJobTest
   extends SplitFileProcessingServiceAbstractTest {
 
   private static final Resource TEST_FILE = new ClassPathResource("10.mrc");
+
+  @Before
+  public void mockDao() {
+    when(this.queueItemDao.addQueueItem(any()))
+      .thenReturn(Future.succeededFuture("new-id"));
+  }
 
   @Test
   public void testCreateParentJobExecutions(TestContext context) {
@@ -267,6 +276,18 @@ public class SplitFileProcessingServiceStartJobTest
       .when(changeManagerClient)
       .postChangeManagerJobExecutions(any(), any());
 
+    when(
+      changeManagerClient.putChangeManagerJobExecutionsById(any(), any(), any())
+    )
+      .thenAnswer(invocation -> {
+        assertThat(
+          invocation.<JobExecution>getArgument(2).getTotalRecordsInFile(),
+          is(10)
+        );
+
+        return getSuccessArBuffer(null);
+      });
+
     service
       .initializeJob(
         new ProcessFilesRqDto()
@@ -290,7 +311,7 @@ public class SplitFileProcessingServiceStartJobTest
           assertThat(map.get("key/file-1-key").getKey(), is("key/file-1-key"));
           assertThat(
             map.get("key/file-1-key").getJobExecution(),
-            is(JOB_EXECUTION_1)
+            is(JOB_EXECUTION_1.withTotalRecordsInFile(10))
           );
           assertThat(
             map.get("key/file-1-key").getSplitKeys(),
@@ -301,7 +322,7 @@ public class SplitFileProcessingServiceStartJobTest
           assertThat(map.get("key/file-2-key").getKey(), is("key/file-2-key"));
           assertThat(
             map.get("key/file-2-key").getJobExecution(),
-            is(JOB_EXECUTION_2)
+            is(JOB_EXECUTION_2.withTotalRecordsInFile(10))
           );
           assertThat(map.get("key/file-2-key").getSplitKeys(), contains("b1"));
           assertThat(map.get("key/file-2-key").getTotalRecords(), is(10));
@@ -309,7 +330,7 @@ public class SplitFileProcessingServiceStartJobTest
           assertThat(map.get("key/file-3-key").getKey(), is("key/file-3-key"));
           assertThat(
             map.get("key/file-3-key").getJobExecution(),
-            is(JOB_EXECUTION_3)
+            is(JOB_EXECUTION_3.withTotalRecordsInFile(10))
           );
           assertThat(
             map.get("key/file-3-key").getSplitKeys(),
@@ -428,6 +449,10 @@ public class SplitFileProcessingServiceStartJobTest
 
           verifyNoMoreInteractions(fileProcessor);
           verifyNoMoreInteractions(uploadDefinitionService);
+
+          verify(queueItemDao, times(2)).addQueueItem(any());
+
+          verifyNoMoreInteractions(queueItemDao);
         })
       );
   }
@@ -477,7 +502,9 @@ public class SplitFileProcessingServiceStartJobTest
           .splitKeys(Arrays.asList("a1", "a2"))
           .build()
       )
-      .onComplete(context.asyncAssertFailure());
+      .onComplete(
+        context.asyncAssertFailure(v -> verifyNoInteractions(queueItemDao))
+      );
   }
 
   @Test

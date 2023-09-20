@@ -52,7 +52,7 @@ public class FileSplitService {
     return minioStorageService
       .readFile(key)
       .compose((InputStream stream) -> {
-        try (InputStream autoCloseMe = stream) {
+        try {
           return splitStream(context, stream, key)
             .compose((List<String> result) -> {
               LOGGER.info("Split from S3 completed...deleting original file");
@@ -102,7 +102,12 @@ public class FileSplitService {
         .build()
     );
 
-    new AsyncInputStream(context.owner(), context, stream)
+    AsyncInputStream asyncStream = new AsyncInputStream(
+      context.owner(),
+      context,
+      stream
+    );
+    asyncStream
       .pipeTo(writer)
       .onComplete(ar1 -> LOGGER.info("File split for key={} completed", key));
 
@@ -128,6 +133,7 @@ public class FileSplitService {
       .onSuccess(result ->
         LOGGER.info("All done splitting! Got chunks {}", result)
       )
-      .onFailure(err -> LOGGER.error("Unable to split file: ", err));
+      .onFailure(err -> LOGGER.error("Unable to split file: ", err))
+      .onComplete(v -> asyncStream.close());
   }
 }

@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
+import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -99,36 +100,35 @@ public class S3JobRunningVerticle extends AbstractVerticle {
    */
   private synchronized void pollForJobs() {
     this.scoreService.getBestQueueItemAndMarkInProgress()
-      .compose(optional -> {
+      .compose((Optional<DataImportQueueItem> optional) -> {
         // a promise with result of if a queue item was processed or not
         // this determines cool down before next check
         Promise<Boolean> promise = Promise.promise();
 
-        if (optional.isEmpty()) {
-          promise.complete(false);
-        } else {
-          processQueueItem(optional.get())
-            .map(v -> true)
-            .onComplete(promise::handle);
-        }
+        optional.ifPresentOrElse(
+          item ->
+            processQueueItem(item).map(v -> true).onComplete(promise::handle),
+          () -> promise.complete(false)
+        );
 
         return promise.future();
       })
-      .onComplete(result -> {
-        if (result.succeeded() && Boolean.TRUE.equals(result.result())) {
+      .onSuccess((Boolean didRunJob) -> {
+        if (Boolean.TRUE.equals(didRunJob)) {
           // use setTimer to avoid a stack overflow on multiple repeats
           vertx.setTimer(0, v -> this.pollForJobs());
-        } else if (result.succeeded()) {
+        } else {
           // wait before checking again
           LOGGER.info(
             "No queue items available to run, checking again in {}ms",
             this.pollInterval
           );
           vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
-        } else {
-          LOGGER.error("Error running queue item...", result.cause());
-          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
         }
+      })
+      .onFailure((Throwable err) -> {
+        LOGGER.error("Error running queue item...", err);
+        vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
       });
   }
 
@@ -177,7 +177,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             new StatusDto().withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS),
             params
           )
-          .map(successful -> {
+          .map((Boolean successful) -> {
             if (Boolean.FALSE.equals(successful)) {
               throw new IllegalStateException(
                 "Unable to mark job as in progress"
@@ -219,7 +219,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           )
           .map(v -> job)
       )
-      .onFailure(err -> {
+      .onFailure((Throwable err) -> {
         LOGGER.error("Unable to start chunk {}", queueItem, err);
         err.printStackTrace();
 
@@ -231,7 +231,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           params
         );
       })
-      .onSuccess(result -> {
+      .onSuccess((QueueJob result) -> {
         queueItemDao.deleteDataImportQueueItem(queueItem.getId());
         try {
           FileUtils.delete(localFile);

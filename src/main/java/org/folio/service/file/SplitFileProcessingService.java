@@ -388,7 +388,7 @@ public class SplitFileProcessingService {
       .compose((JobExecution jobExecution) -> {
         if (
           jobExecution.getSubordinationType() ==
-          JobExecution.SubordinationType.PARENT_MULTIPLE
+          JobExecution.SubordinationType.COMPOSITE_PARENT
         ) {
           return client.getChangeManagerJobExecutionsChildrenById(
             jobExecutionId,
@@ -409,9 +409,22 @@ public class SplitFileProcessingService {
       )
       // we have the list of children
       .compose((JobExecutionDtoCollection collection) -> {
-        List<Future<Void>> deleteQueueFutures = new ArrayList<>();
+        List<Future<Void>> futures = new ArrayList<>();
+
+        // parent execution
+        futures.add(
+          client
+            .putChangeManagerJobExecutionsStatusById(
+              jobExecutionId,
+              new StatusDto().withStatus(StatusDto.Status.CANCELLED)
+            )
+            .map(this::verifyOkStatus)
+            .mapEmpty()
+        );
+
+        // all children
         for (JobExecutionDto exec : collection.getJobExecutions()) {
-          deleteQueueFutures.add(
+          futures.add(
             queueItemDao
               .deleteDataImportQueueItemByJobExecutionId(exec.getId())
               // the delete call can fail if the queue item doesn't exist (has already been processed)
@@ -423,9 +436,10 @@ public class SplitFileProcessingService {
             case ERROR:
             case DISCARDED:
             case CANCELLED:
-              break; // don't cancel jobs that are already completed
+              // don't cancel jobs that are already completed
+              break;
             default:
-              deleteQueueFutures.add(
+              futures.add(
                 client
                   .putChangeManagerJobExecutionsStatusById(
                     exec.getId(),
@@ -438,12 +452,10 @@ public class SplitFileProcessingService {
         }
 
         return CompositeFuture.all(
-          deleteQueueFutures
-            .stream()
-            .map(Future.class::cast)
-            .collect(Collectors.toList())
+          futures.stream().map(Future.class::cast).collect(Collectors.toList())
         );
       })
+      .onFailure(err -> LOGGER.error("Error cancelling job", err))
       .mapEmpty();
   }
 

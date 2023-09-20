@@ -53,9 +53,6 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private Vertx vertx;
 
   @Autowired
-  private Vertx vertx;
-
-  @Autowired
   private UploadDefinitionDao uploadDefinitionDao;
 
   @Autowired

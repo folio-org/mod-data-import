@@ -98,7 +98,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
    * Loops indefinitely, polling for available jobs.
    * This is the best approach, as the only other option is to use a trigger in the DB, which also requires polling.
    */
-  private synchronized void pollForJobs() {
+  protected synchronized void pollForJobs() {
     this.scoreService.getBestQueueItemAndMarkInProgress()
       .compose((Optional<DataImportQueueItem> optional) -> {
         // a promise with result of if a queue item was processed or not
@@ -123,6 +123,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             "No queue items available to run, checking again in {}ms",
             this.pollInterval
           );
+
           vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
         }
       })
@@ -138,28 +139,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       queueItem.getJobExecutionId()
     );
 
-    OkapiConnectionParams params = getConnectionParams(
-      queueItem.getTenant(),
-      queueItem.getOkapiUrl()
-    );
+    OkapiConnectionParams params = getConnectionParams(queueItem);
 
-    File localFile;
-    try {
-      localFile =
-        Files
-          .createTempFile(
-            "di-tmp-",
-            // later stage requires correct file extension
-            Path.of(queueItem.getFilePath()).getFileName().toString(),
-            PosixFilePermissions.asFileAttribute(
-              PosixFilePermissions.fromString("rwx------")
-            )
-          )
-          .toFile();
-      LOGGER.info("Created temporary file {}", localFile.toPath());
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+    File localFile = createLocalFile(queueItem);
 
     return Future
       .succeededFuture(
@@ -171,38 +153,14 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           .map(jobExecution -> job.withJobExecution(jobExecution))
       )
       .compose(job ->
-        uploadDefinitionService
-          .updateJobExecutionStatus(
-            job.getJobExecution().getId(),
-            new StatusDto().withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS),
-            params
-          )
-          .map((Boolean successful) -> {
-            if (Boolean.FALSE.equals(successful)) {
-              throw new IllegalStateException(
-                "Unable to mark job as in progress"
-              );
-            }
-            return job;
-          })
+        updateJobExecutionStatusSafely(
+          job.getJobExecution().getId(),
+          new StatusDto().withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS),
+          params
+        )
+          .map(v -> job)
       )
-      .compose(job ->
-        minioStorageService
-          .readFile(job.getJobExecution().getSourcePath())
-          .map(inputStream -> job.withInputStream(inputStream))
-      )
-      .map((QueueJob job) -> {
-        try (
-          InputStream inputStream = job.getInputStream();
-          OutputStream outputStream = new FileOutputStream(job.getFile())
-        ) {
-          inputStream.transferTo(outputStream);
-
-          return job;
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
-        }
-      })
+      .compose(this::downloadFromS3)
       .compose(job ->
         fileProcessor
           .processFile(
@@ -223,7 +181,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         LOGGER.error("Unable to start chunk {}", queueItem, err);
         err.printStackTrace();
 
-        uploadDefinitionService.updateJobExecutionStatus(
+        updateJobExecutionStatusSafely(
           queueItem.getJobExecutionId(),
           new StatusDto()
             .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
@@ -233,6 +191,13 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       })
       .onSuccess((QueueJob result) -> {
         queueItemDao.deleteDataImportQueueItem(queueItem.getId());
+
+        LOGGER.info(
+          "Completed processing job execution {}!",
+          queueItem.getJobExecutionId()
+        );
+      })
+      .onComplete(v -> {
         try {
           FileUtils.delete(localFile);
         } catch (IOException e) {
@@ -242,27 +207,83 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             e
           );
         }
-
-        LOGGER.info(
-          "Completed processing job execution {}!",
-          queueItem.getJobExecutionId()
-        );
       });
+  }
+
+  protected Future<Void> updateJobExecutionStatusSafely(
+    String jobExecutionId,
+    StatusDto status,
+    OkapiConnectionParams params
+  ) {
+    return uploadDefinitionService
+      .updateJobExecutionStatus(jobExecutionId, status, params)
+      .map((Boolean successful) -> {
+        if (Boolean.FALSE.equals(successful)) {
+          LOGGER.error(
+            "Unable to change job {} status to {}",
+            jobExecutionId,
+            status
+          );
+          throw new IllegalStateException(
+            "Unable to update job execution status"
+          );
+        }
+        return successful;
+      })
+      .mapEmpty();
+  }
+
+  protected Future<QueueJob> downloadFromS3(QueueJob job) {
+    return minioStorageService
+      .readFile(job.getJobExecution().getSourcePath())
+      .map((InputStream inputStream) -> {
+        try (
+          InputStream autoCloseMe = inputStream;
+          OutputStream outputStream = new FileOutputStream(job.getFile())
+        ) {
+          inputStream.transferTo(outputStream);
+
+          return job;
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      });
+  }
+
+  protected File createLocalFile(DataImportQueueItem queueItem) {
+    File localFile;
+    try {
+      localFile =
+        Files
+          .createTempFile(
+            "di-tmp-",
+            // later stage requires correct file extension
+            Path.of(queueItem.getFilePath()).getFileName().toString(),
+            PosixFilePermissions.asFileAttribute(
+              PosixFilePermissions.fromString("rwx------")
+            )
+          )
+          .toFile();
+      LOGGER.info("Created temporary file {}", localFile.toPath());
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    return localFile;
   }
 
   /**
    * Authenticate and get connection parameters (Okapi URL/token)
    */
-  private OkapiConnectionParams getConnectionParams(
-    String tenant,
-    String okapiUrl
+  protected OkapiConnectionParams getConnectionParams(
+    DataImportQueueItem queueItem
   ) {
     OkapiConnectionParams provisionalParams = new OkapiConnectionParams(
       Map.of(
         "x-okapi-url",
-        okapiUrl,
+        queueItem.getOkapiUrl(),
         "x-okapi-tenant",
-        tenant,
+        queueItem.getTenant(),
+        // filled right after, but we need tenant/URL to get the token
         "x-okapi-token",
         ""
       ),
@@ -274,9 +295,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     return new OkapiConnectionParams(
       Map.of(
         "x-okapi-url",
-        okapiUrl,
+        queueItem.getOkapiUrl(),
         "x-okapi-tenant",
-        tenant,
+        queueItem.getTenant(),
         "x-okapi-token",
         token
       ),
@@ -293,11 +314,10 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   @With
   @NoArgsConstructor
   @AllArgsConstructor
-  private static class QueueJob {
+  protected static class QueueJob {
 
     private DataImportQueueItem queueItem;
     private JobExecution jobExecution;
-    private InputStream inputStream;
     private File file;
   }
 }

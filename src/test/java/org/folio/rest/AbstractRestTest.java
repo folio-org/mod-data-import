@@ -245,7 +245,7 @@ public abstract class AbstractRestTest {
 
     WireMockServer tenantMockServer = mockTenantUserCalls(okapiUrl);
 
-    TenantClient tenantClient = new TenantClient(tenantMockServer.baseUrl(), TENANT_ID, TOKEN);
+    TenantClient tenantClient = new TenantClient(tenantMockServer.baseUrl(), TENANT_ID, TOKEN, vertx.createHttpClient());
 
     final DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put(HTTP_PORT, port));
     vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {

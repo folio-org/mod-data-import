@@ -9,7 +9,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ExceptionHelper;
@@ -18,6 +17,7 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.AssembleFileDto;
+import org.folio.rest.jaxrs.model.CancelResponse;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -550,14 +550,8 @@ public class DataImportImpl implements DataImport {
         )
         .compose(fileDefinition ->
           minioStorageService.completeMultipartFileUpload(entity.getKey(), entity.getUploadId(), entity.getTags())
-            .map(completed -> Pair.of(fileDefinition, completed))
+            .map(vv -> fileDefinition)
         )
-        .compose(result -> {
-          if (Boolean.FALSE.equals(result.getRight())) {
-            return Future.failedFuture("Failed to assemble Data Import upload file");
-          }
-          return Future.succeededFuture(result.getLeft());
-        })
         .compose(fileDefinition -> fileService.afterFileSave(fileDefinition.withSourcePath(entity.getKey()), params))
         .map(vv -> PostDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileIdResponse.respond204())
         .map(Response.class::cast)
@@ -574,7 +568,9 @@ public class DataImportImpl implements DataImport {
 
     vertxContext.runOnContext(v ->
       splitFileProcessingService.cancelJob(jobExecutionId, params, client)
-        .map(vv -> DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson("Job successfully cancelled"))
+        .map(vv -> DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson(
+          new CancelResponse().withOk(true)
+        ))
         .map(Response.class::cast)
         .onComplete(asyncResultHandler)
     );

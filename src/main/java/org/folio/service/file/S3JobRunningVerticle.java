@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -57,9 +58,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private ParallelFileChunkingProcessor fileProcessor;
 
-  private int pollInterval;
+  private long pollInterval;
 
-  // constructs the processor automatically
+  // constructs the processor automatically as it is a @Component
   @Autowired
   public S3JobRunningVerticle(
     Vertx vertx,
@@ -69,7 +70,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     SystemUserAuthService systemUserService,
     UploadDefinitionService uploadDefinitionService,
     ParallelFileChunkingProcessor fileProcessor,
-    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval
+    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") long pollInterval
   ) {
     this.vertx = vertx;
 
@@ -139,12 +140,16 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
     OkapiConnectionParams params = getConnectionParams(queueItem);
 
-    File localFile = createLocalFile(queueItem);
+    // we need to store out here to ensure it is properly deleted
+    // on failure and success
+    AtomicReference<File> localFile = new AtomicReference<>();
 
     return Future
-      .succeededFuture(
-        new QueueJob().withQueueItem(queueItem).withFile(localFile)
-      )
+      .succeededFuture(new QueueJob().withQueueItem(queueItem))
+      .map((QueueJob job) -> {
+        localFile.set(createLocalFile(queueItem));
+        return job.withFile(localFile.get());
+      })
       .compose(job ->
         uploadDefinitionService
           .getJobExecutionById(queueItem.getJobExecutionId(), params)
@@ -187,23 +192,26 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           params
         );
       })
-      .onSuccess((QueueJob result) -> {
-        queueItemDao.deleteDataImportQueueItem(queueItem.getId());
-
+      .onSuccess((QueueJob result) ->
         LOGGER.info(
           "Completed processing job execution {}!",
           queueItem.getJobExecutionId()
-        );
-      })
+        )
+      )
       .onComplete(v -> {
-        try {
-          FileUtils.delete(localFile);
-        } catch (IOException e) {
-          LOGGER.error(
-            "Could not clean up temporary file {}: ",
-            localFile.toPath(),
-            e
-          );
+        queueItemDao.deleteDataImportQueueItem(queueItem.getId());
+
+        File file = localFile.get();
+        if (file != null) {
+          try {
+            FileUtils.delete(file);
+          } catch (IOException e) {
+            LOGGER.error(
+              "Could not clean up temporary file {}: ",
+              file.toPath(),
+              e
+            );
+          }
         }
       });
   }
@@ -249,24 +257,24 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   }
 
   protected File createLocalFile(DataImportQueueItem queueItem) {
-    File localFile;
     try {
-      localFile =
-        Files
-          .createTempFile(
-            "di-tmp-",
-            // later stage requires correct file extension
-            Path.of(queueItem.getFilePath()).getFileName().toString(),
-            PosixFilePermissions.asFileAttribute(
-              PosixFilePermissions.fromString("rwx------")
-            )
+      File localFile = Files
+        .createTempFile(
+          "di-tmp-",
+          // later stage requires correct file extension
+          Path.of(queueItem.getFilePath()).getFileName().toString(),
+          PosixFilePermissions.asFileAttribute(
+            PosixFilePermissions.fromString("rwx------")
           )
-          .toFile();
+        )
+        .toFile();
+
       LOGGER.info("Created temporary file {}", localFile.toPath());
+
+      return localFile;
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
-    return localFile;
   }
 
   /**

@@ -5,18 +5,19 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.service.s3storage.MinioStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class FileSplitService {
@@ -52,7 +53,8 @@ public class FileSplitService {
     return minioStorageService
       .readFile(key)
       .compose((InputStream stream) -> {
-        try (InputStream autoCloseMe = stream) {
+        //!!!! do not close stream here, it will be closed asynchronously by the AsyncInputStream!
+        try {
           return splitStream(context, stream, key)
             .compose((List<String> result) -> {
               LOGGER.info("Split from S3 completed...deleting original file");
@@ -103,7 +105,6 @@ public class FileSplitService {
     );
 
     AsyncInputStream asyncStream = new AsyncInputStream(
-      context.owner(),
       context,
       stream
     );

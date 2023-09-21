@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 public class SystemUserAuthService {
 
   private static final Logger LOGGER = LogManager.getLogger();
+  private static final String SYSTEM_USER_TYPE = "system";
 
   private AuthClient authClient;
   private PermissionsClient permissionsClient;
@@ -207,6 +208,7 @@ public class SystemUserAuthService {
       .id(UUID.randomUUID().toString())
       .active(true)
       .username(username)
+      .type(SYSTEM_USER_TYPE)
       .personal(User.Personal.builder().lastName("SystemDataImport").build())
       .build();
   }

@@ -3,7 +3,6 @@ package org.folio.service.processing.split;
 import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.ReadStream;
 import org.apache.logging.log4j.LogManager;
@@ -33,7 +32,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   /**
    * Create a new AsyncInputStream to wrap a regular {@link InputStream}
    */
-  public AsyncInputStream(Vertx vertx, Context context, InputStream in) {
+  public AsyncInputStream(Context context, InputStream in) {
     this.context = context;
     this.channel = Channels.newChannel(in);
   }

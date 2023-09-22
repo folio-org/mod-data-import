@@ -138,7 +138,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   protected synchronized void pollForJobs2() {
     var workers = workCounter.get();
-    LOGGER.info("Checking for items available to run. activeWorkers: " + workers);
+    LOGGER.info("Checking for items available to run. activeWorkers: {}", workers);
 
     if (workers < maxWorkersCount) {
       this.scoreService
@@ -147,11 +147,12 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           if (ar.succeeded()) {
             var opt = ar.result();
             opt.ifPresentOrElse(item -> {
-              LOGGER.info("Item available to run: " + item);
+              LOGGER.info("Item available to run: {}", item);
               workCounter.incrementAndGet();
+              var startTimeStamp = System.currentTimeMillis();
               vertx.runOnContext(v -> processQueueItem(item).onComplete(vv -> {
                 workCounter.decrementAndGet();
-                LOGGER.info("Competed Item run: " + item);
+                LOGGER.info("Competed Item run: {}; Time spent in ms: {}", item, System.currentTimeMillis() - startTimeStamp);
               }));
             }, () -> LOGGER.info("No Items available to run."));
           } else {//TODO: add some useful error message with a stacktrace
@@ -160,7 +161,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           }
         });
     } else {
-      LOGGER.info("All workers are active: " + workers);
+      LOGGER.info("All workers are active: {}", workers);
     }
     vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
   }

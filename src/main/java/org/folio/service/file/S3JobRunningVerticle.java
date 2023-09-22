@@ -137,9 +137,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
 
   protected synchronized void pollForJobs2() {
-    LOGGER.info("Checking for items available to run");
-
     var workers = workCounter.get();
+    LOGGER.info("Checking for items available to run. activeWorkers: " + workers);
+
     if (workers < maxWorkersCount) {
       this.scoreService
         .getBestQueueItemAndMarkInProgress()

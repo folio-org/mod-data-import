@@ -32,6 +32,7 @@ inventory-storage.authority-source-files.collection.get
 inventory-storage.items.collection.get
 inventory-storage.items.item.post
 inventory-storage.items.item.put
+inventory-storage.items.item.get
 inventory-storage.material-types.item.get
 inventory-storage.material-types.collection.get
 inventory-storage.loan-types.item.get

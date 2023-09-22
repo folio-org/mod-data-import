@@ -55,18 +55,18 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private static final AtomicBoolean pollingIsActive = new AtomicBoolean(false);
 
-  private DataImportQueueItemDao queueItemDao;
+  private final DataImportQueueItemDao queueItemDao;
 
-  private MinioStorageService minioStorageService;
-  private ScoreService scoreService;
-  private SystemUserAuthService systemUserService;
-  private UploadDefinitionService uploadDefinitionService;
+  private final MinioStorageService minioStorageService;
+  private final ScoreService scoreService;
+  private final SystemUserAuthService systemUserService;
+  private final UploadDefinitionService uploadDefinitionService;
 
-  private ParallelFileChunkingProcessor fileProcessor;
+  private final ParallelFileChunkingProcessor fileProcessor;
 
-  private int pollInterval;
+  private final int pollInterval;
 
-  private int maxWorkersCount;
+  private final int maxWorkersCount;
 
   // constructs the processor automatically
   @Autowired
@@ -113,7 +113,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
         optional.ifPresentOrElse(
           item ->
-            processQueueItem(item).map(v -> true).onComplete(promise::handle),
+            processQueueItem(item).map(v -> true).onComplete(promise),
           () -> promise.complete(false)
         );
 
@@ -155,16 +155,16 @@ public class S3JobRunningVerticle extends AbstractVerticle {
                 opt.ifPresentOrElse(item -> {
                   LOGGER.info("Item available to run: " + item);
                   var localworkers = workCounter.incrementAndGet();
-                  processQueueItem(item).onComplete(v -> {
+                  vertx.runOnContext(v -> processQueueItem(item).onComplete(vv -> {
                     workCounter.decrementAndGet();
                     LOGGER.info("Competed Item run: " + item);
-                    vertx.runOnContext(vv -> this.pollForJobs2());
-                  });
+                    vertx.runOnContext(vvv -> this.pollForJobs2());
+                  }));
                   if (localworkers < maxWorkersCount) {
                     vertx.runOnContext(v -> this.pollForJobs2());
                   }
                 }, () -> {
-                  LOGGER.info("No Items available to run: ");
+                  LOGGER.info("No Items available to run.");
                   vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
                 });
               } else {//TODO: add some useful error message with a stacktrace
@@ -179,6 +179,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       } finally {
         pollingIsActive.set(false);
       }
+    } else {
+      LOGGER.info("Another pollForJobs2() is in progress... Skipping.");
     }
   }
 
@@ -199,7 +201,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       .compose(job ->
         uploadDefinitionService
           .getJobExecutionById(queueItem.getJobExecutionId(), params)
-          .map(jobExecution -> job.withJobExecution(jobExecution))
+          .map(job::withJobExecution)
       )
       .compose(job ->
         updateJobExecutionStatusSafely(

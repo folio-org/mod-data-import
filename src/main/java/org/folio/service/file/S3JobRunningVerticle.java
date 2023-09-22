@@ -4,17 +4,6 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
-import java.util.Map;
-import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -38,6 +27,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Worker verticle to handle running jobs from S3 storage.
  *
@@ -47,6 +49,8 @@ import org.springframework.stereotype.Component;
 public class S3JobRunningVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LogManager.getLogger();
+
+  private static final AtomicInteger workCounter = new AtomicInteger(0);
 
   private DataImportQueueItemDao queueItemDao;
 
@@ -59,6 +63,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private int pollInterval;
 
+  private int maxWorkersCount;
+
   // constructs the processor automatically
   @Autowired
   public S3JobRunningVerticle(
@@ -69,7 +75,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     SystemUserAuthService systemUserService,
     UploadDefinitionService uploadDefinitionService,
     ParallelFileChunkingProcessor fileProcessor,
-    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval
+    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval,
+    @Value("${ASYNC_PROCESSOR_MAX_WORKERS_COUNT:5}") int maxWorkersCount
   ) {
     this.vertx = vertx;
 
@@ -79,17 +86,15 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     this.systemUserService = systemUserService;
     this.scoreService = scoreService;
     this.uploadDefinitionService = uploadDefinitionService;
-
-    this.pollInterval = pollInterval;
-
     this.fileProcessor = fileProcessor;
+    this.pollInterval = pollInterval;
+    this.maxWorkersCount = maxWorkersCount;
   }
 
   @Override
   public void start() {
     LOGGER.info("Running S3JobRunningVerticle");
-
-    this.pollForJobs();
+    vertx.runOnContext(v -> this.pollForJobs2());
   }
 
   /**
@@ -129,6 +134,42 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         LOGGER.error("Error running queue item...", err);
         vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
       });
+  }
+
+
+  protected void pollForJobs2() {
+    LOGGER.info("Checking for items available to run");
+
+    var workers = workCounter.get();
+    if (workers < maxWorkersCount) {
+      this.scoreService
+        .getBestQueueItemAndMarkInProgress()
+        .onComplete(ar -> {
+          if (ar.succeeded()) {
+            var opt = ar.result();
+            opt.ifPresentOrElse(item -> {
+              LOGGER.info("Item available to run: " + item);
+              var localworkers = workCounter.incrementAndGet();
+              processQueueItem(item).onComplete(v -> {
+                workCounter.decrementAndGet();
+                LOGGER.info("Competed Item run: " + item);
+                vertx.runOnContext(vv -> this.pollForJobs2());
+              });
+              if (localworkers < maxWorkersCount) {
+                vertx.runOnContext(v -> this.pollForJobs2());
+              }
+            }, () -> {
+              LOGGER.info("No Items available to run: ");
+              vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());});
+          } else {//TODO: add some useful error message with a stacktrace
+            ar.cause().printStackTrace();
+            LOGGER.error(ar.cause());
+            vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
+          }
+        });
+    } else {
+      LOGGER.info("All workers are active: " + workers);
+    }
   }
 
   protected Future<QueueJob> processQueueItem(DataImportQueueItem queueItem) {

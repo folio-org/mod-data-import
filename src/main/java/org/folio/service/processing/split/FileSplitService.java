@@ -105,7 +105,6 @@ public class FileSplitService {
     );
 
     AsyncInputStream asyncStream = new AsyncInputStream(
-      context.owner(),
       context,
       stream
     );

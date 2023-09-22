@@ -38,7 +38,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -52,9 +51,6 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   private static final Logger LOGGER = LogManager.getLogger();
 
   private static final AtomicInteger workCounter = new AtomicInteger(0);
-
-  private static final AtomicBoolean pollingIsActive = new AtomicBoolean(false);
-
   private final DataImportQueueItemDao queueItemDao;
 
   private final MinioStorageService minioStorageService;
@@ -97,7 +93,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   @Override
   public void start() {
     LOGGER.info("Running S3JobRunningVerticle");
-    vertx.runOnContext(v -> this.pollForJobs2());
+    vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
   }
 
   /**
@@ -140,48 +136,33 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   }
 
 
-  protected void pollForJobs2() {
-    if (pollingIsActive.compareAndSet(false, true)) {
-      try {
-        LOGGER.info("Checking for items available to run");
+  protected synchronized void pollForJobs2() {
+    LOGGER.info("Checking for items available to run");
 
-        var workers = workCounter.get();
-        if (workers < maxWorkersCount) {
-          this.scoreService
-            .getBestQueueItemAndMarkInProgress()
-            .onComplete(ar -> {
-              if (ar.succeeded()) {
-                var opt = ar.result();
-                opt.ifPresentOrElse(item -> {
-                  LOGGER.info("Item available to run: " + item);
-                  var localworkers = workCounter.incrementAndGet();
-                  vertx.runOnContext(v -> processQueueItem(item).onComplete(vv -> {
-                    workCounter.decrementAndGet();
-                    LOGGER.info("Competed Item run: " + item);
-                    vertx.runOnContext(vvv -> this.pollForJobs2());
-                  }));
-                  if (localworkers < maxWorkersCount) {
-                    vertx.runOnContext(v -> this.pollForJobs2());
-                  }
-                }, () -> {
-                  LOGGER.info("No Items available to run.");
-                  vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
-                });
-              } else {//TODO: add some useful error message with a stacktrace
-                ar.cause().printStackTrace();
-                LOGGER.error(ar.cause());
-                vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
-              }
-            });
-        } else {
-          LOGGER.info("All workers are active: " + workers);
-        }
-      } finally {
-        pollingIsActive.set(false);
-      }
+    var workers = workCounter.get();
+    if (workers < maxWorkersCount) {
+      this.scoreService
+        .getBestQueueItemAndMarkInProgress()
+        .onComplete(ar -> {
+          if (ar.succeeded()) {
+            var opt = ar.result();
+            opt.ifPresentOrElse(item -> {
+              LOGGER.info("Item available to run: " + item);
+              workCounter.incrementAndGet();
+              vertx.runOnContext(v -> processQueueItem(item).onComplete(vv -> {
+                workCounter.decrementAndGet();
+                LOGGER.info("Competed Item run: " + item);
+              }));
+            }, () -> LOGGER.info("No Items available to run."));
+          } else {//TODO: add some useful error message with a stacktrace
+            ar.cause().printStackTrace();
+            LOGGER.error(ar.cause());
+          }
+        });
     } else {
-      LOGGER.info("Another pollForJobs2() is in progress... Skipping.");
+      LOGGER.info("All workers are active: " + workers);
     }
+    vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
   }
 
   protected Future<QueueJob> processQueueItem(DataImportQueueItem queueItem) {

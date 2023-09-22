@@ -75,7 +75,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     UploadDefinitionService uploadDefinitionService,
     ParallelFileChunkingProcessor fileProcessor,
     @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval,
-    @Value("${ASYNC_PROCESSOR_MAX_WORKERS_COUNT:5}") int maxWorkersCount
+    @Value("${ASYNC_PROCESSOR_MAX_WORKERS_COUNT:10}") int maxWorkersCount
   ) {
     this.vertx = vertx;
 
@@ -135,8 +135,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       });
   }
 
-
-  protected synchronized void pollForJobs2() {
+  private void doPollForJobs() {
     var workers = workCounter.get();
     LOGGER.info("Checking for items available to run. activeWorkers: {}", workers);
 
@@ -151,9 +150,13 @@ public class S3JobRunningVerticle extends AbstractVerticle {
               workCounter.incrementAndGet();
               var startTimeStamp = System.currentTimeMillis();
               vertx.runOnContext(v -> processQueueItem(item).onComplete(vv -> {
-                workCounter.decrementAndGet();
-                LOGGER.info("Competed Item run: {}; Time spent in ms: {}", item, System.currentTimeMillis() - startTimeStamp);
+                var workersLeft = workCounter.decrementAndGet();
+                LOGGER.info("Competed Item run: {}; Time spent in ms: {}; Active workers left: {}", item, System.currentTimeMillis() - startTimeStamp, workersLeft);
               }));
+              // do it one more time in hope that there more items in the queue
+              if (workCounter.get() < maxWorkersCount) {
+                doPollForJobs();
+              }
             }, () -> LOGGER.info("No Items available to run."));
           } else {//TODO: add some useful error message with a stacktrace
             ar.cause().printStackTrace();
@@ -163,6 +166,10 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     } else {
       LOGGER.info("All workers are active: {}", workers);
     }
+  }
+
+  protected synchronized void pollForJobs2() {
+    doPollForJobs();
     vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
   }
 

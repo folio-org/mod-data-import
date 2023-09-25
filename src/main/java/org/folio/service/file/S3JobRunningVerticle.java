@@ -1,8 +1,8 @@
 package org.folio.service.file;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -10,11 +10,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,6 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
@@ -49,16 +48,19 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private DataImportQueueItemDao queueItemDao;
+  protected static final AtomicInteger workersInUse = new AtomicInteger(0);
 
-  private MinioStorageService minioStorageService;
-  private ScoreService scoreService;
-  private SystemUserAuthService systemUserService;
-  private UploadDefinitionService uploadDefinitionService;
+  private final DataImportQueueItemDao queueItemDao;
+  private final MinioStorageService minioStorageService;
+  private final ScoreService scoreService;
+  private final SystemUserAuthService systemUserService;
+  private final UploadDefinitionService uploadDefinitionService;
 
-  private ParallelFileChunkingProcessor fileProcessor;
+  private final ParallelFileChunkingProcessor fileProcessor;
 
-  private long pollInterval;
+  private final int pollInterval;
+
+  private final int maxWorkersCount;
 
   // constructs the processor automatically as it is a @Component
   @Autowired
@@ -70,7 +72,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     SystemUserAuthService systemUserService,
     UploadDefinitionService uploadDefinitionService,
     ParallelFileChunkingProcessor fileProcessor,
-    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") long pollInterval
+    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval,
+    @Value("${ASYNC_PROCESSOR_MAX_WORKERS_COUNT:5}") int maxWorkersCount
   ) {
     this.vertx = vertx;
 
@@ -80,56 +83,59 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     this.systemUserService = systemUserService;
     this.scoreService = scoreService;
     this.uploadDefinitionService = uploadDefinitionService;
-
-    this.pollInterval = pollInterval;
-
     this.fileProcessor = fileProcessor;
+    this.pollInterval = pollInterval;
+    this.maxWorkersCount = maxWorkersCount;
   }
 
   @Override
   public void start() {
     LOGGER.info("Running S3JobRunningVerticle");
-
-    this.pollForJobs();
+    vertx.setPeriodic(this.pollInterval, v -> this.pollForJobs());
   }
 
-  /**
-   * Loops indefinitely, polling for available jobs.
-   * This is the best approach, as the only other option is to use a trigger in the DB, which also requires polling.
-   */
-  protected synchronized void pollForJobs() {
-    this.scoreService.getBestQueueItemAndMarkInProgress()
-      .compose((Optional<DataImportQueueItem> optional) -> {
-        // a promise with result of if a queue item was processed or not
-        // this determines cool down before next check
-        Promise<Boolean> promise = Promise.promise();
+  protected void pollForJobs() {
+    int currentWorkersInUse = workersInUse.get();
+    LOGGER.info(
+      "Checking for items available to run. Worker usage: {}/{}",
+      workersInUse,
+      maxWorkersCount
+    );
 
-        optional.ifPresentOrElse(
-          item ->
-            processQueueItem(item).map(v -> true).onComplete(promise::handle),
-          () -> promise.complete(false)
-        );
+    if (currentWorkersInUse < maxWorkersCount) {
+      this.scoreService.getBestQueueItemAndMarkInProgress()
+        .onSuccess(opt ->
+          opt.ifPresentOrElse(
+            (DataImportQueueItem item) -> {
+              LOGGER.info("Running item: {}", item);
 
-        return promise.future();
-      })
-      .onSuccess((Boolean didRunJob) -> {
-        if (Boolean.TRUE.equals(didRunJob)) {
-          // use setTimer to avoid a stack overflow on multiple repeats
-          vertx.setTimer(0, v -> this.pollForJobs());
-        } else {
-          // wait before checking again
-          LOGGER.info(
-            "No queue items available to run, checking again in {}ms",
-            this.pollInterval
-          );
+              workersInUse.incrementAndGet();
 
-          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
-        }
-      })
-      .onFailure((Throwable err) -> {
-        LOGGER.error("Error running queue item...", err);
-        vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
-      });
+              long startTimeStamp = System.currentTimeMillis();
+
+              vertx.runOnContext(v ->
+                processQueueItem(item)
+                  .onComplete((AsyncResult<QueueJob> vv) -> {
+                    int workersLeft = workersInUse.decrementAndGet();
+                    LOGGER.info(
+                      "Competed running item: {}; Time spent (in ms): {}; Active workers left: {}",
+                      item,
+                      System.currentTimeMillis() - startTimeStamp,
+                      workersLeft
+                    );
+                  })
+              );
+
+              // do it one more time in hope that there more items in the queue
+              if (workersInUse.get() < maxWorkersCount) {
+                pollForJobs();
+              }
+            },
+            () -> LOGGER.info("No Items available to run.")
+          )
+        )
+        .onFailure(err -> LOGGER.error("Unable to get job from queue:", err));
+    }
   }
 
   protected Future<QueueJob> processQueueItem(DataImportQueueItem queueItem) {
@@ -146,14 +152,17 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
     return Future
       .succeededFuture(new QueueJob().withQueueItem(queueItem))
-      .map((QueueJob job) -> {
-        localFile.set(createLocalFile(queueItem));
-        return job.withFile(localFile.get());
-      })
+      .compose((QueueJob job) ->
+        createLocalFile(queueItem)
+          .map((File file) -> {
+            localFile.set(file);
+            return job.withFile(file);
+          })
+      )
       .compose(job ->
         uploadDefinitionService
           .getJobExecutionById(queueItem.getJobExecutionId(), params)
-          .map(jobExecution -> job.withJobExecution(jobExecution))
+          .map(job::withJobExecution)
       )
       .compose(job ->
         updateJobExecutionStatusSafely(
@@ -182,7 +191,6 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       )
       .onFailure((Throwable err) -> {
         LOGGER.error("Unable to start chunk {}", queueItem, err);
-        err.printStackTrace();
 
         updateJobExecutionStatusSafely(
           queueItem.getJobExecutionId(),
@@ -198,7 +206,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           queueItem.getJobExecutionId()
         )
       )
-      .onComplete(v -> {
+      .onComplete((AsyncResult<QueueJob> v) -> {
         queueItemDao.deleteDataImportQueueItem(queueItem.getId());
 
         File file = localFile.get();
@@ -256,25 +264,18 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       });
   }
 
-  protected File createLocalFile(DataImportQueueItem queueItem) {
-    try {
-      File localFile = Files
-        .createTempFile(
-          "di-tmp-",
-          // later stage requires correct file extension
-          Path.of(queueItem.getFilePath()).getFileName().toString(),
-          PosixFilePermissions.asFileAttribute(
-            PosixFilePermissions.fromString("rwx------")
-          )
-        )
-        .toFile();
-
-      LOGGER.info("Created temporary file {}", localFile.toPath());
-
-      return localFile;
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+  protected Future<File> createLocalFile(DataImportQueueItem queueItem) {
+    return vertx
+      .fileSystem()
+      .createTempFile(
+        "di-tmp-",
+        Path.of(queueItem.getFilePath()).getFileName().toString(),
+        "rwx------"
+      )
+      .map(File::new)
+      .onSuccess(localFile ->
+        LOGGER.info("Created temporary file {}", localFile.toPath())
+      );
   }
 
   /**
@@ -285,12 +286,12 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   ) {
     OkapiConnectionParams provisionalParams = new OkapiConnectionParams(
       Map.of(
-        "x-okapi-url",
+        XOkapiHeaders.URL.toLowerCase(),
         queueItem.getOkapiUrl(),
-        "x-okapi-tenant",
+        XOkapiHeaders.TENANT.toLowerCase(),
         queueItem.getTenant(),
         // filled right after, but we need tenant/URL to get the token
-        "x-okapi-token",
+        XOkapiHeaders.TOKEN.toLowerCase(),
         ""
       ),
       vertx
@@ -300,11 +301,11 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
     return new OkapiConnectionParams(
       Map.of(
-        "x-okapi-url",
+        XOkapiHeaders.URL.toLowerCase(),
         queueItem.getOkapiUrl(),
-        "x-okapi-tenant",
+        XOkapiHeaders.TENANT.toLowerCase(),
         queueItem.getTenant(),
-        "x-okapi-token",
+        XOkapiHeaders.TOKEN.toLowerCase(),
         token
       ),
       vertx

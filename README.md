@@ -130,11 +130,12 @@ To allow multiple instance deployment, for every instance the same persistent vo
 
 The file-splitting process may be configured with the following environment variables:
 
-| Name                               | Type              | Default | Description                                                                                |
-| ---------------------------------- | ----------------- | ------- | ------------------------------------------------------------------------------------------ |
-| `SPLIT_FILES_ENABLED`              | `true` or `false` | `false` | Whether files should be split into chunks and processed separately                         |
-| `RECORDS_PER_SPLIT_FILE`           | integer > 0       | `1000`  | The maximum number of records to include in a single file                                  |
-| `ASYNC_PROCESSOR_POLL_INTERVAL_MS` | integer (msec)    | `5000`  | The number of milliseconds between times when the module checks the queue for waiting jobs |
+| Name                                | Type              | Default | Description                                                                                |
+| ----------------------------------- | ----------------- | ------- | ------------------------------------------------------------------------------------------ |
+| `SPLIT_FILES_ENABLED`               | `true` or `false` | `false` | Whether files should be split into chunks and processed separately                         |
+| `RECORDS_PER_SPLIT_FILE`            | integer > 0       | `1000`  | The maximum number of records to include in a single file                                  |
+| `ASYNC_PROCESSOR_POLL_INTERVAL_MS`  | integer (msec)    | `5000`  | The number of milliseconds between times when the module checks the queue for waiting jobs |
+| `ASYNC_PROCESSOR_MAX_WORKERS_COUNT` | integer           | `5`     | The maximum number of concurrent jobs to process at once, in this instance                 |
 
 For the polling interval, a lower number results in decreased latency between when a job is added to the queue and when it is processed. However, this also results in more frequent database queries, which may impact performance. Note that the number set here is the "worst case" — average waiting would be half of it — and that a few seconds delay on a large import is hardly noticable.
 

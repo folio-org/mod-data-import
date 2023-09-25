@@ -61,46 +61,59 @@ public class AsyncInputStream implements ReadStream<Buffer> {
 
   @Override
   public ReadStream<Buffer> resume() {
-    if (!closed) {
-      active = true;
-      fetch(1L);
-    }
+    read();
 
     return this;
   }
 
+  public void read() {
+    fetch(1L);
+  }
+
+  /**
+   * Fetch the specified amount of elements. If the ReadStream has been paused, reading will
+   * recommence.
+   *
+   * <strong>Note: the {@code amount} parameter is currently ignored.</strong>
+   *
+   * @param amount has no effect; retained for compatibility with {@link ReadStream#fetch(long)}
+   */
   @Override
   public ReadStream<Buffer> fetch(long amount) {
-    active = true;
-    doRead();
+    if (!closed) {
+      active = true;
+      doRead();
+    }
 
     return this;
   }
 
   private void doRead() {
     context.runOnContext((Void v) -> {
-      if (active) {
-        int bytesRead;
-        ByteBuffer byteBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
+      int bytesRead;
+      ByteBuffer byteBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
 
-        try {
-          bytesRead = channel.read(byteBuffer);
+      try {
+        bytesRead = channel.read(byteBuffer);
 
-          if (bytesRead > 0) {
-            byteBuffer.flip();
-            Buffer buffer = Buffer.buffer(bytesRead);
-            buffer.setBytes(0, byteBuffer);
+        if (bytesRead > 0) {
+          byteBuffer.flip();
+          Buffer buffer = Buffer.buffer(bytesRead);
+          buffer.setBytes(0, byteBuffer);
+
+          if (this.handler != null) {
             handler.handle(buffer);
-
-            doRead();
-          } else {
-            close();
           }
-        } catch (IOException e) {
-          LOGGER.error("Unable to read from channel:", e);
+
+          doRead();
+        } else {
           close();
-          return;
         }
+      } catch (IOException e) {
+        LOGGER.error("Unable to read from channel:", e);
+        close();
+        reportException(e);
+        return;
       }
     });
   }
@@ -115,14 +128,17 @@ public class AsyncInputStream implements ReadStream<Buffer> {
       }
 
       try {
-        if (channel.isOpen()) {
-          channel.close();
-        }
+        channel.close();
       } catch (IOException e) {
-        if (this.exceptionHandler != null) {
-          context.runOnContext(vv -> this.exceptionHandler.handle(e));
-        }
+        reportException(e);
       }
+    }
+  }
+
+  private void reportException(Exception e) {
+    LOGGER.error("Received exception:", e);
+    if (this.exceptionHandler != null) {
+      context.runOnContext(vv -> this.exceptionHandler.handle(e));
     }
   }
 }

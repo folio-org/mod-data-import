@@ -2,14 +2,11 @@ package org.folio.service.file;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -17,14 +14,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.FileSystem;
-import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.ByteArrayInputStream;
@@ -33,7 +29,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.Optional;
 import org.apache.commons.io.FileUtils;
 import org.folio.dao.DataImportQueueItemDao;
@@ -48,7 +43,6 @@ import org.folio.service.processing.ranking.ScoreService;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -256,145 +250,113 @@ public class S3JobRunningVerticleUnitTest {
       );
   }
 
-  // @Test
-  // @Ignore
-  // public void testPollWithAvailableAndSuccessful(TestContext context) {
-  //   DataImportQueueItem queueItem = new DataImportQueueItem();
+  @Test
+  public void testWorkersAtCapacity(TestContext context) {
+    S3JobRunningVerticle.workersInUse.set(10);
 
-  //   when(scoreService.getBestQueueItemAndMarkInProgress())
-  //     .thenReturn(Future.succeededFuture(Optional.of(queueItem)));
+    // at capacity; we should not request new queue items
+    verticle.pollForJobs();
 
-  //   doReturn(Future.succeededFuture())
-  //     .when(verticle)
-  //     .processQueueItem(queueItem);
+    verifyNoInteractions(scoreService);
+  }
 
-  //   when(mockVertx.setTimer(anyLong(), any()))
-  //     .thenAnswer(invocation -> {
-  //       // override default after first call
-  //       doNothing().when(verticle).pollForJobs2();
+  @Test
+  public void testWorkersAlmostAtCapacityRunning(TestContext context) {
+    S3JobRunningVerticle.workersInUse.set(9);
 
-  //       // happens immediately, so below we can check that it was called twice
-  //       // (for the initial run below and second go here)
-  //       invocation.<Handler<Long>>getArgument(1).handle(0L);
+    when(scoreService.getBestQueueItemAndMarkInProgress())
+      .thenReturn(
+        Future.succeededFuture(Optional.of(new DataImportQueueItem()))
+      );
+    doReturn(Future.succeededFuture()).when(verticle).processQueueItem(any());
 
-  //       return null;
-  //     });
+    // should request item
+    verticle.pollForJobs();
 
-  //   verticle.pollForJobs2();
+    vertx.setTimer(
+      100L,
+      v ->
+        context.verify(vv -> {
+          // after "running", should not request any additional items
+          // (since worker pool will then be at capacity)
+          verify(scoreService, times(1)).getBestQueueItemAndMarkInProgress();
+          verifyNoMoreInteractions(scoreService);
 
-  //   Async async = context.async();
+          // no more requests made
+          verify(verticle, times(1)).pollForJobs();
 
-  //   vertx.setTimer(
-  //     100,
-  //     v ->
-  //       context.verify(vv -> {
-  //         verify(mockVertx, times(1)).setTimer(eq(0L), any());
-  //         verifyNoMoreInteractions(mockVertx);
+          // back to 9/10 in progress, since our started one here should have finished
+          assertThat(S3JobRunningVerticle.workersInUse.get(), is(9));
+        })
+    );
+  }
 
-  //         verify(scoreService, times(1)).getBestQueueItemAndMarkInProgress();
-  //         verifyNoMoreInteractions(scoreService);
+  @Test
+  public void testWorkersNoneToRun(TestContext context) {
+    S3JobRunningVerticle.workersInUse.set(0);
 
-  //         verify(verticle, times(1)).processQueueItem(queueItem);
-  //         // once for initial run, second from the setTimer mock answer
-  //         verify(verticle, times(2)).pollForJobs2();
-  //         verifyNoMoreInteractions(verticle);
+    when(scoreService.getBestQueueItemAndMarkInProgress())
+      .thenReturn(Future.succeededFuture(Optional.empty()));
 
-  //         async.complete();
-  //       })
-  //   );
-  // }
+    verticle.pollForJobs();
 
-  // @Test
-  // @Ignore
-  // public void testPollWithAvailableAndNonSuccessful(TestContext context) {
-  //   DataImportQueueItem queueItem = new DataImportQueueItem();
+    vertx.setTimer(
+      100L,
+      v ->
+        context.verify(vv -> {
+          // after "running", should not request any additional items
+          // (since worker pool will then be at capacity)
+          verify(scoreService, times(1)).getBestQueueItemAndMarkInProgress();
+          verifyNoMoreInteractions(scoreService);
 
-  //   when(scoreService.getBestQueueItemAndMarkInProgress())
-  //     .thenReturn(Future.succeededFuture(Optional.of(queueItem)));
+          // no more requests made
+          verify(verticle, times(1)).pollForJobs();
 
-  //   doReturn(Future.failedFuture(new RuntimeException()))
-  //     .when(verticle)
-  //     .processQueueItem(queueItem);
+          // no processing done
+          verify(verticle, never()).processQueueItem(any());
 
-  //   when(mockVertx.setTimer(anyLong(), any()))
-  //     .thenAnswer(invocation -> {
-  //       // override default after first call
-  //       doNothing().when(verticle).pollForJobs2();
+          // back to 0/10 in progress, since our started one here should have finished
+          assertThat(S3JobRunningVerticle.workersInUse.get(), is(9));
+        })
+    );
+  }
 
-  //       // happens immediately, so below we can check that it was called twice
-  //       // (for the initial run below and second go here)
-  //       invocation.<Handler<Long>>getArgument(1).handle(0L);
+  @Test
+  public void testWorkersRunningMultiple(TestContext context) {
+    S3JobRunningVerticle.workersInUse.set(0);
 
-  //       return null;
-  //     });
+    // return two jobs
+    when(scoreService.getBestQueueItemAndMarkInProgress())
+      .thenReturn(
+        Future.succeededFuture(Optional.of(new DataImportQueueItem()))
+      )
+      .thenReturn(
+        Future.succeededFuture(Optional.of(new DataImportQueueItem()))
+      )
+      .thenReturn(Future.succeededFuture(Optional.empty()));
 
-  //   verticle.pollForJobs2();
+    doReturn(Future.succeededFuture()).when(verticle).processQueueItem(any());
 
-  //   Async async = context.async();
+    // should request item
+    verticle.pollForJobs();
 
-  //   vertx.setTimer(
-  //     100,
-  //     v ->
-  //       context.verify(vv -> {
-  //         // sleep before retry upon failure
-  //         verify(mockVertx, times(1)).setTimer(eq(POLL_INTERVAL), any());
-  //         verifyNoMoreInteractions(mockVertx);
+    vertx.setTimer(
+      100L,
+      v ->
+        context.verify(vv -> {
+          // after "running", should not request any additional items
+          // (since worker pool will then be at capacity)
+          verify(scoreService, times(3)).getBestQueueItemAndMarkInProgress();
+          verifyNoMoreInteractions(scoreService);
 
-  //         verify(scoreService, times(1)).getBestQueueItemAndMarkInProgress();
-  //         verifyNoMoreInteractions(scoreService);
+          // called 3x total
+          verify(verticle, times(3)).pollForJobs();
 
-  //         verify(verticle, times(1)).processQueueItem(queueItem);
-  //         // once for initial run, second from the setTimer mock answer
-  //         verify(verticle, times(2)).pollForJobs2();
-  //         verifyNoMoreInteractions(verticle);
-
-  //         async.complete();
-  //       })
-  //   );
-  // }
-
-  // @Test
-  // @Ignore
-  // public void testPollWithNoneAvailable(TestContext context) {
-  //   when(scoreService.getBestQueueItemAndMarkInProgress())
-  //     .thenReturn(Future.succeededFuture(Optional.empty()));
-
-  //   when(mockVertx.setTimer(anyLong(), any()))
-  //     .thenAnswer(invocation -> {
-  //       // override default after first call
-  //       doNothing().when(verticle).pollForJobs2();
-
-  //       // happens immediately, so below we can check that it was called twice
-  //       // (for the initial run below and second go here)
-  //       invocation.<Handler<Long>>getArgument(1).handle(0L);
-
-  //       return null;
-  //     });
-
-  //   verticle.pollForJobs2();
-
-  //   Async async = context.async();
-
-  //   vertx.setTimer(
-  //     100,
-  //     v ->
-  //       context.verify(vv -> {
-  //         // sleep before retry upon failure
-  //         verify(mockVertx, times(1)).setTimer(eq(POLL_INTERVAL), any());
-  //         verifyNoMoreInteractions(mockVertx);
-
-  //         verify(scoreService, times(1)).getBestQueueItemAndMarkInProgress();
-  //         verifyNoMoreInteractions(scoreService);
-
-  //         verify(verticle, never()).processQueueItem(any());
-  //         // once for initial run, second from the setTimer mock answer
-  //         verify(verticle, times(2)).pollForJobs2();
-  //         verifyNoMoreInteractions(verticle);
-
-  //         async.complete();
-  //       })
-  //   );
-  // }
+          // our "jobs" should have finished
+          assertThat(S3JobRunningVerticle.workersInUse.get(), is(0));
+        })
+    );
+  }
 
   @Test
   public void testProcessQueueItemSuccess(TestContext context)

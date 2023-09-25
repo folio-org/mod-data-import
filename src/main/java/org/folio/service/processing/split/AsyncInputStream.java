@@ -51,6 +51,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   @Override
   public ReadStream<Buffer> pause() {
     active = false;
+
     return this;
   }
 
@@ -67,6 +68,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   @Override
   public ReadStream<Buffer> fetch(long amount) {
     doRead();
+
     return this;
   }
 
@@ -102,18 +104,18 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     if (!closed) {
       closed = true;
       active = false;
-      var localEndHandler = endHandler;
-      if (localEndHandler != null) {
-        context.runOnContext(vv -> localEndHandler.handle(null));
+
+      if (this.endHandler != null) {
+        context.runOnContext(vv -> this.endHandler.handle(null));
       }
+
       try {
         if (channel.isOpen()) {
           channel.close();
         }
       } catch (IOException e) {
-        var localExceptionHandler = this.exceptionHandler;
-        if (localExceptionHandler != null) {
-          context.runOnContext(vv -> localExceptionHandler.handle(e));
+        if (this.exceptionHandler != null) {
+          context.runOnContext(vv -> this.exceptionHandler.handle(e));
         }
       }
     }

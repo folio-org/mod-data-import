@@ -19,6 +19,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.FileSystem;
 import io.vertx.ext.unit.TestContext;
@@ -93,6 +95,12 @@ public class S3JobRunningVerticleUnitTest {
     MockitoAnnotations.openMocks(this);
 
     when(mockVertx.fileSystem()).thenReturn(fileSystem);
+    doAnswer(invocation -> {
+        invocation.<Handler<Void>>getArgument(0).handle(null);
+        return null;
+      })
+      .when(mockVertx)
+      .runOnContext(any());
 
     this.verticle =
       spy(
@@ -268,7 +276,17 @@ public class S3JobRunningVerticleUnitTest {
       .thenReturn(
         Future.succeededFuture(Optional.of(new DataImportQueueItem()))
       );
-    doReturn(Future.succeededFuture()).when(verticle).processQueueItem(any());
+
+    doAnswer(invocation -> {
+        Promise<QueueJob> promise = Promise.promise();
+
+        // ensure we don't immediately complete it, to simulate realistic situations
+        vertx.setTimer(1L, v -> promise.complete(null));
+
+        return promise;
+      })
+      .when(verticle)
+      .processQueueItem(any());
 
     // should request item
     verticle.pollForJobs();

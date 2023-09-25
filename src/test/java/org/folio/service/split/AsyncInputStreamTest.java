@@ -1,9 +1,6 @@
 package org.folio.service.split;
 
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.junit.runner.RunWith;
-
-@RunWith(VertxUnitRunner.class)
+//@RunWith(VertxUnitRunner.class)
 public class AsyncInputStreamTest {
 
 //  protected static Vertx vertx = Vertx.vertx();

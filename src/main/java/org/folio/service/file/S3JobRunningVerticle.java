@@ -2,7 +2,6 @@ package org.folio.service.file;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -37,7 +36,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -101,40 +99,40 @@ public class S3JobRunningVerticle extends AbstractVerticle {
    * Loops indefinitely, polling for available jobs.
    * This is the best approach, as the only other option is to use a trigger in the DB, which also requires polling.
    */
-  protected synchronized void pollForJobs() {
-    this.scoreService.getBestQueueItemAndMarkInProgress()
-      .compose((Optional<DataImportQueueItem> optional) -> {
-        // a promise with result of if a queue item was processed or not
-        // this determines cool down before next check
-        Promise<Boolean> promise = Promise.promise();
-
-        optional.ifPresentOrElse(
-          item ->
-            processQueueItem(item).map(v -> true).onComplete(promise),
-          () -> promise.complete(false)
-        );
-
-        return promise.future();
-      })
-      .onSuccess((Boolean didRunJob) -> {
-        if (Boolean.TRUE.equals(didRunJob)) {
-          // use setTimer to avoid a stack overflow on multiple repeats
-          vertx.setTimer(0, v -> this.pollForJobs());
-        } else {
-          // wait before checking again
-          LOGGER.info(
-            "No queue items available to run, checking again in {}ms",
-            this.pollInterval
-          );
-
-          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
-        }
-      })
-      .onFailure((Throwable err) -> {
-        LOGGER.error("Error running queue item...", err);
-        vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
-      });
-  }
+//  protected synchronized void pollForJobs() {
+//    this.scoreService.getBestQueueItemAndMarkInProgress()
+//      .compose((Optional<DataImportQueueItem> optional) -> {
+//        // a promise with result of if a queue item was processed or not
+//        // this determines cool down before next check
+//        Promise<Boolean> promise = Promise.promise();
+//
+//        optional.ifPresentOrElse(
+//          item ->
+//            processQueueItem(item).map(v -> true).onComplete(promise),
+//          () -> promise.complete(false)
+//        );
+//
+//        return promise.future();
+//      })
+//      .onSuccess((Boolean didRunJob) -> {
+//        if (Boolean.TRUE.equals(didRunJob)) {
+//          // use setTimer to avoid a stack overflow on multiple repeats
+//          vertx.setTimer(0, v -> this.pollForJobs());
+//        } else {
+//          // wait before checking again
+//          LOGGER.info(
+//            "No queue items available to run, checking again in {}ms",
+//            this.pollInterval
+//          );
+//
+//          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
+//        }
+//      })
+//      .onFailure((Throwable err) -> {
+//        LOGGER.error("Error running queue item...", err);
+//        vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
+//      });
+//  }
 
   private void doPollForJobs() {
     var workers = workCounter.get();

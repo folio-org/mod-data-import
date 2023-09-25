@@ -370,7 +370,9 @@ public class S3JobRunningVerticleUnitTest {
 
     doReturn(null).when(verticle).getConnectionParams(any());
 
-    doReturn(tempFile).when(verticle).createLocalFile(queueItem);
+    doReturn(Future.succeededFuture(tempFile))
+      .when(verticle)
+      .createLocalFile(queueItem);
 
     when(uploadDefinitionService.getJobExecutionById("job-exec-id", null))
       .thenReturn(
@@ -432,7 +434,9 @@ public class S3JobRunningVerticleUnitTest {
 
     doReturn(null).when(verticle).getConnectionParams(any());
 
-    doReturn(tempFile).when(verticle).createLocalFile(queueItem);
+    doReturn(Future.succeededFuture(tempFile))
+      .when(verticle)
+      .createLocalFile(queueItem);
 
     when(uploadDefinitionService.getJobExecutionById("job-exec-id", null))
       .thenReturn(
@@ -508,7 +512,9 @@ public class S3JobRunningVerticleUnitTest {
 
       doReturn(null).when(verticle).getConnectionParams(any());
 
-      doReturn(tempFile).when(verticle).createLocalFile(queueItem);
+      doReturn(Future.succeededFuture(tempFile))
+        .when(verticle)
+        .createLocalFile(queueItem);
 
       when(uploadDefinitionService.getJobExecutionById("job-exec-id", null))
         .thenThrow(new RuntimeException("test exception"));

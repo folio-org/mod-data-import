@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import javax.annotation.CheckForNull;
+import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.logging.log4j.LogManager;
@@ -25,7 +26,10 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   private final ReadableByteChannel channel;
   private final Context context;
 
+  @Getter
   private boolean active = false;
+
+  @Getter
   private boolean closed = false;
 
   @Setter
@@ -67,6 +71,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
 
   @Override
   public ReadStream<Buffer> fetch(long amount) {
+    active = true;
     doRead();
 
     return this;
@@ -80,21 +85,21 @@ public class AsyncInputStream implements ReadStream<Buffer> {
 
         try {
           bytesRead = channel.read(byteBuffer);
+
+          if (bytesRead > 0) {
+            byteBuffer.flip();
+            Buffer buffer = Buffer.buffer(bytesRead);
+            buffer.setBytes(0, byteBuffer);
+            handler.handle(buffer);
+
+            doRead();
+          } else {
+            close();
+          }
         } catch (IOException e) {
           LOGGER.error("Unable to read from channel:", e);
           close();
           return;
-        }
-
-        if (bytesRead > 0) {
-          byteBuffer.flip();
-          Buffer buffer = Buffer.buffer(bytesRead);
-          buffer.setBytes(0, byteBuffer);
-          handler.handle(buffer);
-
-          doRead();
-        } else {
-          close();
         }
       }
     });

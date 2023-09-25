@@ -3,6 +3,18 @@ package org.folio.service.file;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,6 +24,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
@@ -25,19 +38,6 @@ import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Worker verticle to handle running jobs from S3 storage.
@@ -99,65 +99,78 @@ public class S3JobRunningVerticle extends AbstractVerticle {
    * Loops indefinitely, polling for available jobs.
    * This is the best approach, as the only other option is to use a trigger in the DB, which also requires polling.
    */
-//  protected synchronized void pollForJobs() {
-//    this.scoreService.getBestQueueItemAndMarkInProgress()
-//      .compose((Optional<DataImportQueueItem> optional) -> {
-//        // a promise with result of if a queue item was processed or not
-//        // this determines cool down before next check
-//        Promise<Boolean> promise = Promise.promise();
-//
-//        optional.ifPresentOrElse(
-//          item ->
-//            processQueueItem(item).map(v -> true).onComplete(promise),
-//          () -> promise.complete(false)
-//        );
-//
-//        return promise.future();
-//      })
-//      .onSuccess((Boolean didRunJob) -> {
-//        if (Boolean.TRUE.equals(didRunJob)) {
-//          // use setTimer to avoid a stack overflow on multiple repeats
-//          vertx.setTimer(0, v -> this.pollForJobs());
-//        } else {
-//          // wait before checking again
-//          LOGGER.info(
-//            "No queue items available to run, checking again in {}ms",
-//            this.pollInterval
-//          );
-//
-//          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
-//        }
-//      })
-//      .onFailure((Throwable err) -> {
-//        LOGGER.error("Error running queue item...", err);
-//        vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
-//      });
-//  }
+  //  protected synchronized void pollForJobs() {
+  //    this.scoreService.getBestQueueItemAndMarkInProgress()
+  //      .compose((Optional<DataImportQueueItem> optional) -> {
+  //        // a promise with result of if a queue item was processed or not
+  //        // this determines cool down before next check
+  //        Promise<Boolean> promise = Promise.promise();
+  //
+  //        optional.ifPresentOrElse(
+  //          item ->
+  //            processQueueItem(item).map(v -> true).onComplete(promise),
+  //          () -> promise.complete(false)
+  //        );
+  //
+  //        return promise.future();
+  //      })
+  //      .onSuccess((Boolean didRunJob) -> {
+  //        if (Boolean.TRUE.equals(didRunJob)) {
+  //          // use setTimer to avoid a stack overflow on multiple repeats
+  //          vertx.setTimer(0, v -> this.pollForJobs());
+  //        } else {
+  //          // wait before checking again
+  //          LOGGER.info(
+  //            "No queue items available to run, checking again in {}ms",
+  //            this.pollInterval
+  //          );
+  //
+  //          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
+  //        }
+  //      })
+  //      .onFailure((Throwable err) -> {
+  //        LOGGER.error("Error running queue item...", err);
+  //        vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
+  //      });
+  //  }
 
   private void doPollForJobs() {
     var workers = workCounter.get();
-    LOGGER.info("Checking for items available to run. activeWorkers: {}", workers);
+    LOGGER.info(
+      "Checking for items available to run. activeWorkers: {}",
+      workers
+    );
 
     if (workers < maxWorkersCount) {
-      this.scoreService
-        .getBestQueueItemAndMarkInProgress()
+      this.scoreService.getBestQueueItemAndMarkInProgress()
         .onComplete(ar -> {
           if (ar.succeeded()) {
             var opt = ar.result();
-            opt.ifPresentOrElse(item -> {
-              LOGGER.info("Item available to run: {}", item);
-              workCounter.incrementAndGet();
-              var startTimeStamp = System.currentTimeMillis();
-              vertx.runOnContext(v -> processQueueItem(item).onComplete(vv -> {
-                var workersLeft = workCounter.decrementAndGet();
-                LOGGER.info("Competed Item run: {}; Time spent in ms: {}; Active workers left: {}", item, System.currentTimeMillis() - startTimeStamp, workersLeft);
-              }));
-              // do it one more time in hope that there more items in the queue
-              if (workCounter.get() < maxWorkersCount) {
-                doPollForJobs();
-              }
-            }, () -> LOGGER.info("No Items available to run."));
-          } else {//TODO: add some useful error message with a stacktrace
+            opt.ifPresentOrElse(
+              item -> {
+                LOGGER.info("Item available to run: {}", item);
+                workCounter.incrementAndGet();
+                var startTimeStamp = System.currentTimeMillis();
+                vertx.runOnContext(v ->
+                  processQueueItem(item)
+                    .onComplete(vv -> {
+                      var workersLeft = workCounter.decrementAndGet();
+                      LOGGER.info(
+                        "Competed Item run: {}; Time spent in ms: {}; Active workers left: {}",
+                        item,
+                        System.currentTimeMillis() - startTimeStamp,
+                        workersLeft
+                      );
+                    })
+                );
+                // do it one more time in hope that there more items in the queue
+                if (workCounter.get() < maxWorkersCount) {
+                  doPollForJobs();
+                }
+              },
+              () -> LOGGER.info("No Items available to run.")
+            );
+          } else { //TODO: add some useful error message with a stacktrace
             ar.cause().printStackTrace();
             LOGGER.error(ar.cause());
           }
@@ -325,12 +338,12 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   ) {
     OkapiConnectionParams provisionalParams = new OkapiConnectionParams(
       Map.of(
-        "x-okapi-url",
+        XOkapiHeaders.URL.toLowerCase(),
         queueItem.getOkapiUrl(),
-        "x-okapi-tenant",
+        XOkapiHeaders.TENANT.toLowerCase(),
         queueItem.getTenant(),
         // filled right after, but we need tenant/URL to get the token
-        "x-okapi-token",
+        XOkapiHeaders.TOKEN.toLowerCase(),
         ""
       ),
       vertx
@@ -340,11 +353,11 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
     return new OkapiConnectionParams(
       Map.of(
-        "x-okapi-url",
+        XOkapiHeaders.URL.toLowerCase(),
         queueItem.getOkapiUrl(),
-        "x-okapi-tenant",
+        XOkapiHeaders.TENANT.toLowerCase(),
         queueItem.getTenant(),
-        "x-okapi-token",
+        XOkapiHeaders.TOKEN.toLowerCase(),
         token
       ),
       vertx

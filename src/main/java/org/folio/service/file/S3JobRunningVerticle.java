@@ -4,18 +4,6 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -39,6 +27,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * Worker verticle to handle running jobs from S3 storage.
  *
@@ -49,16 +51,19 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private DataImportQueueItemDao queueItemDao;
+  private static final AtomicInteger workCounter = new AtomicInteger(0);
+  private final DataImportQueueItemDao queueItemDao;
 
-  private MinioStorageService minioStorageService;
-  private ScoreService scoreService;
-  private SystemUserAuthService systemUserService;
-  private UploadDefinitionService uploadDefinitionService;
+  private final MinioStorageService minioStorageService;
+  private final ScoreService scoreService;
+  private final SystemUserAuthService systemUserService;
+  private final UploadDefinitionService uploadDefinitionService;
 
-  private ParallelFileChunkingProcessor fileProcessor;
+  private final ParallelFileChunkingProcessor fileProcessor;
 
-  private long pollInterval;
+  private final int pollInterval;
+
+  private final int maxWorkersCount;
 
   // constructs the processor automatically as it is a @Component
   @Autowired
@@ -70,7 +75,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     SystemUserAuthService systemUserService,
     UploadDefinitionService uploadDefinitionService,
     ParallelFileChunkingProcessor fileProcessor,
-    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") long pollInterval
+    @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval,
+    @Value("${ASYNC_PROCESSOR_MAX_WORKERS_COUNT:10}") int maxWorkersCount
   ) {
     this.vertx = vertx;
 
@@ -80,17 +86,15 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     this.systemUserService = systemUserService;
     this.scoreService = scoreService;
     this.uploadDefinitionService = uploadDefinitionService;
-
-    this.pollInterval = pollInterval;
-
     this.fileProcessor = fileProcessor;
+    this.pollInterval = pollInterval;
+    this.maxWorkersCount = maxWorkersCount;
   }
 
   @Override
   public void start() {
     LOGGER.info("Running S3JobRunningVerticle");
-
-    this.pollForJobs();
+    vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
   }
 
   /**
@@ -106,7 +110,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
         optional.ifPresentOrElse(
           item ->
-            processQueueItem(item).map(v -> true).onComplete(promise::handle),
+            processQueueItem(item).map(v -> true).onComplete(promise),
           () -> promise.complete(false)
         );
 
@@ -132,6 +136,44 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       });
   }
 
+  private void doPollForJobs() {
+    var workers = workCounter.get();
+    LOGGER.info("Checking for items available to run. activeWorkers: {}", workers);
+
+    if (workers < maxWorkersCount) {
+      this.scoreService
+        .getBestQueueItemAndMarkInProgress()
+        .onComplete(ar -> {
+          if (ar.succeeded()) {
+            var opt = ar.result();
+            opt.ifPresentOrElse(item -> {
+              LOGGER.info("Item available to run: {}", item);
+              workCounter.incrementAndGet();
+              var startTimeStamp = System.currentTimeMillis();
+              vertx.runOnContext(v -> processQueueItem(item).onComplete(vv -> {
+                var workersLeft = workCounter.decrementAndGet();
+                LOGGER.info("Competed Item run: {}; Time spent in ms: {}; Active workers left: {}", item, System.currentTimeMillis() - startTimeStamp, workersLeft);
+              }));
+              // do it one more time in hope that there more items in the queue
+              if (workCounter.get() < maxWorkersCount) {
+                doPollForJobs();
+              }
+            }, () -> LOGGER.info("No Items available to run."));
+          } else {//TODO: add some useful error message with a stacktrace
+            ar.cause().printStackTrace();
+            LOGGER.error(ar.cause());
+          }
+        });
+    } else {
+      LOGGER.info("All workers are active: {}", workers);
+    }
+  }
+
+  protected synchronized void pollForJobs2() {
+    doPollForJobs();
+    vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
+  }
+
   protected Future<QueueJob> processQueueItem(DataImportQueueItem queueItem) {
     LOGGER.info(
       "Starting to process job execution {}",
@@ -153,7 +195,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       .compose(job ->
         uploadDefinitionService
           .getJobExecutionById(queueItem.getJobExecutionId(), params)
-          .map(jobExecution -> job.withJobExecution(jobExecution))
+          .map(job::withJobExecution)
       )
       .compose(job ->
         updateJobExecutionStatusSafely(

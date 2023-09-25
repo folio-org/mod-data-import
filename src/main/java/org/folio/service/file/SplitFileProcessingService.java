@@ -472,7 +472,7 @@ public class SplitFileProcessingService {
   ) {
     Promise<HttpResponse<Buffer>> promise = Promise.promise();
 
-    client.postChangeManagerJobExecutions(request, promise::handle);
+    client.postChangeManagerJobExecutions(request, promise);
 
     return promise
       .future()

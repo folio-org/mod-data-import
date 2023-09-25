@@ -48,9 +48,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private static final AtomicInteger workCounter = new AtomicInteger(0);
-  private final DataImportQueueItemDao queueItemDao;
+  protected static final AtomicInteger workersInUse = new AtomicInteger(0);
 
+  private final DataImportQueueItemDao queueItemDao;
   private final MinioStorageService minioStorageService;
   private final ScoreService scoreService;
   private final SystemUserAuthService systemUserService;
@@ -94,28 +94,29 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     vertx.setPeriodic(this.pollInterval, v -> this.pollForJobs());
   }
 
-  private void pollForJobs() {
-    int workersInUse = workCounter.get();
+  protected void pollForJobs() {
+    int currentWorkersInUse = workersInUse.get();
     LOGGER.info(
-      "Checking for items available to run. activeWorkers: {}",
-      workersInUse
+      "Checking for items available to run. Worker usage: {}/{}",
+      workersInUse,
+      maxWorkersCount
     );
 
-    if (workersInUse < maxWorkersCount) {
+    if (currentWorkersInUse < maxWorkersCount) {
       this.scoreService.getBestQueueItemAndMarkInProgress()
         .onSuccess(opt ->
           opt.ifPresentOrElse(
             (DataImportQueueItem item) -> {
               LOGGER.info("Running item: {}", item);
 
-              workCounter.incrementAndGet();
+              workersInUse.incrementAndGet();
 
               long startTimeStamp = System.currentTimeMillis();
 
               vertx.runOnContext(v ->
                 processQueueItem(item)
                   .onComplete((AsyncResult<QueueJob> vv) -> {
-                    int workersLeft = workCounter.decrementAndGet();
+                    int workersLeft = workersInUse.decrementAndGet();
                     LOGGER.info(
                       "Competed running item: {}; Time spent (in ms): {}; Active workers left: {}",
                       item,
@@ -126,7 +127,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
               );
 
               // do it one more time in hope that there more items in the queue
-              if (workCounter.get() < maxWorkersCount) {
+              if (workersInUse.get() < maxWorkersCount) {
                 pollForJobs();
               }
             },
@@ -134,8 +135,6 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           )
         )
         .onFailure(err -> LOGGER.error("Unable to get job from queue:", err));
-    } else {
-      LOGGER.info("All workers are active: {}", workersInUse);
     }
   }
 
@@ -192,7 +191,6 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       )
       .onFailure((Throwable err) -> {
         LOGGER.error("Unable to start chunk {}", queueItem, err);
-        err.printStackTrace();
 
         updateJobExecutionStatusSafely(
           queueItem.getJobExecutionId(),

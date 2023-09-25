@@ -79,8 +79,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
         try {
           bytesRead = channel.read(byteBuffer);
         } catch (IOException e) {
-          e.printStackTrace();
-          LOGGER.error(e);
+          LOGGER.error("Unable to read from channel:", e);
           close();
           return;
         }

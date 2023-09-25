@@ -521,7 +521,8 @@
       { "name": "SCORE_PART_NUMBER_LAST_REFERENCE", "value": "100" },
       { "name": "SYSTEM_PROCESSING_USERNAME", "value": "data-import-system-user" },
       { "name": "SYSTEM_PROCESSING_PASSWORD", "value": "data-import-system-user" },
-      { "name": "ASYNC_PROCESSOR_POLL_INTERVAL_MS", "value": "5000" }
+      { "name": "ASYNC_PROCESSOR_POLL_INTERVAL_MS", "value": "5000" },
+      { "name": "ASYNC_PROCESSOR_MAX_WORKERS_COUNT", "value": "5" }
     ]
   }
 }

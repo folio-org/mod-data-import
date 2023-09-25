@@ -5,19 +5,18 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.service.s3storage.MinioStorageService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.service.s3storage.MinioStorageService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 @Service
 public class FileSplitService {
@@ -53,7 +52,7 @@ public class FileSplitService {
     return minioStorageService
       .readFile(key)
       .compose((InputStream stream) -> {
-        //!!!! do not close stream here, it will be closed asynchronously by the AsyncInputStream!
+        // this stream will be closed as part of splitStream
         try {
           return splitStream(context, stream, key)
             .compose((List<String> result) -> {
@@ -68,7 +67,7 @@ public class FileSplitService {
   }
 
   /**
-   * Take a file, as an {@link InputStream}, and split it into parts.
+   * Take a file, as an {@link InputStream}, split it into parts, and close it after.
    *
    * @return a {@link Future} which will resolve with a list of strings once every
    *         split chunk has been uploaded to MinIO/S3.
@@ -104,10 +103,7 @@ public class FileSplitService {
         .build()
     );
 
-    AsyncInputStream asyncStream = new AsyncInputStream(
-      context,
-      stream
-    );
+    AsyncInputStream asyncStream = new AsyncInputStream(context, stream);
     asyncStream
       .pipeTo(writer)
       .onComplete(ar1 -> LOGGER.info("File split for key={} completed", key));

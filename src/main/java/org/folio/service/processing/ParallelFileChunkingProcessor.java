@@ -200,16 +200,18 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param jobProfile - job profile main info
    * @return total records in file;
    */
-  //TODO: just quite a contradictory method
-  private int countTotalRecordsInFile(File file, JobProfileInfo jobProfile) {
-    int total = 0;
+  public static int countTotalRecordsInFile(File file, JobProfileInfo jobProfile) {
     if (file == null || jobProfile == null) {
-      return total;
+      return 0;
     }
+
     SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
+
+    int total = 0;
     while (reader.hasNext()) {
       total += reader.next().size();
     }
+
     return total;
   }
 

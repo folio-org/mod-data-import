@@ -1,6 +1,7 @@
 package org.folio.service.file;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import java.io.File;
@@ -92,97 +93,52 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   @Override
   public void start() {
     LOGGER.info("Running S3JobRunningVerticle");
-    vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
+    vertx.setPeriodic(this.pollInterval, v -> this.pollForJobs());
   }
 
-  /**
-   * Loops indefinitely, polling for available jobs.
-   * This is the best approach, as the only other option is to use a trigger in the DB, which also requires polling.
-   */
-  //  protected synchronized void pollForJobs() {
-  //    this.scoreService.getBestQueueItemAndMarkInProgress()
-  //      .compose((Optional<DataImportQueueItem> optional) -> {
-  //        // a promise with result of if a queue item was processed or not
-  //        // this determines cool down before next check
-  //        Promise<Boolean> promise = Promise.promise();
-  //
-  //        optional.ifPresentOrElse(
-  //          item ->
-  //            processQueueItem(item).map(v -> true).onComplete(promise),
-  //          () -> promise.complete(false)
-  //        );
-  //
-  //        return promise.future();
-  //      })
-  //      .onSuccess((Boolean didRunJob) -> {
-  //        if (Boolean.TRUE.equals(didRunJob)) {
-  //          // use setTimer to avoid a stack overflow on multiple repeats
-  //          vertx.setTimer(0, v -> this.pollForJobs());
-  //        } else {
-  //          // wait before checking again
-  //          LOGGER.info(
-  //            "No queue items available to run, checking again in {}ms",
-  //            this.pollInterval
-  //          );
-  //
-  //          vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
-  //        }
-  //      })
-  //      .onFailure((Throwable err) -> {
-  //        LOGGER.error("Error running queue item...", err);
-  //        vertx.setTimer(this.pollInterval, v -> this.pollForJobs());
-  //      });
-  //  }
-
-  private void doPollForJobs() {
-    var workers = workCounter.get();
+  private void pollForJobs() {
+    int workersInUse = workCounter.get();
     LOGGER.info(
       "Checking for items available to run. activeWorkers: {}",
-      workers
+      workersInUse
     );
 
-    if (workers < maxWorkersCount) {
+    if (workersInUse < maxWorkersCount) {
       this.scoreService.getBestQueueItemAndMarkInProgress()
-        .onComplete(ar -> {
-          if (ar.succeeded()) {
-            var opt = ar.result();
-            opt.ifPresentOrElse(
-              item -> {
-                LOGGER.info("Item available to run: {}", item);
-                workCounter.incrementAndGet();
-                var startTimeStamp = System.currentTimeMillis();
-                vertx.runOnContext(v ->
-                  processQueueItem(item)
-                    .onComplete(vv -> {
-                      var workersLeft = workCounter.decrementAndGet();
-                      LOGGER.info(
-                        "Competed Item run: {}; Time spent in ms: {}; Active workers left: {}",
-                        item,
-                        System.currentTimeMillis() - startTimeStamp,
-                        workersLeft
-                      );
-                    })
-                );
-                // do it one more time in hope that there more items in the queue
-                if (workCounter.get() < maxWorkersCount) {
-                  doPollForJobs();
-                }
-              },
-              () -> LOGGER.info("No Items available to run.")
-            );
-          } else { //TODO: add some useful error message with a stacktrace
-            ar.cause().printStackTrace();
-            LOGGER.error(ar.cause());
-          }
-        });
-    } else {
-      LOGGER.info("All workers are active: {}", workers);
-    }
-  }
+        .onSuccess(opt ->
+          opt.ifPresentOrElse(
+            (DataImportQueueItem item) -> {
+              LOGGER.info("Running item: {}", item);
 
-  protected synchronized void pollForJobs2() {
-    doPollForJobs();
-    vertx.setTimer(this.pollInterval, v -> this.pollForJobs2());
+              workCounter.incrementAndGet();
+
+              long startTimeStamp = System.currentTimeMillis();
+
+              vertx.runOnContext(v ->
+                processQueueItem(item)
+                  .onComplete((AsyncResult<QueueJob> vv) -> {
+                    int workersLeft = workCounter.decrementAndGet();
+                    LOGGER.info(
+                      "Competed running item: {}; Time spent (in ms): {}; Active workers left: {}",
+                      item,
+                      System.currentTimeMillis() - startTimeStamp,
+                      workersLeft
+                    );
+                  })
+              );
+
+              // do it one more time in hope that there more items in the queue
+              if (workCounter.get() < maxWorkersCount) {
+                pollForJobs();
+              }
+            },
+            () -> LOGGER.info("No Items available to run.")
+          )
+        )
+        .onFailure(err -> LOGGER.error("Unable to get job from queue:", err));
+    } else {
+      LOGGER.info("All workers are active: {}", workersInUse);
+    }
   }
 
   protected Future<QueueJob> processQueueItem(DataImportQueueItem queueItem) {
@@ -251,7 +207,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           queueItem.getJobExecutionId()
         )
       )
-      .onComplete(v -> {
+      .onComplete((AsyncResult<QueueJob> v) -> {
         queueItemDao.deleteDataImportQueueItem(queueItem.getId());
 
         File file = localFile.get();

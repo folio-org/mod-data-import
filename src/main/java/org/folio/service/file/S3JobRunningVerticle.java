@@ -10,9 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -155,10 +153,13 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
     return Future
       .succeededFuture(new QueueJob().withQueueItem(queueItem))
-      .map((QueueJob job) -> {
-        localFile.set(createLocalFile(queueItem));
-        return job.withFile(localFile.get());
-      })
+      .compose((QueueJob job) ->
+        createLocalFile(queueItem)
+          .map((File file) -> {
+            localFile.set(file);
+            return job.withFile(file);
+          })
+      )
       .compose(job ->
         uploadDefinitionService
           .getJobExecutionById(queueItem.getJobExecutionId(), params)
@@ -265,25 +266,18 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       });
   }
 
-  protected File createLocalFile(DataImportQueueItem queueItem) {
-    try {
-      File localFile = Files
-        .createTempFile(
-          "di-tmp-",
-          // later stage requires correct file extension
-          Path.of(queueItem.getFilePath()).getFileName().toString(),
-          PosixFilePermissions.asFileAttribute(
-            PosixFilePermissions.fromString("rwx------")
-          )
-        )
-        .toFile();
-
-      LOGGER.info("Created temporary file {}", localFile.toPath());
-
-      return localFile;
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+  protected Future<File> createLocalFile(DataImportQueueItem queueItem) {
+    return vertx
+      .fileSystem()
+      .createTempFile(
+        "di-tmp-",
+        Path.of(queueItem.getFilePath()).getFileName().toString(),
+        "rwx------"
+      )
+      .map(File::new)
+      .onSuccess(localFile ->
+        LOGGER.info("Created temporary file {}", localFile.toPath())
+      );
   }
 
   /**

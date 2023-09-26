@@ -354,7 +354,7 @@ public abstract class AbstractRestTest {
 
   protected void clearTable(TestContext context) {
     s3Client.createBucketIfNotExists();
-    s3Client.remove(s3Client.list("").toArray(size -> new String[size]));
+    s3Client.remove(s3Client.list(MINIO_BUCKET).toArray(size -> new String[size]));
     PostgresClient.getInstance(vertx, TENANT_ID).delete(FILE_EXTENSIONS_TABLE, new Criterion(), context.asyncAssertSuccess(event1 ->
       PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), context.asyncAssertSuccess(event2 ->
         PostgresClient.getInstance(vertx).execute("DELETE FROM data_import_global.queue_items;", context.asyncAssertSuccess())

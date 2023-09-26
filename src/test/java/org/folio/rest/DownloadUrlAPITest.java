@@ -13,11 +13,13 @@ import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.List;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.compress.utils.ByteUtils;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.testcontainers.images.builder.Transferable;
 
 @Log4j2
 @RunWith(VertxUnitRunner.class)
@@ -53,7 +55,7 @@ public class DownloadUrlAPITest extends AbstractRestTest {
       Arrays.asList(4, 3, 2, 1),
       Arrays.asList(3, 4, 2, 1),
       Arrays.asList(2, 4, 3, 1),
-      Arrays.asList(4, 2, 3, 1),
+      Arrays.asList(1, 2, 3, 4),
       Arrays.asList(4, 1, 3, 2),
       Arrays.asList(1, 4, 3, 2),
       Arrays.asList(3, 4, 1, 2),
@@ -112,8 +114,12 @@ public class DownloadUrlAPITest extends AbstractRestTest {
         )
     );
 
-    s3Client.write(TEST_KEY, new ByteArrayInputStream(new byte[5]));
-    log.info(s3Client.list(TEST_KEY));
+    s3Client.write(
+      TEST_KEY,
+      new ByteArrayInputStream("test content".getBytes())
+    );
+
+    log.info(s3Client.list(""));
 
     RestAssured
       .given()

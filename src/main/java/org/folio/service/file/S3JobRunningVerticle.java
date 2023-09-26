@@ -18,7 +18,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.With;
-import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.DataImportQueueItemDao;
@@ -211,15 +210,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
         File file = localFile.get();
         if (file != null) {
-          try {
-            FileUtils.delete(file);
-          } catch (IOException e) {
-            LOGGER.error(
-              "Could not clean up temporary file {}: ",
-              file.toPath(),
-              e
-            );
-          }
+          vertx.fileSystem().delete(file.toString());
         }
       });
   }

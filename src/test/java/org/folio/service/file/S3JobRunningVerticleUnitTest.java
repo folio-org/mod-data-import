@@ -434,7 +434,11 @@ public class S3JobRunningVerticleUnitTest {
           verifyNoMoreInteractions(uploadDefinitionService);
           verifyNoMoreInteractions(fileProcessor);
 
-          assertThat(tempFile.exists(), is(false));
+          vertx.setTimer(
+            100L,
+            vv ->
+              context.verify(vvv -> assertThat(tempFile.exists(), is(false)))
+          );
         })
       );
   }
@@ -504,73 +508,6 @@ public class S3JobRunningVerticleUnitTest {
           assertThat(tempFile.exists(), is(false));
         })
       );
-  }
-
-  @Test
-  public void testProcessQueueItemCleanupFailure(TestContext context)
-    throws IOException {
-    // static mock for FileUtils.delete:
-    try (
-      MockedStatic<FileUtils> mock = Mockito.mockStatic(
-        FileUtils.class,
-        Mockito.CALLS_REAL_METHODS
-      )
-    ) {
-      // fails to delete file, but the error should be swallowed
-      mock
-        .when(() -> FileUtils.delete(any(File.class)))
-        .thenThrow(new IOException());
-
-      File tempFile = temporaryFolder.newFile();
-
-      DataImportQueueItem queueItem = new DataImportQueueItem()
-        .withId("queue-id")
-        .withJobExecutionId("job-exec-id")
-        .withDataType("MARC");
-
-      doReturn(null).when(verticle).getConnectionParams(any());
-
-      doReturn(Future.succeededFuture(tempFile))
-        .when(verticle)
-        .createLocalFile(queueItem);
-
-      when(uploadDefinitionService.getJobExecutionById("job-exec-id", null))
-        .thenThrow(new RuntimeException("test exception"));
-
-      doReturn(Future.succeededFuture())
-        .when(verticle)
-        .updateJobExecutionStatusSafely(any(), any(), any());
-
-      verticle
-        .processQueueItem(queueItem)
-        .onComplete(
-          context.asyncAssertFailure(v -> {
-            verify(verticle, times(1)).createLocalFile(queueItem);
-            verify(uploadDefinitionService, times(1))
-              .getJobExecutionById("job-exec-id", null);
-            verify(verticle, times(1))
-              .updateJobExecutionStatusSafely(
-                eq("job-exec-id"),
-                any(),
-                isNull()
-              );
-
-            // should still cleanup
-            verify(queueItemDao, times(1))
-              .deleteDataImportQueueItem("queue-id");
-
-            verifyNoMoreInteractions(queueItemDao);
-            verifyNoMoreInteractions(uploadDefinitionService);
-            verifyNoMoreInteractions(fileProcessor);
-
-            // should still exist despite attempt to cleanup
-            mock.verify(() -> FileUtils.delete(any(File.class)), times(1));
-            mock.verifyNoMoreInteractions();
-
-            assertThat(tempFile.exists(), is(true));
-          })
-        );
-    }
   }
 
   @Test

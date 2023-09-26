@@ -99,7 +99,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
           // ensure the key is present in the bucket
           // to check if it exists, we need to search with "key" as a prefix
           // hence the list() call and array checking
-          if (!client.list(key).stream().anyMatch(key::equals)) {
+          if (client.list(key).stream().noneMatch(key::equals)) {
             blockingFuture.fail(
               new NotFoundException("Key " + key + " is not present in S3")
             );

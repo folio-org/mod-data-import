@@ -52,6 +52,7 @@ public class FileSplitService {
     return minioStorageService
       .readFile(key)
       .compose((InputStream stream) -> {
+        // this stream will be closed as part of splitStream
         try {
           return splitStream(context, stream, key)
             .compose((List<String> result) -> {
@@ -66,7 +67,7 @@ public class FileSplitService {
   }
 
   /**
-   * Take a file, as an {@link InputStream}, and split it into parts.
+   * Take a file, as an {@link InputStream}, split it into parts, and close it after.
    *
    * @return a {@link Future} which will resolve with a list of strings once every
    *         split chunk has been uploaded to MinIO/S3.
@@ -102,11 +103,7 @@ public class FileSplitService {
         .build()
     );
 
-    AsyncInputStream asyncStream = new AsyncInputStream(
-      context.owner(),
-      context,
-      stream
-    );
+    AsyncInputStream asyncStream = new AsyncInputStream(context, stream);
     asyncStream
       .pipeTo(writer)
       .onComplete(ar1 -> LOGGER.info("File split for key={} completed", key));

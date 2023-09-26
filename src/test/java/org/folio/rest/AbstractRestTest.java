@@ -159,7 +159,7 @@ public abstract class AbstractRestTest {
   public static EmbeddedKafkaCluster kafkaCluster;
 
   @Container
-  protected static final LocalStackContainer localStackContainer = new LocalStackContainer(
+  private static final LocalStackContainer localStackContainer = new LocalStackContainer(
     DockerImageName.parse("localstack/localstack:0.11.3")
   )
     .withServices(LocalStackContainer.Service.S3);

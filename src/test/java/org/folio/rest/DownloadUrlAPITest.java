@@ -20,18 +20,15 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import lombok.extern.log4j.Log4j2;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.AssembleFileDto;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@Log4j2
 @RunWith(VertxUnitRunner.class)
 public class DownloadUrlAPITest extends AbstractRestTest {
 
@@ -51,23 +48,8 @@ public class DownloadUrlAPITest extends AbstractRestTest {
   private static final String JOB_EXEC_ID =
     "f26b4519-edfd-5d32-989b-f591b09bd932";
 
-  @After
-  public void cleanupS3() {
-    log.info(
-      "===================================CLEANUP==================================="
-    );
-    log.info("Cleaning up: {}", s3Client.list(MINIO_BUCKET));
-    s3Client.remove(
-      s3Client.list(MINIO_BUCKET).toArray(size -> new String[size])
-    );
-  }
-
   @Test
   public void testSuccessfulRequest() {
-    log.info(
-      "===================================testSuccessfulRequest==================================="
-    );
-
     UploadDefinition definition = createUploadDefinition();
 
     FileUploadInfo uploadInfo = getFirstPart("test-name");
@@ -105,8 +87,6 @@ public class DownloadUrlAPITest extends AbstractRestTest {
         )
     );
 
-    log.info(s3Client.list(""));
-
     RestAssured
       .given()
       .spec(spec)
@@ -120,9 +100,6 @@ public class DownloadUrlAPITest extends AbstractRestTest {
 
   @Test
   public void testOutOfScopeRequest() {
-    log.info(
-      "===================================testOutOfScopeRequest==================================="
-    );
     WireMock.stubFor(
       get("/change-manager/jobExecutions/" + JOB_EXEC_ID)
         .willReturn(
@@ -149,9 +126,6 @@ public class DownloadUrlAPITest extends AbstractRestTest {
 
   @Test
   public void testMissingJobExecutionRequest() {
-    log.info(
-      "===================================testMissingJobExecutionRequest==================================="
-    );
     WireMock.stubFor(
       get("/change-manager/jobExecutions/" + JOB_EXEC_ID).willReturn(notFound())
     );
@@ -168,9 +142,6 @@ public class DownloadUrlAPITest extends AbstractRestTest {
 
   @Test
   public void testMissingFileFromS3Request() {
-    log.info(
-      "===================================testMissingFileFromS3Request==================================="
-    );
     WireMock.stubFor(
       get("/change-manager/jobExecutions/" + JOB_EXEC_ID)
         .willReturn(

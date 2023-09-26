@@ -1,5 +1,7 @@
 package org.folio.service.s3storage;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.isA;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -18,6 +20,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import javax.ws.rs.NotFoundException;
 import org.apache.commons.io.IOUtils;
 import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
@@ -312,12 +316,15 @@ public class MinioStorageServiceTest {
   @Test
   public void testDownloadPresignedSuccessful(TestContext context) {
     when(folioS3Client.getPresignedUrl(S3_TEST_KEY)).thenReturn("download-url");
+    when(folioS3Client.list(S3_TEST_KEY))
+      .thenReturn(Arrays.asList(S3_TEST_KEY));
 
     minioStorageService
       .getFileDownloadUrl(S3_TEST_KEY)
       .onComplete(
         context.asyncAssertSuccess(fileInfo -> {
           verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
+          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
           Mockito.verifyNoMoreInteractions(folioS3Client);
 
           assertEquals(
@@ -330,16 +337,87 @@ public class MinioStorageServiceTest {
   }
 
   @Test
-  public void testDownloadPresignedFailure(TestContext context) {
-    when(folioS3Client.getPresignedUrl(S3_TEST_KEY))
-      .thenThrow(new RuntimeException());
+  public void testDownloadPresignedSuccessfulWithSimilarFiles(
+    TestContext context
+  ) {
+    when(folioS3Client.getPresignedUrl(S3_TEST_KEY)).thenReturn("download-url");
+    when(folioS3Client.list(S3_TEST_KEY))
+      .thenReturn(
+        Arrays.asList(S3_TEST_KEY + "A", S3_TEST_KEY + "B", S3_TEST_KEY)
+      );
 
     minioStorageService
       .getFileDownloadUrl(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertFailure(_err -> {
+        context.asyncAssertSuccess(fileInfo -> {
           verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
+          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
           Mockito.verifyNoMoreInteractions(folioS3Client);
+
+          assertEquals(
+            "Presigned URL is returned",
+            "download-url",
+            fileInfo.getUrl()
+          );
+        })
+      );
+  }
+
+  @Test
+  public void testDownloadPresignedKeyNotPresentWithSimilarFiles(
+    TestContext context
+  ) {
+    when(folioS3Client.getPresignedUrl(S3_TEST_KEY)).thenReturn("download-url");
+    when(folioS3Client.list(S3_TEST_KEY))
+      .thenReturn(Arrays.asList(S3_TEST_KEY + "A", S3_TEST_KEY + "B"));
+
+    minioStorageService
+      .getFileDownloadUrl(S3_TEST_KEY)
+      .onComplete(
+        context.asyncAssertFailure(err -> {
+          verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
+          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
+          Mockito.verifyNoMoreInteractions(folioS3Client);
+
+          assertThat(err, isA(NotFoundException.class));
+        })
+      );
+  }
+
+  @Test
+  public void testDownloadPresignedKeyNotPresentWithNoMatch(
+    TestContext context
+  ) {
+    when(folioS3Client.getPresignedUrl(S3_TEST_KEY)).thenReturn("download-url");
+    when(folioS3Client.list(S3_TEST_KEY))
+      .thenReturn(Arrays.asList(S3_TEST_KEY + "A", S3_TEST_KEY + "B"));
+
+    minioStorageService
+      .getFileDownloadUrl(S3_TEST_KEY)
+      .onComplete(
+        context.asyncAssertFailure(err -> {
+          verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
+          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
+          Mockito.verifyNoMoreInteractions(folioS3Client);
+
+          assertThat(err, isA(NotFoundException.class));
+        })
+      );
+  }
+
+  @Test
+  public void testDownloadPresignedS3Failure(TestContext context) {
+    when(folioS3Client.list(S3_TEST_KEY))
+      .thenThrow(new S3ClientException("test exception"));
+
+    minioStorageService
+      .getFileDownloadUrl(S3_TEST_KEY)
+      .onComplete(
+        context.asyncAssertFailure(err -> {
+          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
+          Mockito.verifyNoMoreInteractions(folioS3Client);
+
+          assertThat(err, isA(S3ClientException.class));
         })
       );
   }

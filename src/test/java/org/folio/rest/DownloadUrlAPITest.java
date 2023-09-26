@@ -9,19 +9,28 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import io.restassured.RestAssured;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.ByteArrayInputStream;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.JobExecution;
+import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class DownloadUrlAPITest extends AbstractRestTest {
 
+  private static final String TEST_KEY = "data-import/test-key-response";
+
   private static final String DOWNLOAD_URL_PATH =
     "/data-import/jobExecutions/{jobExecutionId}/downloadUrl";
 
   private static final String JOB_EXEC_ID =
     "f26b4519-edfd-5d32-989b-f591b09bd932";
+
+  @After
+  public void cleanupS3() {
+    s3Client.remove(TEST_KEY);
+  }
 
   @Test
   public void testSuccessfulRequest() {
@@ -30,14 +39,13 @@ public class DownloadUrlAPITest extends AbstractRestTest {
         .willReturn(
           okJson(
             JsonObject
-              .mapFrom(
-                new JobExecution()
-                  .withSourcePath("data-import/test-key-response")
-              )
+              .mapFrom(new JobExecution().withSourcePath(TEST_KEY))
               .toString()
           )
         )
     );
+
+    s3Client.write(TEST_KEY, new ByteArrayInputStream(new byte[5]));
 
     RestAssured
       .given()
@@ -77,9 +85,32 @@ public class DownloadUrlAPITest extends AbstractRestTest {
   }
 
   @Test
-  public void testFailedRequest() {
+  public void testMissingJobExecutionRequest() {
     WireMock.stubFor(
       get("/change-manager/jobExecutions/" + JOB_EXEC_ID).willReturn(notFound())
+    );
+
+    RestAssured
+      .given()
+      .spec(spec)
+      .when()
+      .pathParam("jobExecutionId", JOB_EXEC_ID)
+      .get(DOWNLOAD_URL_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+  }
+
+  @Test
+  public void testMissingFileFromS3Request() {
+    WireMock.stubFor(
+      get("/change-manager/jobExecutions/" + JOB_EXEC_ID)
+        .willReturn(
+          okJson(
+            JsonObject
+              .mapFrom(new JobExecution().withSourcePath(TEST_KEY))
+              .toString()
+          )
+        )
     );
 
     RestAssured

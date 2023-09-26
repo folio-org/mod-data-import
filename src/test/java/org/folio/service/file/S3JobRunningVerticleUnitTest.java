@@ -292,7 +292,7 @@ public class S3JobRunningVerticleUnitTest {
     verticle.pollForJobs();
 
     vertx.setTimer(
-      100L,
+      50L,
       v ->
         context.verify(vv -> {
           // after "running", should not request any additional items
@@ -319,7 +319,7 @@ public class S3JobRunningVerticleUnitTest {
     verticle.pollForJobs();
 
     vertx.setTimer(
-      100L,
+      50L,
       v ->
         context.verify(vv -> {
           // after "running", should not request any additional items
@@ -359,7 +359,7 @@ public class S3JobRunningVerticleUnitTest {
     verticle.pollForJobs();
 
     vertx.setTimer(
-      100L,
+      50L,
       v ->
         context.verify(vv -> {
           // after "running", should not request any additional items
@@ -434,8 +434,9 @@ public class S3JobRunningVerticleUnitTest {
           verifyNoMoreInteractions(uploadDefinitionService);
           verifyNoMoreInteractions(fileProcessor);
 
+          // should still cleanup, but cleanup is async so
           vertx.setTimer(
-            100L,
+            50L,
             vv ->
               context.verify(vvv -> assertThat(tempFile.exists(), is(false)))
           );
@@ -504,8 +505,12 @@ public class S3JobRunningVerticleUnitTest {
           verifyNoMoreInteractions(uploadDefinitionService);
           verifyNoMoreInteractions(fileProcessor);
 
-          // should still cleanup
-          assertThat(tempFile.exists(), is(false));
+          // should still cleanup, but cleanup is async so
+          vertx.setTimer(
+            50L,
+            vv ->
+              context.verify(vvv -> assertThat(tempFile.exists(), is(false)))
+          );
         })
       );
   }

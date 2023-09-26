@@ -42,7 +42,7 @@ public class DownloadUrlAPITest extends AbstractRestTest {
   @Test
   public void testRunner() {
     List<List<Integer>> cases = Arrays.asList(
-      Arrays.asList(1, 2, 3, 4),
+      Arrays.asList(4, 2, 3, 1),
       Arrays.asList(2, 1, 3, 4),
       Arrays.asList(3, 1, 2, 4),
       Arrays.asList(1, 3, 2, 4),
@@ -113,6 +113,7 @@ public class DownloadUrlAPITest extends AbstractRestTest {
     );
 
     s3Client.write(TEST_KEY, new ByteArrayInputStream(new byte[5]));
+    log.info(s3Client.list(TEST_KEY));
 
     RestAssured
       .given()

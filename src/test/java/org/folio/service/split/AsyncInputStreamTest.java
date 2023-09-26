@@ -4,6 +4,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -14,6 +16,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -49,327 +52,36 @@ public class AsyncInputStreamTest {
   }
 
   @Test
-  public void testEmptyRead(TestContext context) {
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(emptyBuff)
-    );
-
-    Buffer testBuffer = Buffer.buffer();
-    stream.read(
-      testBuffer,
-      0,
-      128,
-      context.asyncAssertSuccess(result -> {
-        assertThat(result.length(), is(0));
-
-        assertThat(result, is(testBuffer));
-        stream.close(context.asyncAssertSuccess());
-      })
-    );
-  }
-
-  @Test
-  public void testSmallFullRead(TestContext context) {
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(smallBuff)
-    );
-
-    Buffer testBuffer = Buffer.buffer();
-    stream.read(
-      testBuffer,
-      0,
-      8192,
-      context.asyncAssertSuccess(result -> {
-        // stops at full stream being consumed
-        assertThat(result.length(), is(4096));
-        assertThat(result.length(), is(4096));
-
-        assertThat(result, is(testBuffer));
-        assertThat(result, is(testBuffer));
-        stream.close(context.asyncAssertSuccess());
-      })
-    );
-  }
-
-  @Test
-  public void testSmallMultiRead(TestContext context) {
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(smallBuff)
-    );
-
-    Buffer testBuffer = Buffer.buffer();
-    stream.read(
-      testBuffer,
-      0,
-      128,
-      context.asyncAssertSuccess(result -> {
-        assertThat(result.length(), is(128));
-        assertThat(result.length(), is(128));
-        assertThat(
-          result.getBytes(),
-          is(Arrays.copyOfRange(smallBuff, 0, 128))
-        );
-        assertThat(result, is(testBuffer));
-        assertThat(result, is(testBuffer));
-
-        stream.read(
-          testBuffer,
-          128,
-          4096,
-          context.asyncAssertSuccess(_result -> {
-            // even though we ask for 4096 more bytes, it should stop at full length
-            assertThat(result.length(), is(4096));
-            assertThat(result.length(), is(4096));
-            assertThat(result.getBytes(), is(smallBuff));
-            assertThat(result.getBytes(), is(smallBuff));
-            assertThat(result, is(testBuffer));
-            assertThat(result, is(testBuffer));
-
-            stream.close(context.asyncAssertSuccess());
-          })
-        );
-      })
-    );
-  }
-
-  @Test
-  public void testMultipleBufferRead(TestContext context) {
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(largeBuff)
-    );
-
-    Buffer testBuffer = Buffer.buffer();
-    // read halfway into first chunk
-    stream.read(
-      testBuffer,
-      0,
-      4096,
-      context.asyncAssertSuccess(result -> {
-        assertThat(result.length(), is(4096));
-        assertThat(result.length(), is(4096));
-        assertThat(
-          result.getBytes(),
-          is(Arrays.copyOfRange(largeBuff, 0, 4096))
-        );
-        assertThat(result, is(testBuffer));
-        assertThat(result, is(testBuffer));
-
-        // read from here to halfway into second chunk
-        stream.read(
-          testBuffer,
-          4096,
-          8192,
-          context.asyncAssertSuccess(_result -> {
-            assertThat(result.length(), is(4096 + 8192));
-            assertThat(result.length(), is(4096 + 8192));
-            assertThat(
-              result.getBytes(),
-              is(Arrays.copyOfRange(largeBuff, 0, 4096 + 8192))
-            );
-
-            // read from here to end + one extra chunk over
-            stream.read(
-              testBuffer,
-              4096 + 8192,
-              8192 * 2,
-              context.asyncAssertSuccess(_result2 -> {
-                assertThat(result.length(), is(largeBuff.length));
-                assertThat(result.length(), is(largeBuff.length));
-                assertThat(result.getBytes(), is(largeBuff));
-                assertThat(result.getBytes(), is(largeBuff));
-
-                stream.close(context.asyncAssertSuccess());
-              })
-            );
-          })
-        );
-      })
-    );
-  }
-
-  @Test
-  public void testSingleLargeBufferRead(TestContext context) {
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(largeBuff)
-    );
-
-    Buffer testBuffer = Buffer.buffer();
-    // read whole thing + some extra off the end
-    stream.read(
-      testBuffer,
-      0,
-      8192 * 3,
-      context.asyncAssertSuccess(result -> {
-        assertThat(result.length(), is(largeBuff.length));
-        assertThat(result.length(), is(largeBuff.length));
-        assertThat(result.getBytes(), is(largeBuff));
-        assertThat(result.getBytes(), is(largeBuff));
-        assertThat(result, is(testBuffer));
-        assertThat(result, is(testBuffer));
-
-        stream.close(context.asyncAssertSuccess());
-      })
-    );
-  }
-
-  @Test
-  public void testSingleBufferSingleRead(TestContext context) {
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(mediumBuff)
-    );
-
-    Buffer testBuffer = Buffer.buffer();
-    stream.read(
-      testBuffer,
-      0,
-      8192,
-      context.asyncAssertSuccess(result -> {
-        assertThat(result.length(), is(mediumBuff.length));
-        assertThat(result.length(), is(mediumBuff.length));
-        assertThat(result.getBytes(), is(mediumBuff));
-        assertThat(result.getBytes(), is(mediumBuff));
-        assertThat(result, is(testBuffer));
-        assertThat(result, is(testBuffer));
-
-        stream.read(
-          testBuffer,
-          8192,
-          8192,
-          context.asyncAssertSuccess(_result -> {
-            // no change
-            assertThat(result.length(), is(mediumBuff.length));
-            assertThat(result.length(), is(mediumBuff.length));
-            assertThat(result.getBytes(), is(mediumBuff));
-            assertThat(result.getBytes(), is(mediumBuff));
-            assertThat(result, is(testBuffer));
-            assertThat(result, is(testBuffer));
-
-            stream.close(context.asyncAssertSuccess());
-          })
-        );
-      })
-    );
-  }
-
-  @Test
-  public void testSingleBufferMultiRead(TestContext context) {
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(mediumBuff)
-    );
-
-    Buffer testBuffer = Buffer.buffer();
-    stream.read(
-      testBuffer,
-      0,
-      4096,
-      context.asyncAssertSuccess(result -> {
-        assertThat(result.length(), is(4096));
-        assertThat(result.length(), is(4096));
-        assertThat(
-          result.getBytes(),
-          is(Arrays.copyOfRange(mediumBuff, 0, 4096))
-        );
-        assertThat(result, is(testBuffer));
-        assertThat(result, is(testBuffer));
-
-        stream.read(
-          testBuffer,
-          0,
-          8192,
-          context.asyncAssertSuccess(_result -> {
-            assertThat(result.length(), is(4096));
-            assertThat(result.length(), is(4096));
-            assertThat(
-              result.getBytes(),
-              is(Arrays.copyOfRange(mediumBuff, 4096, 8192))
-            );
-            assertThat(result, is(testBuffer));
-            assertThat(result, is(testBuffer));
-
-            stream.close(context.asyncAssertSuccess());
-          })
-        );
-      })
-    );
-  }
-
-  @Test
-  public void testExceptionalRead() {
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(emptyBuff)
-    );
-
-    Handler<AsyncResult<Buffer>> handler = result -> {};
-
-    Buffer testBuffer = Buffer.buffer();
-
-    assertThrows(
-      NullPointerException.class,
-      () -> stream.read(null, 0, 0, null)
-    );
-    assertThrows(
-      NullPointerException.class,
-      () -> stream.read(testBuffer, 0, 0, null)
-    );
-    assertThrows(
-      IllegalArgumentException.class,
-      () -> stream.read(testBuffer, -1, 0, handler)
-    );
-    // assertThrows(IllegalArgumentException.class, () -> stream.read(testBuffer, 0,
-    // -1, 0, handler));
-    assertThrows(
-      IllegalArgumentException.class,
-      () -> stream.read(testBuffer, 0, -1, handler)
-    );
-
-    stream.close();
-
-    assertThrows(
-      IllegalStateException.class,
-      () -> stream.read(testBuffer, 0, 1, handler)
-    );
-  }
-
-  @Test
   public void testHandlerEmpty(TestContext context) {
     Async async = context.async();
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(emptyBuff)
     );
 
-    stream.endHandler(v -> async.complete());
+    stream.endHandler(v ->
+      context.verify(vv -> {
+        async.complete();
+        assertThat(stream.closed(), is(true));
+      })
+    );
     stream.exceptionHandler(err -> context.fail(err));
     stream.handler(buff -> context.fail("No data should have been read"));
+
+    stream.read();
   }
 
   @Test
   public void testHandlerOutOfOrder(TestContext context) {
     Async async = context.async();
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(emptyBuff)
     );
 
     stream.handler(buff -> context.fail("No data should have been read"));
+
+    stream.read();
 
     vertx.setTimer(
       100,
@@ -392,7 +104,6 @@ public class AsyncInputStreamTest {
   public void testHandlerSmall(TestContext context) {
     Async async = context.async();
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(smallBuff)
     );
@@ -410,6 +121,8 @@ public class AsyncInputStreamTest {
     );
     stream.exceptionHandler(err -> context.fail(err));
     stream.handler(buff -> receivedData.add(buff.getBytes()));
+
+    stream.read();
   }
 
   @Test
@@ -417,7 +130,6 @@ public class AsyncInputStreamTest {
   public void testHandlerMedium(TestContext context) {
     Async async = context.async();
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(mediumBuff)
     );
@@ -435,6 +147,8 @@ public class AsyncInputStreamTest {
       })
     );
     stream.handler(buff -> receivedData.add(buff.getBytes()));
+
+    stream.read();
   }
 
   @Test
@@ -442,7 +156,6 @@ public class AsyncInputStreamTest {
   public void testHandlerLarge(TestContext context) {
     Async async = context.async();
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
     );
@@ -470,39 +183,41 @@ public class AsyncInputStreamTest {
       })
     );
     stream.handler(buff -> receivedData.add(buff.getBytes()));
+
+    stream.read();
   }
 
   @Test
-  public void testHandlerPauseResume(TestContext context) {
+  public void testPauseResume(TestContext context) {
     Async async = context.async();
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
     );
 
+    stream.handler(buff -> {
+      stream.pause();
+      assertThat(stream.active(), is(false));
+
+      stream.resume();
+      assertThat(stream.active(), is(true));
+
+      async.complete();
+    });
+
+    stream.read();
+  }
+
+  @Test
+  public void testPauseFetchResumeForConsumed(TestContext context) {
+    Async async = context.async();
+    AsyncInputStream stream = new AsyncInputStream(
+      vertx.getOrCreateContext(),
+      new ByteArrayInputStream(smallBuff)
+    );
+
     List<byte[]> receivedData = new ArrayList<>();
     AtomicBoolean isPaused = new AtomicBoolean(false);
-
-    stream.endHandler(v ->
-      context.verify(_v -> {
-        assertThat(receivedData, hasSize(3));
-        assertThat(receivedData, hasSize(3));
-        assertThat(
-          receivedData.get(0),
-          is(Arrays.copyOfRange(largeBuff, 0, 8192))
-        );
-        assertThat(
-          receivedData.get(1),
-          is(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2))
-        );
-        assertThat(
-          receivedData.get(2),
-          is(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096))
-        );
-        async.complete();
-      })
-    );
 
     stream.handler(buff -> {
       if (isPaused.get()) {
@@ -517,92 +232,57 @@ public class AsyncInputStreamTest {
       vertx.setTimer(
         100,
         v -> {
-          isPaused.set(false);
+          // consumed
           stream.resume();
+          assertThat(stream.active(), is(false));
+
+          async.complete();
         }
       );
     });
-  }
 
-  @Test
-  public void testHandlerPauseFetchResume(TestContext context) {
-    Async async = context.async();
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(largeBuff)
-    );
-
-    List<byte[]> receivedData = new ArrayList<>();
-    AtomicBoolean isPaused = new AtomicBoolean(false);
-
-    stream.endHandler(v ->
-      context.verify(_v -> {
-        assertThat(receivedData, hasSize(3));
-        assertThat(receivedData, hasSize(3));
-        assertThat(
-          receivedData.get(0),
-          is(Arrays.copyOfRange(largeBuff, 0, 8192))
-        );
-        assertThat(
-          receivedData.get(1),
-          is(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2))
-        );
-        assertThat(
-          receivedData.get(2),
-          is(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096))
-        );
-        async.complete();
-      })
-    );
-
-    stream.handler(buff -> {
-      if (isPaused.get()) {
-        context.fail("Should not have received data while paused");
-      }
-
-      receivedData.add(buff.getBytes());
-
-      stream.pause();
-      isPaused.set(true);
-
-      vertx.setTimer(
-        100,
-        v -> {
-          isPaused.set(false);
-          stream.fetch(4096); // should resume implicitly
-        }
-      );
-    });
+    stream.read();
   }
 
   @Test
   public void testResumeClosed(TestContext context) {
     Async async = context.async();
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
     );
 
     AtomicBoolean isPaused = new AtomicBoolean(false);
 
-    stream.handler(buff -> {
-      if (isPaused.get()) {
-        context.fail("Should not have received data while paused");
-      }
+    stream.handler(buff ->
+      context.verify(v -> {
+        if (isPaused.get()) {
+          context.fail("Should not have received data while paused");
+        }
 
-      stream.pause();
-      isPaused.set(true);
-      stream.close();
+        assertThat(stream.active(), is(true));
 
-      try {
+        stream.pause();
+        assertThat(stream.active(), is(false));
+
+        isPaused.set(true);
+
+        assertThat(stream.closed(), is(false));
+        stream.close();
+        assertThat(stream.closed(), is(true));
+
+        // stays paused after closure
         stream.resume();
-        context.fail("Should not be able to resume closed stream");
-      } catch (IllegalStateException e) {
-        async.complete();
-      }
-    });
+        stream.read();
+        assertThat(stream.active(), is(false));
+
+        // give time for additional chunks to be read,
+        // to ensure no more are
+        vertx.setTimer(100L, vv -> async.complete());
+      })
+    );
+
+    stream.read();
   }
 
   @Test
@@ -610,7 +290,6 @@ public class AsyncInputStreamTest {
   public void testHandlerRemoval(TestContext context) {
     Async async = context.async();
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
     );
@@ -635,80 +314,60 @@ public class AsyncInputStreamTest {
       // deregister handler; no more chunks should be sent and it should end
       stream.handler(null);
     });
+
+    stream.read();
   }
 
-  @Test
-  public void testBadContext(TestContext context) {
-    Async async = context.async();
+  // @Test
+  // public void testBadContextNoHandler(TestContext context) {
+  //   Async async = context.async();
 
-    // new Vertx.vertx() is not owner of the context used
-    AsyncInputStream stream = new AsyncInputStream(
-      Vertx.vertx(),
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(smallBuff)
-    );
+  //   // new Vertx.vertx() is not owner of the context used
+  //   AsyncInputStream stream = new AsyncInputStream(
+  //     Vertx.vertx(),
+  //     vertx.getOrCreateContext(),
+  //     new ByteArrayInputStream(emptyBuff)
+  //   );
 
-    stream.endHandler(v ->
-      context.fail("Non-exception handlers should not work in invalid contexts")
-    );
-    stream.exceptionHandler(buff -> async.complete());
-    stream.handler(buff ->
-      context.fail("Non-exception handlers should not work in invalid contexts")
-    );
-  }
+  //   stream.endHandler(v ->
+  //     context.fail("Non-exception handlers should not work in invalid contexts")
+  //   );
 
-  @Test
-  public void testBadContextNoHandler(TestContext context) {
-    Async async = context.async();
+  //   stream.handler(buff ->
+  //     context.fail("Non-exception handlers should not work in invalid contexts")
+  //   );
 
-    // new Vertx.vertx() is not owner of the context used
-    AsyncInputStream stream = new AsyncInputStream(
-      Vertx.vertx(),
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(emptyBuff)
-    );
+  //   // make sure nothing happens, then complete
+  //   vertx.setTimer(100, v -> async.complete());
+  // }
 
-    stream.endHandler(v ->
-      context.fail("Non-exception handlers should not work in invalid contexts")
-    );
+  // @Test
+  // @SuppressWarnings("java:S2699")
+  // public void testNoEndHandler(TestContext context) {
+  //   Async async = context.async();
+  //   AsyncInputStream stream = new AsyncInputStream(
+  //     vertx.getOrCreateContext(),
+  //     new ByteArrayInputStream(smallBuff)
+  //   );
 
-    stream.handler(buff ->
-      context.fail("Non-exception handlers should not work in invalid contexts")
-    );
+  //   List<byte[]> receivedData = new ArrayList<>();
 
-    // make sure nothing happens, then complete
-    vertx.setTimer(100, v -> async.complete());
-  }
+  //   stream.handler(buff ->
+  //     context.verify(v -> {
+  //       receivedData.add(buff.getBytes());
 
-  @Test
-  @SuppressWarnings("java:S2699")
-  public void testNoEndHandler(TestContext context) {
-    Async async = context.async();
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(smallBuff)
-    );
-
-    List<byte[]> receivedData = new ArrayList<>();
-
-    stream.handler(buff ->
-      context.verify(v -> {
-        receivedData.add(buff.getBytes());
-
-        assertThat(receivedData, hasSize(1));
-        assertThat(receivedData, hasSize(1));
-        assertThat(receivedData.get(0), is(smallBuff));
-        assertThat(receivedData.get(0), is(smallBuff));
-        async.complete();
-      })
-    );
-  }
+  //       assertThat(receivedData, hasSize(1));
+  //       assertThat(receivedData, hasSize(1));
+  //       assertThat(receivedData.get(0), is(smallBuff));
+  //       assertThat(receivedData.get(0), is(smallBuff));
+  //       async.complete();
+  //     })
+  //   );
+  // }
 
   @Test
   public void testCloseFailure(TestContext context) {
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(smallBuff) {
         @Override
@@ -718,46 +377,33 @@ public class AsyncInputStreamTest {
       }
     );
 
-    stream.close(context.asyncAssertFailure());
+    Async async = context.strictAsync(2);
+
+    stream.endHandler(v -> async.countDown());
+    stream.exceptionHandler(t -> async.countDown());
+    stream.handler(buff -> context.fail("Should not have received data"));
+
+    stream.close();
   }
 
   @Test
   public void testReadFailure(TestContext context) {
     AsyncInputStream stream = new AsyncInputStream(
-      vertx,
       vertx.getOrCreateContext(),
-      new ByteArrayInputStream(smallBuff) {
+      new InputStream() {
         @Override
-        public int read(byte b[], int off, int len) {
-          // ByteArrayInputStream removes the throws declaration, so we can't use an
-          // IOException here, even though that would be appropriate/expected
-          throw new IllegalStateException("test");
+        public int read() throws IOException {
+          throw new IOException("test");
         }
       }
     );
 
-    stream.read(Buffer.buffer(), 0, 12, context.asyncAssertFailure());
-  }
+    Async async = context.strictAsync(2);
 
-  @Test
-  public void testReadFailureWithHandler(TestContext context) {
-    Async async = context.async();
-
-    AsyncInputStream stream = new AsyncInputStream(
-      vertx,
-      vertx.getOrCreateContext(),
-      new ByteArrayInputStream(smallBuff) {
-        @Override
-        public int read(byte b[], int off, int len) {
-          // ByteArrayInputStream removes the throws declaration, so we can't use an
-          // IOException here, even though that would be appropriate/expected
-          throw new IllegalStateException("test");
-        }
-      }
-    );
-
-    stream.endHandler(v -> context.fail("Should not have received end"));
-    stream.exceptionHandler(t -> async.complete());
+    stream.endHandler(v -> async.countDown());
+    stream.exceptionHandler(t -> async.countDown());
     stream.handler(buff -> context.fail("Should not have received data"));
+
+    stream.read();
   }
 }

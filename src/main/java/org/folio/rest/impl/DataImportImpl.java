@@ -507,7 +507,7 @@ public class DataImportImpl implements DataImport {
         .compose(key -> minioStorageService.getFileDownloadUrl(key))
         .map(GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse::respond200WithApplicationJson)
         .map(Response.class::cast)
-        .otherwise(vv -> GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse.respond404WithTextPlain("Job execution not found"))
+        .otherwise(vv -> GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse.respond404WithTextPlain("Not found"))
         .onComplete(asyncResultHandler);
     });
   }

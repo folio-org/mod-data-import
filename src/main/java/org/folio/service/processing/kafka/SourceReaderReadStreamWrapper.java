@@ -11,6 +11,7 @@ import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.kafka.services.KafkaProducerRecordBuilder;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.jaxrs.model.InitialRecord;
@@ -190,21 +191,25 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     int chunkNumber = ++messageCounter;
     String key = String.valueOf(chunkNumber % maxDistributionNum);
 
-    KafkaProducerRecord<String, String> record =
-      KafkaProducerRecord.create(topicName, key, Json.encode(event));
+    var producerRecord = new
+      KafkaProducerRecordBuilder<String, Object>(event.getEventMetadata().getTenantId())
+      .key(key)
+      .value(event)
+      .topic(topicName)
+      .build();
 
-    record.addHeaders(kafkaHeaders);
+    producerRecord.addHeaders(kafkaHeaders);
 
-    record.addHeader("jobExecutionId", jobExecutionId);
-    record.addHeader("chunkId", chunk.getId());
-    record.addHeader("chunkNumber", String.valueOf(chunkNumber));
+    producerRecord.addHeader("jobExecutionId", jobExecutionId);
+    producerRecord.addHeader("chunkId", chunk.getId());
+    producerRecord.addHeader("chunkNumber", String.valueOf(chunkNumber));
 
     if (chunk.getRecordsMetadata().getLast()) {
-      record.addHeader(END_SENTINEL, "true");
+      producerRecord.addHeader(END_SENTINEL, "true");
     }
 
     LOGGER.debug("createKafkaProducerRecord:: Next chunk has been created: chunkId: {} chunkNumber: {}", chunk.getId(), chunkNumber);
-    return record;
+    return producerRecord;
   }
 
   private void check() {

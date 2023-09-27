@@ -3,7 +3,6 @@ package org.folio.service.util;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
@@ -12,6 +11,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.kafka.SimpleKafkaProducerManager;
+import org.folio.kafka.services.KafkaProducerRecordBuilder;
 import org.folio.processing.events.utils.PomReaderUtil;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
@@ -54,7 +55,7 @@ public final class EventHandlingUtil {
 
     String topicName = createTopicName(eventType, tenantId, kafkaConfig);
 
-    KafkaProducerRecord<String, String> record = createProducerRecord(event, key, topicName, kafkaHeaders);
+    KafkaProducerRecord<String, String> producerRecord = createProducerRecord(event, key, topicName, kafkaHeaders);
 
     Promise<Boolean> promise = Promise.promise();
 
@@ -62,22 +63,22 @@ public final class EventHandlingUtil {
     String recordId = extractHeader(kafkaHeaders, "recordId");
 
     String producerName = eventType + "_Producer";
-    KafkaProducer<String, String> producer =
-      KafkaProducer.createShared(vertx, producerName, kafkaConfig.getProducerProps());
-    producer.write(record)
+
+    KafkaProducer<String, String> producer = new SimpleKafkaProducerManager(vertx, kafkaConfig).createShared(eventType);
+    producer.send(producerRecord)
       .<Void>mapEmpty()
-      .eventually(x -> producer.flush())
-      .eventually(x -> producer.close())
-      .onComplete(war -> {
-        if (war.succeeded()) {
-          logSendingSucceeded(eventType, chunkId, recordId);
-          promise.complete(true);
-        } else {
-          Throwable cause = war.cause();
-          LOGGER.warn("{} write error for event {}:", producerName, eventType, cause);
-          promise.fail(cause);
-        }
+      .eventually(x->producer.flush())
+      .eventually(x->producer.close())
+      .onSuccess(arg ->
+      {
+        logSendingSucceeded(eventType, chunkId, recordId);
+        promise.complete();
+      }).onFailure(err -> {
+        Throwable cause = err.getCause();
+        LOGGER.warn("{} write error for event {}:", producerName, eventType, cause);
+        promise.fail(cause);
       });
+
     return promise.future();
   }
 
@@ -98,9 +99,14 @@ public final class EventHandlingUtil {
   }
 
   public static KafkaProducerRecord<String, String> createProducerRecord(Event event, String key, String topicName, List<KafkaHeader> kafkaHeaders) {
-    KafkaProducerRecord<String, String> record = KafkaProducerRecord.create(topicName, key, Json.encode(event));
-    record.addHeaders(kafkaHeaders);
-    return record;
+    var producerRecord = new KafkaProducerRecordBuilder<String, Object>(event.getEventMetadata().getTenantId())
+      .key(key)
+      .value(event)
+      .topic(topicName)
+      .build();
+
+    producerRecord.addHeaders(kafkaHeaders);
+    return producerRecord;
   }
 
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {

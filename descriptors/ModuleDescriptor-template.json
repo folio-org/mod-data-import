@@ -7,6 +7,18 @@
       "version": "3.0"
     },
     {
+      "id": "login",
+      "version": "7.0"
+    },
+    {
+      "id": "authtoken",
+      "version": "2.0"
+    },
+    {
+      "id": "permissions",
+      "version": "5.3"
+    },
+    {
       "id": "users",
       "version": "15.0 16.0"
     }
@@ -16,6 +28,15 @@
       "id": "data-import",
       "version": "3.0",
       "handlers": [
+      	{
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/data-import/splitStatus",
+          "permissionsRequired": [
+            "data-import.splitconfig.get"
+          ]
+        },
         {
           "methods": [
             "POST"
@@ -101,6 +122,18 @@
         },
         {
           "methods": [
+            "POST"
+          ],
+          "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}/files/{fileId}/assembleStorageFile",
+          "permissionsRequired": [
+            "data-import.assembleStorageFile.post"
+          ],
+          "modulePermissions": [
+            "change-manager.jobexecutions.put"
+          ]
+        },
+        {
+          "methods": [
             "DELETE"
           ],
           "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}/files/{fileId}",
@@ -122,6 +155,7 @@
           ],
           "modulePermissions": [
             "change-manager.jobexecutions.get",
+            "change-manager.jobexecutions.post",
             "change-manager.jobexecutions.put",
             "mapping-metadata.get",
             "source-storage.records.get",
@@ -155,6 +189,7 @@
             "inventory-storage.items.collection.get",
             "inventory-storage.items.item.post",
             "inventory-storage.items.item.put",
+            "inventory-storage.items.item.get",
             "inventory-storage.material-types.item.get",
             "inventory-storage.material-types.collection.get",
             "inventory-storage.loan-types.item.get",
@@ -220,9 +255,7 @@
             "acquisitions-units-storage.memberships.collection.get",
             "isbn-utils.convert-to-13.get",
             "instance-authority-links.instances.collection.get",
-            "instance-authority-links.instances.collection.put",
-            "instance-authority.linking-rules.collection.get",
-            "user-tenants.collection.get"
+            "instance-authority-links.instances.collection.put"
           ],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.assign",
@@ -269,6 +302,32 @@
           "methods": ["GET"],
           "pathPattern": "/data-import/dataTypes",
           "permissionsRequired": ["data-import.datatypes.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import/uploadUrl",
+          "permissionsRequired": ["data-import.uploadUrl.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import/uploadUrl/subsequent",
+          "permissionsRequired": ["data-import.uploadUrl.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import/jobExecutions/{id}/downloadUrl",
+          "permissionsRequired": ["data-import.downloadUrl.get"]
+        },
+      	{
+          "methods": ["DELETE"],
+          "pathPattern": "/data-import/jobExecutions/{jobExecutionId}/cancel",
+          "permissionsRequired": ["data-import.jobexecution.cancel"],
+          "modulePermissions": ["change-manager.jobexecutions.put"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/data-import/testFileSplit",
+          "permissionsRequired": []
         }
       ]
     },
@@ -281,7 +340,17 @@
           "methods": [
             "POST"
           ],
-          "pathPattern": "/_/tenant"
+          "pathPattern": "/_/tenant",
+          "modulePermissions": [
+            "users.collection.get",
+            "users.item.post",
+            "users.item.put",
+            "login.item.post",
+            "perms.users.get",
+            "perms.users.assign.immutable",
+            "perms.users.item.post",
+            "perms.users.item.put"
+          ]
         },
         {
           "methods": [
@@ -293,6 +362,16 @@
     }
   ],
   "permissionSets": [
+  	{
+      "permissionName": "data-import.assembleStorageFile.post",
+      "displayName": "Data Import - assemble a file out of uploaded fragments",
+      "description": "Permission to assemble a file out of uploaded fragments"
+    },
+    {
+      "permissionName": "data-import.splitconfig.get",
+      "displayName": "Data Import - get the status of file splitting configuration",
+      "description": "Get the status of file splitting configuration"
+    },
     {
       "permissionName": "data-import.uploaddefinitions.post",
       "displayName": "Data Import - create new upload definition",
@@ -359,11 +438,27 @@
       "description": "Get DataTypes"
     },
     {
+      "permissionName": "data-import.uploadUrl.get",
+      "displayName": "Data Import - get S3 upload URL",
+      "description": "Get S3 upload URL"
+    },
+    {
+      "permissionName": "data-import.downloadUrl.get",
+      "displayName": "Data Import - get S3 download URL",
+      "description": "Get S3 download URL"
+    },
+    {
+      "permissionName": "data-import.jobexecution.cancel",
+      "displayName": "Data Import - cancel running job",
+      "description": "Cancel running job"
+    },
+    {
       "permissionName": "data-import.upload.all",
       "displayName": "Data Import File Upload - all permissions",
       "description": "Entire set of permissions needed to use file uploads",
       "subPermissions": [
         "data-import.upload.file.post",
+        "data-import.uploadUrl.get",
         "data-import.uploaddefinitions.post",
         "data-import.uploaddefinitions.get",
         "data-import.uploaddefinitions.put",
@@ -402,7 +497,32 @@
       { "name": "DB_CHARSET", "value": "UTF-8" },
       { "name": "DB_MAXPOOLSIZE", "value": "5" },
       { "name": "KAFKA_HOST", "value": "10.0.2.15"},
-      { "name": "KAFKA_PORT", "value": "9092"}
+      { "name": "KAFKA_PORT", "value": "9092"},
+      { "name": "AWS_URL", "value": "http://127.0.0.1:9000/" },
+      { "name": "AWS_REGION", "value": "" },
+      { "name": "AWS_BUCKET", "value": "example-bucket" },
+      { "name": "AWS_ACCESS_KEY_ID", "value": "AKIAIOSFODNN7EXAMPLE" },
+      { "name": "AWS_SECRET_ACCESS_KEY", "value": "wJalrXUtnFEMI/K7MDENG/EXAMPLEKEY" },
+      { "name": "AWS_SDK", "value": "false" },
+      { "name": "S3_FORCEPATHSTYLE", "value": "false" },
+      { "name": "SPLIT_FILES_ENABLED", "value": "false" },
+      { "name": "RECORDS_PER_SPLIT_FILE", "value": "1000" },
+      { "name": "SCORE_JOB_SMALLEST", "value": "40" },
+      { "name": "SCORE_JOB_LARGEST", "value": "-40" },
+      { "name": "SCORE_JOB_REFERENCE", "value": "100000" },
+      { "name": "SCORE_AGE_NEWEST", "value": "0" },
+      { "name": "SCORE_AGE_OLDEST", "value": "150" },
+      { "name": "SCORE_AGE_EXTREME_THRESHOLD_MINUTES", "value": "4320" },
+      { "name": "SCORE_AGE_EXTREME_VALUE", "value": "10000" },
+      { "name": "SCORE_TENANT_USAGE_MIN", "value": "100" },
+      { "name": "SCORE_TENANT_USAGE_MAX", "value": "-200" },
+      { "name": "SCORE_PART_NUMBER_FIRST", "value": "1" },
+      { "name": "SCORE_PART_NUMBER_LAST", "value": "0" },
+      { "name": "SCORE_PART_NUMBER_LAST_REFERENCE", "value": "100" },
+      { "name": "SYSTEM_PROCESSING_USERNAME", "value": "data-import-system-user" },
+      { "name": "SYSTEM_PROCESSING_PASSWORD", "value": "data-import-system-user" },
+      { "name": "ASYNC_PROCESSOR_POLL_INTERVAL_MS", "value": "5000" },
+      { "name": "ASYNC_PROCESSOR_MAX_WORKERS_COUNT", "value": "5" }
     ]
   }
 }

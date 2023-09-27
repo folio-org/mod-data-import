@@ -11,6 +11,7 @@ import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.kafka.services.KafkaProducerRecordBuilder;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.jaxrs.model.InitialRecord;
@@ -190,8 +191,12 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     int chunkNumber = ++messageCounter;
     String key = String.valueOf(chunkNumber % maxDistributionNum);
 
-    KafkaProducerRecord<String, String> record =
-      KafkaProducerRecord.create(topicName, key, Json.encode(event));
+    var record = new
+      KafkaProducerRecordBuilder<String, Object>(event.getEventMetadata().getTenantId())
+      .key(key)
+      .value(event)
+      .topic(topicName)
+      .build();
 
     record.addHeaders(kafkaHeaders);
 

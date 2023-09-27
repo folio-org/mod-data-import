@@ -15,6 +15,7 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.kafka.SimpleKafkaProducerManager;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
@@ -174,19 +175,18 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     readStreamWrapper.pause();
 
     LOGGER.debug("processFile:: Starting to send event to Kafka... jobProfile: {}, eventType: {}", jobProfile, eventType);
-    KafkaProducer<String, String> producer = KafkaProducer.createShared(vertx,
-      eventType + "_Producer", kafkaConfig.getProducerProps());
+
+    KafkaProducer<String, String> producer = new SimpleKafkaProducerManager(vertx, kafkaConfig).createShared(eventType);
     readStreamWrapper.pipeTo(new WriteStreamWrapper(producer))
       .<Void>mapEmpty()
-      .eventually(x -> producer.flush())
-      .eventually(x -> producer.close())
-      .onComplete(res -> {
-        if (res.succeeded()) {
-          LOGGER.info("processFile:: Sending event to Kafka finished. jobProfile: {}, eventType: {}", jobProfile, eventType);
-        } else {
-          LOGGER.warn("processFile:: Error sending event to Kafka. jobProfile: {}, eventType: {}", jobProfile, eventType, res.cause());
-        }
-        processFilePromise.handle(res);
+      .eventually(x->producer.flush())
+      .eventually(x->producer.close())
+      .onSuccess(res -> {
+        LOGGER.info("processFile:: Sending event to Kafka finished. jobProfile: {}, eventType: {}", jobProfile, eventType);
+        processFilePromise.complete();
+      })
+      .onFailure(err -> {LOGGER.warn("processFile:: Error sending event to Kafka. jobProfile: {}, eventType: {}", jobProfile, eventType, err.getCause());
+      processFilePromise.fail(err);
       });
     return processFilePromise.future();
   }

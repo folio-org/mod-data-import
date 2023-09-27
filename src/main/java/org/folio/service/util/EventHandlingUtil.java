@@ -55,7 +55,7 @@ public final class EventHandlingUtil {
 
     String topicName = createTopicName(eventType, tenantId, kafkaConfig);
 
-    KafkaProducerRecord<String, String> record = createProducerRecord(event, key, topicName, kafkaHeaders);
+    KafkaProducerRecord<String, String> producerRecord = createProducerRecord(event, key, topicName, kafkaHeaders);
 
     Promise<Boolean> promise = Promise.promise();
 
@@ -65,7 +65,7 @@ public final class EventHandlingUtil {
     String producerName = eventType + "_Producer";
 
     KafkaProducer<String, String> producer = new SimpleKafkaProducerManager(vertx, kafkaConfig).createShared(eventType);
-    producer.send(record)
+    producer.send(producerRecord)
       .<Void>mapEmpty()
       .eventually(x->producer.flush())
       .eventually(x->producer.close())
@@ -99,14 +99,14 @@ public final class EventHandlingUtil {
   }
 
   public static KafkaProducerRecord<String, String> createProducerRecord(Event event, String key, String topicName, List<KafkaHeader> kafkaHeaders) {
-    var record = new KafkaProducerRecordBuilder<String, Object>(event.getEventMetadata().getTenantId())
+    var producerRecord = new KafkaProducerRecordBuilder<String, Object>(event.getEventMetadata().getTenantId())
       .key(key)
       .value(event)
       .topic(topicName)
       .build();
 
-    record.addHeaders(kafkaHeaders);
-    return record;
+    producerRecord.addHeaders(kafkaHeaders);
+    return producerRecord;
   }
 
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {

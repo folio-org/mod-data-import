@@ -94,7 +94,7 @@ public abstract class AbstractRestTest {
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
-  private static final String MINIO_BUCKET = "test-bucket";
+  protected static final String MINIO_BUCKET = "test-bucket";
 
   private static final String GET_USER_URL = "/users?query=id==";
 

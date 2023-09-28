@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -12,6 +13,7 @@ import org.folio.config.ApplicationConfig;
 import org.folio.kafka.KafkaConfig;
 import org.folio.liquibase.LiquibaseUtil;
 import org.folio.rest.resource.interfaces.InitAPI;
+import org.folio.service.file.S3JobRunningVerticle;
 import org.folio.service.processing.FileProcessor;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,9 @@ public class InitAPIImpl implements InitAPI {
 
   @Autowired
   private KafkaConfig kafkaConfig;
+
+  @Autowired
+  private S3JobRunningVerticle s3JobRunningVerticle;
 
   @Value("${SPLIT_FILES_ENABLED:false}")
   private boolean fileSplittingEnabled;
@@ -43,6 +48,19 @@ public class InitAPIImpl implements InitAPI {
       LiquibaseUtil.initializeSchemaForModule(vertx, MODULE_GLOBAL_SCHEMA);
 
       initFileProcessor(vertx);
+
+      if (fileSplittingEnabled) {
+        LOGGER.info("Starting S3JobRunningVerticle");
+
+        vertx.deployVerticle(
+          s3JobRunningVerticle,
+          new DeploymentOptions().setWorker(true)
+        );
+      } else {
+        LOGGER.info(
+          "File splitting is disabled; not starting S3JobRunningVerticle"
+        );
+      }
 
       handler.handle(Future.succeededFuture(true));
     } catch (Exception e) {

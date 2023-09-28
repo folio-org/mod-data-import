@@ -35,6 +35,8 @@ import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
 import org.folio.service.upload.UploadDefinitionServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -56,6 +58,8 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHU
  * After the target file gets split into records, ParallelFileChunkingProcessor sends records to the mod-source-record-manager
  * for further processing.
  */
+// autowirable for async processing outside the normal Vert.x eventbus
+@Component
 public class ParallelFileChunkingProcessor implements FileProcessor {
 
   private static final Logger LOGGER = LogManager.getLogger();
@@ -64,9 +68,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   private KafkaConfig kafkaConfig;
 
-  public ParallelFileChunkingProcessor() {
-  }
-
+  @Autowired
   public ParallelFileChunkingProcessor(Vertx vertx, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
     this.kafkaConfig = kafkaConfig;
@@ -90,7 +92,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
             definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
             params.getTenantId());
           return succeededFuture();
-        }).onFailure(e -> LOGGER.warn("process:: Can`t process file. Cause: {}", e.getMessage()));
+        }).onFailure(e -> LOGGER.error("process:: Unable to process file:", e));
   }
 
   /**
@@ -110,7 +112,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
     for (FileDefinition fileDefinition : fileDefinitions) {
       vertx.runOnContext(v ->
-        processFile(fileDefinition, jobProfile, fileStorageService, params).onComplete(par -> {
+        processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(),
+                    jobProfile, params).onComplete(par -> {
             if (par.failed()) {
               LOGGER.warn("processFiles:: File was processed with errors {}. Cause: {}", fileDefinition.getSourcePath(), par.cause());
               uploadDefinitionService.updateJobExecutionStatus(
@@ -126,24 +129,23 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   }
 
   /**
-   * Processing file
+   * Process file, in a future
    *
-   * @param fileDefinition     fileDefinition entity
+   * @param file               file on disk
+   * @param jobExecutionId     job execution ID
    * @param jobProfile         job profile, contains profile type
    * @param fileStorageService service to obtain file
    * @param params             parameters necessary for connection to the OKAPI
    * @return Future
    */
-  protected Future<Void> processFile(FileDefinition fileDefinition,
-                                     JobProfileInfo jobProfile,
-                                     FileStorageService fileStorageService,
-                                     OkapiConnectionParams params) {
+  public Future<Void> processFile(File file,
+                                  String jobExecutionId,
+                                  JobProfileInfo jobProfile,
+                                  OkapiConnectionParams params) {
     String eventType = DI_RAW_RECORDS_CHUNK_READ.value();
 
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), params.getTenantId(), eventType);
-
-    File file = fileStorageService.getFile(fileDefinition.getSourcePath());
 
     Promise<Void> processFilePromise = Promise.promise();
 
@@ -155,7 +157,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
         String errorMessage = "File is empty or content is invalid!";
         LOGGER.warn(errorMessage);
         processFilePromise.fail(errorMessage);
-        sendDiErrorForJob(fileDefinition.getJobExecutionId(), params, errorMessage);
+        sendDiErrorForJob(jobExecutionId, params, errorMessage);
         return processFilePromise.future();
       }
       reader = SourceReaderBuilder.build(file, jobProfile);
@@ -163,14 +165,14 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
       LOGGER.warn(errorMessage);
       processFilePromise.fail(errorMessage);
-      sendDiErrorForJob(fileDefinition.getJobExecutionId(), params, errorMessage);
+      sendDiErrorForJob(jobExecutionId, params, errorMessage);
       return processFilePromise.future();
     }
 
-    sendDiInitializationForJob(fileDefinition.getJobExecutionId(), totalRecords, params);
+    sendDiInitializationForJob(jobExecutionId, totalRecords, params);
 
     SourceReaderReadStreamWrapper readStreamWrapper = new SourceReaderReadStreamWrapper(
-      vertx, reader, fileDefinition.getJobExecutionId(), totalRecords,
+      vertx, reader, jobExecutionId, totalRecords,
       params, 100, topicName);
     readStreamWrapper.pause();
 
@@ -181,13 +183,13 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       .<Void>mapEmpty()
       .eventually(x -> producer.flush())
       .eventually(x -> producer.close())
-      .onSuccess(res -> {
-        LOGGER.info("processFile:: Sending event to Kafka finished. jobProfile: {}, eventType: {}", jobProfile, eventType);
-        processFilePromise.complete();
-      })
-      .onFailure(err -> {
-        LOGGER.warn("processFile:: Error sending event to Kafka. jobProfile: {}, eventType: {}", jobProfile, eventType, err.getCause());
-        processFilePromise.fail(err);
+      .onComplete(res -> {
+        if (res.succeeded()) {
+          LOGGER.info("processFile:: Sending event to Kafka finished. jobProfile: {}, eventType: {}", jobProfile, eventType);
+        } else {
+          LOGGER.warn("processFile:: Error sending event to Kafka. jobProfile: {}, eventType: {}", jobProfile, eventType, res.cause());
+        }
+        processFilePromise.handle(res);
       });
     return processFilePromise.future();
   }
@@ -199,16 +201,18 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param jobProfile - job profile main info
    * @return total records in file;
    */
-  //TODO: just quite a contradictory method
-  private int countTotalRecordsInFile(File file, JobProfileInfo jobProfile) {
-    int total = 0;
+  public static int countTotalRecordsInFile(File file, JobProfileInfo jobProfile) {
     if (file == null || jobProfile == null) {
-      return total;
+      return 0;
     }
+
     SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
+
+    int total = 0;
     while (reader.hasNext()) {
       total += reader.next().size();
     }
+
     return total;
   }
 
@@ -220,7 +224,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params     parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobsProfile(List<JobExecutionDto> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
+  public Future<Void> updateJobsProfile(List<JobExecutionDto> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Promise<Void> promise = Promise.promise();
     List<Future<Void>> updateJobProfileFutures = new ArrayList<>(jobs.size());
     for (JobExecutionDto job : jobs) {
@@ -247,7 +251,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    */
   private Future<Void> updateJobProfile(String jobId, JobProfileInfo jobProfile, OkapiConnectionParams params) {
     Promise<Void> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_OK.toInt()) {
@@ -289,5 +293,4 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     sendEventToKafka(okapiParams.getTenantId(), Json.encode(errorPayload), DI_ERROR.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
       .onFailure(th -> LOGGER.warn("sendDiErrorForJob:: Error publishing DI_ERROR event for jobExecutionId: {}", errorPayload.getJobExecutionId(), th));
   }
-
 }

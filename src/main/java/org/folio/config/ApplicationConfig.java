@@ -19,7 +19,7 @@ import org.springframework.context.annotation.PropertySource;
   "org.folio.service.fileextension",
   "org.folio.service.processing",
   "org.folio.service.processing.ranking",
-  // "org.folio.service.processing.split",
+  "org.folio.service.processing.split",
   "org.folio.service.s3storage",
   "org.folio.service.upload",
 })

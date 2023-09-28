@@ -7,7 +7,6 @@ import static org.hamcrest.Matchers.not;
 import io.vertx.core.impl.VertxInternal;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.util.stream.Collectors;
 import org.folio.rest.AbstractRestTest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -39,7 +38,7 @@ public class S3JobRunningVerticleDisabledIntegrationTest
         .stream()
         .map(id -> ((VertxInternal) vertx).getDeployment(id))
         .map(deployment -> deployment.verticleIdentifier())
-        .collect(Collectors.toList()),
+        .toList(),
       not(hasItem("java:org.folio.service.file.S3JobRunningVerticle"))
     );
   }

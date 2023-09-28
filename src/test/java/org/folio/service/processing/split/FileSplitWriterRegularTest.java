@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.service.s3storage.MinioStorageService;
 import org.junit.Before;
@@ -257,11 +256,11 @@ public class FileSplitWriterRegularTest {
                             .list()
                             .stream()
                             .map(obj -> Path.of((String) obj))
-                            .collect(Collectors.toList());
+                            .toList();
                           List<String> fileNames = paths
                             .stream()
                             .map(path -> path.getFileName().toString())
-                            .collect(Collectors.toList());
+                            .toList();
 
                           // number of chunks and chunk names
                           assertThat(fileNames, contains(expectedChunkFiles));

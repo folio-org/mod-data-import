@@ -34,7 +34,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
@@ -75,11 +74,7 @@ public class SplitFileProcessingServiceStartJobTest
         );
 
         assertThat(
-          request
-            .getFiles()
-            .stream()
-            .map(File::getName)
-            .collect(Collectors.toList()),
+          request.getFiles().stream().map(File::getName).toList(),
           containsInAnyOrder(
             "key/file-1-key",
             "key/file-2-key",
@@ -275,11 +270,7 @@ public class SplitFileProcessingServiceStartJobTest
         );
 
         assertThat(
-          request
-            .getFiles()
-            .stream()
-            .map(File::getName)
-            .collect(Collectors.toList()),
+          request.getFiles().stream().map(File::getName).toList(),
           containsInAnyOrder(
             "key/file-1-key",
             "key/file-2-key",
@@ -398,7 +389,7 @@ public class SplitFileProcessingServiceStartJobTest
             .<List<JobExecutionDto>>getArgument(0)
             .stream()
             .map(JobExecutionDto::getId)
-            .collect(Collectors.toList()),
+            .toList(),
           containsInAnyOrder(JOB_EXECUTION_2.getId(), JOB_EXECUTION_3.getId())
         );
         return Future.succeededFuture();
@@ -410,7 +401,7 @@ public class SplitFileProcessingServiceStartJobTest
             .<List<JobExecutionDto>>getArgument(0)
             .stream()
             .map(JobExecutionDto::getId)
-            .collect(Collectors.toList()),
+            .toList(),
           containsInAnyOrder(JOB_EXECUTION_1.getId())
         );
         return Future.succeededFuture();

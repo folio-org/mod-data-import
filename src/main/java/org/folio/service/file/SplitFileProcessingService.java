@@ -107,7 +107,8 @@ public class SplitFileProcessingService {
             .map(splitFileInformation ->
               initializeChildren(entity, client, params, splitFileInformation)
             )
-            .collect(Collectors.toList())
+            .map(Future.class::cast)
+            .toList()
         )
       )
       // do this after everything has been queued successfully
@@ -138,7 +139,8 @@ public class SplitFileProcessingService {
         .stream()
         .map(FileDefinition::getSourcePath)
         .map(key -> splitFile(key, entity.getJobProfileInfo()))
-        .collect(Collectors.toList())
+        .map(Future.class::cast)
+        .toList()
     );
 
     return CompositeFuture
@@ -181,9 +183,9 @@ public class SplitFileProcessingService {
                   .map(this::verifyOkStatus);
               })
               .map(Future.class::cast)
-              .collect(Collectors.toList())
+              .toList()
           )
-          .map(v -> result)
+          .map(result)
       )
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
@@ -214,7 +216,7 @@ public class SplitFileProcessingService {
               .withId(jobExec.getId())
               .withSourcePath(jobExec.getSourcePath())
           )
-          .collect(Collectors.toList())
+          .toList()
       )
       // update all children
       .compose(childExecs ->
@@ -273,7 +275,7 @@ public class SplitFileProcessingService {
                   );
                 })
                 .map(Future.class::cast)
-                .collect(Collectors.toList())
+                .toList()
             )
           )
       )
@@ -339,7 +341,7 @@ public class SplitFileProcessingService {
     }
 
     return CompositeFuture.join(
-      futures.stream().map(Future.class::cast).collect(Collectors.toList())
+      futures.stream().map(Future.class::cast).toList()
     );
   }
 
@@ -432,27 +434,22 @@ public class SplitFileProcessingService {
           );
 
           switch (exec.getStatus()) {
-            case COMMITTED:
-            case ERROR:
-            case DISCARDED:
-            case CANCELLED:
-              // don't cancel jobs that are already completed
-              break;
-            default:
-              futures.add(
-                client
-                  .putChangeManagerJobExecutionsStatusById(
-                    exec.getId(),
-                    new StatusDto().withStatus(StatusDto.Status.CANCELLED)
-                  )
-                  .map(this::verifyOkStatus)
-                  .mapEmpty()
-              );
+            // don't cancel jobs that are already completed
+            case COMMITTED, ERROR, DISCARDED, CANCELLED -> {}
+            default -> futures.add(
+              client
+                .putChangeManagerJobExecutionsStatusById(
+                  exec.getId(),
+                  new StatusDto().withStatus(StatusDto.Status.CANCELLED)
+                )
+                .map(this::verifyOkStatus)
+                .mapEmpty()
+            );
           }
         }
 
         return CompositeFuture.all(
-          futures.stream().map(Future.class::cast).collect(Collectors.toList())
+          futures.stream().map(Future.class::cast).toList()
         );
       })
       .onFailure(err -> LOGGER.error("Error cancelling job", err))
@@ -501,7 +498,7 @@ public class SplitFileProcessingService {
           .stream()
           .map(FileDefinition::getSourcePath)
           .map(key -> new File().withName(key))
-          .collect(Collectors.toList())
+          .toList()
       )
       .withJobProfileInfo(entity.getJobProfileInfo())
       .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)

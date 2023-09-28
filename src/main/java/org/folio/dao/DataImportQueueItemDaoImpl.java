@@ -242,7 +242,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
         ),
         promise
       );
-    return promise.future().map(updateResult -> dataImportQueueItem.getId());
+    return promise.future().map(dataImportQueueItem.getId());
   }
 
   @Override

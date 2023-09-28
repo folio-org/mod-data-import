@@ -20,7 +20,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
@@ -163,7 +162,7 @@ public class SplitFileProcessingServiceRegistrationTest
               .stream()
               .map(JobExecution.class::cast)
               .map(exec -> exec.getId())
-              .collect(Collectors.toList()),
+              .toList(),
             containsInAnyOrder(
               "test-execution-id",
               "test-execution-id",

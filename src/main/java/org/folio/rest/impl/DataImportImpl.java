@@ -544,10 +544,10 @@ public class DataImportImpl implements DataImport {
         )
         .compose(fileDefinition ->
           minioStorageService.completeMultipartFileUpload(entity.getKey(), entity.getUploadId(), entity.getTags())
-            .map(vv -> fileDefinition)
+            .map(fileDefinition)
         )
         .compose(fileDefinition -> fileService.afterFileSave(fileDefinition.withSourcePath(entity.getKey()), params))
-        .map(vv -> PostDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileIdResponse.respond204())
+        .map(PostDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileIdResponse.respond204())
         .map(Response.class::cast)
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler);
@@ -562,7 +562,7 @@ public class DataImportImpl implements DataImport {
 
     vertxContext.runOnContext(v ->
       splitFileProcessingService.cancelJob(jobExecutionId, params, client)
-        .map(vv -> DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson(
+        .map(DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson(
           new CancelResponse().withOk(true)
         ))
         .map(Response.class::cast)

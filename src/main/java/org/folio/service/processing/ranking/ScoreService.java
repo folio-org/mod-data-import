@@ -80,19 +80,21 @@ public class ScoreService {
     );
     LOGGER.info("Current worker tenant usage: {}", tenantUsageMap);
 
-    TreeSet<DataImportQueueItem> set = new TreeSet<>((a, b) -> {
-      int scoreDiff = -Double.compare(
-        calculateScoreCached(cache, a, tenantUsageMap),
-        calculateScoreCached(cache, b, tenantUsageMap)
-      );
+    TreeSet<DataImportQueueItem> set = new TreeSet<>(
+      (DataImportQueueItem a, DataImportQueueItem b) -> {
+        int scoreDiff = -Double.compare(
+          calculateScoreCached(cache, a, tenantUsageMap),
+          calculateScoreCached(cache, b, tenantUsageMap)
+        );
 
-      if (scoreDiff == 0) {
-        // make deterministic
-        return a.getId().compareTo(b.getId());
+        if (scoreDiff == 0) {
+          // make deterministic
+          return a.getId().compareTo(b.getId());
+        }
+
+        return scoreDiff;
       }
-
-      return scoreDiff;
-    });
+    );
 
     set.addAll(waiting.getDataImportQueueItems());
 

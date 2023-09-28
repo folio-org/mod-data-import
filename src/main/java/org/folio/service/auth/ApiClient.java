@@ -15,12 +15,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import javax.ws.rs.core.MediaType;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
+import org.apache.http.NameValuePair;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpGet;
@@ -61,7 +61,8 @@ public abstract class ApiClient {
               .entrySet()
               .stream()
               .map(e -> new BasicNameValuePair(e.getKey(), e.getValue()))
-              .collect(Collectors.toList())
+              .map(NameValuePair.class::cast)
+              .toList()
           )
           .build()
       );

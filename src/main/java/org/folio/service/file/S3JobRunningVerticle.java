@@ -169,7 +169,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           new StatusDto().withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS),
           params
         )
-          .map(v -> job)
+          .map(job)
       )
       .compose(this::downloadFromS3)
       .compose(job ->
@@ -186,7 +186,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
               ),
             params
           )
-          .map(v -> job)
+          .map(job)
       )
       .onFailure((Throwable err) -> {
         LOGGER.error("Unable to start chunk {}", queueItem, err);

@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
@@ -75,7 +74,7 @@ public class SystemUserAuthService {
           // account for newlines/whitespace/etc
           .filter(str -> !str.isBlank())
           .map(String::trim)
-          .collect(Collectors.toUnmodifiableList());
+          .toList();
     } catch (IOException e) {
       LOGGER.error("Could not read permissions: ", e);
       this.permissionsList = Collections.unmodifiableList(new ArrayList<>());

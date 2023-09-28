@@ -57,7 +57,7 @@ public class FileSplitService {
           return splitStream(context, stream, key)
             .compose((List<String> result) -> {
               LOGGER.info("Split from S3 completed...deleting original file");
-              return minioStorageService.remove(key).map(v -> result);
+              return minioStorageService.remove(key).map(result);
             });
         } catch (IOException e) {
           LOGGER.error("Unable to split file", e);
@@ -125,7 +125,7 @@ public class FileSplitService {
         return vertx
           .fileSystem()
           .deleteRecursive(tempDir.toString(), true)
-          .map(v -> innerResult);
+          .map(innerResult);
       })
       .onSuccess(result ->
         LOGGER.info("All done splitting! Got chunks {}", result)

@@ -13,13 +13,13 @@ import static org.hamcrest.Matchers.is;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import io.restassured.RestAssured;
 import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.stream.Collectors;
 import org.apache.http.HttpStatus;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dao.DataImportQueueItemDaoImpl;
@@ -59,9 +59,11 @@ public class CancelJobExecutionTest extends AbstractRestTest {
             .stream()
             .map(DataImportQueueItem::getId)
             .map(queueItemDao::deleteDataImportQueueItem)
-            .collect(Collectors.toList())
+            .map(Future.class::cast)
+            .toList()
         )
-      );
+      )
+      .onComplete(context.asyncAssertSuccess());
   }
 
   @Test

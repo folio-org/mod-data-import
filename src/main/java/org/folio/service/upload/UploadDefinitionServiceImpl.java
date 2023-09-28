@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
@@ -243,7 +242,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .withFiles(definition.getFileDefinitions()
           .stream()
           .map(fd -> new File().withName(fd.getName()))
-          .collect(Collectors.toList()))
+          .toList())
         .withUserId(Objects.nonNull(metadata) ? metadata.getCreatedByUserId() : null)
         .withSourceType(InitJobExecutionsRqDto.SourceType.FILES);
 

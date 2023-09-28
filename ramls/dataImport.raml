@@ -29,6 +29,13 @@ types:
   dataTypeCollection: !include raml-storage/schemas/mod-data-import/dataTypeCollection.json
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
   dataImportInitConfig: !include raml-storage/schemas/common/dataImportInitConfig.json
+  dataImportQueueItem: !include raml-storage/schemas/mod-data-import/dataImportQueueItem.json
+  dataImportQueueItemCollection: !include raml-storage/schemas/mod-data-import/dataImportQueueItemCollection.json
+  fileUploadInfo: !include raml-storage/schemas/mod-data-import/fileUploadInfo.json
+  fileDownloadInfo: !include raml-storage/schemas/mod-data-import/fileDownloadInfo.json
+  splitStatus: !include raml-storage/schemas/dto/splitStatus.json
+  assembleFileDto: !include raml-storage/schemas/dto/assembleFileDto.json
+  cancelResponse: !include raml-storage/schemas/mod-data-import/cancelResponse.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml

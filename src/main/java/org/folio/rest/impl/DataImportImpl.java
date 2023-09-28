@@ -69,7 +69,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportUploadDefinitions(String lang, UploadDefinition entity, Map<String, String> okapiHeaders,
+  public void postDataImportUploadDefinitions(UploadDefinition entity, Map<String, String> okapiHeaders,
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
@@ -97,7 +97,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportUploadDefinitions(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,
+  public void getDataImportUploadDefinitions(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders,
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
@@ -116,7 +116,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void putDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, String lang, UploadDefinition entity,
+  public void putDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, UploadDefinition entity,
                                                                  Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                                  Context vertxContext) {
     vertxContext.runOnContext(c -> {
@@ -138,7 +138,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void deleteDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, String lang, Map<String, String> okapiHeaders,
+  public void deleteDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, Map<String, String> okapiHeaders,
                                                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
@@ -158,7 +158,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, String lang, Map<String, String> okapiHeaders,
+  public void getDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, Map<String, String> okapiHeaders,
                                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
@@ -277,7 +277,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportFileExtensions(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,
+  public void getDataImportFileExtensions(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders,
                                           Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -295,7 +295,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void postDataImportFileExtensions(String lang, FileExtension entity, Map<String, String> okapiHeaders,
+  public void postDataImportFileExtensions(FileExtension entity, Map<String, String> okapiHeaders,
                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -322,7 +322,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportFileExtensionsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void getDataImportFileExtensionsById(String id, Map<String, String> okapiHeaders,
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
@@ -342,7 +342,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void putDataImportFileExtensionsById(String id, String lang, FileExtension entity, Map<String, String> okapiHeaders,
+  public void putDataImportFileExtensionsById(String id, FileExtension entity, Map<String, String> okapiHeaders,
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -369,7 +369,7 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void deleteDataImportFileExtensionsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void deleteDataImportFileExtensionsById(String id, Map<String, String> okapiHeaders,
                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {

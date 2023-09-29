@@ -589,7 +589,7 @@ public class DataImportImpl implements DataImport {
         : errors);
   }
 
-  private String addCreatedByConditionToCqlQuery(String cqlQuery, Map<String, String> okapiHeaders) {
+  private static String addCreatedByConditionToCqlQuery(String cqlQuery, Map<String, String> okapiHeaders) {
     String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
     String token = okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN);
     if (userId == null && token != null) {
@@ -601,10 +601,11 @@ public class DataImportImpl implements DataImport {
     return cqlQuery;
   }
 
-  private String getUserIdFromToken(String token) {
+  protected static String getUserIdFromToken(String token) {
     try {
       String[] split = token.split("\\.");
       String json = getJson(split[1]);
+      LOGGER.error(json);
       JsonObject tokenJson = new JsonObject(json);
       return tokenJson.getString("user_id");
     } catch (Exception e) {

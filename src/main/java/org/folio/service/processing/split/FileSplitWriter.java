@@ -137,9 +137,9 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     Exception e
   ) {
     LOGGER.error("Error writing file chunk: ", e);
-    if (handler != null) {
-      handler.handle(Future.failedFuture(e));
-    }
+
+    handler.handle(Future.failedFuture(e));
+
     if (exceptionHandler != null) {
       exceptionHandler.handle(e);
     }
@@ -248,20 +248,19 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           try {
             minioStorageService
               .write(chunkKey, is)
-              .onComplete(ar -> {
-                if (ar.failed()) {
-                  LOGGER.error(
-                    "Failed uploading file {}:",
-                    chunkKey,
-                    ar.cause()
-                  );
+              .onFailure((Throwable err) -> {
+                LOGGER.error(
+                  "Failed uploading file {}:",
+                  chunkKey,
+                  err.getCause()
+                );
 
-                  chunkPromise.fail(ar.cause());
-                } else if (ar.succeeded()) {
-                  LOGGER.info("Successfully uploaded file {} to S3", chunkKey);
+                chunkPromise.fail(err.getCause());
+              })
+              .onSuccess((String result) -> {
+                LOGGER.info("Successfully uploaded file {} to S3", chunkKey);
 
-                  chunkPromise.complete(chunkKey);
-                }
+                chunkPromise.complete(chunkKey);
               });
           } catch (IOException e) {
             LOGGER.error("Exception uploading file {} to S3", chunkKey);

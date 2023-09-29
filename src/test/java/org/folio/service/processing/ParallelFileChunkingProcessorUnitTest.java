@@ -334,6 +334,21 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     });
   }
 
+  @Test
+  public void testCountRecordsNull() {
+    // cases with non-null values are tested as part of above tests and in FileSplitUtilitiesCountTest
+    assertEquals(
+      "Null file = 0 records",
+      0,
+      ParallelFileChunkingProcessor.countTotalRecordsInFile(null, new JobProfileInfo())
+    );
+    assertEquals(
+      "Null profile = 0 records",
+      0,
+      ParallelFileChunkingProcessor.countTotalRecordsInFile(new File(SOURCE_PATH_1), null)
+    );
+  }
+
   private FileDefinition createFileDefinition() {
     String stubSourcePath = StringUtils.EMPTY;
     String jobExecutionId = UUID.randomUUID().toString();

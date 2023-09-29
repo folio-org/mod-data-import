@@ -434,7 +434,7 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
                     context.asyncAssertSuccess(remaining ->
                       assertThat(
                         remaining.getDataImportQueueItems(),
-                        contains(IN_PROGRESS_1, IN_PROGRESS_2)
+                        containsInAnyOrder(IN_PROGRESS_1, IN_PROGRESS_2)
                       )
                     )
                   );

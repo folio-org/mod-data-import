@@ -155,24 +155,17 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
 
         return CompositeFuture
           .all(getAllInProgressQueueItems(), getAllWaitingQueueItems())
-          .compose((CompositeFuture compositeFuture) -> {
+          .map((CompositeFuture compositeFuture) -> {
             DataImportQueueItemCollection inProgress = compositeFuture.resultAt(
               0
             );
             DataImportQueueItemCollection waiting = compositeFuture.resultAt(1);
 
-            Optional<DataImportQueueItem> result = processor.apply(
-              inProgress,
-              waiting
-            );
-
-            return Future.succeededFuture(result);
+            return processor.apply(inProgress, waiting);
           })
           .compose((Optional<DataImportQueueItem> result) -> {
             if (result.isPresent()) {
-              return updateDataImportQueueItem(
-                result.get().withProcessing(true)
-              )
+              return updateQueueItem(result.get().withProcessing(true))
                 .map(Optional::of);
             }
             return Future.succeededFuture(result);
@@ -181,7 +174,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   }
 
   @Override
-  public Future<Optional<DataImportQueueItem>> getQueueItemById(String id) {
+  public Future<DataImportQueueItem> getQueueItemById(String id) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       String preparedQuery = format(
@@ -203,11 +196,11 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
       .future()
       .map((RowSet<Row> resultSet) -> {
         if (resultSet.rowCount() == 0) {
-          return Optional.empty();
-        } else {
-          return Optional.of(
-            mapRowJsonToQueueItem(resultSet.iterator().next())
+          throw new NotFoundException(
+            format("DataImportQueueItem with id '%s' was not found", id)
           );
+        } else {
+          return mapRowJsonToQueueItem(resultSet.iterator().next());
         }
       });
   }
@@ -246,7 +239,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   }
 
   @Override
-  public Future<DataImportQueueItem> updateDataImportQueueItem(
+  public Future<DataImportQueueItem> updateQueueItem(
     DataImportQueueItem dataImportQueueItem
   ) {
     Promise<RowSet<Row>> promise = Promise.promise();
@@ -284,11 +277,11 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     }
     return promise
       .future()
-      .compose((RowSet<Row> updateResult) -> {
+      .map((RowSet<Row> updateResult) -> {
         if (updateResult.rowCount() == 1) {
-          return Future.succeededFuture(dataImportQueueItem);
+          return dataImportQueueItem;
         } else {
-          return Future.failedFuture(
+          throw LOGGER.throwing(
             new NotFoundException(
               format(
                 "DataImportQueueItem with id %s was not updated",
@@ -301,7 +294,7 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   }
 
   @Override
-  public Future<Void> deleteDataImportQueueItemByJobExecutionId(String id) {
+  public Future<Integer> deleteQueueItemsByJobExecutionId(String id) {
     String query = format(
       DELETE_BY_JOB_ID_SQL,
       MODULE_GLOBAL_SCHEMA,
@@ -310,22 +303,24 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     return pgClientFactory
       .getInstance()
       .execute(query, Tuple.of(id))
-      .flatMap((RowSet<Row> result) -> {
-        if (result.rowCount() == 1) {
-          return Future.succeededFuture();
+      .map((RowSet<Row> result) -> {
+        if (result.rowCount() >= 1) {
+          return result.rowCount();
+        } else {
+          throw LOGGER.throwing(
+            new NotFoundException(
+              format(
+                "No DataImportQueueItems exist with job execution id %s",
+                id
+              )
+            )
+          );
         }
-        String message = format(
-          "Error deleting queue item with job execution id '%s'",
-          id
-        );
-        NotFoundException notFoundException = new NotFoundException(message);
-        LOGGER.error(message, notFoundException);
-        return Future.failedFuture(notFoundException);
       });
   }
 
   @Override
-  public Future<Void> deleteDataImportQueueItem(String id) {
+  public Future<Void> deleteQueueItemById(String id) {
     String query = format(
       DELETE_BY_ID_SQL,
       MODULE_GLOBAL_SCHEMA,
@@ -334,14 +329,17 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     return pgClientFactory
       .getInstance()
       .execute(query, Tuple.of(id))
-      .flatMap((RowSet<Row> result) -> {
+      .compose((RowSet<Row> result) -> {
         if (result.rowCount() == 1) {
           return Future.succeededFuture();
         }
-        String message = format("Error deleting queue item with id '%s'", id);
-        NotFoundException notFoundException = new NotFoundException(message);
-        LOGGER.error(message, notFoundException);
-        return Future.failedFuture(notFoundException);
+        return Future.failedFuture(
+          LOGGER.throwing(
+            new NotFoundException(
+              format("Error deleting queue item with id '%s'", id)
+            )
+          )
+        );
       });
   }
 
@@ -358,7 +356,9 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     queueItem.setFilePath(rowAsJson.getString("file_path"));
     queueItem.setOriginalSize(rowAsJson.getInteger("original_size"));
     queueItem.setTimestamp(
-      Date.from(LocalDateTime.now().toInstant(ZoneOffset.UTC))
+      Date.from(
+        rowAsJson.getLocalDateTime("timestamp").toInstant(ZoneOffset.UTC)
+      )
     );
     queueItem.setPartNumber(rowAsJson.getInteger("part_number"));
     queueItem.setProcessing(rowAsJson.getBoolean("processing"));
@@ -370,14 +370,14 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static DataImportQueueItemCollection mapResultSetToQueueItemList(
     RowSet<Row> resultSet
   ) {
-    DataImportQueueItemCollection result = new DataImportQueueItemCollection();
-    result.setDataImportQueueItems(
-      Stream
-        .generate(resultSet.iterator()::next)
-        .limit(resultSet.size())
-        .map(DataImportQueueItemDaoImpl::mapRowJsonToQueueItem)
-        .toList()
-    );
-    return result;
+    return new DataImportQueueItemCollection()
+      .withDataImportQueueItems(
+        Stream
+          .generate(resultSet.iterator()::next)
+          .limit(resultSet.size())
+          .map(DataImportQueueItemDaoImpl::mapRowJsonToQueueItem)
+          .toList()
+      )
+      .withTotalRecords(resultSet.size());
   }
 }

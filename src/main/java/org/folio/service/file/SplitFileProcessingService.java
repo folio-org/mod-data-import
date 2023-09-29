@@ -428,7 +428,8 @@ public class SplitFileProcessingService {
         for (JobExecutionDto exec : collection.getJobExecutions()) {
           futures.add(
             queueItemDao
-              .deleteDataImportQueueItemByJobExecutionId(exec.getId())
+              .deleteQueueItemsByJobExecutionId(exec.getId())
+              .<Void>mapEmpty()
               // the delete call can fail if the queue item doesn't exist (has already been processed)
               .recover(err -> Future.succeededFuture())
           );

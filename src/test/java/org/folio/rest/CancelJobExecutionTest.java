@@ -13,7 +13,6 @@ import static org.hamcrest.Matchers.is;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import io.restassured.RestAssured;
 import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -28,7 +27,6 @@ import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobExecutionDto;
 import org.folio.rest.jaxrs.model.JobExecutionDtoCollection;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,24 +44,6 @@ public class CancelJobExecutionTest extends AbstractRestTest {
   public void setUp() throws IOException {
     MockitoAnnotations.openMocks(this);
     queueItemDao = new DataImportQueueItemDaoImpl(new PostgresClientFactory());
-  }
-
-  @After
-  public void cleanUp(TestContext context) {
-    queueItemDao
-      .getAllQueueItems()
-      .compose(items ->
-        CompositeFuture.all(
-          items
-            .getDataImportQueueItems()
-            .stream()
-            .map(DataImportQueueItem::getId)
-            .map(queueItemDao::deleteDataImportQueueItem)
-            .map(Future.class::cast)
-            .toList()
-        )
-      )
-      .onComplete(context.asyncAssertSuccess());
   }
 
   @Test

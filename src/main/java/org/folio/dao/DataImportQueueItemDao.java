@@ -50,9 +50,9 @@ public interface DataImportQueueItemDao {
    * Searches for {@link DataImportQueueItem} by id
    *
    * @param id DataImportQueueItem id
-   * @return future with optional {@link DataImportQueueItem}
+   * @return future which will resolve with the requested item
    */
-  Future<Optional<DataImportQueueItem>> getQueueItemById(String id);
+  Future<DataImportQueueItem> getQueueItemById(String id);
 
   /**
    * Saves {@link DataImportQueueItem} to database
@@ -68,7 +68,7 @@ public interface DataImportQueueItemDao {
    * @param fileExtension FileExtension to update
    * @return future with {@link DataImportQueueItem}
    */
-  Future<DataImportQueueItem> updateDataImportQueueItem(
+  Future<DataImportQueueItem> updateQueueItem(
     DataImportQueueItem dataImportQueueItem
   );
 
@@ -76,15 +76,15 @@ public interface DataImportQueueItemDao {
    * Deletes {@link DataImportQueueItem} from database
    *
    * @param id DataImportQueueItem id
-   * @return future with true if succeeded
+   * @return future that resolves if a record was deleted, failing otherwise
    */
-  Future<Void> deleteDataImportQueueItem(String id);
-  
+  Future<Void> deleteQueueItemById(String id);
+
   /**
-   * Deletes {@link DataImportQueueItem} from database
+   * Deletes all {@link DataImportQueueItem}s from database with the provided job execution ID.
    *
    * @param id DataImportQueueItem id
-   * @return future with true if succeeded
+   * @return future that resolves with the number of deleted rows, failing if none were deleted
    */
-  Future<Void> deleteDataImportQueueItemByJobExecutionId(String id);
+  Future<Integer> deleteQueueItemsByJobExecutionId(String jobExecution);
 }

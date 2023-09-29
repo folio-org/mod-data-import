@@ -428,7 +428,7 @@ public class S3JobRunningVerticleUnitTest {
           verify(fileProcessor, times(1))
             .processFile(eq(tempFile), eq("job-exec-id"), any(), isNull());
 
-          verify(queueItemDao, times(1)).deleteDataImportQueueItem("queue-id");
+          verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");
 
           verifyNoMoreInteractions(queueItemDao);
           verifyNoMoreInteractions(uploadDefinitionService);
@@ -499,7 +499,7 @@ public class S3JobRunningVerticleUnitTest {
             .processFile(eq(tempFile), eq("job-exec-id"), any(), isNull());
 
           // should still cleanup
-          verify(queueItemDao, times(1)).deleteDataImportQueueItem("queue-id");
+          verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");
 
           verifyNoMoreInteractions(queueItemDao);
           verifyNoMoreInteractions(uploadDefinitionService);
@@ -553,8 +553,7 @@ public class S3JobRunningVerticleUnitTest {
               );
 
             // should still cleanup queue item
-            verify(queueItemDao, times(1))
-              .deleteDataImportQueueItem("queue-id");
+            verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");
 
             verifyNoMoreInteractions(queueItemDao);
             verifyNoMoreInteractions(uploadDefinitionService);

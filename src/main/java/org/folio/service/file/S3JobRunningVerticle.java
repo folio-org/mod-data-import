@@ -206,7 +206,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         )
       )
       .onComplete((AsyncResult<QueueJob> v) -> {
-        queueItemDao.deleteDataImportQueueItem(queueItem.getId());
+        queueItemDao.deleteQueueItemById(queueItem.getId());
 
         File file = localFile.get();
         if (file != null) {

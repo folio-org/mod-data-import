@@ -2,408 +2,493 @@ package org.folio.dao;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.matches;
-import static org.mockito.ArgumentMatchers.startsWith;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.ext.unit.Async;
+import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.pgclient.PgConnection;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
-import io.vertx.sqlclient.impl.ArrayTuple;
-import java.util.Arrays;
-import java.util.NoSuchElementException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.regex.Pattern;
+import lombok.extern.log4j.Log4j2;
 import org.folio.dao.util.PostgresClientFactory;
+import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
-import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.helpers.LocalRowSet;
-import org.joda.time.DateTime;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentMatchers;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.mockito.invocation.InvocationOnMock;
 
+@Log4j2
 @RunWith(VertxUnitRunner.class)
-public class DataImportQueueDaoTest {
+public class DataImportQueueDaoTest extends AbstractRestTest {
 
-  @Mock
-  private PostgresClientFactory postgresClientFactory;
+  private DataImportQueueItem WAITING_1;
+  private DataImportQueueItem WAITING_2;
+  private DataImportQueueItem IN_PROGRESS_1;
+  private DataImportQueueItem IN_PROGRESS_2;
 
-  @Mock
-  private PostgresClient postgresClient;
-
-  @Mock
-  private PgConnection postgresConnection;
-
-  @InjectMocks
-  DataImportQueueItemDao queueItemDaoImpl = new DataImportQueueItemDaoImpl(
-    postgresClientFactory
-  );
-
-  UUID storedItemUUID;
+  private DataImportQueueItemDao queueItemDao;
 
   @Before
-  public void setUp() {
-    MockitoAnnotations.openMocks(this);
-    when(postgresClientFactory.getInstance()).thenReturn(postgresClient);
+  public void initializeVariables() {
+    WAITING_1 =
+      new DataImportQueueItem()
+        .withId("922fdc41-7a55-5269-a8ff-56038f18c477")
+        .withJobExecutionId("5dd15bc5-373b-5d00-b7db-2cf094e9a785")
+        .withUploadDefinitionId("aca5103a-e602-5201-8a55-8dcee9bfbb85")
+        .withTenant("tenant-1")
+        .withOriginalSize(111)
+        .withFilePath("file-path-1")
+        .withTimestamp(
+          Date.from(
+            LocalDateTime.of(2021, 1, 1, 1, 1).toInstant(ZoneOffset.UTC)
+          )
+        )
+        .withPartNumber(1)
+        .withProcessing(false)
+        .withOkapiUrl("okapi-url-1")
+        .withDataType("data-type-1");
+    WAITING_2 =
+      new DataImportQueueItem()
+        .withId("c7e786c6-6fd1-5633-9d09-ced97fc1ff9e")
+        .withJobExecutionId("5dd15bc5-373b-5d00-b7db-2cf094e9a785")
+        .withUploadDefinitionId("0dec7b87-8ebe-5cd0-894c-7e7a58974fe5")
+        .withTenant("tenant-2")
+        .withOriginalSize(222)
+        .withFilePath("file-path-2")
+        .withTimestamp(
+          Date.from(
+            LocalDateTime.of(2022, 2, 2, 2, 2).toInstant(ZoneOffset.UTC)
+          )
+        )
+        .withPartNumber(2)
+        .withProcessing(false)
+        .withOkapiUrl("okapi-url-2")
+        .withDataType("data-type-2");
+
+    IN_PROGRESS_1 =
+      new DataImportQueueItem()
+        .withId("15c40f1e-d685-57a0-901a-c68980c9c50b")
+        .withJobExecutionId("9ff47a6e-8133-5585-af9a-2f8f204a2726")
+        .withUploadDefinitionId("bb08fdfe-1b12-5a26-9fb7-02218eb6c32c")
+        .withTenant("tenant-p-1")
+        .withOriginalSize(1011)
+        .withFilePath("file-path-p-1")
+        .withTimestamp(
+          Date.from(
+            LocalDateTime.of(2121, 1, 1, 1, 1).toInstant(ZoneOffset.UTC)
+          )
+        )
+        .withPartNumber(1)
+        .withProcessing(true)
+        .withOkapiUrl("okapi-url-p-1")
+        .withDataType("data-type-p-1");
+    IN_PROGRESS_2 =
+      new DataImportQueueItem()
+        .withId("9a197f42-16c9-5a4b-a213-1adf4498fb02")
+        .withJobExecutionId("0532592a-ba10-5a7e-bb2b-aea0b4aeb459")
+        .withUploadDefinitionId("fbf6a813-9462-5be8-9078-4b7b5ad44065")
+        .withTenant("tenant-p-2")
+        .withOriginalSize(2022)
+        .withFilePath("file-path-p-2")
+        .withTimestamp(
+          Date.from(
+            LocalDateTime.of(2122, 2, 2, 2, 2).toInstant(ZoneOffset.UTC)
+          )
+        )
+        .withPartNumber(2)
+        .withProcessing(true)
+        .withOkapiUrl("okapi-url-p-2")
+        .withDataType("data-type-p-2");
+
+    queueItemDao =
+      new DataImportQueueItemDaoImpl(new PostgresClientFactory(vertx));
+  }
+
+  @Test
+  public void testGetAllQueueItemsEmpty(TestContext context) {
+    queueItemDao
+      .getAllQueueItems()
+      .onComplete(
+        context.asyncAssertSuccess(x -> {
+          assertThat(x.getTotalRecords(), is(0));
+          assertThat(x.getDataImportQueueItems(), hasSize(0));
+        })
+      );
   }
 
   @Test
   public void testGetAllQueueItems(TestContext context) {
-    // given
-    doAnswer((InvocationOnMock invocation) -> {
-        Promise<RowSet<Row>> promise = invocation.getArgument(1);
-        promise.complete(new LocalRowSet(5));
-        return null;
-      })
-      .when(postgresClient)
-      .select(anyString(), ArgumentMatchers.<Promise<RowSet<Row>>>any());
-
-    // when
-    queueItemDaoImpl
-      .getAllQueueItems()
-      // then
+    CompositeFuture
+      .all(
+        queueItemDao.addQueueItem(WAITING_1),
+        queueItemDao.addQueueItem(WAITING_2),
+        queueItemDao.addQueueItem(IN_PROGRESS_1),
+        queueItemDao.addQueueItem(IN_PROGRESS_2)
+      )
       .onComplete(
-        context.asyncAssertSuccess(x -> {
-          verify(postgresClient, times(1))
-            .select(
-              startsWith("SELECT * FROM data_import_global.queue_items"),
-              ArgumentMatchers.<Promise<RowSet<Row>>>any()
-            );
-          verifyNoMoreInteractions(postgresClient);
-        })
-      );
-  }
+        context.asyncAssertSuccess(v ->
+          queueItemDao
+            .getAllQueueItems()
+            .onComplete(
+              context.asyncAssertSuccess(result -> {
+                assertThat(result.getTotalRecords(), is(4));
 
-  @Test
-  public void testAddQueueItem(TestContext context) {
-    // given
-    doAnswer((InvocationOnMock invocation) -> {
-        Promise<RowSet<Row>> promise = invocation.getArgument(2);
-        promise.complete(new LocalRowSet(1));
-        return null;
-      })
-      .when(postgresClient)
-      .execute(
-        anyString(),
-        any(Tuple.class),
-        ArgumentMatchers.<Promise<RowSet<Row>>>any()
-      );
-
-    // when
-    DataImportQueueItem queueItem = new DataImportQueueItem();
-    queueItem.setFilePath("test/file/path");
-    storedItemUUID = UUID.fromString("0862edee-2cb2-5969-a5c4-59b510fb44f0");
-    queueItem.setId(storedItemUUID.toString());
-    queueItem.setUploadDefinitionId("c1635673-36e8-5ce4-925e-2bd8a1a60f6f");
-    queueItem.setJobExecutionId("abfcb2c8-5639-513a-a9f2-ef785aa46d60");
-    queueItem.setOriginalSize(5000);
-    queueItem.setTimestamp(new DateTime().toDate());
-    queueItemDaoImpl
-      .addQueueItem(queueItem)
-      // then
-      .onComplete(
-        context.asyncAssertSuccess(x -> {
-          verify(postgresClient, times(1))
-            .execute(
-              startsWith("INSERT INTO data_import_global.queue_items "),
-              any(Tuple.class),
-              ArgumentMatchers.<Promise<RowSet<Row>>>any()
-            );
-          verifyNoMoreInteractions(postgresClient);
-        })
-      );
-  }
-
-  @Test
-  public void testGetQueueItemByIdFailure(TestContext context) {
-    Async async = context.async();
-
-    // given
-    doAnswer((InvocationOnMock invocation) -> {
-        Promise<RowSet<Row>> promise = invocation.getArgument(2);
-        promise.complete(new LocalRowSet(3));
-        return null;
-      })
-      .when(postgresClient)
-      .select(
-        anyString(),
-        any(Tuple.class),
-        ArgumentMatchers.<Promise<RowSet<Row>>>any()
-      );
-
-    // when
-    queueItemDaoImpl
-      .getQueueItemById("sample-id")
-      // then
-      .onFailure(err -> {
-        verify(postgresClient, times(1))
-          .select(
-            anyString(),
-            any(Tuple.class),
-            ArgumentMatchers.<Promise<RowSet<Row>>>any()
-          );
-        verifyNoMoreInteractions(postgresClient);
-
-        assertThat(err, is(instanceOf(NoSuchElementException.class)));
-
-        async.complete();
-      })
-      .onSuccess(er -> context.fail("Provided ID should not exist."));
-  }
-
-  @Test
-  public void testGetWaitingQueueItems(TestContext context) {
-    // given
-    doAnswer((InvocationOnMock invocation) -> {
-        Promise<RowSet<Row>> promise = invocation.getArgument(2);
-        promise.complete(new LocalRowSet(3));
-        ArrayTuple tuple = invocation.getArgument(1);
-        assertThat(tuple.size(), is(1));
-        assertThat(tuple.getBoolean(0), is(false));
-        return null;
-      })
-      .when(postgresClient)
-      .select(
-        anyString(),
-        any(Tuple.class),
-        ArgumentMatchers.<Promise<RowSet<Row>>>any()
-      );
-
-    // when
-    queueItemDaoImpl
-      .getAllWaitingQueueItems()
-      // then
-      .onComplete(
-        context.asyncAssertSuccess(x -> {
-          verify(postgresClient, times(1))
-            .select(
-              startsWith(
-                "SELECT * FROM data_import_global.queue_items WHERE processing = "
-              ),
-              any(Tuple.class),
-              ArgumentMatchers.<Promise<RowSet<Row>>>any()
-            );
-          verifyNoMoreInteractions(postgresClient);
-        })
-      );
-  }
-
-  @Test
-  public void testGetInProgressQueueItems(TestContext context) {
-    // given
-    doAnswer((InvocationOnMock invocation) -> {
-        Promise<RowSet<Row>> promise = invocation.getArgument(2);
-        promise.complete(new LocalRowSet(3));
-        ArrayTuple tuple = invocation.getArgument(1);
-        assertThat(tuple.size(), is(1));
-        assertThat(tuple.getBoolean(0), is(true));
-        return null;
-      })
-      .when(postgresClient)
-      .select(
-        anyString(),
-        any(Tuple.class),
-        ArgumentMatchers.<Promise<RowSet<Row>>>any()
-      );
-
-    // when
-    queueItemDaoImpl
-      .getAllInProgressQueueItems()
-      // then
-      .onComplete(
-        context.asyncAssertSuccess(x -> {
-          verify(postgresClient, times(1))
-            .select(
-              startsWith(
-                "SELECT * FROM data_import_global.queue_items WHERE processing = "
-              ),
-              any(Tuple.class),
-              ArgumentMatchers.<Promise<RowSet<Row>>>any()
-            );
-          verifyNoMoreInteractions(postgresClient);
-        })
-      );
-  }
-
-  // casting to generics makes it sad :(
-  @SuppressWarnings("unchecked")
-  @Test
-  public void testAtomicGetAndUpdateEmpty(TestContext context) {
-    DataImportQueueItemDao testInstance = spy(
-      new DataImportQueueItemDaoImpl(postgresClientFactory)
-    );
-
-    DataImportQueueItem testWaiting1 = new DataImportQueueItem().withId("A");
-    DataImportQueueItem testWaiting2 = new DataImportQueueItem().withId("B");
-    DataImportQueueItem testInProgress = new DataImportQueueItem().withId("C");
-
-    when(testInstance.getAllWaitingQueueItems())
-      .thenReturn(
-        Future.succeededFuture(
-          new DataImportQueueItemCollection()
-            .withDataImportQueueItems(Arrays.asList(testWaiting1, testWaiting2))
+                assertThat(
+                  result.getDataImportQueueItems(),
+                  containsInAnyOrder(
+                    WAITING_1,
+                    WAITING_2,
+                    IN_PROGRESS_1,
+                    IN_PROGRESS_2
+                  )
+                );
+              })
+            )
         )
       );
-    when(testInstance.getAllInProgressQueueItems())
-      .thenReturn(
-        Future.succeededFuture(
-          new DataImportQueueItemCollection()
-            .withDataImportQueueItems(Arrays.asList(testInProgress))
+  }
+
+  @Test
+  public void testGetWaitingAndInProgress(TestContext context) {
+    CompositeFuture
+      .all(
+        queueItemDao.addQueueItem(WAITING_1),
+        queueItemDao.addQueueItem(WAITING_2),
+        queueItemDao.addQueueItem(IN_PROGRESS_1),
+        queueItemDao.addQueueItem(IN_PROGRESS_2)
+      )
+      .onComplete(
+        context.asyncAssertSuccess(v -> {
+          queueItemDao
+            .getAllWaitingQueueItems()
+            .onComplete(
+              context.asyncAssertSuccess(result -> {
+                assertThat(result.getTotalRecords(), is(2));
+
+                assertThat(
+                  result.getDataImportQueueItems(),
+                  containsInAnyOrder(WAITING_1, WAITING_2)
+                );
+              })
+            );
+
+          queueItemDao
+            .getAllInProgressQueueItems()
+            .onComplete(
+              context.asyncAssertSuccess(result -> {
+                assertThat(result.getTotalRecords(), is(2));
+
+                assertThat(
+                  result.getDataImportQueueItems(),
+                  containsInAnyOrder(IN_PROGRESS_1, IN_PROGRESS_2)
+                );
+              })
+            );
+        })
+      );
+  }
+
+  @Test
+  public void testAtomicUpdateWithNoChange(TestContext context) {
+    CompositeFuture
+      .all(
+        queueItemDao.addQueueItem(WAITING_1),
+        queueItemDao.addQueueItem(WAITING_2),
+        queueItemDao.addQueueItem(IN_PROGRESS_1),
+        queueItemDao.addQueueItem(IN_PROGRESS_2)
+      )
+      .onComplete(
+        context.asyncAssertSuccess(v ->
+          queueItemDao
+            .getAllQueueItemsAndProcessAtomic((inProgress, waiting) -> {
+              context.verify(vv -> {
+                assertThat(
+                  inProgress.getDataImportQueueItems(),
+                  containsInAnyOrder(IN_PROGRESS_1, IN_PROGRESS_2)
+                );
+                assertThat(
+                  waiting.getDataImportQueueItems(),
+                  containsInAnyOrder(WAITING_1, WAITING_2)
+                );
+              });
+
+              return Optional.empty();
+            })
+            .onComplete(
+              context.asyncAssertSuccess(result -> {
+                assertThat(result.isEmpty(), is(true));
+
+                // ensure that nothing changed
+                queueItemDao
+                  .getAllQueueItems()
+                  .onComplete(
+                    context.asyncAssertSuccess(r ->
+                      assertThat(
+                        r.getDataImportQueueItems(),
+                        containsInAnyOrder(
+                          WAITING_1,
+                          WAITING_2,
+                          IN_PROGRESS_1,
+                          IN_PROGRESS_2
+                        )
+                      )
+                    )
+                  );
+              })
+            )
         )
       );
-    when(testInstance.getAllQueueItemsAndProcessAtomic(any()))
-      .thenCallRealMethod();
+  }
 
-    when(postgresClient.withTransaction(any()))
-      .thenAnswer((InvocationOnMock invocation) ->
-        (
-          (Function<PgConnection, Future<Optional<DataImportQueueItem>>>) (
-            invocation.getArgument(0)
-          )
-        ).apply(postgresConnection)
-      );
-
-    // response value unused
-    when(postgresConnection.query(anyString())).thenReturn(null);
-
-    testInstance
-      .getAllQueueItemsAndProcessAtomic((inProgress, waiting) -> {
-        assertThat(
-          inProgress.getDataImportQueueItems(),
-          contains(testInProgress)
-        );
-        assertThat(
-          waiting.getDataImportQueueItems(),
-          contains(testWaiting1, testWaiting2)
-        );
-
-        return Optional.empty();
-      })
+  @Test
+  public void testAtomicUpdateWithChange(TestContext context) {
+    CompositeFuture
+      .all(
+        queueItemDao.addQueueItem(WAITING_1),
+        queueItemDao.addQueueItem(WAITING_2),
+        queueItemDao.addQueueItem(IN_PROGRESS_1),
+        queueItemDao.addQueueItem(IN_PROGRESS_2)
+      )
       .onComplete(
-        context.asyncAssertSuccess(result -> {
-          assertThat(result.isEmpty(), is(true));
+        context.asyncAssertSuccess(v ->
+          queueItemDao
+            .getAllQueueItemsAndProcessAtomic((inProgress, waiting) -> {
+              context.verify(vv -> {
+                assertThat(
+                  inProgress.getDataImportQueueItems(),
+                  containsInAnyOrder(IN_PROGRESS_1, IN_PROGRESS_2)
+                );
+                assertThat(
+                  waiting.getDataImportQueueItems(),
+                  containsInAnyOrder(WAITING_1, WAITING_2)
+                );
+              });
 
-          verify(postgresConnection, times(1))
-            .query(
-              matches(
-                Pattern.compile(
-                  "^LOCK TABLE \\w+\\.\\w+ IN ACCESS EXCLUSIVE MODE$"
-                )
+              return Optional.of(WAITING_1);
+            })
+            .onComplete(
+              context.asyncAssertSuccess(result -> {
+                assertThat(result.get(), is(WAITING_1));
+
+                // ensure that WAITING_1 changed
+                queueItemDao
+                  .getAllQueueItems()
+                  .onComplete(
+                    context.asyncAssertSuccess(r ->
+                      assertThat(
+                        r.getDataImportQueueItems(),
+                        containsInAnyOrder(
+                          WAITING_1.withProcessing(true),
+                          WAITING_2,
+                          IN_PROGRESS_1,
+                          IN_PROGRESS_2
+                        )
+                      )
+                    )
+                  );
+              })
+            )
+        )
+      );
+  }
+
+  @Test
+  public void testGetById(TestContext context) {
+    CompositeFuture
+      .all(
+        queueItemDao.addQueueItem(WAITING_1),
+        queueItemDao.addQueueItem(IN_PROGRESS_1)
+      )
+      .onComplete(
+        context.asyncAssertSuccess(v -> {
+          queueItemDao
+            .getQueueItemById(WAITING_1.getId())
+            .onComplete(
+              context.asyncAssertSuccess(result ->
+                assertThat(result, is(WAITING_1))
+              )
+            );
+          queueItemDao
+            .getQueueItemById(IN_PROGRESS_1.getId())
+            .onComplete(
+              context.asyncAssertSuccess(result ->
+                assertThat(result, is(IN_PROGRESS_1))
               )
             );
 
-          verify(postgresClient, atLeastOnce()).withTransaction(any());
+          queueItemDao
+            .getQueueItemById(WAITING_2.getId())
+            .onComplete(context.asyncAssertFailure());
+          queueItemDao
+            .getQueueItemById(IN_PROGRESS_2.getId())
+            .onComplete(context.asyncAssertFailure());
         })
       );
   }
 
   @Test
-  public void testUpdateQueueItemById(TestContext context) {
-    // given
-    doAnswer((InvocationOnMock invocation) -> {
-        Promise<RowSet<Row>> promise = invocation.getArgument(2);
-        promise.complete(new LocalRowSet(1));
-        return null;
-      })
-      .when(postgresClient)
-      .execute(
-        anyString(),
-        any(Tuple.class),
-        ArgumentMatchers.<Promise<RowSet<Row>>>any()
-      );
-
-    // when
-    DataImportQueueItem queueItem = new DataImportQueueItem();
-    queueItem.setFilePath("test/file/path");
-    storedItemUUID = UUID.fromString("924e6785-c1e3-5078-88df-3854e1a0b8c6");
-    queueItem.setId(storedItemUUID.toString());
-    queueItem.setUploadDefinitionId("05f177bd-e0fb-5ce5-8ca2-10c9f3e3671f");
-    queueItem.setJobExecutionId("9a71a0c2-67fe-565f-bfd5-45a6f7c81ff1");
-    queueItem.setOriginalSize(5000);
-    queueItem.setTimestamp(new DateTime().toDate());
-    queueItemDaoImpl
-      .updateDataImportQueueItem(queueItem)
-      // then
+  public void testUpdate(TestContext context) {
+    CompositeFuture
+      .all(
+        queueItemDao.addQueueItem(WAITING_1),
+        queueItemDao.addQueueItem(IN_PROGRESS_1)
+      )
       .onComplete(
-        context.asyncAssertSuccess(x -> {
-          verify(postgresClient, times(1))
-            .execute(
-              startsWith("UPDATE data_import_global.queue_items SET"),
-              any(Tuple.class),
-              ArgumentMatchers.<Promise<RowSet<Row>>>any()
+        context.asyncAssertSuccess(v -> {
+          queueItemDao
+            .updateQueueItem(WAITING_1)
+            .onComplete(
+              context.asyncAssertSuccess(result ->
+                assertThat(result, is(WAITING_1))
+              )
             );
-          verifyNoMoreInteractions(postgresClient);
+
+          // cannot update what does not exist
+          queueItemDao
+            .updateQueueItem(WAITING_2)
+            .onComplete(context.asyncAssertFailure());
         })
       );
   }
 
   @Test
-  public void testDeleteQueueItemById(TestContext context) {
-    // given
-    when(postgresClient.execute(anyString(), any(Tuple.class)))
-      .thenReturn(Future.succeededFuture(new LocalRowSet(1)));
-
-    // when
-    queueItemDaoImpl
-      .deleteDataImportQueueItem("sample-id")
-      // then
+  public void testDeleteById(TestContext context) {
+    CompositeFuture
+      .all(
+        queueItemDao.addQueueItem(WAITING_1),
+        queueItemDao.addQueueItem(WAITING_2)
+      )
       .onComplete(
-        context.asyncAssertSuccess(x -> {
-          verify(postgresClient, times(1))
-            .execute(
-              eq("DELETE FROM data_import_global.queue_items WHERE id = $1"),
-              any(Tuple.class)
+        context.asyncAssertSuccess(v -> {
+          // cannot delete what was never there
+          queueItemDao
+            .deleteQueueItemById(IN_PROGRESS_1.getId())
+            .onComplete(context.asyncAssertFailure());
+
+          // successful deletion
+          queueItemDao
+            .deleteQueueItemById(WAITING_1.getId())
+            .onComplete(
+              context.asyncAssertSuccess(result -> {
+                queueItemDao
+                  .getAllQueueItems()
+                  .onComplete(
+                    context.asyncAssertSuccess(remaining ->
+                      assertThat(
+                        remaining.getDataImportQueueItems(),
+                        contains(WAITING_2)
+                      )
+                    )
+                  );
+
+                // cannot delete twice
+                queueItemDao
+                  .deleteQueueItemById(WAITING_1.getId())
+                  .onComplete(context.asyncAssertFailure());
+              })
             );
-          verifyNoMoreInteractions(postgresClient);
         })
       );
   }
 
   @Test
-  public void testDeleteQueueItemByJobExecutionId(TestContext context) {
-    // given
-    when(postgresClient.execute(anyString(), any(Tuple.class)))
-      .thenReturn(Future.succeededFuture(new LocalRowSet(1)));
-
-    // when
-    queueItemDaoImpl
-      .deleteDataImportQueueItemByJobExecutionId("sample-id")
-      // then
+  public void testDeleteByJobExecutionId(TestContext context) {
+    CompositeFuture
+      .all(
+        queueItemDao.addQueueItem(WAITING_1),
+        queueItemDao.addQueueItem(WAITING_2),
+        queueItemDao.addQueueItem(IN_PROGRESS_1),
+        queueItemDao.addQueueItem(IN_PROGRESS_2)
+      )
       .onComplete(
-        context.asyncAssertSuccess(x -> {
-          verify(postgresClient, times(1))
-            .execute(
-              eq("DELETE FROM data_import_global.queue_items WHERE job_execution_id = $1"),
-              any(Tuple.class)
+        context.asyncAssertSuccess(v -> {
+          // cannot delete what was never there
+          queueItemDao
+            .deleteQueueItemsByJobExecutionId(
+              "0d8cac53-29ee-572b-b506-8bdb33f5331e"
+            )
+            .onComplete(context.asyncAssertFailure());
+
+          // successful deletion
+          queueItemDao
+            .deleteQueueItemsByJobExecutionId(WAITING_1.getJobExecutionId())
+            .onComplete(
+              context.asyncAssertSuccess(numDeleted -> {
+                assertThat(numDeleted, is(2));
+
+                queueItemDao
+                  .getAllQueueItems()
+                  .onComplete(
+                    context.asyncAssertSuccess(remaining ->
+                      assertThat(
+                        remaining.getDataImportQueueItems(),
+                        contains(IN_PROGRESS_1, IN_PROGRESS_2)
+                      )
+                    )
+                  );
+
+                // cannot delete twice
+                queueItemDao
+                  .deleteQueueItemsByJobExecutionId(
+                    WAITING_1.getJobExecutionId()
+                  )
+                  .onComplete(context.asyncAssertFailure());
+              })
             );
-          verifyNoMoreInteractions(postgresClient);
         })
       );
+  }
+
+  @Test
+  public void testExceptional(TestContext context) {
+    PostgresClientFactory badPostgresFactory = mock(
+      PostgresClientFactory.class
+    );
+    PostgresClient badPostgresClient = mock(PostgresClient.class);
+    when(badPostgresFactory.getInstance()).thenReturn(badPostgresClient);
+    doThrow(new RuntimeException("test exception"))
+      .when(badPostgresClient)
+      .select(any(), any());
+    doThrow(new RuntimeException("test exception"))
+      .when(badPostgresClient)
+      .select(any(), any(Tuple.class), any());
+    doThrow(new RuntimeException("test exception"))
+      .when(badPostgresClient)
+      .execute(any(), any(Tuple.class), any());
+    doThrow(new RuntimeException("test exception"))
+      .when(badPostgresClient)
+      .execute(any(), any(Tuple.class));
+
+    DataImportQueueItemDao failingQueueItemDao = new DataImportQueueItemDaoImpl(
+      badPostgresFactory
+    );
+
+    failingQueueItemDao
+      .getAllQueueItems()
+      .onComplete(context.asyncAssertFailure());
+    failingQueueItemDao
+      .getAllWaitingQueueItems()
+      .onComplete(context.asyncAssertFailure());
+    failingQueueItemDao
+      .getAllInProgressQueueItems()
+      .onComplete(context.asyncAssertFailure());
+    failingQueueItemDao
+      .getQueueItemById("test-id")
+      .onComplete(context.asyncAssertFailure());
+    failingQueueItemDao
+      .updateQueueItem(WAITING_1)
+      .onComplete(context.asyncAssertFailure());
   }
 }

@@ -434,8 +434,9 @@ public class SplitFileProcessingService {
           );
 
           switch (exec.getStatus()) {
-            // don't cancel jobs that are already completed
-            case COMMITTED, ERROR, DISCARDED, CANCELLED -> {}
+            case COMMITTED, ERROR, DISCARDED, CANCELLED -> {
+              // don't cancel jobs that are already completed
+            }
             default -> futures.add(
               client
                 .putChangeManagerJobExecutionsStatusById(

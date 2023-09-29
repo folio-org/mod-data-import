@@ -115,9 +115,7 @@ public class FileSplitService {
       .compose(cf -> cf)
       // now let's turn this back into a List<String>
       .map(cf -> cf.list())
-      .map(list ->
-        list.stream().map(String.class::cast).collect(Collectors.toList())
-      )
+      .map(list -> list.stream().map(String.class::cast).toList())
       // and since we're all done, we can delete the temporary folder
       .compose((List<String> innerResult) -> {
         LOGGER.info("Deleting temporary folder={}", tempDir);

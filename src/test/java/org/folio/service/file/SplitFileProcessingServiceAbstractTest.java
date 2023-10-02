@@ -79,6 +79,12 @@ public abstract class SplitFileProcessingServiceAbstractTest
     .withId("3c4add55-cb78-5056-860f-5df0d1aa83ca")
     .withSourcePath("key/file-3-key");
 
+  protected static final JobProfileInfo JOB_PROFILE_MARC = new JobProfileInfo()
+    .withDataType(JobProfileInfo.DataType.MARC);
+
+  protected static final JobProfileInfo JOB_PROFILE_EDIFACT = new JobProfileInfo()
+    .withDataType(JobProfileInfo.DataType.EDIFACT);
+
   @Mock
   protected FileSplitService fileSplitService;
 
@@ -174,8 +180,11 @@ public abstract class SplitFileProcessingServiceAbstractTest
       return super.createParentJobExecutions(entity, client);
     }
 
-    public Future<SplitFileInformation> splitFile(String key) {
-      return super.splitFile(key);
+    public Future<SplitFileInformation> splitFile(
+      String key,
+      JobProfileInfo profile
+    ) {
+      return super.splitFile(key, profile);
     }
 
     public Buffer verifyOkStatus(HttpResponse<Buffer> response) {

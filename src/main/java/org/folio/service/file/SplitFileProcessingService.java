@@ -137,7 +137,7 @@ public class SplitFileProcessingService {
         .getFileDefinitions()
         .stream()
         .map(FileDefinition::getSourcePath)
-        .map(this::splitFile)
+        .map(key -> splitFile(key, entity.getJobProfileInfo()))
         .collect(Collectors.toList())
     );
 
@@ -527,9 +527,15 @@ public class SplitFileProcessingService {
 
   /**
    * Split a file into chunks, returning a {@link SplitFileInformation} object containing
-   * the original key, the total number of records in the file, and the keys of the split chunks
+   * the original key, the total number of records in the file, and the keys of the split chunks.
+   *
+   * Note that non-MARC binary format files will not be split; instead, the keys of the split
+   * chunks will simply be a list containing only the original key
    */
-  protected Future<SplitFileInformation> splitFile(String key) {
+  protected Future<SplitFileInformation> splitFile(
+    String key,
+    JobProfileInfo profile
+  ) {
     return Future
       .succeededFuture(new SplitFileInformation().withKey(key))
       // splitting and counting must be done sequentially as splitting deletes the original file
@@ -539,18 +545,22 @@ public class SplitFileProcessingService {
           .map((InputStream stream) -> {
             try {
               return result.withTotalRecords(
-                FileSplitUtilities.countRecordsInMarcFile(stream)
+                FileSplitUtilities.countRecordsInFile(key, stream, profile)
               );
             } catch (IOException e) {
               throw new UncheckedIOException(e);
             }
           })
       )
-      .compose(result ->
-        fileSplitService
-          .splitFileFromS3(vertx.getOrCreateContext(), key)
-          .map(result::withSplitKeys)
-      );
+      .compose((SplitFileInformation file) -> {
+        if (FileSplitUtilities.isMarcBinary(key, profile)) {
+          return fileSplitService
+            .splitFileFromS3(vertx.getOrCreateContext(), key)
+            .map(file::withSplitKeys);
+        } else {
+          return Future.succeededFuture(file.withSplitKeys(Arrays.asList(key)));
+        }
+      });
   }
 
   protected Buffer verifyOkStatus(HttpResponse<Buffer> response) {

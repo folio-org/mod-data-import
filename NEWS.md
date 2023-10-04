@@ -1,3 +1,6 @@
+## 2023-10-04 v2.7.2
+* [UXPROD-4337] Add S3 file upload/download support, file splitting for MARC 21, and smarter job prioritization
+
 ## 2023-03-13 v2.7.1
 * [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Update data-import-util library to v1.11.0 ([MODDATAIMP-785](https://issues.folio.org/browse/MODDATAIMP-785))
 * [KAFKAWRAP-35](https://issues.folio.org/browse/KAFKAWRAP-35) Update folio-kafka-wrapper library to v2.7.1 ([KAFKAWRAP-34](https://issues.folio.org/browse/KAFKAWRAP-34))

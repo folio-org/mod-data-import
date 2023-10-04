@@ -72,7 +72,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     UploadDefinitionService uploadDefinitionService,
     ParallelFileChunkingProcessor fileProcessor,
     @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval,
-    @Value("${ASYNC_PROCESSOR_MAX_WORKERS_COUNT:5}") int maxWorkersCount
+    @Value("${ASYNC_PROCESSOR_MAX_WORKERS_COUNT:1}") int maxWorkersCount
   ) {
     this.vertx = vertx;
 

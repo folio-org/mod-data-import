@@ -1,10 +1,9 @@
-## 2023-09-xo v2.8.0-SNAPSHOT
+## 2023-10-04 v2.8.0
 * [MODDATAIMP-871](https://issues.folio.org/browse/MODDATAIMP-871) Upgrade folio-kafka-wrapper to 3.0.0 version
-
-## 2023-03-xo v2.8.0-SNAPSHOT
 * [MODDATAIMP-854](https://issues.folio.org/browse/MODDATAIMP-854) Upgrade mod-data-import to Java 17
+* [UXPROD-4337](https://issues.folio.org/browse/UXPROD-4337) Add S3 file upload/download support, file splitting for MARC 21, and smarter job prioritization
 
-## 2023-03-xo v2.7.1-SNAPSHOT
+## 2023-03-13 v2.7.1
 * [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Update data-import-util library to v1.11.0
 
 ## 2023-02-24 v2.7.0

@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -36,7 +37,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.rest.jaxrs.model.File;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
@@ -74,29 +74,34 @@ public class SplitFileProcessingServiceStartJobTest
           1
         );
 
-        assertThat(
-          request
-            .getFiles()
-            .stream()
-            .map(File::getName)
-            .collect(Collectors.toList()),
-          containsInAnyOrder(
-            "key/file-1-key",
-            "key/file-2-key",
-            "key/file-3-key"
-          )
-        );
+        assertThat(request.getFiles(), hasSize(1));
         assertThat(request.getJobProfileInfo(), is(JOB_PROFILE_INFO));
         assertThat(request.getUserId(), is("created-user-id"));
 
-        responseHandler.handle(
-          getSuccessArBuffer(
-            new InitJobExecutionsRsDto()
-              .withJobExecutions(
-                Arrays.asList(JOB_EXECUTION_1, JOB_EXECUTION_2, JOB_EXECUTION_3)
-              )
-          )
-        );
+        if (request.getFiles().get(0).getName().contains("1")) {
+          responseHandler.handle(
+            getSuccessArBuffer(
+              new InitJobExecutionsRsDto()
+                .withJobExecutions(Arrays.asList(JOB_EXECUTION_1))
+            )
+          );
+        } else if (request.getFiles().get(0).getName().contains("2")) {
+          responseHandler.handle(
+            getSuccessArBuffer(
+              new InitJobExecutionsRsDto()
+                .withJobExecutions(Arrays.asList(JOB_EXECUTION_2))
+            )
+          );
+        } else if (request.getFiles().get(0).getName().contains("3")) {
+          responseHandler.handle(
+            getSuccessArBuffer(
+              new InitJobExecutionsRsDto()
+                .withJobExecutions(Arrays.asList(JOB_EXECUTION_3))
+            )
+          );
+        } else {
+          context.fail();
+        }
 
         return null;
       })
@@ -132,7 +137,7 @@ public class SplitFileProcessingServiceStartJobTest
             )
           );
 
-          verify(changeManagerClient, times(1))
+          verify(changeManagerClient, times(3))
             .postChangeManagerJobExecutions(any(), any());
         })
       );
@@ -274,28 +279,33 @@ public class SplitFileProcessingServiceStartJobTest
           1
         );
 
-        assertThat(
-          request
-            .getFiles()
-            .stream()
-            .map(File::getName)
-            .collect(Collectors.toList()),
-          containsInAnyOrder(
-            "key/file-1-key",
-            "key/file-2-key",
-            "key/file-3-key"
-          )
-        );
+        assertThat(request.getFiles(), hasSize(1));
         assertThat(request.getJobProfileInfo(), is(JOB_PROFILE_INFO));
 
-        responseHandler.handle(
-          getSuccessArBuffer(
-            new InitJobExecutionsRsDto()
-              .withJobExecutions(
-                Arrays.asList(JOB_EXECUTION_1, JOB_EXECUTION_2, JOB_EXECUTION_3)
-              )
-          )
-        );
+        if (request.getFiles().get(0).getName().contains("1")) {
+          responseHandler.handle(
+            getSuccessArBuffer(
+              new InitJobExecutionsRsDto()
+                .withJobExecutions(Arrays.asList(JOB_EXECUTION_1))
+            )
+          );
+        } else if (request.getFiles().get(0).getName().contains("2")) {
+          responseHandler.handle(
+            getSuccessArBuffer(
+              new InitJobExecutionsRsDto()
+                .withJobExecutions(Arrays.asList(JOB_EXECUTION_2))
+            )
+          );
+        } else if (request.getFiles().get(0).getName().contains("3")) {
+          responseHandler.handle(
+            getSuccessArBuffer(
+              new InitJobExecutionsRsDto()
+                .withJobExecutions(Arrays.asList(JOB_EXECUTION_3))
+            )
+          );
+        } else {
+          context.fail();
+        }
 
         return null;
       })
@@ -365,7 +375,7 @@ public class SplitFileProcessingServiceStartJobTest
           assertThat(map.get("key/file-3-key").getTotalRecords(), is(10));
 
           verify(service, times(3)).splitFile(any(), any());
-          verify(changeManagerClient, times(1))
+          verify(changeManagerClient, times(3))
             .postChangeManagerJobExecutions(any(), any());
         })
       );

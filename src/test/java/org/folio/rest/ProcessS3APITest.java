@@ -197,7 +197,7 @@ public class ProcessS3APITest extends AbstractRestTest {
       .when()
       .post("/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles")
       .then()
-      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+      .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
   @AfterClass

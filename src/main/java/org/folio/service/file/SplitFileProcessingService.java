@@ -492,31 +492,37 @@ public class SplitFileProcessingService {
     ProcessFilesRqDto entity,
     ChangeManagerClient client
   ) {
-    InitJobExecutionsRqDto initJobExecutionsRqDto = new InitJobExecutionsRqDto()
-      .withFiles(
+    return CompositeFuture
+      .all(
         entity
           .getUploadDefinition()
           .getFileDefinitions()
           .stream()
           .map(FileDefinition::getSourcePath)
           .map(key -> new File().withName(key))
+          .map(file ->
+            new InitJobExecutionsRqDto()
+              .withFiles(Arrays.asList(file))
+              .withJobProfileInfo(entity.getJobProfileInfo())
+              .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
+              .withUserId(
+                getUserIdFromMetadata(
+                  entity.getUploadDefinition().getMetadata()
+                )
+              )
+          )
+          .map(request ->
+            sendJobExecutionRequest(client, request)
+              .map(InitJobExecutionsRsDto::getJobExecutions)
+              .map(executions -> executions.get(0))
+          )
           .toList()
       )
-      .withJobProfileInfo(entity.getJobProfileInfo())
-      .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
-      .withUserId(
-        getUserIdFromMetadata(entity.getUploadDefinition().getMetadata())
-      );
-
-    return sendJobExecutionRequest(client, initJobExecutionsRqDto)
-      .map((InitJobExecutionsRsDto response) -> {
-        LOGGER.info(
-          "Created {} parent job executions",
-          response.getJobExecutions().size()
-        );
+      .map(CompositeFuture::<JobExecution>list)
+      .map((List<JobExecution> executions) -> {
+        LOGGER.info("Created {} parent job executions", executions.size());
         // turn into map from filename -> JobExecution
-        return response
-          .getJobExecutions()
+        return executions
           .stream()
           .collect(Collectors.toMap(JobExecution::getSourcePath, exec -> exec));
       })

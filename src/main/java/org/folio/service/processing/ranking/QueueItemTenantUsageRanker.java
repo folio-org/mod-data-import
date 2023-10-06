@@ -19,12 +19,10 @@ public class QueueItemTenantUsageRanker implements QueueItemRanker {
   private int scoreNoWorkers;
   private int scoreAllWorkers;
 
-  // we default to zeroes since, if the env variables are not present,
-  // then we should not score on this metric
   @Autowired
   public QueueItemTenantUsageRanker(
-    @Value("${SCORE_TENANT_USAGE_MIN:0}") int scoreNoWorkers,
-    @Value("${SCORE_TENANT_USAGE_MAX:0}") int scoreAllWorkers
+    @Value("${SCORE_TENANT_USAGE_MIN:100}") int scoreNoWorkers,
+    @Value("${SCORE_TENANT_USAGE_MAX:-200}") int scoreAllWorkers
   ) {
     this.scoreNoWorkers = scoreNoWorkers;
     this.scoreAllWorkers = scoreAllWorkers;

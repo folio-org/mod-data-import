@@ -17,13 +17,11 @@ public class QueueItemPartNumberRanker implements QueueItemRanker {
   private int scoreLast;
   private int scoreLastReference;
 
-  // we default to zeroes since, if the env variables are not present,
-  // then we should not score on this metric
   @Autowired
   public QueueItemPartNumberRanker(
-    @Value("${SCORE_PART_NUMBER_FIRST:0}") int scoreFirst,
+    @Value("${SCORE_PART_NUMBER_FIRST:1}") int scoreFirst,
     @Value("${SCORE_PART_NUMBER_LAST:0}") int scoreLast,
-    @Value("${SCORE_PART_NUMBER_LAST_REFERENCE:0}") int scoreLastReference
+    @Value("${SCORE_PART_NUMBER_LAST_REFERENCE:100}") int scoreLastReference
   ) {
     this.scoreFirst = scoreFirst;
     this.scoreLast = scoreLast;

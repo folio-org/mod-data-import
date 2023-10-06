@@ -16,13 +16,11 @@ public class QueueItemSizeRanker implements QueueItemRanker {
   private int scoreLargest;
   private int scoreLargeReference;
 
-  // we default to zeroes since, if the env variables are not present,
-  // then we should not score on this metric
   @Autowired
   public QueueItemSizeRanker(
-    @Value("${SCORE_JOB_SMALLEST:0}") int scoreSmallest,
-    @Value("${SCORE_JOB_LARGEST:0}") int scoreLargest,
-    @Value("${SCORE_JOB_LARGE_REFERENCE:0}") int scoreLargeReference
+    @Value("${SCORE_JOB_SMALLEST:40}") int scoreSmallest,
+    @Value("${SCORE_JOB_LARGEST:-40}") int scoreLargest,
+    @Value("${SCORE_JOB_LARGE_REFERENCE:100000}") int scoreLargeReference
   ) {
     this.scoreSmallest = scoreSmallest;
     this.scoreLargest = scoreLargest;

@@ -130,12 +130,12 @@ To allow multiple instance deployment, for every instance the same persistent vo
 
 The file-splitting process may be configured with the following environment variables:
 
-| Name                                | Type               | Default | Description                                                                                |
-| ----------------------------------- | ------------------ | ------- | ------------------------------------------------------------------------------------------ |
-| `SPLIT_FILES_ENABLED`               | `true` or `false`  | `false` | Whether files should be split into chunks and processed separately                         |
-| `RECORDS_PER_SPLIT_FILE`            | integer > 0        | `1000`  | The maximum number of records to include in a single file                                  |
-| `ASYNC_PROCESSOR_POLL_INTERVAL_MS`  | integer (msec) ≥ 0 | `5000`  | The number of milliseconds between times when the module checks the queue for waiting jobs |
-| `ASYNC_PROCESSOR_MAX_WORKERS_COUNT` | integer ≥ 1        | `1`     | The maximum number of concurrent jobs to process at once, in this instance                 |
+| Name                                | Type               | Required                 | Default | Description                                                                                |
+| ----------------------------------- | ------------------ | ------------------------ | ------- | ------------------------------------------------------------------------------------------ |
+| `SPLIT_FILES_ENABLED`               | `true` or `false`  | yes, if enabling feature | `false` | Whether files should be split into chunks and processed separately                         |
+| `RECORDS_PER_SPLIT_FILE`            | integer > 0        | no                       | `1000`  | The maximum number of records to include in a single file                                  |
+| `ASYNC_PROCESSOR_POLL_INTERVAL_MS`  | integer (msec) ≥ 0 | no                       | `5000`  | The number of milliseconds between times when the module checks the queue for waiting jobs |
+| `ASYNC_PROCESSOR_MAX_WORKERS_COUNT` | integer ≥ 1        | no                       | `1`     | The maximum number of concurrent jobs to process at once, in this instance                 |
 
 For the polling interval, a lower number results in decreased latency between when a job is added to the queue and when it is processed. However, this also results in more frequent database queries, which may impact performance. Note that the number set here is the "worst case" — average waiting would be half of it — and that a few seconds delay on a large import is hardly noticeable.
 
@@ -148,15 +148,15 @@ The worker count is useful for production/multi-tenant environments, where you m
 
 This module uses S3-compatible storage as part of the file upload process. The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
 
-| Name                    | Type              | Default                  | Description                                                                   |
-| ----------------------- | ----------------- | ------------------------ | ----------------------------------------------------------------------------- |
-| `AWS_URL`               | URL as string     | `http://127.0.0.1:9000/` | URL of S3-compatible storage                                                  |
-| `AWS_REGION`            | string            | _none_                   | S3 region                                                                     |
-| `AWS_BUCKET`            | string            | _none_                   | Bucket to store and retrieve data                                             |
-| `AWS_ACCESS_KEY_ID`     | string            | _none_                   | S3 access key                                                                 |
-| `AWS_SECRET_ACCESS_KEY` | string            | _none_                   | S3 secret key                                                                 |
-| `AWS_SDK`               | `true` or `false` | `false`                  | If AWS S3 is being used (`true` if so, `false` other platforms such as MinIO) |
-| `S3_FORCEPATHSTYLE`     | `true` or `false` | `false`                  | If path-style requests should be used instead of virtual-hosted style         |
+| Name                    | Type              | Required           | Default                  | Description                                                                   |
+| ----------------------- | ----------------- | ------------------ | ------------------------ | ----------------------------------------------------------------------------- |
+| `AWS_URL`               | URL as string     | yes                | `http://127.0.0.1:9000/` | URL of S3-compatible storage                                                  |
+| `AWS_REGION`            | string            | yes                | _none_                   | S3 region                                                                     |
+| `AWS_BUCKET`            | string            | yes                | _none_                   | Bucket to store and retrieve data                                             |
+| `AWS_ACCESS_KEY_ID`     | string            | yes                | _none_                   | S3 access key                                                                 |
+| `AWS_SECRET_ACCESS_KEY` | string            | yes                | _none_                   | S3 secret key                                                                 |
+| `AWS_SDK`               | `true` or `false` | no, if using MinIO | `false`                  | If AWS S3 is being used (`true` if so, `false` other platforms such as MinIO) |
+| `S3_FORCEPATHSTYLE`     | `true` or `false` | no                 | `false`                  | If path-style requests should be used instead of virtual-hosted style         |
 
 Path-style vs virtual-hosted style requests are described [on the AWS S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access).
 
@@ -169,28 +169,31 @@ Path-style vs virtual-hosted style requests are described [on the AWS S3 documen
 
 This covers the following environment variables:
 
-| Name                                  | Type (unit)       | Default | Suggested | Reasoning                                                                                                                                                                                    |
-| ------------------------------------- | ----------------- | ------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SCORE_JOB_SMALLEST`                  | integer           | `0`     | `40`      |                                                                                                                                                                                              |
-| `SCORE_JOB_LARGEST`                   | integer           | `0`     | `-40`     | Larger jobs should be deprioritized                                                                                                                                                          |
-| `SCORE_JOB_REFERENCE`                 | integer (records) | `0`     | `100000`  |                                                                                                                                                                                              |
-| `SCORE_AGE_NEWEST`                    | integer           | `0`     | `0`       | New jobs begin with no boost                                                                                                                                                                 |
-| `SCORE_AGE_OLDEST`                    | integer           | `0`     | `50`      | As jobs age, their score increases rapidly, so this does not have to be too high. We want small jobs to "cut" in line effectively.                                                           |
-| `SCORE_AGE_EXTREME_THRESHOLD_MINUTES` | integer (minutes) | `0`     | `480`     | 8 hours                                                                                                                                                                                      |
-| `SCORE_AGE_EXTREME_VALUE`             | integer           | `0`     | `10000`   | Jump to the top of the queue if waiting more than 8 hours                                                                                                                                    |
-| `SCORE_TENANT_USAGE_MIN`              | integer           | `0`     | `100`     | If the tenant has no jobs running, then it should be prioritized                                                                                                                             |
-| `SCORE_TENANT_USAGE_MAX`              | integer           | `0`     | `-200`    | If the tenant is using all available workers, it should be **significantly** deprioritized. If no other tenants are competing, this will not matter (since all jobs would be offset by this) |
-| `SCORE_PART_NUMBER_FIRST`             | integer           | `0`     | `1`       | Very small; we only want to order parts amongst others within a job (which would likely have the same score otherwise)                                                                       |
-| `SCORE_PART_NUMBER_LAST`              | integer           | `0`     | `0`       |                                                                                                                                                                                              |
-| `SCORE_PART_NUMBER_LAST_REFERENCE`    | integer           | `0`     | `100`     | Does not really matter due to the small range                                                                                                                                                |
+> [!NOTE]
+> None of these are required; if not set, the following default values will be used.
+
+| Name                                  | Type (unit)       | Default  | Reasoning                                                                                                                                                                                    |
+| ------------------------------------- | ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SCORE_JOB_SMALLEST`                  | integer           | `40`     |                                                                                                                                                                                              |
+| `SCORE_JOB_LARGEST`                   | integer           | `-40`    | Larger jobs should be deprioritized                                                                                                                                                          |
+| `SCORE_JOB_REFERENCE`                 | integer (records) | `100000` |                                                                                                                                                                                              |
+| `SCORE_AGE_NEWEST`                    | integer           | `0`      | New jobs begin with no boost                                                                                                                                                                 |
+| `SCORE_AGE_OLDEST`                    | integer           | `50`     | As jobs age, their score increases rapidly, so this does not have to be too high. We want small jobs to "cut" in line effectively.                                                           |
+| `SCORE_AGE_EXTREME_THRESHOLD_MINUTES` | integer (minutes) | `480`    | 8 hours                                                                                                                                                                                      |
+| `SCORE_AGE_EXTREME_VALUE`             | integer           | `10000`  | Jump to the top of the queue if waiting more than 8 hours                                                                                                                                    |
+| `SCORE_TENANT_USAGE_MIN`              | integer           | `100`    | If the tenant has no jobs running, then it should be prioritized                                                                                                                             |
+| `SCORE_TENANT_USAGE_MAX`              | integer           | `-200`   | If the tenant is using all available workers, it should be **significantly** deprioritized. If no other tenants are competing, this will not matter (since all jobs would be offset by this) |
+| `SCORE_PART_NUMBER_FIRST`             | integer           | `1`      | Very small; we only want to order parts amongst others within a job (which would likely have the same score otherwise)                                                                       |
+| `SCORE_PART_NUMBER_LAST`              | integer           | `0`      |                                                                                                                                                                                              |
+| `SCORE_PART_NUMBER_LAST_REFERENCE`    | integer           | `100`    | Does not really matter due to the small range                                                                                                                                                |
 
 For information on what these mean, how to configure them, how scores are calculated, and even a playground to try experiment with different values, please see [this wiki page](https://wiki.folio.org/display/FOLIOtips/Detailed+Release+Notes+for+Data+Import+Splitting+Feature#DetailedReleaseNotesforDataImportSplittingFeature-QueuePrioritizationAlgorithm).
 
 > [!IMPORTANT]
-> These all default to 0, meaning the prioritization algorithm is effectively disabled if none of these are set (and jobs will run in indeterminate order). If any of these are set, the algorithm will be enabled and the values will be used to calculate a score for each job. The job with the highest score will be run first.
+> To disable an individual metric (or the prioritization altogether), set the value(s) to `0`.
 
 > [!NOTE]
-> We recommend the suggested values above, however, there is a lot of room for customization and extension as needed.
+> We recommend the suggested values above, however, there is a lot of room for customization and extension as needed.  Please see the doc for more information.
 
 ## System user
 
@@ -206,10 +209,10 @@ To enable asynchronous job launching (as part of the file splitting process), th
 a system user upon installation. The system user is named `SystemDataImport`,
 and its credentials may be customized with the following environment variables:
 
-| Name                         | Type   | Default                   | Description          |
-| ---------------------------- | ------ | ------------------------- | -------------------- |
-| `SYSTEM_PROCESSING_USERNAME` | string | `data-import-system-user` | System user username |
-| `SYSTEM_PROCESSING_PASSWORD` | string | `data-import-system-user` | System user password |
+| Name                         | Type   | Required | Default                   | Description          |
+| ---------------------------- | ------ | -------- | ------------------------- | -------------------- |
+| `SYSTEM_PROCESSING_USERNAME` | string | no       | `data-import-system-user` | System user username |
+| `SYSTEM_PROCESSING_PASSWORD` | string | no       | `data-import-system-user` | System user password |
 
 This user is granted [many of the same permissions](/src/main/resources/permissions.txt) as the module for the
 `/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles` endpoint. This enables this

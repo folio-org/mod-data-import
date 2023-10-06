@@ -516,6 +516,7 @@ public class SplitFileProcessingService {
               .map(InitJobExecutionsRsDto::getJobExecutions)
               .map(executions -> executions.get(0))
           )
+          .map(Future.class::cast)
           .toList()
       )
       .map(CompositeFuture::<JobExecution>list)

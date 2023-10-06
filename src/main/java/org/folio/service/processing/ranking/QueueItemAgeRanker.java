@@ -20,16 +20,14 @@ public class QueueItemAgeRanker implements QueueItemRanker {
   private int scoreAgeExtremeThresholdMinutes;
   private int scoreAgeExtremeValue;
 
-  // we default to zeroes since, if the env variables are not present,
-  // then we should not score on this metric
   @Autowired
   public QueueItemAgeRanker(
     @Value("${SCORE_AGE_NEWEST:0}") int scoreAgeNewest,
-    @Value("${SCORE_AGE_OLDEST:0}") int scoreAgeOldest,
+    @Value("${SCORE_AGE_OLDEST:50}") int scoreAgeOldest,
     @Value(
-      "${SCORE_AGE_EXTREME_THRESHOLD_MINUTES:0}"
+      "${SCORE_AGE_EXTREME_THRESHOLD_MINUTES:480}"
     ) int scoreAgeExtremeThresholdMinutes,
-    @Value("${SCORE_AGE_EXTREME_VALUE:0}") int scoreAgeExtremeValue
+    @Value("${SCORE_AGE_EXTREME_VALUE:10000}") int scoreAgeExtremeValue
   ) {
     this.scoreAgeNewest = scoreAgeNewest;
     this.scoreAgeOldest = scoreAgeOldest;

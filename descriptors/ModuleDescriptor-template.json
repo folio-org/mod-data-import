@@ -4,7 +4,7 @@
   "requires": [
     {
       "id": "source-manager-job-executions",
-      "version": "3.0"
+      "version": "3.3"
     },
     {
       "id": "login",
@@ -26,7 +26,7 @@
   "provides": [
     {
       "id": "data-import",
-      "version": "3.0",
+      "version": "3.1",
       "handlers": [
       	{
           "methods": [
@@ -511,8 +511,8 @@
       { "name": "SCORE_JOB_LARGEST", "value": "-40" },
       { "name": "SCORE_JOB_REFERENCE", "value": "100000" },
       { "name": "SCORE_AGE_NEWEST", "value": "0" },
-      { "name": "SCORE_AGE_OLDEST", "value": "150" },
-      { "name": "SCORE_AGE_EXTREME_THRESHOLD_MINUTES", "value": "4320" },
+      { "name": "SCORE_AGE_OLDEST", "value": "50" },
+      { "name": "SCORE_AGE_EXTREME_THRESHOLD_MINUTES", "value": "480" },
       { "name": "SCORE_AGE_EXTREME_VALUE", "value": "10000" },
       { "name": "SCORE_TENANT_USAGE_MIN", "value": "100" },
       { "name": "SCORE_TENANT_USAGE_MAX", "value": "-200" },
@@ -522,7 +522,7 @@
       { "name": "SYSTEM_PROCESSING_USERNAME", "value": "data-import-system-user" },
       { "name": "SYSTEM_PROCESSING_PASSWORD", "value": "data-import-system-user" },
       { "name": "ASYNC_PROCESSOR_POLL_INTERVAL_MS", "value": "5000" },
-      { "name": "ASYNC_PROCESSOR_MAX_WORKERS_COUNT", "value": "5" }
+      { "name": "ASYNC_PROCESSOR_MAX_WORKERS_COUNT", "value": "1" }
     ]
   }
 }

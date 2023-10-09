@@ -143,76 +143,78 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       queueItem.getJobExecutionId()
     );
 
-    OkapiConnectionParams params = getConnectionParams(queueItem);
-
     // we need to store out here to ensure it is properly deleted
     // on failure and success
     AtomicReference<File> localFile = new AtomicReference<>();
 
-    return Future
-      .succeededFuture(new QueueJob().withQueueItem(queueItem))
-      .compose((QueueJob job) ->
-        createLocalFile(queueItem)
-          .map((File file) -> {
-            localFile.set(file);
-            return job.withFile(file);
-          })
-      )
-      .compose(job ->
-        uploadDefinitionService
-          .getJobExecutionById(queueItem.getJobExecutionId(), params)
-          .map(job::withJobExecution)
-      )
-      .compose(job ->
-        updateJobExecutionStatusSafely(
-          job.getJobExecution().getId(),
-          new StatusDto().withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS),
-          params
-        )
-          .map(job)
-      )
-      .compose(this::downloadFromS3)
-      .compose(job ->
-        fileProcessor
-          .processFile(
-            job.getFile(),
-            job.getJobExecution().getId(),
-            // this is the only part used on our end
-            new JobProfileInfo()
-              .withDataType(
-                JobProfileInfo.DataType.fromValue(
-                  job.getQueueItem().getDataType()
-                )
-              ),
-            params
+    return getConnectionParams(queueItem)
+      .compose(params ->
+        Future
+          .succeededFuture(new QueueJob().withQueueItem(queueItem))
+          .compose((QueueJob job) ->
+            createLocalFile(queueItem)
+              .map((File file) -> {
+                localFile.set(file);
+                return job.withFile(file);
+              })
           )
-          .map(job)
-      )
-      .onFailure((Throwable err) -> {
-        LOGGER.error("Unable to start chunk {}", queueItem, err);
+          .compose(job ->
+            uploadDefinitionService
+              .getJobExecutionById(queueItem.getJobExecutionId(), params)
+              .map(job::withJobExecution)
+          )
+          .compose(job ->
+            updateJobExecutionStatusSafely(
+              job.getJobExecution().getId(),
+              new StatusDto()
+                .withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS),
+              params
+            )
+              .map(job)
+          )
+          .compose(this::downloadFromS3)
+          .compose(job ->
+            fileProcessor
+              .processFile(
+                job.getFile(),
+                job.getJobExecution().getId(),
+                // this is the only part used on our end
+                new JobProfileInfo()
+                  .withDataType(
+                    JobProfileInfo.DataType.fromValue(
+                      job.getQueueItem().getDataType()
+                    )
+                  ),
+                params
+              )
+              .map(job)
+          )
+          .onFailure((Throwable err) -> {
+            LOGGER.error("Unable to start chunk {}", queueItem, err);
 
-        updateJobExecutionStatusSafely(
-          queueItem.getJobExecutionId(),
-          new StatusDto()
-            .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
-            .withStatus(StatusDto.Status.ERROR),
-          params
-        );
-      })
-      .onSuccess((QueueJob result) ->
-        LOGGER.info(
-          "Completed processing job execution {}!",
-          queueItem.getJobExecutionId()
-        )
-      )
-      .onComplete((AsyncResult<QueueJob> v) -> {
-        queueItemDao.deleteQueueItemById(queueItem.getId());
+            updateJobExecutionStatusSafely(
+              queueItem.getJobExecutionId(),
+              new StatusDto()
+                .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
+                .withStatus(StatusDto.Status.ERROR),
+              params
+            );
+          })
+          .onSuccess((QueueJob result) ->
+            LOGGER.info(
+              "Completed processing job execution {}!",
+              queueItem.getJobExecutionId()
+            )
+          )
+          .onComplete((AsyncResult<QueueJob> v) -> {
+            queueItemDao.deleteQueueItemById(queueItem.getId());
 
-        File file = localFile.get();
-        if (file != null) {
-          vertx.fileSystem().delete(file.toString());
-        }
-      });
+            File file = localFile.get();
+            if (file != null) {
+              vertx.fileSystem().delete(file.toString());
+            }
+          })
+      );
   }
 
   protected Future<Void> updateJobExecutionStatusSafely(
@@ -272,7 +274,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   /**
    * Authenticate and get connection parameters (Okapi URL/token)
    */
-  protected OkapiConnectionParams getConnectionParams(
+  protected Future<OkapiConnectionParams> getConnectionParams(
     DataImportQueueItem queueItem
   ) {
     OkapiConnectionParams provisionalParams = new OkapiConnectionParams(
@@ -288,19 +290,21 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       vertx
     );
 
-    String token = systemUserService.getAuthToken(provisionalParams);
-
-    return new OkapiConnectionParams(
-      Map.of(
-        XOkapiHeaders.URL.toLowerCase(),
-        queueItem.getOkapiUrl(),
-        XOkapiHeaders.TENANT.toLowerCase(),
-        queueItem.getTenant(),
-        XOkapiHeaders.TOKEN.toLowerCase(),
-        token
-      ),
-      vertx
-    );
+    return systemUserService
+      .getAuthToken(provisionalParams)
+      .map(token ->
+        new OkapiConnectionParams(
+          Map.of(
+            XOkapiHeaders.URL.toLowerCase(),
+            queueItem.getOkapiUrl(),
+            XOkapiHeaders.TENANT.toLowerCase(),
+            queueItem.getTenant(),
+            XOkapiHeaders.TOKEN.toLowerCase(),
+            token
+          ),
+          vertx
+        )
+      );
   }
 
   @Override

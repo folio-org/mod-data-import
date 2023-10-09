@@ -1,5 +1,6 @@
 package org.folio.service.auth;
 
+import io.vertx.core.Future;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -94,7 +95,9 @@ public class SystemUserAuthService {
     LOGGER.info("System user created successfully!");
   }
 
-  public String getAuthToken(OkapiConnectionParams okapiConnectionParams) {
+  public Future<String> getAuthToken(
+    OkapiConnectionParams okapiConnectionParams
+  ) {
     LOGGER.info("Attempting {}", getLoginCredentials(okapiConnectionParams));
 
     return authClient.login(

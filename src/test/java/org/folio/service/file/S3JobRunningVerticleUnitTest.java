@@ -34,7 +34,6 @@ import java.io.UncheckedIOException;
 import java.util.Optional;
 import org.apache.commons.io.FileUtils;
 import org.folio.dao.DataImportQueueItemDao;
-import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.StatusDto;
@@ -119,20 +118,25 @@ public class S3JobRunningVerticleUnitTest {
   }
 
   @Test
-  public void testConnectionParams() {
-    when(systemUserService.getAuthToken(any())).thenReturn("token");
+  public void testConnectionParams(TestContext context) {
+    when(systemUserService.getAuthToken(any()))
+      .thenReturn(Future.succeededFuture("token"));
 
-    OkapiConnectionParams params = verticle.getConnectionParams(
-      new DataImportQueueItem().withTenant("tenant").withOkapiUrl("okapi-url")
-    );
+    verticle
+      .getConnectionParams(
+        new DataImportQueueItem().withTenant("tenant").withOkapiUrl("okapi-url")
+      )
+      .onComplete(
+        context.asyncAssertSuccess(params -> {
+          assertThat(params.getTenantId(), is("tenant"));
+          assertThat(params.getOkapiUrl(), is("okapi-url"));
+          assertThat(params.getToken(), is("token"));
 
-    assertThat(params.getTenantId(), is("tenant"));
-    assertThat(params.getOkapiUrl(), is("okapi-url"));
-    assertThat(params.getToken(), is("token"));
+          verify(systemUserService, times(1)).getAuthToken(any());
 
-    verify(systemUserService, times(1)).getAuthToken(any());
-
-    verifyNoMoreInteractions(systemUserService);
+          verifyNoMoreInteractions(systemUserService);
+        })
+      );
   }
 
   @Test
@@ -386,7 +390,9 @@ public class S3JobRunningVerticleUnitTest {
       .withJobExecutionId("job-exec-id")
       .withDataType("MARC");
 
-    doReturn(null).when(verticle).getConnectionParams(any());
+    doReturn(Future.succeededFuture(null))
+      .when(verticle)
+      .getConnectionParams(any());
 
     doReturn(Future.succeededFuture(tempFile))
       .when(verticle)
@@ -455,7 +461,9 @@ public class S3JobRunningVerticleUnitTest {
       .withJobExecutionId("job-exec-id")
       .withDataType("MARC");
 
-    doReturn(null).when(verticle).getConnectionParams(any());
+    doReturn(Future.succeededFuture())
+      .when(verticle)
+      .getConnectionParams(any());
 
     doReturn(Future.succeededFuture(tempFile))
       .when(verticle)
@@ -530,7 +538,9 @@ public class S3JobRunningVerticleUnitTest {
         .withJobExecutionId("job-exec-id")
         .withDataType("MARC");
 
-      doReturn(null).when(verticle).getConnectionParams(any());
+      doReturn(Future.succeededFuture())
+        .when(verticle)
+        .getConnectionParams(any());
 
       doThrow(new UncheckedIOException(new IOException()))
         .when(verticle)

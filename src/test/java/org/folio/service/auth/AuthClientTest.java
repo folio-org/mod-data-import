@@ -6,7 +6,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.created;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
-import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -14,23 +13,28 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThrows;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.service.auth.AuthClient.LoginCredentials;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(VertxUnitRunner.class)
 public class AuthClientTest {
 
-  private static final String LOGIN_ENDPOINT = "/authn/login";
+  private static final String LOGIN_ENDPOINT = "/authn/login-with-expiry";
   private static final String CREDENTIALS_ENDPOINT = "/authn/credentials";
 
-  AuthClient client = new AuthClient();
+  AuthClient client = new AuthClient(Vertx.vertx());
 
   LoginCredentials testLoginCredentials = LoginCredentials
     .builder()
@@ -74,30 +78,49 @@ public class AuthClientTest {
   }
 
   @Test
-  public void testLogin() {
+  public void testLogin(TestContext context) {
     mockServer.stubFor(
       post(LOGIN_ENDPOINT)
         .withRequestBody(
-          equalToJson(JsonObject.mapFrom(testLoginCredentials).toString())
+          equalToJson(
+            JsonObject
+              .of("username", "username", "password", "password")
+              .toString()
+          )
         )
-        .willReturn(okJson(JsonObject.of("okapiToken", "result").toString()))
+        .willReturn(
+          WireMock.created().withHeader("Set-Cookie", "folioAccessToken=result")
+        )
     );
 
-    assertThat(client.login(params, testLoginCredentials), is("result"));
+    client
+      .login(params, testLoginCredentials)
+      .onComplete(
+        context.asyncAssertSuccess(token -> {
+          assertThat(token, is("result"));
 
-    mockServer.verify(exactly(1), anyRequestedFor(urlMatching(LOGIN_ENDPOINT)));
+          mockServer.verify(
+            exactly(1),
+            anyRequestedFor(urlMatching(LOGIN_ENDPOINT))
+          );
+        })
+      );
   }
 
   @Test
-  public void testLoginError() {
+  public void testLoginError(TestContext context) {
     mockServer.stubFor(post(LOGIN_ENDPOINT).willReturn(badRequest()));
 
-    assertThrows(
-      NoSuchElementException.class,
-      () -> client.login(params, testLoginCredentials)
-    );
-
-    mockServer.verify(exactly(1), anyRequestedFor(urlMatching(LOGIN_ENDPOINT)));
+    client
+      .login(params, testLoginCredentials)
+      .onComplete(
+        context.asyncAssertFailure(v -> {
+          mockServer.verify(
+            exactly(1),
+            anyRequestedFor(urlMatching(LOGIN_ENDPOINT))
+          );
+        })
+      );
   }
 
   @Test

@@ -1,23 +1,33 @@
 package org.folio.service.auth;
 
-import io.vertx.core.json.JsonObject;
-import java.util.Optional;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AuthClient extends ApiClient {
 
+  private static final Logger LOGGER = LogManager.getLogger();
   private static final String LOGIN_ENDPOINT = "authn/login";
   private static final String CREDENTIALS_ENDPOINT = "authn/credentials";
 
   public String login(OkapiConnectionParams params, LoginCredentials payload) {
-    return post(params, LOGIN_ENDPOINT, payload)
+    return sendRequest(
+      new HttpPost(),
+      params,
+      LOGIN_ENDPOINT,
+      null,
+      payload,
+      ApiClient::getResponseEntity
+    )
       .orElseThrow()
       .getString("okapiToken");
   }
@@ -27,23 +37,36 @@ public class AuthClient extends ApiClient {
     LoginCredentials payload
   ) {
     if (
-      postOrPut(
-        HttpPost::new,
-        params,
-        CREDENTIALS_ENDPOINT,
-        payload,
-        r -> {
-          // return optional so it can be caught and handled after
-          if (r.getStatusLine().getStatusCode() == 201) {
-            return Optional.of(new JsonObject());
-          } else {
-            return Optional.empty();
-          }
-        }
+      Boolean.FALSE.equals(
+        sendRequest(
+          new HttpPost(),
+          params,
+          CREDENTIALS_ENDPOINT,
+          null,
+          payload,
+          ApiClient::isResponseOk
+        )
       )
-        .isEmpty()
     ) {
-      throw new IllegalStateException();
+      throw new IllegalStateException("Unable to save credentials");
+    }
+  }
+
+  public void deleteCredentials(OkapiConnectionParams params, String userId) {
+    if (
+      Boolean.TRUE.equals(
+        sendRequest(
+          new HttpDelete(),
+          params,
+          CREDENTIALS_ENDPOINT,
+          Map.of("userId", userId),
+          ApiClient::isResponseOk
+        )
+      )
+    ) {
+      LOGGER.info("Deleted existing credentials for system user");
+    } else {
+      LOGGER.warn("Unable to delete existing credentials for system user");
     }
   }
 
@@ -53,9 +76,28 @@ public class AuthClient extends ApiClient {
   @AllArgsConstructor
   public static class LoginCredentials {
 
-    private String userId;
     private String username;
     private String password;
     private String tenant;
+
+    public String toString() {
+      if (this.getPassword().isBlank()) {
+        return (
+          "LoginCredentials(username=" +
+          this.getUsername() +
+          ", password=<not set>, tenant=" +
+          this.getTenant() +
+          ")"
+        );
+      } else {
+        return (
+          "LoginCredentials(username=" +
+          this.getUsername() +
+          ", password=<set>, tenant=" +
+          this.getTenant() +
+          ")"
+        );
+      }
+    }
   }
 }

@@ -9,6 +9,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.springframework.stereotype.Component;
 
@@ -22,10 +25,12 @@ public class PermissionsClient extends ApiClient {
     OkapiConnectionParams params,
     String userId
   ) {
-    return get(
+    return sendRequest(
+      new HttpGet(),
       params,
       BASE_ENDPOINT,
-      Map.of("query", String.format("userId==%s", userId))
+      Map.of("query", String.format("userId==%s", userId)),
+      ApiClient::getResponseEntity
     )
       .orElseThrow()
       .getJsonArray("permissionUsers")
@@ -39,7 +44,14 @@ public class PermissionsClient extends ApiClient {
     OkapiConnectionParams okapiConnectionParams,
     PermissionUser permissionUser
   ) {
-    return post(okapiConnectionParams, BASE_ENDPOINT, permissionUser)
+    return sendRequest(
+      new HttpPost(),
+      okapiConnectionParams,
+      BASE_ENDPOINT,
+      null,
+      permissionUser,
+      ApiClient::getResponseEntity
+    )
       .orElseThrow()
       .mapTo(PermissionUser.class);
   }
@@ -48,10 +60,13 @@ public class PermissionsClient extends ApiClient {
     OkapiConnectionParams okapiConnectionParams,
     PermissionUser permissionUser
   ) {
-    return put(
+    return sendRequest(
+      new HttpPut(),
       okapiConnectionParams,
       String.format(BASE_ENDPOINT_WITH_ID, permissionUser.getId()),
-      permissionUser
+      null,
+      permissionUser,
+      ApiClient::getResponseEntity
     )
       .orElseThrow()
       .mapTo(PermissionUser.class);

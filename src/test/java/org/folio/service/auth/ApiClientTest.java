@@ -2,9 +2,12 @@ package org.folio.service.auth;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.noValues;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -19,16 +22,17 @@ import io.vertx.core.json.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.InputStreamEntity;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.junit.After;
@@ -36,8 +40,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class ApiClientTest {
-
-  Map<String, String> emptyMap = Map.of();
 
   ApiClientProxy client = new ApiClientProxy();
 
@@ -85,87 +87,96 @@ public class ApiClientTest {
   }
 
   @Test
-  public void testGet() {
+  public void testNoPayload() {
     // ensure appropriate headers are sent
     mockServer.stubFor(
       get(urlPathEqualTo("/endpoint"))
         .withHeader("x-okapi-tenant", equalTo("tenant"))
         .withHeader("x-okapi-token", equalTo("token"))
+        .withHeader("content-type", noValues())
         .willReturn(okJson(new JsonObject().toString()))
     );
 
-    client.get(params, "endpoint", emptyMap);
+    assertThat(
+      client
+        .sendRequest(
+          new HttpGet(),
+          params,
+          "endpoint",
+          null,
+          ApiClientProxy::getResponseEntity
+        )
+        .get()
+        .toString(),
+      is("{}")
+    );
 
     mockServer.verify(1, anyRequestedFor(urlPathEqualTo("/endpoint")));
   }
 
   @Test
-  public void testGetUriException() {
-    assertThrows(
-      IllegalArgumentException.class,
-      () -> client.get(badUriParams, "", emptyMap)
-    );
-  }
-
-  @Test
-  public void testGetRequestFailure() {
-    assertThrows(
-      UncheckedIOException.class,
-      () -> client.get(badRequestParams, "", emptyMap)
-    );
-  }
-
-  @Test
-  public void testPost() {
+  public void testPayload() {
     // ensure appropriate headers are sent
     mockServer.stubFor(
       post(urlPathEqualTo("/endpoint"))
+        .withQueryParam("foo", equalTo("bar"))
         .withHeader("x-okapi-tenant", equalTo("tenant"))
         .withHeader("x-okapi-token", equalTo("token"))
+        .withRequestBody(equalToJson("{\"test\":\"payload\"}"))
         .willReturn(okJson(new JsonObject().toString()))
     );
 
-    client.postOrPut(
-      HttpPost::new,
+    client.sendRequest(
+      new HttpPost(),
       params,
       "endpoint",
-      new HashMap<>(),
-      v -> null
+      Map.of("foo", "bar"),
+      Map.of("test", "payload"),
+      ApiClientProxy::getResponseEntity
     );
 
-    mockServer.verify(1, anyRequestedFor(urlPathEqualTo("/endpoint")));
+    mockServer.verify(
+      1,
+      postRequestedFor(urlPathEqualTo("/endpoint"))
+        .withQueryParam("foo", equalTo("bar"))
+        .withHeader("x-okapi-tenant", equalTo("tenant"))
+        .withHeader("x-okapi-token", equalTo("token"))
+        .withRequestBody(equalToJson("{\"test\":\"payload\"}"))
+    );
   }
 
   @Test
-  public void testPostUriException() {
+  public void testUriException() {
     assertThrows(
       IllegalArgumentException.class,
       () ->
-        client.postOrPut(HttpPost::new, badUriParams, "", emptyMap, v -> null)
+        client.sendRequest(new HttpPost(), badUriParams, "", null, v -> null)
     );
   }
 
   @Test
-  public void testPostRequestFailure() {
+  public void testRequestFailure() {
     assertThrows(
       UncheckedIOException.class,
       () ->
-        client.postOrPut(
-          HttpPost::new,
-          badRequestParams,
-          "",
-          emptyMap,
-          v -> null
-        )
+        client.sendRequest(new HttpGet(), badRequestParams, "", null, v -> null)
     );
   }
 
   @Test
-  public void testPostRequestBodyFailure() {
+  public void testPayloadException() {
     Object obj = new Object();
     assertThrows(
       IllegalArgumentException.class,
-      () -> client.postOrPut(HttpPost::new, params, "endpoint", obj, v -> null)
+      () ->
+        client.sendRequest(
+          new HttpPut(),
+          params,
+          "endpoint",
+          null,
+          obj,
+          v -> null
+        )
     );
   }
 
@@ -178,29 +189,46 @@ public class ApiClientTest {
       get(urlPathEqualTo("/endpoint")).willReturn(okJson(test.toString()))
     );
 
-    assertThat(client.get(params, "endpoint", emptyMap).get(), is(test));
+    assertThat(
+      client
+        .sendRequest(
+          new HttpGet(),
+          params,
+          "endpoint",
+          null,
+          ApiClientProxy::getResponseEntity
+        )
+        .get(),
+      is(test)
+    );
   }
 
   @Test
-  public void testResponseEntityGetterBadCodeLow() {
+  public void testVerifyOk() {
     HttpResponse response = mock(HttpResponse.class);
     StatusLine status = mock(StatusLine.class);
 
-    when(status.getStatusCode()).thenReturn(100);
-    when(response.getStatusLine()).thenReturn(status);
+    // bad codes
+    Arrays
+      .asList(100, 400, 404, 500)
+      .stream()
+      .forEach(code -> {
+        when(status.getStatusCode()).thenReturn(code);
+        when(response.getStatusLine()).thenReturn(status);
 
-    assertThat(ApiClientProxy.getResponseEntity(response).isEmpty(), is(true));
-  }
+        assertThat(ApiClientProxy.isResponseOk(response), is(false));
+      });
 
-  @Test
-  public void testResponseEntityGetterBadCodeHigh() {
-    HttpResponse response = mock(HttpResponse.class);
-    StatusLine status = mock(StatusLine.class);
+    // good codes
+    Arrays
+      .asList(200, 201, 204)
+      .stream()
+      .forEach(code -> {
+        when(status.getStatusCode()).thenReturn(code);
+        when(response.getStatusLine()).thenReturn(status);
 
-    when(status.getStatusCode()).thenReturn(400);
-    when(response.getStatusLine()).thenReturn(status);
-
-    assertThat(ApiClientProxy.getResponseEntity(response).isEmpty(), is(true));
+        assertThat(ApiClientProxy.isResponseOk(response), is(true));
+      });
   }
 
   @Test
@@ -243,29 +271,49 @@ public class ApiClientTest {
   private static class ApiClientProxy extends ApiClient {
 
     @Override
-    public Optional<JsonObject> get(
+    public <T> T sendRequest(
+      HttpRequestBase request,
       OkapiConnectionParams params,
       String endpoint,
-      Map<String, String> query
+      Map<String, String> query,
+      Function<HttpResponse, T> responseMapper
     ) {
-      return super.get(params, endpoint, query);
+      return super.sendRequest(
+        request,
+        params,
+        endpoint,
+        query,
+        responseMapper
+      );
     }
 
     @Override
-    public Optional<JsonObject> postOrPut(
-      Supplier<HttpEntityEnclosingRequestBase> createRequest,
+    public <T> T sendRequest(
+      HttpEntityEnclosingRequestBase request,
       OkapiConnectionParams params,
       String endpoint,
+      Map<String, String> query,
       Object payload,
-      Function<CloseableHttpResponse, Optional<JsonObject>> responseMapper
+      Function<HttpResponse, T> responseMapper
     ) {
-      return super.postOrPut(
-        createRequest,
+      return super.sendRequest(
+        request,
         params,
         endpoint,
+        query,
         payload,
         responseMapper
       );
+    }
+
+    public static Optional<JsonObject> getResponseEntity(
+      HttpResponse response
+    ) {
+      return ApiClient.getResponseEntity(response);
+    }
+
+    public static boolean isResponseOk(HttpResponse response) {
+      return ApiClient.isResponseOk(response);
     }
   }
 }

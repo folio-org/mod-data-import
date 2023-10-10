@@ -297,12 +297,9 @@ public class SystemUserAuthServiceTest {
 
     assertThrows(
       IllegalStateException.class,
-      () -> test.getOrCreateSystemUserFromApi(null)
-    );
-    assertThrows(
-      IllegalStateException.class,
       () -> test.initializeSystemUser(null)
     );
+    assertThrows(IllegalStateException.class, () -> test.getAuthToken(null));
   }
 
   @Test

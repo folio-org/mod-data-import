@@ -8,6 +8,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.springframework.stereotype.Component;
 
@@ -22,10 +25,12 @@ public class UsersClient extends ApiClient {
     OkapiConnectionParams params,
     String username
   ) {
-    return get(
+    return sendRequest(
+      new HttpGet(),
       params,
       BASE_ENDPOINT,
-      Map.of("query", String.format(GET_USERS_BY_USERNAME_QUERY, username))
+      Map.of("query", String.format(GET_USERS_BY_USERNAME_QUERY, username)),
+      ApiClient::getResponseEntity
     )
       .orElseThrow()
       .getJsonArray(ARRAY_KEY)
@@ -36,7 +41,31 @@ public class UsersClient extends ApiClient {
   }
 
   public User createUser(OkapiConnectionParams params, User user) {
-    return post(params, BASE_ENDPOINT, user).orElseThrow().mapTo(User.class);
+    return sendRequest(
+      new HttpPost(),
+      params,
+      BASE_ENDPOINT,
+      null,
+      user,
+      ApiClient::getResponseEntity
+    )
+      .orElseThrow()
+      .mapTo(User.class);
+  }
+
+  public void updateUser(OkapiConnectionParams params, User user) {
+    if (
+      !sendRequest(
+        new HttpPut(),
+        params,
+        BASE_ENDPOINT + "/" + user.getId(),
+        null,
+        user,
+        ApiClient::isResponseOk
+      )
+    ) {
+      throw new IllegalStateException("Could not update user");
+    }
   }
 
   @Data

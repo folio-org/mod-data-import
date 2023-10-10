@@ -4,14 +4,19 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import io.vertx.core.Future;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.service.auth.PermissionsClient.PermissionUser;
@@ -36,6 +41,8 @@ public class SystemUserAuthServiceTest {
   @Mock
   UsersClient usersClient;
 
+  ClassPathResource resource = new ClassPathResource("permissions.txt");
+
   SystemUserAuthServiceTestProxy service;
 
   OkapiConnectionParams params = new OkapiConnectionParams(
@@ -52,7 +59,8 @@ public class SystemUserAuthServiceTest {
         usersClient,
         "username",
         "password",
-        new ClassPathResource("permissions.txt")
+        true,
+        resource
       );
   }
 
@@ -200,18 +208,162 @@ public class SystemUserAuthServiceTest {
   }
 
   @Test
+  public void testConstructionPasswordCheck() {
+    // enabled case with password, should be successful
+    new SystemUserAuthService(
+      authClient,
+      permissionsClient,
+      usersClient,
+      "username",
+      "password",
+      true,
+      resource
+    );
+
+    // disabled case with password, should be successful
+    new SystemUserAuthService(
+      authClient,
+      permissionsClient,
+      usersClient,
+      "username",
+      "password",
+      false,
+      resource
+    );
+
+    // disabled case with null password, should be successful
+    new SystemUserAuthService(
+      authClient,
+      permissionsClient,
+      usersClient,
+      "username",
+      null,
+      false,
+      resource
+    );
+
+    // disabled case with empty password, should be successful
+    new SystemUserAuthService(
+      authClient,
+      permissionsClient,
+      usersClient,
+      "username",
+      "",
+      false,
+      resource
+    );
+
+    // enabled case with empty password, should fail
+    assertThrows(
+      IllegalArgumentException.class,
+      () ->
+        new SystemUserAuthService(
+          authClient,
+          permissionsClient,
+          usersClient,
+          "username",
+          "",
+          true,
+          resource
+        )
+    );
+
+    // enabled case with null password, should fail
+    assertThrows(
+      IllegalArgumentException.class,
+      () ->
+        new SystemUserAuthService(
+          authClient,
+          permissionsClient,
+          usersClient,
+          "username",
+          null,
+          true,
+          resource
+        )
+    );
+  }
+
+  @Test
+  public void testDisabled() {
+    SystemUserAuthService test = new SystemUserAuthService(
+      authClient,
+      permissionsClient,
+      usersClient,
+      "username",
+      "password",
+      false,
+      resource
+    );
+
+    assertThrows(
+      IllegalStateException.class,
+      () -> test.initializeSystemUser(null)
+    );
+    assertThrows(IllegalStateException.class, () -> test.getAuthToken(null));
+  }
+
+  @Test
   public void testInvalidPermissionFileLoading() {
     SystemUserAuthService testService = new SystemUserAuthService(
       null,
       null,
       null,
       null,
-      null,
+      "password",
+      true,
       new ClassPathResource("this-file-does-not-exist")
     );
 
     // fallback results in empty list
     assertThat(testService.getPermissionsList(), is(empty()));
+  }
+
+  @Test
+  public void testChangedCredentials() {
+    User response = new User();
+    response.setId("user-id");
+
+    when(usersClient.getUserByUsername(any(), eq("username")))
+      .thenReturn(Optional.of(response));
+
+    PermissionUser permissionUser = new PermissionUser();
+    permissionUser.setPermissions(service.getPermissionsList());
+    when(permissionsClient.getPermissionsUserByUserId(any(), eq("user-id")))
+      .thenReturn(Optional.of(permissionUser));
+
+    // first attempt: invalid
+    // second attempt (after reset): valid
+    when(authClient.login(any(), any()))
+      .thenThrow(
+        new NoSuchElementException(
+          "test simulating the credentials were invalid"
+        )
+      )
+      .thenReturn(Future.succeededFuture("test token"));
+
+    doNothing().when(authClient).deleteCredentials(any(), eq("user-id"));
+    doNothing().when(authClient).saveCredentials(any(), any());
+
+    doAnswer(invocation -> {
+        assertThat(invocation.<User>getArgument(1).isActive(), is(true));
+        return null;
+      })
+      .when(usersClient)
+      .updateUser(any(), any());
+
+    service.initializeSystemUser(Map.of("x-okapi-tenant", "tenant"));
+
+    verify(usersClient, times(1)).getUserByUsername(any(), eq("username"));
+    verify(permissionsClient, times(1))
+      .getPermissionsUserByUserId(any(), eq("user-id"));
+    verify(authClient, times(1)).deleteCredentials(any(), eq("user-id"));
+    verify(authClient, times(1)).saveCredentials(any(), any());
+    verify(usersClient, times(1)).updateUser(any(), any());
+    verify(authClient, times(2)).login(any(), any());
+    verifyNoMoreInteractions(authClient);
+    verifyNoMoreInteractions(permissionsClient);
+    verifyNoMoreInteractions(usersClient);
   }
 
   // allow access to private methods
@@ -224,6 +376,7 @@ public class SystemUserAuthServiceTest {
       UsersClient usersClient,
       String username,
       String password,
+      boolean splitEnabled,
       Resource permissionsResource
     ) {
       super(
@@ -232,6 +385,7 @@ public class SystemUserAuthServiceTest {
         usersClient,
         username,
         password,
+        splitEnabled,
         permissionsResource
       );
     }

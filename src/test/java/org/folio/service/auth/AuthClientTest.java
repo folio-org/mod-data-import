@@ -3,11 +3,14 @@ package org.folio.service.auth;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.badRequest;
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
+import static com.github.tomakehurst.wiremock.client.WireMock.delete;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
-import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThrows;
@@ -38,7 +41,6 @@ public class AuthClientTest {
 
   LoginCredentials testLoginCredentials = LoginCredentials
     .builder()
-    .userId("uid")
     .tenant("tenant")
     .username("username")
     .password("password")
@@ -148,9 +150,7 @@ public class AuthClientTest {
         .withRequestBody(
           equalToJson(JsonObject.mapFrom(testLoginCredentials).toString())
         )
-        // must be 201 for the method to succeed
-        // as it only is meant for after the user is first created
-        .willReturn(ok())
+        .willReturn(serverError())
     );
 
     assertThrows(
@@ -161,6 +161,45 @@ public class AuthClientTest {
     mockServer.verify(
       exactly(1),
       anyRequestedFor(urlMatching(CREDENTIALS_ENDPOINT))
+    );
+  }
+
+  @Test
+  public void testDeleteCredentials() {
+    mockServer.stubFor(
+      delete(urlPathMatching(CREDENTIALS_ENDPOINT))
+        .withQueryParam("userId", equalTo("test-id"))
+        .withRequestBody(
+          equalToJson(JsonObject.mapFrom(testLoginCredentials).toString())
+        )
+        .willReturn(created())
+    );
+
+    client.deleteCredentials(params, "test-id");
+
+    mockServer.verify(
+      exactly(1),
+      anyRequestedFor(urlPathMatching(CREDENTIALS_ENDPOINT))
+    );
+  }
+
+  @Test
+  public void testDeleteCredentialsBadResponse() {
+    mockServer.stubFor(
+      delete(urlPathMatching(CREDENTIALS_ENDPOINT))
+        .withQueryParam("userId", equalTo("test-id"))
+        .withRequestBody(
+          equalToJson(JsonObject.mapFrom(testLoginCredentials).toString())
+        )
+        .willReturn(serverError())
+    );
+
+    // should fail silently
+    client.deleteCredentials(params, "test-id");
+
+    mockServer.verify(
+      exactly(1),
+      anyRequestedFor(urlPathMatching(CREDENTIALS_ENDPOINT))
     );
   }
 }

@@ -29,10 +29,16 @@ types:
   dataTypeCollection: !include raml-storage/schemas/mod-data-import/dataTypeCollection.json
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
   dataImportInitConfig: !include raml-storage/schemas/common/dataImportInitConfig.json
+  dataImportQueueItem: !include raml-storage/schemas/mod-data-import/dataImportQueueItem.json
+  dataImportQueueItemCollection: !include raml-storage/schemas/mod-data-import/dataImportQueueItemCollection.json
+  fileUploadInfo: !include raml-storage/schemas/mod-data-import/fileUploadInfo.json
+  fileDownloadInfo: !include raml-storage/schemas/mod-data-import/fileDownloadInfo.json
+  splitStatus: !include raml-storage/schemas/dto/splitStatus.json
+  assembleFileDto: !include raml-storage/schemas/dto/assembleFileDto.json
+  cancelResponse: !include raml-storage/schemas/mod-data-import/cancelResponse.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
-  language: !include raml-storage/raml-util/traits/language.raml
   pageable:  !include raml-storage/raml-util/traits/pageable.raml
   searchable: !include raml-storage/raml-util/traits/searchable.raml
 
@@ -146,6 +152,25 @@ resourceTypes:
                 body:
                   text/plain:
                     example: "Internal server error"
+          /assembleStorageFile:
+            post:
+              description: Assemble the large file uploaded to storage by the UI
+              is: [validate]
+              body:
+                application/json:
+                  type: assembleFileDto
+              responses:
+                204:
+                400:
+                  description: "Bad request"
+                  body:
+                    text/plain:
+                      example: "Bad request"
+                500:
+                  description: "Internal server error"
+                  body:
+                    text/plain:
+                      example: "Internal server error"
       /processFiles:
         displayName: File processing service
         description: File processing API
@@ -172,6 +197,33 @@ resourceTypes:
               body:
                 text/plain:
                   example: "Internal server error"
+  /jobExecutions/{jobExecutionId}:
+    /cancel:
+      displayName: Cancel a split Job
+      description: removes incomplete files from DI queue and marks the jobs cancelled
+      delete:
+        responses:
+          200:
+            body:
+              application/json:
+                type: cancelResponse
+          500:
+            body:
+              application/json:
+                type: string
+    /downloadUrl:
+      description: Get a presigned S3 download URL
+      get:
+        responses:
+          200:
+            body:
+              application/json:
+                type: fileDownloadInfo
+          404:
+            description: "Job execution not found"
+            body:
+              text/plain:
+                example: "Job execution not found"
   /fileExtensions:
     displayName: File Extension
     description: API for managing file extensions
@@ -253,4 +305,74 @@ resourceTypes:
           body:
             text/plain:
               example: "Internal server error"
-
+  /splitStatus:
+    get:
+      description: Get the server configuration of file splitting
+      queryParameters:
+      responses:
+        200:
+          body:
+            application/json:
+              type: splitStatus
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+  /uploadUrl:
+    get:
+      description: Get a presigned upload url for the first part of a file
+      queryParameters:
+        fileName:
+          description: "The name of the file that will be uploaded"
+          required: true
+      responses:
+        200:
+          body:
+            application/json:
+              type: fileUploadInfo
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+  /uploadUrl/subsequent:
+    get:
+      description: Get a presigned upload url for later parts of a file
+      queryParameters:
+        key:
+          description: "The key that will be uploaded to on S3"
+          required: true
+        uploadId:
+          description: "The upload ID"
+          required: true
+        partNumber:
+          description: "The part number, postitive integers beginning at two (part 1 is uploaded with /uploadUrl)"
+          required: true
+          type: integer
+          minimum: 2
+      responses:
+        200:
+          body:
+            application/json:
+              type: fileUploadInfo
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"

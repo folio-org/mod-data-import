@@ -75,7 +75,6 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private static final String EDI_FACT_JOB_PROFILE = "ediFactJobProfile";
   private static final String EMPTY_TYPE_JOB_PROFILE = "emptyTypeJobProfile";
   private static final String JOB_PROFILE_NAME = "MARC profile";
-  private static final String LOCAL_HOST = "http://localhost:";
   private static final String KAFKA_HOST_PROP_NAME = "KAFKA_HOST";
   private static final String KAFKA_PORT_PROP_NAME = "KAFKA_PORT";
   private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
@@ -90,8 +89,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
   @Before
   public void setUp() {
-    int okapiPort = mockServer.port();
-    okapiHeaders.put(OKAPI_URL_HEADER, LOCAL_HOST + okapiPort);
+    okapiHeaders.put(OKAPI_URL_HEADER, OKAPI_URL);
     okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID);
     okapiHeaders.put(OKAPI_TOKEN_HEADER, TOKEN);
 
@@ -100,7 +98,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       .kafkaPort(System.getProperty(KAFKA_PORT_PROP_NAME))
       .envId(KAFKA_ENV)
       .maxRequestSize(Integer.parseInt(System.getProperty(KAFKA_MAX_REQUEST_SIZE)))
-      .okapiUrl(LOCAL_HOST + okapiPort)
+      .okapiUrl(OKAPI_URL)
       .build();
 
     jobProfiles = createJobProfilesMap();
@@ -123,7 +121,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -142,7 +140,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, null, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), null,new OkapiConnectionParams(okapiHeaders, vertx));
     // then
     future.onComplete(ar -> {
       assertTrue(ar.failed());
@@ -160,7 +158,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -179,7 +177,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -200,7 +198,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -223,7 +221,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -244,7 +242,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -263,7 +261,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -282,7 +280,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -303,7 +301,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -326,7 +324,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileDefinition, jobProfile, fileStorageService, new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
 
     // then
     future.onComplete(ar -> {
@@ -334,6 +332,21 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       assertErrorFromKafka(fileStorageService, TENANT_ID_TEST_EDI_RAW, "Can not initialize reader");
       async.complete();
     });
+  }
+
+  @Test
+  public void testCountRecordsNull() {
+    // cases with non-null values are tested as part of above tests and in FileSplitUtilitiesCountTest
+    assertEquals(
+      "Null file = 0 records",
+      0,
+      ParallelFileChunkingProcessor.countTotalRecordsInFile(null, new JobProfileInfo())
+    );
+    assertEquals(
+      "Null profile = 0 records",
+      0,
+      ParallelFileChunkingProcessor.countTotalRecordsInFile(new File(SOURCE_PATH_1), null)
+    );
   }
 
   private FileDefinition createFileDefinition() {

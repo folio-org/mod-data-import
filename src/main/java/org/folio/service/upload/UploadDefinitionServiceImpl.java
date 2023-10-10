@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
@@ -49,13 +48,13 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private static final String FILE_UPLOAD_ERROR_MESSAGE = "upload.fileSize.invalid";
   private static final String UPLOAD_FILE_EXTENSION_BLOCKED_ERROR_MESSAGE = "validation.uploadDefinition.fileExtension.blocked";
 
+  private Vertx vertx;
+
   @Autowired
   private UploadDefinitionDao uploadDefinitionDao;
+
   @Autowired
   private FileExtensionService fileExtensionService;
-
-  public UploadDefinitionServiceImpl() {
-  }
 
   /**
    * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
@@ -64,6 +63,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
    * @param vertx - Vertx argument
    */
   public UploadDefinitionServiceImpl(Vertx vertx) {
+    this.vertx = vertx;
+
     this.uploadDefinitionDao = new UploadDefinitionDaoImpl(vertx);
     this.fileExtensionService = new FileExtensionServiceImpl(vertx);
   }
@@ -138,7 +139,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, OkapiConnectionParams params) {
     Promise<Boolean> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.putChangeManagerJobExecutionsStatusById(jobExecutionId, status, response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
@@ -157,7 +158,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Future<Boolean> deleteFile(FileDefinition fileDefinition, OkapiConnectionParams params) {
     return FileStorageServiceBuilder
-      .build(params.getVertx(), params.getTenantId(), params)
+      .build(vertx, params.getTenantId(), params)
       .compose(service -> service.deleteFile(fileDefinition));
   }
 
@@ -241,12 +242,12 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .withFiles(definition.getFileDefinitions()
           .stream()
           .map(fd -> new File().withName(fd.getName()))
-          .collect(Collectors.toList()))
+          .toList())
         .withUserId(Objects.nonNull(metadata) ? metadata.getCreatedByUserId() : null)
         .withSourceType(InitJobExecutionsRqDto.SourceType.FILES);
 
     Promise<UploadDefinition> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.postChangeManagerJobExecutions(initJobExecutionsRqDto, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
@@ -323,12 +324,12 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
 
   private Future<JobExecutionDtoCollection> getChildrenJobExecutions(String jobExecutionParentId, OkapiConnectionParams params) {
     Promise<JobExecutionDtoCollection> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, 0, response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           Buffer responseAsBuffer = response.result().bodyAsBuffer();
-          promise.handle(BufferMapper.mapBufferContentToEntity(responseAsBuffer, JobExecutionDtoCollection.class));
+          promise.handle(BufferMapper.mapBufferContentToEntityAsync(responseAsBuffer, JobExecutionDtoCollection.class));
         } else {
           String errorMessage = "Error getting children JobExecutions for parent " + jobExecutionParentId;
           LOGGER.warn(errorMessage);
@@ -341,14 +342,15 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return promise.future();
   }
 
-  private Future<JobExecution> getJobExecutionById(String jobExecutionId, OkapiConnectionParams params) {
+  @Override
+  public Future<JobExecution> getJobExecutionById(String jobExecutionId, OkapiConnectionParams params) {
     Promise<JobExecution> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
+    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.getChangeManagerJobExecutionsById(jobExecutionId, null, response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           Buffer responseAsBuffer = response.result().bodyAsBuffer();
-          promise.handle(BufferMapper.mapBufferContentToEntity(responseAsBuffer, JobExecution.class));
+          promise.handle(BufferMapper.mapBufferContentToEntityAsync(responseAsBuffer, JobExecution.class));
         } else {
           String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
           LOGGER.warn(errorMessage);

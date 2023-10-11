@@ -8,12 +8,14 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -30,6 +32,8 @@ public class SystemUserAuthService {
 
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String SYSTEM_USER_TYPE = "system";
+
+  private boolean fileSplittingEnabled;
 
   private AuthClient authClient;
   private PermissionsClient permissionsClient;
@@ -49,11 +53,19 @@ public class SystemUserAuthService {
     @Value(
       "${SYSTEM_PROCESSING_USERNAME:data-import-system-user}"
     ) String username,
-    @Value(
-      "${SYSTEM_PROCESSING_PASSWORD:data-import-system-user}"
-    ) String password,
+    @Value("${SYSTEM_PROCESSING_PASSWORD:}") String password,
+    @Value("${SPLIT_FILES_ENABLED:false}") boolean fileSplittingEnabled,
     @Value("classpath:permissions.txt") Resource permissionsResource
   ) {
+    // ensure password is set properly
+    if (fileSplittingEnabled && StringUtils.isEmpty(password)) {
+      throw new IllegalArgumentException(
+        "System user password must be provided when file splitting is enabled (env variable SYSTEM_PROCESSING_PASSWORD)"
+      );
+    }
+
+    this.fileSplittingEnabled = fileSplittingEnabled;
+
     this.authClient = authClient;
     this.permissionsClient = permissionsClient;
     this.usersClient = usersClient;
@@ -82,7 +94,19 @@ public class SystemUserAuthService {
     }
   }
 
+  private void ensureSplittingEnabled() {
+    if (!fileSplittingEnabled) {
+      throw LOGGER.throwing(
+        new IllegalStateException(
+          "System user is not available unless file splitting is enabled"
+        )
+      );
+    }
+  }
+
   public void initializeSystemUser(Map<String, String> headers) {
+    ensureSplittingEnabled();
+
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(
       headers,
       null
@@ -90,12 +114,45 @@ public class SystemUserAuthService {
 
     User user = getOrCreateSystemUserFromApi(okapiConnectionParams);
     validatePermissions(okapiConnectionParams, user);
-    getAuthToken(okapiConnectionParams);
+    try {
+      getAuthToken(okapiConnectionParams);
+    } catch (NoSuchElementException e) {
+      LOGGER.error("Could not get auth token: ", e);
 
-    LOGGER.info("System user created successfully!");
+      LOGGER.info(
+        "This may be due to a password change...resetting system user password"
+      );
+
+      recoverSystemUserAfterPasswordChange(okapiConnectionParams, user);
+    }
+
+    LOGGER.info("System user created/found successfully!");
+  }
+
+  protected void recoverSystemUserAfterPasswordChange(
+    OkapiConnectionParams params,
+    User user
+  ) {
+    LOGGER.info(
+      "Attempting to delete existing credentials for user {}...",
+      user.getId()
+    );
+    authClient.deleteCredentials(params, user.getId());
+
+    LOGGER.info("Saving new credentials...");
+    authClient.saveCredentials(params, getLoginCredentials(params));
+
+    LOGGER.info("Marking user as active...");
+    user.setActive(true);
+    usersClient.updateUser(params, user);
+
+    LOGGER.info("Verifying we can login...");
+    getAuthToken(params);
   }
 
   public String getAuthToken(OkapiConnectionParams okapiConnectionParams) {
+    ensureSplittingEnabled();
+
     LOGGER.info("Attempting {}", getLoginCredentials(okapiConnectionParams));
 
     return authClient.login(

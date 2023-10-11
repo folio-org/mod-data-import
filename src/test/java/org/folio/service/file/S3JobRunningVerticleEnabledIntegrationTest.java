@@ -20,6 +20,7 @@ public class S3JobRunningVerticleEnabledIntegrationTest
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
     System.setProperty("SPLIT_FILES_ENABLED", "true");
+    System.setProperty("SYSTEM_PROCESSING_PASSWORD", "password");
 
     AbstractRestTest.setUpClass(context);
   }
@@ -27,6 +28,7 @@ public class S3JobRunningVerticleEnabledIntegrationTest
   @AfterClass
   public static void resetEnv() {
     System.clearProperty("SPLIT_FILES_ENABLED");
+    System.clearProperty("SYSTEM_PROCESSING_PASSWORD");
   }
 
   @Test

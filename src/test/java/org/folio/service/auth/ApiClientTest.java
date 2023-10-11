@@ -178,36 +178,30 @@ public class ApiClientTest {
 
   @Test
   public void testUriException() {
+    HttpPost request = new HttpPost();
     assertThrows(
       IllegalArgumentException.class,
-      () ->
-        client.sendRequest(new HttpPost(), badUriParams, "", null, v -> null)
+      () -> client.sendRequest(request, badUriParams, "", null, v -> null)
     );
   }
 
   @Test
   public void testRequestFailure() {
+    HttpGet request = new HttpGet();
     assertThrows(
       UncheckedIOException.class,
-      () ->
-        client.sendRequest(new HttpGet(), badRequestParams, "", null, v -> null)
+      () -> client.sendRequest(request, badRequestParams, "", null, v -> null)
     );
   }
 
   @Test
   public void testPayloadException() {
     Object obj = new Object();
+    HttpPut request = new HttpPut();
     assertThrows(
       IllegalArgumentException.class,
       () ->
-        client.sendRequest(
-          new HttpPut(),
-          params,
-          "endpoint",
-          null,
-          obj,
-          v -> null
-        )
+        client.sendRequest(request, params, "endpoint", null, obj, v -> null)
     );
   }
 

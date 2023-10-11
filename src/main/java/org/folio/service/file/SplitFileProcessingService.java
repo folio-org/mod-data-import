@@ -98,32 +98,35 @@ public class SplitFileProcessingService {
     ChangeManagerClient client,
     OkapiConnectionParams params
   ) {
-    return initializeJob(entity, client)
-      .compose(splitPieces ->
-        CompositeFuture.all(
-          splitPieces
-            .values()
-            .stream()
-            .map(splitFileInformation ->
-              initializeChildren(entity, client, params, splitFileInformation)
-            )
-            .collect(Collectors.toList())
+    return vertx.executeBlocking(promise ->
+      initializeJob(entity, client)
+        .compose(splitPieces ->
+          CompositeFuture.all(
+            splitPieces
+              .values()
+              .stream()
+              .map(splitFileInformation ->
+                initializeChildren(entity, client, params, splitFileInformation)
+              )
+              .collect(Collectors.toList())
+          )
         )
-      )
-      // do this after everything has been queued successfully
-      .compose(v ->
-        uploadDefinitionService.updateBlocking(
-          entity.getUploadDefinition().getId(),
-          definition ->
-            Future.succeededFuture(
-              definition.withStatus(UploadDefinition.Status.COMPLETED)
-            ),
-          params.getTenantId()
+        // do this after everything has been queued successfully
+        .compose(v ->
+          uploadDefinitionService.updateBlocking(
+            entity.getUploadDefinition().getId(),
+            definition ->
+              Future.succeededFuture(
+                definition.withStatus(UploadDefinition.Status.COMPLETED)
+              ),
+            params.getTenantId()
+          )
         )
-      )
-      .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
-      .onFailure(err -> LOGGER.error("Unable to start job: ", err))
-      .mapEmpty();
+        .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
+        .onFailure(err -> LOGGER.error("Unable to start job: ", err))
+        .<Void>mapEmpty()
+        .onComplete(promise)
+    );
   }
 
   /** Split file and create parent job executions for a new job */

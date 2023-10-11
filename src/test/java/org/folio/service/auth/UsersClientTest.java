@@ -6,11 +6,15 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathTemplate;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThrows;
@@ -31,6 +35,7 @@ import org.junit.Test;
 public class UsersClientTest {
 
   private static final String BASE_ENDPOINT = "/users";
+  private static final String BASE_ENDPOINT_WITH_ID = "/users/{userId}";
 
   UsersClient client = new UsersClient();
 
@@ -176,6 +181,47 @@ public class UsersClientTest {
     mockServer.verify(
       exactly(1),
       anyRequestedFor(urlPathEqualTo(BASE_ENDPOINT))
+    );
+  }
+
+  @Test
+  public void testUpdate() {
+    mockServer.stubFor(
+      put(urlPathTemplate(BASE_ENDPOINT_WITH_ID))
+        .withPathParam("userId", equalTo("test"))
+        .withRequestBody(
+          equalToJson(JsonObject.mapFrom(testUserRequest).toString())
+        )
+        .willReturn(noContent())
+    );
+
+    client.updateUser(params, testUserRequest);
+
+    mockServer.verify(
+      exactly(1),
+      putRequestedFor(urlPathTemplate(BASE_ENDPOINT_WITH_ID))
+    );
+  }
+
+  @Test
+  public void testUpdateError() {
+    mockServer.stubFor(
+      put(urlPathTemplate(BASE_ENDPOINT_WITH_ID))
+        .withPathParam("userId", equalTo("test"))
+        .withRequestBody(
+          equalToJson(JsonObject.mapFrom(testUserRequest).toString())
+        )
+        .willReturn(serverError())
+    );
+
+    assertThrows(
+      IllegalStateException.class,
+      () -> client.updateUser(params, testUserRequest)
+    );
+
+    mockServer.verify(
+      exactly(1),
+      putRequestedFor(urlPathTemplate(BASE_ENDPOINT_WITH_ID))
     );
   }
 }

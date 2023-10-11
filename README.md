@@ -198,21 +198,21 @@ For information on what these mean, how to configure them, how scores are calcul
 ## System user
 
 > [!WARNING]
-> This module creates a system user upon installation with the following:
+> This module creates a system user upon installation with the following (if splitting is enabled):
 >
 > - Name `SystemDataImport`
 > - Username `data-import-system-user` (customizable via env variable `SYSTEM_PROCESSING_USERNAME`)
-> - Password `data-import-system-user` (customizable via env variable `SYSTEM_PROCESSING_PASSWORD`)
+> - Password customizable via env variable `SYSTEM_PROCESSING_PASSWORD` (**must be set, or the module will fail to start**)
 > - [permissions to perform any import-related activities](/src/main/resources/permissions.txt).
 
 To enable asynchronous job launching (as part of the file splitting process), the module creates
 a system user upon installation. The system user is named `SystemDataImport`,
 and its credentials may be customized with the following environment variables:
 
-| Name                         | Type   | Required | Default                   | Description          |
-| ---------------------------- | ------ | -------- | ------------------------- | -------------------- |
-| `SYSTEM_PROCESSING_USERNAME` | string | no       | `data-import-system-user` | System user username |
-| `SYSTEM_PROCESSING_PASSWORD` | string | no       | `data-import-system-user` | System user password |
+| Name                         | Type   | Required                     | Default                   | Description          |
+| ---------------------------- | ------ | ---------------------------- | ------------------------- | -------------------- |
+| `SYSTEM_PROCESSING_USERNAME` | string | no                           | `data-import-system-user` | System user username |
+| `SYSTEM_PROCESSING_PASSWORD` | string | yes, if splitting is enabled | _none_                    | System user password |
 
 This user is granted [many of the same permissions](/src/main/resources/permissions.txt) as the module for the
 `/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles` endpoint. This enables this

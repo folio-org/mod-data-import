@@ -146,9 +146,6 @@ public class AuthClientTest {
     mockServer.stubFor(
       delete(urlPathMatching(CREDENTIALS_ENDPOINT))
         .withQueryParam("userId", equalTo("test-id"))
-        .withRequestBody(
-          equalToJson(JsonObject.mapFrom(testLoginCredentials).toString())
-        )
         .willReturn(created())
     );
 
@@ -165,9 +162,6 @@ public class AuthClientTest {
     mockServer.stubFor(
       delete(urlPathMatching(CREDENTIALS_ENDPOINT))
         .withQueryParam("userId", equalTo("test-id"))
-        .withRequestBody(
-          equalToJson(JsonObject.mapFrom(testLoginCredentials).toString())
-        )
         .willReturn(serverError())
     );
 

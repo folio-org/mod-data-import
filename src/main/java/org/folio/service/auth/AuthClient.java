@@ -79,25 +79,5 @@ public class AuthClient extends ApiClient {
     private String username;
     private String password;
     private String tenant;
-
-    public String toString() {
-      if (this.getPassword().isBlank()) {
-        return (
-          "LoginCredentials(username=" +
-          this.getUsername() +
-          ", password=<not set>, tenant=" +
-          this.getTenant() +
-          ")"
-        );
-      } else {
-        return (
-          "LoginCredentials(username=" +
-          this.getUsername() +
-          ", password=<set>, tenant=" +
-          this.getTenant() +
-          ")"
-        );
-      }
-    }
   }
 }

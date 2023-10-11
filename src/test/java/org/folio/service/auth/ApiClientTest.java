@@ -146,6 +146,37 @@ public class ApiClientTest {
   }
 
   @Test
+  public void testEmptyPayload() {
+    // no content-type = no request body
+    mockServer.stubFor(
+      post(urlPathEqualTo("/endpoint"))
+        .withQueryParam("foo", equalTo("bar"))
+        .withHeader("x-okapi-tenant", equalTo("tenant"))
+        .withHeader("x-okapi-token", equalTo("token"))
+        .withHeader("content-type", noValues())
+        .willReturn(okJson(new JsonObject().toString()))
+    );
+
+    client.sendRequest(
+      new HttpPost(),
+      params,
+      "endpoint",
+      Map.of("foo", "bar"),
+      null,
+      ApiClientProxy::getResponseEntity
+    );
+
+    mockServer.verify(
+      1,
+      postRequestedFor(urlPathEqualTo("/endpoint"))
+        .withQueryParam("foo", equalTo("bar"))
+        .withHeader("x-okapi-tenant", equalTo("tenant"))
+        .withHeader("x-okapi-token", equalTo("token"))
+        .withHeader("content-type", noValues())
+    );
+  }
+
+  @Test
   public void testUriException() {
     assertThrows(
       IllegalArgumentException.class,

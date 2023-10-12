@@ -4,6 +4,7 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.WorkerExecutor;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
 import java.io.IOException;
@@ -72,6 +73,8 @@ public class SplitFileProcessingService {
 
   private final ParallelFileChunkingProcessor fileProcessor;
 
+  private final WorkerExecutor executor;
+
   @Autowired
   public SplitFileProcessingService(
     Vertx vertx,
@@ -90,6 +93,8 @@ public class SplitFileProcessingService {
     this.uploadDefinitionService = uploadDefinitionService;
 
     this.fileProcessor = fileProcessor;
+
+    this.executor = vertx.createSharedWorkerExecutor("file-splitting-pool");
   }
 
   /** Start a job based on information passed to the /processFiles endpoint */
@@ -98,32 +103,42 @@ public class SplitFileProcessingService {
     ChangeManagerClient client,
     OkapiConnectionParams params
   ) {
-    return initializeJob(entity, client)
-      .compose(splitPieces ->
-        CompositeFuture.all(
-          splitPieces
-            .values()
-            .stream()
-            .map(splitFileInformation ->
-              initializeChildren(entity, client, params, splitFileInformation)
+    return executor.executeBlocking(
+      promise ->
+        initializeJob(entity, client)
+          .compose(splitPieces ->
+            CompositeFuture.all(
+              splitPieces
+                .values()
+                .stream()
+                .map(splitFileInformation ->
+                  initializeChildren(
+                    entity,
+                    client,
+                    params,
+                    splitFileInformation
+                  )
+                )
+                .collect(Collectors.toList())
             )
-            .collect(Collectors.toList())
-        )
-      )
-      // do this after everything has been queued successfully
-      .compose(v ->
-        uploadDefinitionService.updateBlocking(
-          entity.getUploadDefinition().getId(),
-          definition ->
-            Future.succeededFuture(
-              definition.withStatus(UploadDefinition.Status.COMPLETED)
-            ),
-          params.getTenantId()
-        )
-      )
-      .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
-      .onFailure(err -> LOGGER.error("Unable to start job: ", err))
-      .mapEmpty();
+          )
+          // do this after everything has been queued successfully
+          .compose(v ->
+            uploadDefinitionService.updateBlocking(
+              entity.getUploadDefinition().getId(),
+              definition ->
+                Future.succeededFuture(
+                  definition.withStatus(UploadDefinition.Status.COMPLETED)
+                ),
+              params.getTenantId()
+            )
+          )
+          .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
+          .onFailure(err -> LOGGER.error("Unable to start job: ", err))
+          .<Void>mapEmpty()
+          .onComplete(promise),
+      false
+    );
   }
 
   /** Split file and create parent job executions for a new job */
@@ -542,31 +557,38 @@ public class SplitFileProcessingService {
     String key,
     JobProfileInfo profile
   ) {
-    return Future
-      .succeededFuture(new SplitFileInformation().withKey(key))
-      // splitting and counting must be done sequentially as splitting deletes the original file
-      .compose(result ->
-        minioStorageService
-          .readFile(key)
-          .map((InputStream stream) -> {
-            try {
-              return result.withTotalRecords(
-                FileSplitUtilities.countRecordsInFile(key, stream, profile)
+    return executor.executeBlocking(
+      promise ->
+        Future
+          .succeededFuture(new SplitFileInformation().withKey(key))
+          // splitting and counting must be done sequentially as splitting deletes the original file
+          .compose(result ->
+            minioStorageService
+              .readFile(key)
+              .map((InputStream stream) -> {
+                try {
+                  return result.withTotalRecords(
+                    FileSplitUtilities.countRecordsInFile(key, stream, profile)
+                  );
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              })
+          )
+          .compose((SplitFileInformation file) -> {
+            if (FileSplitUtilities.isMarcBinary(key, profile)) {
+              return fileSplitService
+                .splitFileFromS3(vertx.getOrCreateContext(), key)
+                .map(file::withSplitKeys);
+            } else {
+              return Future.succeededFuture(
+                file.withSplitKeys(Arrays.asList(key))
               );
-            } catch (IOException e) {
-              throw new UncheckedIOException(e);
             }
           })
-      )
-      .compose((SplitFileInformation file) -> {
-        if (FileSplitUtilities.isMarcBinary(key, profile)) {
-          return fileSplitService
-            .splitFileFromS3(vertx.getOrCreateContext(), key)
-            .map(file::withSplitKeys);
-        } else {
-          return Future.succeededFuture(file.withSplitKeys(Arrays.asList(key)));
-        }
-      });
+          .onComplete(promise),
+      false
+    );
   }
 
   protected Buffer verifyOkStatus(HttpResponse<Buffer> response) {

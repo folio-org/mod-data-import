@@ -255,7 +255,10 @@
             "acquisitions-units-storage.memberships.collection.get",
             "isbn-utils.convert-to-13.get",
             "instance-authority-links.instances.collection.get",
-            "instance-authority-links.instances.collection.put"
+            "instance-authority-links.instances.collection.put",
+            "instance-authority.linking-rules.collection.get",
+            "user-tenants.collection.get",
+            "organizations.organizations.collection.get"
           ],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.assign",

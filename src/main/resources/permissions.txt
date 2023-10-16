@@ -102,3 +102,5 @@ instance-authority-links.instances.collection.put
 instance-authority.linking-rules.collection.get
 user-tenants.collection.get
 organizations.organizations.collection.get
+invoices.acquisitions-units-assignments.assign
+invoices.acquisitions-units-assignments.manage

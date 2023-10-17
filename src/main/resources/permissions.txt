@@ -102,5 +102,3 @@ user-tenants.collection.get
 organizations.organizations.collection.get
 invoices.acquisitions-units-assignments.assign
 invoices.acquisitions-units-assignments.manage
-orders.acquisitions-units-assignments.assign
-orders.acquisitions-units-assignments.manage

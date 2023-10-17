@@ -1,3 +1,6 @@
+## 2023-10-17 v3.0.1
+* [MODDATAIMP-943](https://issues.folio.org/browse/MODDATAIMP-943) Added missing permission to fix import errors
+
 ## 2023-10-13 v3.0.0
 * [MODDATAIMP-871](https://issues.folio.org/browse/MODDATAIMP-871) Upgrade folio-kafka-wrapper to 3.0.0 version
 * [MODDATAIMP-854](https://issues.folio.org/browse/MODDATAIMP-854) Upgrade mod-data-import to Java 17

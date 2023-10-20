@@ -341,9 +341,11 @@ public class SystemUserAuthServiceTest {
     // first attempt: invalid
     // second attempt (after reset): valid
     when(authClient.login(any(), any()))
-      .thenThrow(
-        new NoSuchElementException(
-          "test simulating the credentials were invalid"
+      .thenReturn(
+        Future.failedFuture(
+          new NoSuchElementException(
+            "test simulating the credentials were invalid"
+          )
         )
       )
       .thenReturn(Future.succeededFuture("test token"));

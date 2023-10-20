@@ -415,9 +415,9 @@ public abstract class AbstractRestTest {
     );
 
     tenantMockServer.stubFor(
-      post(urlPathEqualTo("/authn/login"))
+      post(urlPathEqualTo("/authn/login-with-expiry"))
         .willReturn(
-          okJson(JsonObject.of("okapiToken", "token").toString())
+          WireMock.created().withHeader("Set-Cookie", "folioAccessToken=result")
         )
     );
 

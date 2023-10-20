@@ -116,19 +116,22 @@ public class SystemUserAuthService {
     validatePermissions(okapiConnectionParams, user);
     return getAuthToken(okapiConnectionParams)
       .<Void>mapEmpty()
-      .onFailure(err -> {
+      .recover(err -> {
         LOGGER.error("Could not get auth token: ", err);
 
         LOGGER.info(
           "This may be due to a password change...resetting system user password"
         );
 
-        recoverSystemUserAfterPasswordChange(okapiConnectionParams, user);
+        return recoverSystemUserAfterPasswordChange(
+          okapiConnectionParams,
+          user
+        );
       })
       .onSuccess(v -> LOGGER.info("System user created/found successfully!"));
   }
 
-  protected void recoverSystemUserAfterPasswordChange(
+  protected Future<Void> recoverSystemUserAfterPasswordChange(
     OkapiConnectionParams params,
     User user
   ) {
@@ -146,7 +149,7 @@ public class SystemUserAuthService {
     usersClient.updateUser(params, user);
 
     LOGGER.info("Verifying we can login...");
-    getAuthToken(params);
+    return getAuthToken(params).mapEmpty();
   }
 
   public Future<String> getAuthToken(

@@ -157,10 +157,12 @@ public class SystemUserAuthService {
 
     LOGGER.info("Attempting {}", getLoginCredentials(okapiConnectionParams));
 
-    return authClient.login(
-      okapiConnectionParams,
-      getLoginCredentials(okapiConnectionParams)
-    );
+    return authClient
+      .login(okapiConnectionParams, getLoginCredentials(okapiConnectionParams))
+      .onFailure((Throwable err) ->
+        LOGGER.error("Unable to login as system user", err)
+      )
+      .onSuccess((String v) -> LOGGER.info("Logged in successfully!"));
   }
 
   protected User getOrCreateSystemUserFromApi(

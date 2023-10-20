@@ -104,7 +104,7 @@ public class SystemUserAuthService {
     }
   }
 
-  public void initializeSystemUser(Map<String, String> headers) {
+  public Future<Void> initializeSystemUser(Map<String, String> headers) {
     ensureSplittingEnabled();
 
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(
@@ -114,19 +114,18 @@ public class SystemUserAuthService {
 
     User user = getOrCreateSystemUserFromApi(okapiConnectionParams);
     validatePermissions(okapiConnectionParams, user);
-    try {
-      getAuthToken(okapiConnectionParams);
-    } catch (NoSuchElementException e) {
-      LOGGER.error("Could not get auth token: ", e);
+    return getAuthToken(okapiConnectionParams)
+      .<Void>mapEmpty()
+      .onFailure(err -> {
+        LOGGER.error("Could not get auth token: ", err);
 
-      LOGGER.info(
-        "This may be due to a password change...resetting system user password"
-      );
+        LOGGER.info(
+          "This may be due to a password change...resetting system user password"
+        );
 
-      recoverSystemUserAfterPasswordChange(okapiConnectionParams, user);
-    }
-
-    LOGGER.info("System user created/found successfully!");
+        recoverSystemUserAfterPasswordChange(okapiConnectionParams, user);
+      })
+      .onSuccess(v -> LOGGER.info("System user created/found successfully!"));
   }
 
   protected void recoverSystemUserAfterPasswordChange(

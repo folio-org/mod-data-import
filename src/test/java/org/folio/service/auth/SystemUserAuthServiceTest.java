@@ -15,6 +15,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -25,11 +27,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(VertxUnitRunner.class)
 public class SystemUserAuthServiceTest {
 
   @Mock
@@ -52,6 +55,9 @@ public class SystemUserAuthServiceTest {
 
   @Before
   public void setup() {
+    // open mocks for class
+    MockitoAnnotations.openMocks(this);
+
     service =
       new SystemUserAuthServiceTestProxy(
         authClient,
@@ -320,7 +326,7 @@ public class SystemUserAuthServiceTest {
   }
 
   @Test
-  public void testChangedCredentials() {
+  public void testChangedCredentials(TestContext context) {
     User response = new User();
     response.setId("user-id");
 
@@ -352,18 +358,23 @@ public class SystemUserAuthServiceTest {
       .when(usersClient)
       .updateUser(any(), any());
 
-    service.initializeSystemUser(Map.of("x-okapi-tenant", "tenant"));
-
-    verify(usersClient, times(1)).getUserByUsername(any(), eq("username"));
-    verify(permissionsClient, times(1))
-      .getPermissionsUserByUserId(any(), eq("user-id"));
-    verify(authClient, times(1)).deleteCredentials(any(), eq("user-id"));
-    verify(authClient, times(1)).saveCredentials(any(), any());
-    verify(usersClient, times(1)).updateUser(any(), any());
-    verify(authClient, times(2)).login(any(), any());
-    verifyNoMoreInteractions(authClient);
-    verifyNoMoreInteractions(permissionsClient);
-    verifyNoMoreInteractions(usersClient);
+    service
+      .initializeSystemUser(Map.of("x-okapi-tenant", "tenant"))
+      .onComplete(
+        context.asyncAssertSuccess(v -> {
+          verify(usersClient, times(1))
+            .getUserByUsername(any(), eq("username"));
+          verify(permissionsClient, times(1))
+            .getPermissionsUserByUserId(any(), eq("user-id"));
+          verify(authClient, times(1)).deleteCredentials(any(), eq("user-id"));
+          verify(authClient, times(1)).saveCredentials(any(), any());
+          verify(usersClient, times(1)).updateUser(any(), any());
+          verify(authClient, times(2)).login(any(), any());
+          verifyNoMoreInteractions(authClient);
+          verifyNoMoreInteractions(permissionsClient);
+          verifyNoMoreInteractions(usersClient);
+        })
+      );
   }
 
   // allow access to private methods

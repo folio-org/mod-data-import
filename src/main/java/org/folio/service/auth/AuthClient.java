@@ -7,7 +7,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.logging.log4j.LogManager;
@@ -100,10 +99,7 @@ public class AuthClient extends ApiClient {
   public static class LoginCredentials {
 
     private String username;
-
-    @ToString.Exclude
     private String password;
-
     private String tenant;
   }
 }

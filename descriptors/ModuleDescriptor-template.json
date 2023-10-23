@@ -257,9 +257,7 @@
             "instance-authority-links.instances.collection.get",
             "instance-authority-links.instances.collection.put",
             "user-tenants.collection.get",
-            "organizations.organizations.collection.get",
-            "invoices.acquisitions-units-assignments.assign",
-            "invoices.acquisitions-units-assignments.manage"
+            "organizations.organizations.collection.get"
           ],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.assign",

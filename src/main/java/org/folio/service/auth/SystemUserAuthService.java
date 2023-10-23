@@ -104,7 +104,7 @@ public class SystemUserAuthService {
     }
   }
 
-  public void initializeSystemUser(Map<String, String> headers) {
+  public Future<Void> initializeSystemUser(Map<String, String> headers) {
     ensureSplittingEnabled();
 
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(
@@ -114,22 +114,24 @@ public class SystemUserAuthService {
 
     User user = getOrCreateSystemUserFromApi(okapiConnectionParams);
     validatePermissions(okapiConnectionParams, user);
-    try {
-      getAuthToken(okapiConnectionParams);
-    } catch (NoSuchElementException e) {
-      LOGGER.error("Could not get auth token: ", e);
+    return getAuthToken(okapiConnectionParams)
+      .<Void>mapEmpty()
+      .recover(err -> {
+        LOGGER.error("Could not get auth token: ", err);
 
-      LOGGER.info(
-        "This may be due to a password change...resetting system user password"
-      );
+        LOGGER.info(
+          "This may be due to a password change...resetting system user password"
+        );
 
-      recoverSystemUserAfterPasswordChange(okapiConnectionParams, user);
-    }
-
-    LOGGER.info("System user created/found successfully!");
+        return recoverSystemUserAfterPasswordChange(
+          okapiConnectionParams,
+          user
+        );
+      })
+      .onSuccess(v -> LOGGER.info("System user created/found successfully!"));
   }
 
-  protected void recoverSystemUserAfterPasswordChange(
+  protected Future<Void> recoverSystemUserAfterPasswordChange(
     OkapiConnectionParams params,
     User user
   ) {
@@ -147,7 +149,7 @@ public class SystemUserAuthService {
     usersClient.updateUser(params, user);
 
     LOGGER.info("Verifying we can login...");
-    getAuthToken(params);
+    return getAuthToken(params).mapEmpty();
   }
 
   public Future<String> getAuthToken(
@@ -157,10 +159,12 @@ public class SystemUserAuthService {
 
     LOGGER.info("Attempting {}", getLoginCredentials(okapiConnectionParams));
 
-    return authClient.login(
-      okapiConnectionParams,
-      getLoginCredentials(okapiConnectionParams)
-    );
+    return authClient
+      .login(okapiConnectionParams, getLoginCredentials(okapiConnectionParams))
+      .onFailure((Throwable err) ->
+        LOGGER.error("Unable to login as system user", err)
+      )
+      .onSuccess((String v) -> LOGGER.info("Logged in successfully!"));
   }
 
   protected User getOrCreateSystemUserFromApi(

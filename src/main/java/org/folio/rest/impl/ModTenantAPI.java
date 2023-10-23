@@ -46,10 +46,14 @@ public class ModTenantAPI extends TenantAPI {
 
   @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
-    if (fileSplittingEnabled) {
-      systemUserAuthService.initializeSystemUser(headers);
-    }
-    return super.loadData(attributes, tenantId, headers, context)
+    return Future.succeededFuture()
+      .compose(v -> {
+        if (fileSplittingEnabled) {
+          return systemUserAuthService.initializeSystemUser(headers);
+        }
+        return Future.succeededFuture();
+      })
+      .compose(v -> super.loadData(attributes, tenantId, headers, context))
       .compose(num -> {
         initStorageCleanupService(headers, context);
         return setupDefaultFileExtensions(headers).map(num);

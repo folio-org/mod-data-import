@@ -1,3 +1,6 @@
+## 2023-10-25 v3.0.2
+* [MODDATAIMP-947](https://issues.folio.org/browse/MODDATAIMP-947) Fix improper system user account management
+
 ## 2023-10-17 v3.0.1
 * [MODDATAIMP-943](https://issues.folio.org/browse/MODDATAIMP-943) Added missing permission to fix import errors
 

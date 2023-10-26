@@ -68,8 +68,6 @@ invoice-storage.invoices.item.put
 invoice-storage.invoice-lines.item.post
 invoice-storage.invoice-lines.item.put
 invoice-storage.invoice-lines.collection.get
-acquisitions-units.units.collection.get
-acquisitions-units.memberships.collection.get
 orders.po-lines.item.get
 orders.po-lines.collection.get
 orders-storage.order-invoice-relationships.collection.get

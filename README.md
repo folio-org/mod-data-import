@@ -6,24 +6,24 @@ This software is distributed under the terms of the Apache License,
 Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 4 README.md -->
-* [Introduction](#introduction)
-* [Compiling](#compiling)
-* [Docker](#docker)
-* [Installing the module](#installing-the-module)
-* [Deploying the module](#deploying-the-module)
-* [Maximum upload file size and java heap memory setups](#maximum-upload-file-size-and-java-heap-memory-setups)
-    * [Example](#example)
-* [Scalability](#scalability)
-  * [Module properties to set up at mod-configuration](#module-properties-to-set-up-at-mod-configuration)
-* [File splitting configuration](#file-splitting-configuration)
-* [Interaction with AWS S3/Minio](#interaction-with-aws-s3minio)
-* [Queue prioritization algorithm](#queue-prioritization-algorithm)
-* [System user](#system-user)
-* [Interaction with Kafka](#interaction-with-kafka)
-* [Other system properties](#other-system-properties)
-* [Issue tracker](#issue-tracker)
-* [Additional information](#additional-information)
-* [Script to upload a batch of MARC records](#script-to-upload-a-batch-of-marc-records)
+- [Introduction](#introduction)
+- [Compiling](#compiling)
+- [Docker](#docker)
+- [Installing the module](#installing-the-module)
+- [Deploying the module](#deploying-the-module)
+- [Maximum upload file size and java heap memory setups](#maximum-upload-file-size-and-java-heap-memory-setups)
+    - [Example](#example)
+- [Scalability](#scalability)
+  - [Module properties to set up at mod-configuration](#module-properties-to-set-up-at-mod-configuration)
+- [File splitting configuration](#file-splitting-configuration)
+- [Interaction with AWS S3/Minio](#interaction-with-aws-s3minio)
+- [Queue prioritization algorithm](#queue-prioritization-algorithm)
+- [System user](#system-user)
+- [Interaction with Kafka](#interaction-with-kafka)
+- [Other system properties](#other-system-properties)
+- [Issue tracker](#issue-tracker)
+- [Additional information](#additional-information)
+- [Script to upload a batch of MARC records](#script-to-upload-a-batch-of-marc-records)
 
 ## Introduction
 
@@ -217,6 +217,9 @@ and its credentials may be customized with the following environment variables:
 This user is granted [many of the same permissions](/src/main/resources/permissions.txt) as the module for the
 `/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles` endpoint. This enables this
 user to complete any import-related tasks across compatible modules.
+
+> [!NOTE]
+> Optional processing permissions (acquisitions-units, orders, etc.) should go in a file `permissions-optional.txt` in addition to the other `permissions.txt`.  Optional permissions will be checked against the user submitting import jobs.
 
 ## Interaction with Kafka
 

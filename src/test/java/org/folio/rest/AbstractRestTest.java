@@ -405,7 +405,8 @@ public abstract class AbstractRestTest {
                     null,
                     null,
                     false,
-                    new ClassPathResource("permissions.txt")
+                    new ClassPathResource("permissions.txt"),
+                    null
                   ).getPermissionsList()
                 )
                 .build()

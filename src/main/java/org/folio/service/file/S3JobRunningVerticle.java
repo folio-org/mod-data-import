@@ -253,7 +253,14 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         XOkapiHeaders.USER_ID.toLowerCase(),
         userId,
         XOkapiHeaders.PERMISSIONS.toLowerCase(),
-        new JsonArray(permissionUser.getPermissions()).toString()
+        new JsonArray(
+          permissionUser
+            .getPermissions()
+            .stream()
+            .filter(systemUserService.getOptionalPermissionsList()::contains)
+            .toList()
+        )
+          .toString()
       ),
       vertx
     );

@@ -45,6 +45,9 @@ public class SystemUserAuthService {
   @Getter
   private List<String> permissionsList;
 
+  @Getter
+  private List<String> optionalPermissionsList;
+
   @Autowired
   public SystemUserAuthService(
     AuthClient authClient,
@@ -55,7 +58,10 @@ public class SystemUserAuthService {
     ) String username,
     @Value("${SYSTEM_PROCESSING_PASSWORD:}") String password,
     @Value("${SPLIT_FILES_ENABLED:false}") boolean fileSplittingEnabled,
-    @Value("classpath:permissions.txt") Resource permissionsResource
+    @Value("classpath:permissions.txt") Resource permissionsResource,
+    @Value(
+      "classpath:permissions-optional.txt"
+    ) Resource optionalPermissionsResource
   ) {
     // ensure password is set properly
     if (fileSplittingEnabled && StringUtils.isEmpty(password)) {
@@ -91,6 +97,27 @@ public class SystemUserAuthService {
     } catch (IOException e) {
       LOGGER.error("Could not read permissions: ", e);
       this.permissionsList = Collections.unmodifiableList(new ArrayList<>());
+    }
+
+    try {
+      this.optionalPermissionsList =
+        Arrays
+          .stream(
+            IOUtils
+              .toString(
+                optionalPermissionsResource.getInputStream(),
+                StandardCharsets.UTF_8
+              )
+              .split("\n")
+          )
+          // account for newlines/whitespace/etc
+          .filter(str -> !str.isBlank())
+          .map(String::trim)
+          .toList();
+    } catch (IOException e) {
+      LOGGER.error("Could not read permissions: ", e);
+      this.optionalPermissionsList =
+        Collections.unmodifiableList(new ArrayList<>());
     }
   }
 

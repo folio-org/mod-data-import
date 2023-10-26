@@ -45,6 +45,9 @@ public class SystemUserAuthServiceTest {
   UsersClient usersClient;
 
   ClassPathResource resource = new ClassPathResource("permissions.txt");
+  ClassPathResource resourceOptional = new ClassPathResource(
+    "permissions-optional.txt"
+  );
 
   SystemUserAuthServiceTestProxy service;
 
@@ -66,7 +69,8 @@ public class SystemUserAuthServiceTest {
         "username",
         "password",
         true,
-        resource
+        resource,
+        resourceOptional
       );
   }
 
@@ -223,7 +227,8 @@ public class SystemUserAuthServiceTest {
       "username",
       "password",
       true,
-      resource
+      resource,
+      resourceOptional
     );
 
     // disabled case with password, should be successful
@@ -234,7 +239,8 @@ public class SystemUserAuthServiceTest {
       "username",
       "password",
       false,
-      resource
+      resource,
+      resourceOptional
     );
 
     // disabled case with null password, should be successful
@@ -245,7 +251,8 @@ public class SystemUserAuthServiceTest {
       "username",
       null,
       false,
-      resource
+      resource,
+      resourceOptional
     );
 
     // disabled case with empty password, should be successful
@@ -256,7 +263,8 @@ public class SystemUserAuthServiceTest {
       "username",
       "",
       false,
-      resource
+      resource,
+      resourceOptional
     );
 
     // enabled case with empty password, should fail
@@ -270,7 +278,8 @@ public class SystemUserAuthServiceTest {
           "username",
           "",
           true,
-          resource
+          resource,
+          resourceOptional
         )
     );
 
@@ -285,7 +294,8 @@ public class SystemUserAuthServiceTest {
           "username",
           null,
           true,
-          resource
+          resource,
+          resourceOptional
         )
     );
   }
@@ -299,7 +309,8 @@ public class SystemUserAuthServiceTest {
       "username",
       "password",
       false,
-      resource
+      resource,
+      resourceOptional
     );
 
     assertThrows(
@@ -318,11 +329,13 @@ public class SystemUserAuthServiceTest {
       null,
       "password",
       true,
+      new ClassPathResource("this-file-does-not-exist"),
       new ClassPathResource("this-file-does-not-exist")
     );
 
     // fallback results in empty list
     assertThat(testService.getPermissionsList(), is(empty()));
+    assertThat(testService.getOptionalPermissionsList(), is(empty()));
   }
 
   @Test
@@ -390,7 +403,8 @@ public class SystemUserAuthServiceTest {
       String username,
       String password,
       boolean splitEnabled,
-      Resource permissionsResource
+      Resource permissionsResource,
+      Resource permissionsResourceOptional
     ) {
       super(
         authClient,
@@ -399,7 +413,8 @@ public class SystemUserAuthServiceTest {
         username,
         password,
         splitEnabled,
-        permissionsResource
+        permissionsResource,
+        permissionsResourceOptional
       );
     }
 

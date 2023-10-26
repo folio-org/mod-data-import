@@ -257,7 +257,12 @@ public class S3JobRunningVerticle extends AbstractVerticle {
           permissionUser
             .getPermissions()
             .stream()
-            .filter(systemUserService.getOptionalPermissionsList()::contains)
+            .filter(permission ->
+              systemUserService.getPermissionsList().contains(permission) ||
+              systemUserService
+                .getOptionalPermissionsList()
+                .contains(permission)
+            )
             .toList()
         )
           .toString()

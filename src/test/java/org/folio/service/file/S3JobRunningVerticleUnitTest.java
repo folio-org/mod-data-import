@@ -107,6 +107,7 @@ public class S3JobRunningVerticleUnitTest {
           mockVertx,
           queueItemDao,
           minioStorageService,
+          null,
           scoreService,
           systemUserService,
           uploadDefinitionService,

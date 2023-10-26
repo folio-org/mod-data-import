@@ -4,6 +4,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -28,6 +29,8 @@ import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.StatusDto.ErrorStatus;
+import org.folio.service.auth.PermissionsClient;
+import org.folio.service.auth.PermissionsClient.PermissionUser;
 import org.folio.service.auth.SystemUserAuthService;
 import org.folio.service.processing.ParallelFileChunkingProcessor;
 import org.folio.service.processing.ranking.ScoreService;
@@ -51,6 +54,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
   private final DataImportQueueItemDao queueItemDao;
   private final MinioStorageService minioStorageService;
+  private final PermissionsClient permissionsClient;
   private final ScoreService scoreService;
   private final SystemUserAuthService systemUserService;
   private final UploadDefinitionService uploadDefinitionService;
@@ -67,6 +71,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     Vertx vertx,
     DataImportQueueItemDao queueItemDao,
     MinioStorageService minioStorageService,
+    PermissionsClient permissionsClient,
     ScoreService scoreService,
     SystemUserAuthService systemUserService,
     UploadDefinitionService uploadDefinitionService,
@@ -79,6 +84,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     this.queueItemDao = queueItemDao;
 
     this.minioStorageService = minioStorageService;
+    this.permissionsClient = permissionsClient;
     this.systemUserService = systemUserService;
     this.scoreService = scoreService;
     this.uploadDefinitionService = uploadDefinitionService;
@@ -185,7 +191,10 @@ public class S3JobRunningVerticle extends AbstractVerticle {
                       job.getQueueItem().getDataType()
                     )
                   ),
-                params
+                getUserConnectionParams(
+                  job.getJobExecution().getUserId(),
+                  params
+                )
               )
               .map(job)
           )
@@ -215,6 +224,39 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             }
           })
       );
+  }
+
+  private OkapiConnectionParams getUserConnectionParams(
+    String userId,
+    OkapiConnectionParams params
+  ) {
+    PermissionUser permissionUser = permissionsClient
+      .getPermissionsUserByUserId(params, userId)
+      .orElseThrow(() ->
+        LOGGER.throwing(
+          new IllegalStateException(
+            "User ID " + userId + "who created the job was not found"
+          )
+        )
+      );
+
+    return new OkapiConnectionParams(
+      Map.of(
+        // shared from the system user
+        XOkapiHeaders.URL.toLowerCase(),
+        params.getOkapiUrl(),
+        XOkapiHeaders.TENANT.toLowerCase(),
+        params.getTenantId(),
+        XOkapiHeaders.TOKEN.toLowerCase(),
+        params.getToken(),
+        // provided since some checks are made against these in mod-invoice
+        XOkapiHeaders.USER_ID.toLowerCase(),
+        userId,
+        XOkapiHeaders.PERMISSIONS.toLowerCase(),
+        new JsonArray(permissionUser.getPermissions()).toString()
+      ),
+      vertx
+    );
   }
 
   protected Future<Void> updateJobExecutionStatusSafely(

@@ -250,9 +250,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         XOkapiHeaders.TOKEN.toLowerCase(),
         params.getToken(),
         // provided since some checks are made against these in mod-invoice
-        XOkapiHeaders.USER_ID.toLowerCase(),
-        // userId,
-        // XOkapiHeaders.PERMISSIONS.toLowerCase(),
+        XOkapiHeaders.PERMISSIONS.toLowerCase(),
         new JsonArray(
           permissionUser
             .getPermissions()

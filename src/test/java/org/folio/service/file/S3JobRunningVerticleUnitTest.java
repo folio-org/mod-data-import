@@ -402,19 +402,21 @@ public class S3JobRunningVerticleUnitTest {
     DataImportQueueItem queueItem = new DataImportQueueItem()
       .withId("queue-id")
       .withJobExecutionId("job-exec-id")
-      .withDataType("MARC");
-
-    doReturn(Future.succeededFuture(null))
-      .when(verticle)
-      .getConnectionParams(any());
+      .withDataType("MARC")
+      .withTenant("tenant")
+      .withOkapiUrl("okapi-url")
+      .withOkapiToken("token")
+      .withOkapiPermissions("permissions");
 
     doReturn(Future.succeededFuture(tempFile))
       .when(verticle)
       .createLocalFile(queueItem);
 
-    when(uploadDefinitionService.getJobExecutionById("job-exec-id", null))
+    when(uploadDefinitionService.getJobExecutionById(eq("job-exec-id"), any()))
       .thenReturn(
-        Future.succeededFuture(new JobExecution().withId("job-exec-id"))
+        Future.succeededFuture(
+          new JobExecution().withId("job-exec-id").withUserId("user-id")
+        )
       );
 
     doReturn(Future.succeededFuture())
@@ -426,12 +428,7 @@ public class S3JobRunningVerticleUnitTest {
       .downloadFromS3(any());
 
     when(
-      fileProcessor.processFile(
-        eq(tempFile),
-        eq("job-exec-id"),
-        any(),
-        isNull()
-      )
+      fileProcessor.processFile(eq(tempFile), eq("job-exec-id"), any(), any())
     )
       .thenReturn(Future.succeededFuture());
 
@@ -441,12 +438,12 @@ public class S3JobRunningVerticleUnitTest {
         context.asyncAssertSuccess(v -> {
           verify(verticle, times(1)).createLocalFile(queueItem);
           verify(uploadDefinitionService, times(1))
-            .getJobExecutionById("job-exec-id", null);
+            .getJobExecutionById(eq("job-exec-id"), any());
           verify(verticle, times(1))
-            .updateJobExecutionStatusSafely(eq("job-exec-id"), any(), isNull());
+            .updateJobExecutionStatusSafely(eq("job-exec-id"), any(), any());
           verify(verticle, times(1)).downloadFromS3(any());
           verify(fileProcessor, times(1))
-            .processFile(eq(tempFile), eq("job-exec-id"), any(), isNull());
+            .processFile(eq(tempFile), eq("job-exec-id"), any(), any());
 
           verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");
 
@@ -473,17 +470,17 @@ public class S3JobRunningVerticleUnitTest {
     DataImportQueueItem queueItem = new DataImportQueueItem()
       .withId("queue-id")
       .withJobExecutionId("job-exec-id")
-      .withDataType("MARC");
-
-    doReturn(Future.succeededFuture())
-      .when(verticle)
-      .getConnectionParams(any());
+      .withDataType("MARC")
+      .withTenant("tenant")
+      .withOkapiUrl("okapi-url")
+      .withOkapiToken("token")
+      .withOkapiPermissions("permissions");
 
     doReturn(Future.succeededFuture(tempFile))
       .when(verticle)
       .createLocalFile(queueItem);
 
-    when(uploadDefinitionService.getJobExecutionById("job-exec-id", null))
+    when(uploadDefinitionService.getJobExecutionById(eq("job-exec-id"), any()))
       .thenReturn(
         Future.succeededFuture(new JobExecution().withId("job-exec-id"))
       );
@@ -497,12 +494,7 @@ public class S3JobRunningVerticleUnitTest {
       .downloadFromS3(any());
 
     when(
-      fileProcessor.processFile(
-        eq(tempFile),
-        eq("job-exec-id"),
-        any(),
-        isNull()
-      )
+      fileProcessor.processFile(eq(tempFile), eq("job-exec-id"), any(), any())
     )
       .thenThrow(new RuntimeException("test error"));
 
@@ -512,13 +504,11 @@ public class S3JobRunningVerticleUnitTest {
         context.asyncAssertFailure(v -> {
           verify(verticle, times(1)).createLocalFile(queueItem);
           verify(uploadDefinitionService, times(1))
-            .getJobExecutionById("job-exec-id", null);
+            .getJobExecutionById(eq("job-exec-id"), any());
           // once to mark in progress, second to mark failure
           verify(verticle, times(2))
-            .updateJobExecutionStatusSafely(eq("job-exec-id"), any(), isNull());
+            .updateJobExecutionStatusSafely(eq("job-exec-id"), any(), any());
           verify(verticle, times(1)).downloadFromS3(any());
-          verify(fileProcessor, times(1))
-            .processFile(eq(tempFile), eq("job-exec-id"), any(), isNull());
 
           // should still cleanup
           verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");
@@ -550,11 +540,11 @@ public class S3JobRunningVerticleUnitTest {
       DataImportQueueItem queueItem = new DataImportQueueItem()
         .withId("queue-id")
         .withJobExecutionId("job-exec-id")
-        .withDataType("MARC");
-
-      doReturn(Future.succeededFuture())
-        .when(verticle)
-        .getConnectionParams(any());
+        .withDataType("MARC")
+        .withTenant("tenant")
+        .withOkapiUrl("okapi-url")
+        .withOkapiToken("token")
+        .withOkapiPermissions("permissions");
 
       doThrow(new UncheckedIOException(new IOException()))
         .when(verticle)
@@ -570,11 +560,7 @@ public class S3JobRunningVerticleUnitTest {
           context.asyncAssertFailure(v -> {
             verify(verticle, times(1)).createLocalFile(queueItem);
             verify(verticle, times(1))
-              .updateJobExecutionStatusSafely(
-                eq("job-exec-id"),
-                any(),
-                isNull()
-              );
+              .updateJobExecutionStatusSafely(eq("job-exec-id"), any(), any());
 
             // should still cleanup queue item
             verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");

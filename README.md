@@ -18,7 +18,6 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 - [File splitting configuration](#file-splitting-configuration)
 - [Interaction with AWS S3/Minio](#interaction-with-aws-s3minio)
 - [Queue prioritization algorithm](#queue-prioritization-algorithm)
-- [System user](#system-user)
 - [Interaction with Kafka](#interaction-with-kafka)
 - [Other system properties](#other-system-properties)
 - [Issue tracker](#issue-tracker)
@@ -194,32 +193,6 @@ For information on what these mean, how to configure them, how scores are calcul
 
 > [!NOTE]
 > We recommend the suggested values above, however, there is a lot of room for customization and extension as needed.  Please see the doc for more information.
-
-## System user
-
-> [!WARNING]
-> This module creates a system user upon installation with the following (if splitting is enabled):
->
-> - Name `SystemDataImport`
-> - Username `data-import-system-user` (customizable via env variable `SYSTEM_PROCESSING_USERNAME`)
-> - Password customizable via env variable `SYSTEM_PROCESSING_PASSWORD` (**must be set, or the module will fail to start**)
-> - [permissions to perform any import-related activities](/src/main/resources/permissions.txt).
-
-To enable asynchronous job launching (as part of the file splitting process), the module creates
-a system user upon installation. The system user is named `SystemDataImport`,
-and its credentials may be customized with the following environment variables:
-
-| Name                         | Type   | Required                     | Default                   | Description          |
-| ---------------------------- | ------ | ---------------------------- | ------------------------- | -------------------- |
-| `SYSTEM_PROCESSING_USERNAME` | string | no                           | `data-import-system-user` | System user username |
-| `SYSTEM_PROCESSING_PASSWORD` | string | yes, if splitting is enabled | _none_                    | System user password |
-
-This user is granted [many of the same permissions](/src/main/resources/permissions.txt) as the module for the
-`/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles` endpoint. This enables this
-user to complete any import-related tasks across compatible modules.
-
-> [!NOTE]
-> Optional processing permissions (acquisitions-units, orders, etc.) should go in a file `permissions-optional.txt` in addition to the other `permissions.txt`.  Optional permissions will be checked against the user submitting import jobs.
 
 ## Interaction with Kafka
 

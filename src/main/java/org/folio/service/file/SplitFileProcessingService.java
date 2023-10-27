@@ -287,6 +287,7 @@ public class SplitFileProcessingService {
                       .withDataType(
                         entity.getJobProfileInfo().getDataType().toString()
                       )
+                      .withOkapiToken(params.getToken())
                   );
                 })
                 .map(Future.class::cast)

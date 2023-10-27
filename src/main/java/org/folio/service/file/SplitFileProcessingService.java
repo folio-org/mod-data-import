@@ -285,6 +285,21 @@ public class SplitFileProcessingService {
                       .withDataType(
                         entity.getJobProfileInfo().getDataType().toString()
                       )
+                      .withOkapiToken(params.getToken())
+                      .withOkapiPermissions(
+                        params
+                          .getHeaders()
+                          .entries()
+                          .stream()
+                          .filter(header ->
+                            "x-okapi-permissions".equalsIgnoreCase(
+                                header.getKey()
+                              )
+                          )
+                          .findFirst()
+                          .map(Map.Entry::getValue)
+                          .orElse("")
+                      )
                   );
                 })
                 .map(Future.class::cast)

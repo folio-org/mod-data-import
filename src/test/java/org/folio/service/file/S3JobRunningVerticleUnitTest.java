@@ -34,10 +34,10 @@ import java.io.UncheckedIOException;
 import java.util.Optional;
 import org.apache.commons.io.FileUtils;
 import org.folio.dao.DataImportQueueItemDao;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.StatusDto;
-import org.folio.service.auth.SystemUserAuthService;
 import org.folio.service.file.S3JobRunningVerticle.QueueJob;
 import org.folio.service.processing.ParallelFileChunkingProcessor;
 import org.folio.service.processing.ranking.ScoreService;
@@ -76,9 +76,6 @@ public class S3JobRunningVerticleUnitTest {
   ScoreService scoreService;
 
   @Mock
-  SystemUserAuthService systemUserService;
-
-  @Mock
   UploadDefinitionService uploadDefinitionService;
 
   @Mock
@@ -107,9 +104,7 @@ public class S3JobRunningVerticleUnitTest {
           mockVertx,
           queueItemDao,
           minioStorageService,
-          null,
           scoreService,
-          systemUserService,
           uploadDefinitionService,
           fileProcessor,
           POLL_INTERVAL,
@@ -119,25 +114,43 @@ public class S3JobRunningVerticleUnitTest {
   }
 
   @Test
-  public void testConnectionParams(TestContext context) {
-    when(systemUserService.getAuthToken(any()))
-      .thenReturn(Future.succeededFuture("token"));
+  public void testConnectionParams() {
+    OkapiConnectionParams params = verticle.getConnectionParams(
+      new DataImportQueueItem()
+        .withTenant("tenant")
+        .withOkapiUrl("okapi-url")
+        .withOkapiToken("token")
+        .withOkapiPermissions("permissions")
+    );
 
-    verticle
-      .getConnectionParams(
-        new DataImportQueueItem().withTenant("tenant").withOkapiUrl("okapi-url")
-      )
-      .onComplete(
-        context.asyncAssertSuccess(params -> {
-          assertThat(params.getTenantId(), is("tenant"));
-          assertThat(params.getOkapiUrl(), is("okapi-url"));
-          assertThat(params.getToken(), is("token"));
+    assertThat(params.getTenantId(), is("tenant"));
+    assertThat(params.getOkapiUrl(), is("okapi-url"));
+    assertThat(params.getToken(), is("token"));
+    assertThat(
+      params.getHeaders().get("x-okapi-permissions"),
+      is("permissions")
+    );
+  }
 
-          verify(systemUserService, times(1)).getAuthToken(any());
+  @Test
+  public void testConnectionParamsWithUserId() {
+    OkapiConnectionParams params = verticle.getConnectionParams(
+      new DataImportQueueItem()
+        .withTenant("tenant")
+        .withOkapiUrl("okapi-url")
+        .withOkapiToken("token")
+        .withOkapiPermissions("permissions"),
+      "user-id"
+    );
 
-          verifyNoMoreInteractions(systemUserService);
-        })
-      );
+    assertThat(params.getTenantId(), is("tenant"));
+    assertThat(params.getOkapiUrl(), is("okapi-url"));
+    assertThat(params.getToken(), is("token"));
+    assertThat(
+      params.getHeaders().get("x-okapi-permissions"),
+      is("permissions")
+    );
+    assertThat(params.getHeaders().get("x-okapi-user-id"), is("user-id"));
   }
 
   @Test

@@ -279,7 +279,6 @@ public class DataImportImpl implements DataImport {
       try {
         LOGGER.info("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Starting file processing for upload definition {}", uploadDefinitionId);
 
-        LOGGER.info("HEADERS: {}", okapiHeaders);
         if (this.fileSplittingEnabled) {
           OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
           splitFileProcessingService

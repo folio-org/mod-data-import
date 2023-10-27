@@ -6,6 +6,8 @@
     <addColumn tableName="queue_items">
       <column name="okapi_token" type="text"
         remarks="The originating user's Okapi token" />
+      <column name="okapi_permissions" type="text"
+        remarks="The originating user's Okapi permission header" />
     </addColumn>
   </changeSet>
 </databaseChangeLog>

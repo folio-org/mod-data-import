@@ -31,6 +31,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.impl.util.BufferMapper;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
@@ -292,9 +293,9 @@ public class SplitFileProcessingService {
                           .entries()
                           .stream()
                           .filter(header ->
-                            "x-okapi-permissions".equalsIgnoreCase(
-                                header.getKey()
-                              )
+                            XOkapiHeaders.PERMISSIONS.equalsIgnoreCase(
+                              header.getKey()
+                            )
                           )
                           .findFirst()
                           .map(Map.Entry::getValue)

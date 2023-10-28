@@ -243,11 +243,11 @@
             "acquisitions-units-storage.memberships.collection.get",
             "isbn-utils.convert-to-13.get",
             "instance-authority-links.instances.collection.get",
-            "instance-authority-links.instances.collection.put"
+            "instance-authority-links.instances.collection.put",
+            "organizations.organizations.collection.get"
           ],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.assign",
-            "invoices.acquisitions-units-assignments.manage",
             "orders.acquisitions-units-assignments.assign",
             "orders.acquisitions-units-assignments.manage",
             "orders.item.approve",

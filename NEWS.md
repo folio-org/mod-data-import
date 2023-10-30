@@ -1,3 +1,6 @@
+## 2023-10-30 v3.0.3
+* [MODDATAIMP-953](https://issues.folio.org/browse/MODDATAIMP-953) Pass originating user information to Kafka
+
 ## 2023-10-25 v3.0.2
 * [MODDATAIMP-947](https://issues.folio.org/browse/MODDATAIMP-947) Fix improper system user account management
 

@@ -7,18 +7,6 @@
       "version": "3.3"
     },
     {
-      "id": "login",
-      "version": "7.0"
-    },
-    {
-      "id": "authtoken",
-      "version": "2.0"
-    },
-    {
-      "id": "permissions",
-      "version": "5.3"
-    },
-    {
       "id": "users",
       "version": "15.0 16.0"
     }
@@ -343,18 +331,7 @@
           "methods": [
             "POST"
           ],
-          "pathPattern": "/_/tenant",
-          "modulePermissions": [
-            "users.collection.get",
-            "users.item.post",
-            "users.item.put",
-            "login.item.post",
-            "login.item.delete",
-            "perms.users.get",
-            "perms.users.assign.immutable",
-            "perms.users.item.post",
-            "perms.users.item.put"
-          ]
+          "pathPattern": "/_/tenant"
         },
         {
           "methods": [
@@ -523,7 +500,6 @@
       { "name": "SCORE_PART_NUMBER_FIRST", "value": "1" },
       { "name": "SCORE_PART_NUMBER_LAST", "value": "0" },
       { "name": "SCORE_PART_NUMBER_LAST_REFERENCE", "value": "100" },
-      { "name": "SYSTEM_PROCESSING_USERNAME", "value": "data-import-system-user" },
       { "name": "ASYNC_PROCESSOR_POLL_INTERVAL_MS", "value": "5000" },
       { "name": "ASYNC_PROCESSOR_MAX_WORKERS_COUNT", "value": "1" }
     ]

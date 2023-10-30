@@ -1,0 +1,13 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+  <changeSet id="2023-10-27--00-00-add-token-to-queue-item-table" author="ncovercash">
+    <addColumn tableName="queue_items">
+      <column name="okapi_token" type="text"
+        remarks="The originating user's Okapi token" />
+      <column name="okapi_permissions" type="text"
+        remarks="The originating user's Okapi permission header" />
+    </addColumn>
+  </changeSet>
+</databaseChangeLog>

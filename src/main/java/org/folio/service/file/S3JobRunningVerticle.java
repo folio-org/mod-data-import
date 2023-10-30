@@ -28,7 +28,6 @@ import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.StatusDto.ErrorStatus;
-import org.folio.service.auth.SystemUserAuthService;
 import org.folio.service.processing.ParallelFileChunkingProcessor;
 import org.folio.service.processing.ranking.ScoreService;
 import org.folio.service.s3storage.MinioStorageService;
@@ -52,7 +51,6 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   private final DataImportQueueItemDao queueItemDao;
   private final MinioStorageService minioStorageService;
   private final ScoreService scoreService;
-  private final SystemUserAuthService systemUserService;
   private final UploadDefinitionService uploadDefinitionService;
 
   private final ParallelFileChunkingProcessor fileProcessor;
@@ -68,7 +66,6 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     DataImportQueueItemDao queueItemDao,
     MinioStorageService minioStorageService,
     ScoreService scoreService,
-    SystemUserAuthService systemUserService,
     UploadDefinitionService uploadDefinitionService,
     ParallelFileChunkingProcessor fileProcessor,
     @Value("${ASYNC_PROCESSOR_POLL_INTERVAL_MS:5000}") int pollInterval,
@@ -79,7 +76,6 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     this.queueItemDao = queueItemDao;
 
     this.minioStorageService = minioStorageService;
-    this.systemUserService = systemUserService;
     this.scoreService = scoreService;
     this.uploadDefinitionService = uploadDefinitionService;
     this.fileProcessor = fileProcessor;
@@ -184,7 +180,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
                   job.getQueueItem().getDataType()
                 )
               ),
-            params
+            // we need to include the user ID here since some later checks in mod-invoice/etc use it
+            getConnectionParams(queueItem, job.getJobExecution().getUserId())
           )
           .map(v -> job)
       )
@@ -270,26 +267,11 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   }
 
   /**
-   * Authenticate and get connection parameters (Okapi URL/token)
+   * Get connection parameters (Okapi URL/token)
    */
   protected OkapiConnectionParams getConnectionParams(
     DataImportQueueItem queueItem
   ) {
-    OkapiConnectionParams provisionalParams = new OkapiConnectionParams(
-      Map.of(
-        XOkapiHeaders.URL.toLowerCase(),
-        queueItem.getOkapiUrl(),
-        XOkapiHeaders.TENANT.toLowerCase(),
-        queueItem.getTenant(),
-        // filled right after, but we need tenant/URL to get the token
-        XOkapiHeaders.TOKEN.toLowerCase(),
-        ""
-      ),
-      vertx
-    );
-
-    String token = systemUserService.getAuthToken(provisionalParams);
-
     return new OkapiConnectionParams(
       Map.of(
         XOkapiHeaders.URL.toLowerCase(),
@@ -297,7 +279,33 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         XOkapiHeaders.TENANT.toLowerCase(),
         queueItem.getTenant(),
         XOkapiHeaders.TOKEN.toLowerCase(),
-        token
+        queueItem.getOkapiToken(),
+        XOkapiHeaders.PERMISSIONS.toLowerCase(),
+        queueItem.getOkapiPermissions()
+      ),
+      vertx
+    );
+  }
+
+  /**
+   * Get connection parameters (Okapi URL/token), including a user ID
+   */
+  protected OkapiConnectionParams getConnectionParams(
+    DataImportQueueItem queueItem,
+    String userId
+  ) {
+    return new OkapiConnectionParams(
+      Map.of(
+        XOkapiHeaders.URL.toLowerCase(),
+        queueItem.getOkapiUrl(),
+        XOkapiHeaders.TENANT.toLowerCase(),
+        queueItem.getTenant(),
+        XOkapiHeaders.TOKEN.toLowerCase(),
+        queueItem.getOkapiToken(),
+        XOkapiHeaders.PERMISSIONS.toLowerCase(),
+        queueItem.getOkapiPermissions(),
+        XOkapiHeaders.USER_ID.toLowerCase(),
+        userId
       ),
       vertx
     );

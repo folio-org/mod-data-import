@@ -45,9 +45,6 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.client.S3ClientFactory;
 import org.folio.s3.client.S3ClientProperties;
-import org.folio.service.auth.SystemUserAuthService;
-import org.folio.service.auth.PermissionsClient.PermissionUser;
-import org.folio.service.auth.UsersClient.User;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -243,9 +240,7 @@ public abstract class AbstractRestTest {
         throw new Exception(message);
     }
 
-    WireMockServer tenantMockServer = mockTenantUserCalls(okapiUrl);
-
-    TenantClient tenantClient = new TenantClient(tenantMockServer.baseUrl(), TENANT_ID, TOKEN, vertx.createHttpClient());
+    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN, vertx.createHttpClient());
 
     final DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put(HTTP_PORT, port));
     vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
@@ -254,12 +249,10 @@ public abstract class AbstractRestTest {
         tenantAttributes.setModuleTo(ModuleName.getModuleName() + TEST_MODULE_VERSION);
         tenantClient.postTenant(tenantAttributes, res2 -> {
           if (res2.result().statusCode() == 204) {
-            tenantMockServer.stop();
             async.complete();
             return;
           } else if (res2.result().statusCode() == 201) {
             tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
-              tenantMockServer.stop();
 
               context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
               String error = res3.bodyAsJson(TenantJob.class).getError();
@@ -269,7 +262,6 @@ public abstract class AbstractRestTest {
             }));
           } else {
             context.fail("Failed to make post tenant. Received non-2xx status code: " + res2.result().bodyAsString());
-            tenantMockServer.stop();
           }
           async.complete();
         });
@@ -360,67 +352,5 @@ public abstract class AbstractRestTest {
         PostgresClient.getInstance(vertx).execute("DELETE FROM data_import_global.queue_items;", context.asyncAssertSuccess())
       ))
     ));
-  }
-
-  // done as a separate WireMock server to prevent these from polluting future tests
-  private static WireMockServer mockTenantUserCalls(String realUrl) {
-    WireMockServer tenantMockServer = new WireMockServer(new WireMockConfiguration().dynamicPort().notifier(new Slf4jNotifier(true)));
-    tenantMockServer.start();
-
-    log.info("Started mocking system user creation API calls on port {} in preparation for /_/tenant", tenantMockServer.port());
-
-    // send /_/tenant calls to the real ModTenantApi
-    log.info("Forwarding /_/tenant to real API at {}", realUrl);
-    tenantMockServer.stubFor(
-      get(new UrlPathPattern(new RegexPattern("/_/tenant.*"), true))
-        .willReturn(aResponse().proxiedFrom(realUrl))
-    );
-    tenantMockServer.stubFor(post("/_/tenant")
-      .willReturn(aResponse().proxiedFrom(realUrl))
-    );
-
-    tenantMockServer.stubFor(
-      get(urlPathEqualTo("/users"))
-        .withQueryParam("query", equalTo("username=\"data-import-system-user\""))
-        .willReturn(
-          okJson(JsonObject.of(
-            "users", new JsonArray().add(User.builder().id("system-user-id").build())
-          ).toString())
-        )
-    );
-
-    tenantMockServer.stubFor(
-      get(urlPathEqualTo("/perms/users"))
-        .withQueryParam("query", equalTo("userId==system-user-id"))
-        .willReturn(
-          okJson(JsonObject.of(
-            "permissionUsers",
-            new JsonArray().add(
-              PermissionUser.builder()
-                .permissions(
-                  new SystemUserAuthService(
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    false,
-                    new ClassPathResource("permissions.txt")
-                  ).getPermissionsList()
-                )
-                .build()
-            )
-          ).toString())
-        )
-    );
-
-    tenantMockServer.stubFor(
-      post(urlPathEqualTo("/authn/login"))
-        .willReturn(
-          okJson(JsonObject.of("okapiToken", "token").toString())
-        )
-    );
-
-    return tenantMockServer;
   }
 }

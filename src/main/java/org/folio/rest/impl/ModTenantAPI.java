@@ -14,12 +14,10 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.service.auth.SystemUserAuthService;
 import org.folio.service.cleanup.StorageCleanupService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 
 public class ModTenantAPI extends TenantAPI {
 
@@ -34,21 +32,12 @@ public class ModTenantAPI extends TenantAPI {
   @Autowired
   private StorageCleanupService storageCleanupService;
 
-  @Autowired
-  private SystemUserAuthService systemUserAuthService;
-
-  @Value("${SPLIT_FILES_ENABLED:false}")
-  private boolean fileSplittingEnabled;
-
   public ModTenantAPI() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
 
   @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
-    if (fileSplittingEnabled) {
-      systemUserAuthService.initializeSystemUser(headers);
-    }
     return super.loadData(attributes, tenantId, headers, context)
       .compose(num -> {
         initStorageCleanupService(headers, context);

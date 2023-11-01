@@ -1,3 +1,6 @@
+## 2023-11-01 v2.7.3
+* [MODDATAIMP-960](https://issues.folio.org/browse/MODDATAIMP-960) Pass originating user's token/permissions to Kafka
+
 ## 2023-10-04 v2.7.2
 * [UXPROD-4337](https://issues.folio.org/browse/UXPROD-4337) Add S3 file upload/download support, file splitting for MARC 21, and smarter job prioritization
   * Bumped `data-import` interface to `3.1`

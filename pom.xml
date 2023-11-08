@@ -30,7 +30,7 @@
     <kafka-junit.version>3.3.0</kafka-junit.version>
     <spring.version>5.3.23</spring.version>
     <apache-httpclient.version>4.5.13</apache-httpclient.version>
-    <folio-s3-client.version>2.0.0</folio-s3-client.version>
+    <folio-s3-client.version>1.1.0</folio-s3-client.version>
     <aws-sdk-java.version>2.19.2</aws-sdk-java.version>
   </properties>
 

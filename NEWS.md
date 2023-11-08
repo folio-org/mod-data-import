@@ -1,3 +1,6 @@
+## 2023-11-08 v3.0.4
+* [MODDATAIMP-966](https://issues.folio.org/browse/MODDATAIMP-966) Update folio-s3-client to v2.0.0
+
 ## 2023-10-30 v3.0.3
 * [MODDATAIMP-953](https://issues.folio.org/browse/MODDATAIMP-953) Pass originating user information to Kafka
 

@@ -17,6 +17,7 @@ Revert folio-s3-client to v1.1.0
 * [MODDATAIMP-943](https://issues.folio.org/browse/MODDATAIMP-943) Added missing permission to fix import errors
 
 ## 2023-10-13 v3.0.0
+* [MODDATAIMP-969](https://issues.folio.org/browse/MODDATAIMP-969) Update folio-s3-client to v2.0.5
 * [MODDATAIMP-871](https://issues.folio.org/browse/MODDATAIMP-871) Upgrade folio-kafka-wrapper to 3.0.0 version
 * [MODDATAIMP-854](https://issues.folio.org/browse/MODDATAIMP-854) Upgrade mod-data-import to Java 17
 * [UXPROD-4337](https://issues.folio.org/browse/UXPROD-4337) Add S3 file upload/download support, file splitting for MARC 21, and smarter job prioritization

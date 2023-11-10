@@ -1,3 +1,6 @@
+## 2023-11-10 v3.0.6
+* [MODDATAIMP-966](https://issues.folio.org/browse/MODDATAIMP-966) Update folio-s3-client to v2.0.4
+
 ## 2023-11-08 v3.0.5
 Revert folio-s3-client to v1.1.0
 

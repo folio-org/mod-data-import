@@ -1,4 +1,4 @@
-package org.folio.rest.impl;
+package org.folio.rest.impl.util;
 
 import org.folio.kafka.services.KafkaTopic;
 

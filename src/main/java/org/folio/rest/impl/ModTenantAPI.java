@@ -1,16 +1,21 @@
 package org.folio.rest.impl;
 
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.rest.tools.utils.TenantTool.tenantId;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ConfigurationUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.kafka.services.KafkaAdminClientService;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
@@ -34,6 +39,22 @@ public class ModTenantAPI extends TenantAPI {
 
   public ModTenantAPI() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
+  }
+
+  @Override
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+                         Handler<AsyncResult<Response>> handler, Context context) {
+    super.postTenant(tenantAttributes, headers, ar -> {
+      if (ar.succeeded()) {
+        Vertx vertx = context.owner();
+        var tenantId = tenantId(headers);
+        var kafkaAdminClientService = new KafkaAdminClientService(vertx);
+        kafkaAdminClientService.createKafkaTopics(DataImportKafkaTopic.values(), tenantId);
+        handler.handle(Future.succeededFuture(ar.result()));
+      } else {
+        handler.handle(Future.failedFuture(ar.cause()));
+      }
+    }, context);
   }
 
   @Override

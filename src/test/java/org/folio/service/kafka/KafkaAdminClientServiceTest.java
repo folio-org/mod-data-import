@@ -125,23 +125,12 @@ public class KafkaAdminClientServiceTest {
     }
   }
 
-  private final Set<String> allExpectedTopics = Set.of("folio.foo-tenant.data-import.di-completed",
-    "folio.foo-tenant.data-import.di-edifact-record-created",
-    "folio.foo-tenant.data-import.di-error",
-    "folio.foo-tenant.data-import.di-initialization-started",
-    "folio.foo-tenant.data-import.di-inventory-authority-created-ready-for-post-processing",
-    "folio.foo-tenant.data-import.di-inventory-instance-created-ready-for-post-processing",
-    "folio.foo-tenant.data-import.di-log-srs-marc-authority-record-created",
-    "folio.foo-tenant.data-import.di-log-srs-marc-bib-record-created",
-    "folio.foo-tenant.data-import.di-marc-bib-for-order-created",
-    "folio.foo-tenant.data-import.di-marc-for-update-received",
-    "folio.foo-tenant.data-import.di-parsed-records-chunk-saved",
-    "folio.foo-tenant.data-import.di-raw-records-chunk-parsed",
-    "folio.foo-tenant.data-import.di-raw-records-chunk-read",
-    "folio.foo-tenant.data-import.di-srs-marc-authority-record-created",
-    "folio.foo-tenant.data-import.di-srs-marc-authority-record-not-matched",
-    "folio.foo-tenant.data-import.di-srs-marc-bib-instance-hrid-set",
-    "folio.foo-tenant.data-import.di-srs-marc-bib-record-created",
-    "folio.foo-tenant.data-import.di-srs-marc-bib-record-modified-ready-for-post-processing"
+  private final Set<String> allExpectedTopics = Set.of("folio.foo-tenant.data-import.DI_COMPLETED",
+    "folio.foo-tenant.data-import.DI_EDIFACT_RECORD_CREATED",
+    "folio.foo-tenant.data-import.DI_ERROR",
+    "folio.foo-tenant.data-import.DI_INITIALIZATION_STARTED",
+    "folio.foo-tenant.data-import.DI_PARSED_RECORDS_CHUNK_SAVED",
+    "folio.foo-tenant.data-import.DI_RAW_RECORDS_CHUNK_PARSED",
+    "folio.foo-tenant.data-import.DI_RAW_RECORDS_CHUNK_READ"
   );
 }

@@ -26,11 +26,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.folio.kafka.services.KafkaAdminClientService;
+import org.folio.kafka.services.KafkaTopic;
+import org.folio.rest.impl.util.DIKafkaTopicService;
 import org.folio.rest.impl.util.DataImportKafkaTopic;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 
 @RunWith(VertxUnitRunner.class)
 public class KafkaAdminClientServiceTest {
@@ -38,11 +41,21 @@ public class KafkaAdminClientServiceTest {
   private final String STUB_TENANT = "foo-tenant";
   private KafkaAdminClient mockClient;
   private Vertx vertx;
+  @Mock
+  private DIKafkaTopicService diKafkaTopicService;
 
   @Before
   public void setUp() {
     vertx = mock(Vertx.class);
     mockClient = mock(KafkaAdminClient.class);
+    diKafkaTopicService = mock(DIKafkaTopicService.class);
+    KafkaTopic[] topicObjects = {
+      new DataImportKafkaTopic("DI_INITIALIZATION_STARTED", 10),
+      new DataImportKafkaTopic("DI_RAW_RECORDS_CHUNK_READ", 10)
+    };
+
+
+    when(diKafkaTopicService.createTopicObjects()).thenReturn(topicObjects);
   }
 
   @Test
@@ -121,7 +134,7 @@ public class KafkaAdminClientServiceTest {
       mocked.when(() -> KafkaAdminClient.create(eq(vertx), anyMap())).thenReturn(client);
 
       return new KafkaAdminClientService(vertx)
-        .createKafkaTopics(DataImportKafkaTopic.values(), STUB_TENANT);
+        .createKafkaTopics(diKafkaTopicService.createTopicObjects(), STUB_TENANT);
     }
   }
 

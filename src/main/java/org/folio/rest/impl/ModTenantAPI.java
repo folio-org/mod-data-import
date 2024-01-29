@@ -16,7 +16,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ConfigurationUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.services.KafkaAdminClientService;
-import org.folio.rest.impl.util.DataImportKafkaTopic;
+import org.folio.rest.impl.util.DIKafkaTopicService;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
@@ -38,6 +38,9 @@ public class ModTenantAPI extends TenantAPI {
   @Autowired
   private StorageCleanupService storageCleanupService;
 
+  @Autowired
+  private DIKafkaTopicService diKafkaTopicService;
+
   public ModTenantAPI() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
@@ -50,7 +53,7 @@ public class ModTenantAPI extends TenantAPI {
         Vertx vertx = context.owner();
         var tenantId = tenantId(headers);
         var kafkaAdminClientService = new KafkaAdminClientService(vertx);
-        kafkaAdminClientService.createKafkaTopics(DataImportKafkaTopic.values(), tenantId);
+        kafkaAdminClientService.createKafkaTopics(diKafkaTopicService.createTopicObjects(), tenantId);
         handler.handle(Future.succeededFuture(ar.result()));
       } else {
         handler.handle(Future.failedFuture(ar.cause()));

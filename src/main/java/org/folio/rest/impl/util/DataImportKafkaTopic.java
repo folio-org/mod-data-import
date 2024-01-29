@@ -1,15 +1,16 @@
 package org.folio.rest.impl.util;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.kafka.services.KafkaTopic;
 
-public enum DataImportKafkaTopic implements KafkaTopic {
-  DI_INITIALIZATION_STARTED("DI_INITIALIZATION_STARTED"),
-  DI_RAW_RECORDS_CHUNK_READ("DI_RAW_RECORDS_CHUNK_READ");
+public class DataImportKafkaTopic implements KafkaTopic {
 
   private final String topic;
+  private final int numPartitions;
 
-  DataImportKafkaTopic(String topic) { this.topic = topic; }
+  public DataImportKafkaTopic(String topic, int numPartitions) {
+    this.topic = topic;
+    this.numPartitions = numPartitions;
+  }
 
   @Override
   public String moduleName() {
@@ -23,9 +24,6 @@ public enum DataImportKafkaTopic implements KafkaTopic {
 
   @Override
   public int numPartitions() {
-    return Integer.parseInt(StringUtils.firstNonBlank(
-      System.getenv("KAFKA_DOMAIN_TOPIC_NUM_PARTITIONS"),
-      System.getProperty("KAFKA_DOMAIN_TOPIC_NUM_PARTITIONS"),
-      System.getProperty("kafka-domain-topic-num-partitions"), "50"));
+    return numPartitions;
   }
 }

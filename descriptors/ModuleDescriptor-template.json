@@ -246,7 +246,9 @@
             "instance-authority-links.instances.collection.put",
             "instance-authority.linking-rules.collection.get",
             "user-tenants.collection.get",
-            "organizations.organizations.collection.get"
+            "organizations.organizations.collection.get",
+            "source-storage.records.post",
+            "source-storage.records.put"
           ],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.assign",

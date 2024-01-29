@@ -205,6 +205,11 @@ All modules involved in data import (mod-data-import, mod-source-record-manager,
 * `OKAPI_URL`
 * `ENV` (unique env ID)
 
+There are another important properties - `number of partitions` for topics `DI_INITIALIZATION_STARTED` and `DI_RAW_RECORDS_CHUNK_READ`
+which are created during tenant initialization, the values of which can be customized with
+ `DI_INITIALIZATION_STARTED_PARTITIONS` and `DI_RAW_RECORDS_CHUNK_READ_PARTITIONS` env variables respectively. 
+Default value - `1`.
+
 ## Other system properties
 
 Initial handling of the uploaded file means chunking it and sending records for processing in other modules. The chunk size can be adjusted for different files, otherwise default values will be used:

@@ -16,7 +16,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ConfigurationUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.services.KafkaAdminClientService;
-import org.folio.rest.impl.util.DIKafkaTopicService;
+import org.folio.service.kafka.DIKafkaTopicService;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;

@@ -22,6 +22,8 @@ import org.springframework.context.annotation.PropertySource;
   "org.folio.service.processing.split",
   "org.folio.service.s3storage",
   "org.folio.service.upload",
+  "org.folio.service.kafka",
+  "org.folio.service.kafka.support"
 })
 @PropertySource("classpath:minio.properties")
 public class ApplicationConfig {

@@ -138,7 +138,7 @@ public class KafkaAdminClientServiceTest {
   }
 
   private final Set<String> allExpectedTopics = Set.of(
-    "folio.foo-tenant.data-import.DI_INITIALIZATION_STARTED",
-    "folio.foo-tenant.data-import.DI_RAW_RECORDS_CHUNK_READ"
+    "folio.foo-tenant.DI_INITIALIZATION_STARTED",
+    "folio.foo-tenant.DI_RAW_RECORDS_CHUNK_READ"
   );
 }

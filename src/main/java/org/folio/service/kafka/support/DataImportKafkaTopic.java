@@ -1,5 +1,8 @@
 package org.folio.service.kafka.support;
 
+import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
+import static org.folio.kafka.services.KafkaEnvironmentProperties.environment;
+
 import org.folio.kafka.services.KafkaTopic;
 
 public class DataImportKafkaTopic implements KafkaTopic {
@@ -25,5 +28,10 @@ public class DataImportKafkaTopic implements KafkaTopic {
   @Override
   public int numPartitions() {
     return numPartitions;
+  }
+
+  @Override
+  public String fullTopicName(String tenant) {
+    return formatTopicName(environment(), tenant, topicName());
   }
 }

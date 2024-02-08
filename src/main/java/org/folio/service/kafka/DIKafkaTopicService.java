@@ -17,8 +17,8 @@ public class DIKafkaTopicService {
   private Integer diRawRecordsChunkReadNumPartitions;
 
   public KafkaTopic[] createTopicObjects() {
-    var initTopic = new DataImportKafkaTopic("DI_INITIALIZATION_STARTED", diInitNumPartitions);
-    var rawRecordsChunkReadTopic = new DataImportKafkaTopic("DI_RAW_RECORDS_CHUNK_READ", diRawRecordsChunkReadNumPartitions);
-    return new DataImportKafkaTopic[] {initTopic, rawRecordsChunkReadTopic};
+    return new DataImportKafkaTopic[] {
+      new DataImportKafkaTopic("DI_INITIALIZATION_STARTED", diInitNumPartitions),
+      new DataImportKafkaTopic("DI_RAW_RECORDS_CHUNK_READ", diRawRecordsChunkReadNumPartitions)};
   }
 }

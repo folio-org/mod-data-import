@@ -217,6 +217,7 @@
             "acquisitions-units.memberships.collection.get",
             "orders.po-lines.item.get",
             "orders.po-lines.collection.get",
+            "orders-storage.titles.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post",
             "finance.exchange-rate.item.get",

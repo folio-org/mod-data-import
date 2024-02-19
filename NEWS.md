@@ -1,4 +1,5 @@
 ## 2023-XX-XX v3.1.0
+* [MODDATAIMP-1003](https://folio-org.atlassian.net/browse/MODDATAIMP-1003)
 * [MODDATAIMP-886](https://issues.folio.org/browse/MODDATAIMP-886) Create Kafka topics instead of relying on auto create
 
 ## 2023-10-13 v3.0.0

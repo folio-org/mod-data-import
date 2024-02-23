@@ -286,13 +286,11 @@ public class DataImportImpl implements DataImport {
               entity,
               new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertxContext.owner().createHttpClient()),
               params
-            )
-            .onSuccess(v -> 
-              Future.succeededFuture(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
-                .map(Response.class::cast)
-                .onComplete(asyncResultHandler)
-            )
-            .onFailure(err -> asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(err))));
+            );
+          Future.succeededFuture()
+            .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
+            .map(Response.class::cast)
+            .onComplete(asyncResultHandler);
         } else {
           fileProcessor.process(
             JsonObject.mapFrom(entity),
@@ -513,7 +511,7 @@ public class DataImportImpl implements DataImport {
   @Override
   public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                        Context vertxContext) {
-    vertxContext.runOnContext(v -> 
+    vertxContext.runOnContext(v ->
       Future.succeededFuture(new SplitStatus().withSplitStatus(this.fileSplittingEnabled))
         .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
         .map(Response.class::cast)

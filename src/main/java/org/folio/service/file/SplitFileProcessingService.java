@@ -140,11 +140,14 @@ public class SplitFileProcessingService {
           )
           .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
           .onFailure(err -> {
-            LOGGER.warn("processFiles:: File was processed with errors by jobExecutionId {}. Cause: {}", entity.getUploadDefinition().getMetaJobExecutionId(), err.getCause());
-            uploadDefinitionService.updateJobExecutionStatus(
-              entity.getUploadDefinition().getMetaJobExecutionId(),
-              new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
-              params);
+            String jobExecutionId = entity.getUploadDefinition().getMetaJobExecutionId();
+            if (jobExecutionId != null) {
+              LOGGER.warn("processFiles:: File was processed with errors by jobExecutionId {}. Cause: {}", jobExecutionId, err.getCause());
+              uploadDefinitionService.updateJobExecutionStatus(
+                jobExecutionId,
+                new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
+                params);
+            }
             LOGGER.error("Unable to start job: ", err);
           })
           .<Void>mapEmpty()

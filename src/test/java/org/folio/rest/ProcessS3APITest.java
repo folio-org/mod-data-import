@@ -177,7 +177,7 @@ public class ProcessS3APITest extends AbstractRestTest {
   }
 
   @Test
-  public void testProcessingFailure() throws IOException {
+  public void testReturnSuccessEvenIfProcessingFailing() throws IOException {
     RestAssured
       .given()
       .spec(spec)
@@ -197,7 +197,7 @@ public class ProcessS3APITest extends AbstractRestTest {
       .when()
       .post("/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles")
       .then()
-      .statusCode(HttpStatus.SC_NOT_FOUND);
+      .statusCode(HttpStatus.SC_NO_CONTENT);
   }
 
   @AfterClass

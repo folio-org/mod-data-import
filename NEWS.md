@@ -1,3 +1,6 @@
+## 2023-XX-XX v3.1.0-SNAPSHOT
+* [MODDATAIMP-1007](https://issues.folio.org/browse/MODDATAIMP-1007) Make endpoint as async.
+
 ## 2023-XX-XX v3.1.0
 * [MODDATAIMP-1003](https://folio-org.atlassian.net/browse/MODDATAIMP-1003)
 * [MODDATAIMP-886](https://issues.folio.org/browse/MODDATAIMP-886) Create Kafka topics instead of relying on auto create

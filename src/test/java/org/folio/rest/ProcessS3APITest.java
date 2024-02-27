@@ -1,8 +1,12 @@
 package org.folio.rest;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -177,7 +181,10 @@ public class ProcessS3APITest extends AbstractRestTest {
   }
 
   @Test
-  public void testProcessingFailure() throws IOException {
+  public void testReturnSuccessEvenIfProcessingFailing() {
+    WireMock.stubFor(put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*"), true))
+      .willReturn(ok()));
+
     RestAssured
       .given()
       .spec(spec)
@@ -197,7 +204,7 @@ public class ProcessS3APITest extends AbstractRestTest {
       .when()
       .post("/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles")
       .then()
-      .statusCode(HttpStatus.SC_NOT_FOUND);
+      .statusCode(HttpStatus.SC_NO_CONTENT);
   }
 
   @AfterClass

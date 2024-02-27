@@ -3,6 +3,7 @@ package org.folio.service.storage;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -73,7 +74,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
     Promise<Boolean> promise = Promise.promise();
     try {
       String filePath = fileDefinition.getSourcePath();
-      if (fs.existsBlocking(filePath)) {
+      if (StringUtils.isNotBlank(filePath) && fs.existsBlocking(filePath)) {
         fs.deleteBlocking(filePath);
         promise.complete(true);
       } else {

@@ -55,6 +55,9 @@ import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
+import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
+
 /**
  * Service containing methods to manage the lifecycle and initiate processing of
  * split files.
@@ -136,7 +139,17 @@ public class SplitFileProcessingService {
             )
           )
           .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
-          .onFailure(err -> LOGGER.error("Unable to start job: ", err))
+          .onFailure(err -> {
+            String jobExecutionId = entity.getUploadDefinition().getMetaJobExecutionId();
+            if (jobExecutionId != null) {
+              LOGGER.warn("startJob:: File was processed with errors by jobExecutionId {}. Cause: {}", jobExecutionId, err.getCause());
+              uploadDefinitionService.updateJobExecutionStatus(
+                jobExecutionId,
+                new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
+                params);
+            }
+            LOGGER.error("Unable to start job: ", err);
+          })
           .<Void>mapEmpty()
           .onComplete(promise),
       false

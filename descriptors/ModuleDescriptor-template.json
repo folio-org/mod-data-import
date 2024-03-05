@@ -249,7 +249,8 @@
             "user-tenants.collection.get",
             "organizations.organizations.collection.get",
             "source-storage.records.post",
-            "source-storage.records.put"
+            "source-storage.records.put",
+            "source-storage.snapshots.post"
           ],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.assign",

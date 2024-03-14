@@ -1,6 +1,6 @@
 package org.folio.service.processing.ranking;
 
-import javax.validation.constraints.Min;
+import jakarta.validation.constraints.Min;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass

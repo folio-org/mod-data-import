@@ -4,7 +4,7 @@ import io.vertx.core.Future;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 import org.folio.rest.jaxrs.model.FileDownloadInfo;
 import org.folio.rest.jaxrs.model.FileUploadInfo;
 

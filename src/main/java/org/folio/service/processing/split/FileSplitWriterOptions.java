@@ -5,7 +5,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import javax.annotation.Nonnull;
-import javax.validation.constraints.Min;
+import jakarta.validation.constraints.Min;
 import lombok.Builder;
 import lombok.Data;
 import org.folio.service.s3storage.MinioStorageService;

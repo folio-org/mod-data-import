@@ -18,7 +18,7 @@ public interface FileProcessor { //NOSONAR
   }
 
   static FileProcessor createProxy(Vertx vertx) {
-    return new FileProcessorVertxEBProxy(vertx, FILE_PROCESSOR_ADDRESS);
+    return new org.folio.service.processing.FileProcessorVertxEBProxy(vertx, FILE_PROCESSOR_ADDRESS);
   }
 
   /**

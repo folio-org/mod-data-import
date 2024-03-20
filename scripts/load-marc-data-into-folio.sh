@@ -10,7 +10,7 @@
 # You can conveniently do this using `okapi login` with this CLI:
 # https://github.com/thefrontside/okapi.rb
 #
-# Then invoke as: ./load-marc-data-into-folio.sh sample100.marc
+# Then invoke as: ./load-marc-data-into-folio.sh sample100.mrc
 
 if [ $# -ne 1 ]; then
    echo "Usage: $0 <MARCfile>" >&2

@@ -139,7 +139,9 @@
           ],
           "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles",
           "permissionsRequired": [
-            "data-import.uploaddefinitions.files.post"
+            "data-import.uploaddefinitions.files.post",
+            "finance.funds.item.get",
+            "finance.transactions.batch"
           ],
           "modulePermissions": [
             "change-manager.jobexecutions.get",

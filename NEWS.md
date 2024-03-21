@@ -1,8 +1,8 @@
-## 2024-XX-XX v3.1.0-SNAPSHOT
+## 2024-03-21 v3.1.0
 * [MODDATAIMP-1020](https://folio-org.atlassian.net/browse/MODDATAIMP-1020) Update load-marc-data-into-folio script with Poppy
 * [MODDATAIMP-1015](https://issues.folio.org/browse/MODDATAIMP-1015) Upgrade data-import to RMB v35.2.0 and Vertx 4.5.4
-* [MODDATAIMP-1007](https://issues.folio.org/browse/MODDATAIMP-1007) Make endpoint as async.
-* [MODDATAIMP-1003](https://folio-org.atlassian.net/browse/MODDATAIMP-1003)
+* [MODDATAIMP-1007](https://issues.folio.org/browse/MODDATAIMP-1007) Make /data-import/uploadDefinitions/{id}/processFiles?defaultMapping=false as async
+* [MODDATAIMP-1003](https://folio-org.atlassian.net/browse/MODDATAIMP-1003) Provide missing permissions to create Orders
 * [MODDATAIMP-886](https://issues.folio.org/browse/MODDATAIMP-886) Create Kafka topics instead of relying on auto create
 
 ## 2023-10-13 v3.0.0

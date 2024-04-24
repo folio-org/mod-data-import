@@ -1,3 +1,6 @@
+## 2024-04-24 v3.1.1
+* [MODDATAIMP-1050](https://folio-org.atlassian.net/browse/MODDATAIMP-1050) Add missing dependency on configuration interface
+
 ## 2024-03-21 v3.1.0
 * [MODDATAIMP-1020](https://folio-org.atlassian.net/browse/MODDATAIMP-1020) Update load-marc-data-into-folio script with Poppy
 * [MODDATAIMP-1015](https://issues.folio.org/browse/MODDATAIMP-1015) Upgrade data-import to RMB v35.2.0 and Vertx 4.5.4

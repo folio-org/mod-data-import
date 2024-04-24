@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-data-import</artifactId>
-  <version>3.1.1</version>
+  <version>3.1.2-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -613,7 +613,7 @@
     <url>https://github.com/folio-org/mod-data-import</url>
     <connection>scm:git:git://github.com/folio-org/mod-data-import</connection>
     <developerConnection>scm:git:git@github.com:folio-org/mod-data-import.git</developerConnection>
-    <tag>v3.1.1</tag>
+    <tag>v3.1.0</tag>
   </scm>
 
   <pluginRepositories>

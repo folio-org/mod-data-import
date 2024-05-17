@@ -80,7 +80,7 @@ curl --silent --location --request PUT "$UPLOADURL" \
     -D $tmpfile3 \
     --data-binary "@$filename" \
         > $tmpfile4
-ETAG=`grep 'etag' $tmpfile3 | cut -d ':' -f2`
+ETAG=`grep -i 'etag' $tmpfile3 | cut -d ':' -f2`
 echo "ETAG=$ETAG"
 echo
 sleep 10

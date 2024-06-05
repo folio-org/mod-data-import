@@ -46,77 +46,108 @@ echo "Size of $filename =$filesize_kb kilobytes"
 
 
 echo "=== 1. Create upload definition ==="
-curl --silent --location --request POST "$OKAPI_URL/data-import/uploadDefinitions" \
+status_code=$(curl --silent --write-out "%{http_code}" --output $tmpfile1 --location --request POST "$OKAPI_URL/data-import/uploadDefinitions" \
     --header "Content-Type: application/json" \
     --header "X-Okapi-Tenant: $OKAPI_TENANT" \
     --header "X-Okapi-Token: $OKAPI_TOKEN" \
-    --data-raw "{ \"fileDefinitions\": [{ \"name\": \"$filename\", \"size\": $filesize_kb }] }" \
-        > $tmpfile1
+    --data-raw "{ \"fileDefinitions\": [{ \"name\": \"$filename\", \"size\": $filesize_kb }] }")
+
+if [ $status_code -ne 201 ]; then
+    echo "Error: Failed to create upload definition. Status code: $status_code"
+    exit 3
+fi
 
 uploadDefinitionId=`jq -r -M .id $tmpfile1`
 fileDefinitionId=`jq -r -M '.fileDefinitions[0].id' $tmpfile1`
- echo "uploadDefinitionId=$uploadDefinitionId"
- echo "fileDefinitionId=$fileDefinitionId"
- echo
+echo "uploadDefinitionId=$uploadDefinitionId"
+echo "fileDefinitionId=$fileDefinitionId"
+echo
+echo "wait..."
 sleep 20
 
 echo "=== 2. Request upload URL ==="
-curl --silent --location --request GET "$OKAPI_URL/data-import/uploadUrl?filename=$filename" \
+status_code=$(curl --silent --write-out "%{http_code}" --output $tmpfile2 --location --request GET "$OKAPI_URL/data-import/uploadUrl?filename=$filename" \
     --header "Accept: application/json" \
     --header "X-Okapi-Tenant: $OKAPI_TENANT" \
-    --header "X-Okapi-Token: $OKAPI_TOKEN" \
-        > $tmpfile2
+    --header "X-Okapi-Token: $OKAPI_TOKEN")
+
+if [ $status_code -ne 200 ]; then
+    echo "Error: Failed to request upload URL. Status code: $status_code"
+    exit 4
+fi
+
 UPLOADURL=`jq -r -M .url $tmpfile2`
 UPLOADID=`jq -r -M .uploadId $tmpfile2`
 UPLOADKEY=`jq -r -M .key $tmpfile2`
- echo "UPLOADURL=$UPLOADURL"
- echo "UPLOADID=$UPLOADID"
- echo "UPLOADKEY=$UPLOADKEY"
- echo
+echo "UPLOADURL=$UPLOADURL"
+echo "UPLOADID=$UPLOADID"
+echo "UPLOADKEY=$UPLOADKEY"
+echo
+echo "wait..."
 sleep 10
 
 echo "=== 3. Upload file ==="
-curl --silent --location --request PUT "$UPLOADURL" \
+status_code=$(curl --silent --write-out "%{http_code}" --output $tmpfile4 --location --request PUT "$UPLOADURL" \
     -D $tmpfile3 \
-    --data-binary "@$filename" \
-        > $tmpfile4
+    --data-binary "@$filename")
+
+if [ $status_code -ne 200 ]; then
+    echo "Error: Failed to upload file. Status code: $status_code"
+    exit 5
+fi
+
 ETAG=`grep -i 'etag' $tmpfile3 | cut -d ':' -f2`
 echo "ETAG=$ETAG"
 echo
+echo "wait..."
 sleep 10
 
 echo "=== 4. Request file to be assembled for import ==="
-curl --silent --location --request POST "$OKAPI_URL/data-import/uploadDefinitions/$uploadDefinitionId/files/$fileDefinitionId/assembleStorageFile" \
+status_code=$(curl --silent --write-out "%{http_code}" --output $tmpfile5 --location --request POST "$OKAPI_URL/data-import/uploadDefinitions/$uploadDefinitionId/files/$fileDefinitionId/assembleStorageFile" \
     --header "Content-Type: application/json" \
     --header "X-Okapi-Tenant: $OKAPI_TENANT" \
     --header "X-Okapi-Token: $OKAPI_TOKEN" \
-    --data-raw "{\"uploadId\": \"$UPLOADID\", \"key\": \"$UPLOADKEY\", \"tags\": [$ETAG]}" \
-        > $tmpfile5
+    --data-raw "{\"uploadId\": \"$UPLOADID\", \"key\": \"$UPLOADKEY\", \"tags\": [$ETAG]}")
+
+if [ $status_code -ne 204 ]; then
+    echo "Error: Failed to assemble storage file. Status code: $status_code"
+    exit 6
+fi
+echo "wait..."
 sleep 5
 
 echo "=== 5. Get fresh copy of upload definition ==="
-curl --silent --location --request GET "$OKAPI_URL/data-import/uploadDefinitions/$uploadDefinitionId" \
+status_code=$(curl --silent --write-out "%{http_code}" --output $tmpfile6 --location --request GET "$OKAPI_URL/data-import/uploadDefinitions/$uploadDefinitionId" \
     --header "Accept: application/json" \
     --header "X-Okapi-Tenant: $OKAPI_TENANT" \
-    --header "X-Okapi-Token: $OKAPI_TOKEN" \
-        > $tmpfile6
+    --header "X-Okapi-Token: $OKAPI_TOKEN")
+
+if [ $status_code -ne 200 ]; then
+    echo "Error: Failed to get fresh copy of upload definition. Status code: $status_code"
+    exit 7
+fi
 
 echo "=== 6. Get the job profile information ==="
-curl --silent --location --request GET "$OKAPI_URL/data-import-profiles/jobProfiles?query=name==\"$JOBPROFILENAME\"" \
+status_code=$(curl --silent --write-out "%{http_code}" --output $tmpfile7 --location --request GET "$OKAPI_URL/data-import-profiles/jobProfiles?query=name==\"$JOBPROFILENAME\"" \
     --header "Accept: application/json" \
     --header "X-Okapi-Tenant: $OKAPI_TENANT" \
-    --header "X-Okapi-Token: $OKAPI_TOKEN" \
-        > $tmpfile7
+    --header "X-Okapi-Token: $OKAPI_TOKEN")
+
+if [ $status_code -ne 200 ]; then
+    echo "Error: Failed to get job profile information. Status code: $status_code"
+    exit 8
+fi
+
 JOBPROFILEID=`jq -r -M '.jobProfiles[0].id' $tmpfile7`
 JOBPROFILEDATATYPE=`jq -r -M '.jobProfiles[0].dataType' $tmpfile7`
 JPNAME=`jq -r -M '.jobProfiles[0].name' $tmpfile7`
- echo "JOBPROFILEID=$JOBPROFILEID"
- echo "JOBPROFILEDATATYPE=$JOBPROFILEDATATYPE"
- echo "JPNAME=$JPNAME"
- echo
+echo "JOBPROFILEID=$JOBPROFILEID"
+echo "JOBPROFILEDATATYPE=$JOBPROFILEDATATYPE"
+echo "JPNAME=$JPNAME"
+echo
 
 echo "=== 7. Launch import processing ==="
-curl --silent --location --request POST "$OKAPI_URL/data-import/uploadDefinitions/$uploadDefinitionId/processFiles?defaultMapping=true" \
+status_code=$(curl --silent --write-out "%{http_code}" --output $tmpfile8 --location --request POST "$OKAPI_URL/data-import/uploadDefinitions/$uploadDefinitionId/processFiles?defaultMapping=true" \
     --header "Content-Type: application/json" \
     --header "X-Okapi-Tenant: $OKAPI_TENANT" \
     --header "X-Okapi-Token: $OKAPI_TOKEN" \
@@ -127,5 +158,9 @@ curl --silent --location --request POST "$OKAPI_URL/data-import/uploadDefinition
           \"name\": \"$JPNAME\",
           \"dataType\": \"$JOBPROFILEDATATYPE\"
         }
-          }"
-        > $tmpfile8
+          }")
+
+if [ $status_code -ne 204 ]; then
+    echo "Error: Failed to launch import processing. Status code: $status_code"
+    exit 9
+fi

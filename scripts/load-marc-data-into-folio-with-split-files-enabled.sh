@@ -62,6 +62,7 @@ fileDefinitionId=`jq -r -M '.fileDefinitions[0].id' $tmpfile1`
 echo "uploadDefinitionId=$uploadDefinitionId"
 echo "fileDefinitionId=$fileDefinitionId"
 echo
+echo "wait..."
 sleep 20
 
 echo "=== 2. Request upload URL ==="
@@ -82,6 +83,7 @@ echo "UPLOADURL=$UPLOADURL"
 echo "UPLOADID=$UPLOADID"
 echo "UPLOADKEY=$UPLOADKEY"
 echo
+echo "wait..."
 sleep 10
 
 echo "=== 3. Upload file ==="
@@ -97,6 +99,7 @@ fi
 ETAG=`grep -i 'etag' $tmpfile3 | cut -d ':' -f2`
 echo "ETAG=$ETAG"
 echo
+echo "wait..."
 sleep 10
 
 echo "=== 4. Request file to be assembled for import ==="
@@ -110,6 +113,7 @@ if [ $status_code -ne 204 ]; then
     echo "Error: Failed to assemble storage file. Status code: $status_code"
     exit 6
 fi
+echo "wait..."
 sleep 5
 
 echo "=== 5. Get fresh copy of upload definition ==="

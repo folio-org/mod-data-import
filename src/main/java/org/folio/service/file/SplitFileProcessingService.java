@@ -7,6 +7,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -21,6 +22,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.annotation.CheckForNull;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -101,7 +103,9 @@ public class SplitFileProcessingService {
     this.executor = vertx.createSharedWorkerExecutor("file-splitting-pool");
   }
 
-  /** Start a job based on information passed to the /processFiles endpoint */
+  /**
+   * Start a job based on information passed to the /processFiles endpoint
+   */
   public Future<Void> startJob(
     ProcessFilesRqDto entity,
     ChangeManagerClient client,
@@ -143,10 +147,10 @@ public class SplitFileProcessingService {
             String jobExecutionId = entity.getUploadDefinition().getMetaJobExecutionId();
             if (jobExecutionId != null) {
               LOGGER.warn("startJob:: File was processed with errors by jobExecutionId {}. Cause: {}", jobExecutionId, err.getCause());
-              uploadDefinitionService.updateJobExecutionStatus(
-                jobExecutionId,
-                new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
-                params);
+              uploadDefinitionService.updateJobExecutionStatus(jobExecutionId, new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params)
+                .compose(v ->
+                  uploadDefinitionService.updateUploadDefinitionStatus(entity.getUploadDefinition().getId(), UploadDefinition.Status.ERROR, params.getTenantId()))
+                .onFailure(errMsg -> LOGGER.error("startJob::Unable to update JobExecutionStatus or UploadDefinitionStatus by jobExecutionId {}. Cause: {}", jobExecutionId, errMsg));
             }
             LOGGER.error("Unable to start job: ", err);
           })
@@ -156,7 +160,9 @@ public class SplitFileProcessingService {
     );
   }
 
-  /** Split file and create parent job executions for a new job */
+  /**
+   * Split file and create parent job executions for a new job
+   */
   protected Future<Map<String, SplitFileInformation>> initializeJob(
     ProcessFilesRqDto entity,
     ChangeManagerClient client
@@ -219,7 +225,9 @@ public class SplitFileProcessingService {
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
 
-  /** Register split file parts and fill split job execution job profile/status */
+  /**
+   * Register split file parts and fill split job execution job profile/status
+   */
   protected Future<Void> initializeChildren(
     ProcessFilesRqDto entity,
     ChangeManagerClient client,
@@ -335,14 +343,13 @@ public class SplitFileProcessingService {
    * and adds each part to the DI queue.
    *
    * @param parentUploadDefinition the upload definition representing these files
-   * @param parentJobExecution the parent composite job execution
-   * @param jobProfileInfo the job profile to be used for later processing
-   * @param client the {@link ChangeManagerClient} to make API calls to
-   * @param jobProfileId the ID of the job profile to be used for later processing
-   * @param parentJobSize the size of the parent job, as calculated by {@code FileSplitUtilities}
-   * @param params the headers from the original request
-   * @param keys the list of S3 keys to register, as returned by {@code FileSplitService}
-   *
+   * @param parentJobExecution     the parent composite job execution
+   * @param jobProfileInfo         the job profile to be used for later processing
+   * @param client                 the {@link ChangeManagerClient} to make API calls to
+   * @param jobProfileId           the ID of the job profile to be used for later processing
+   * @param parentJobSize          the size of the parent job, as calculated by {@code FileSplitUtilities}
+   * @param params                 the headers from the original request
+   * @param keys                   the list of S3 keys to register, as returned by {@code FileSplitService}
    * @return a {@link CompositeFuture} of {@link JobExecution}
    */
   protected CompositeFuture registerSplitFileParts(
@@ -398,10 +405,10 @@ public class SplitFileProcessingService {
    * <li>The job execution was created before S3-like storage was enabled, meaning
    *     the original file was never uploaded to S3</li>
    * </ul>
-   *
+   * <p>
    * The returned key <strong>may or may not</strong> exist and may have been deleted;
    * no checking for this is done.
-   *
+   * <p>
    * Asynchronous as we need to communicate with mod-srm to get the key.
    * - The alternative to this would be to add an API to mod-srm (requiring adding
    *     a full S3 library to mod-srm), or
@@ -434,7 +441,7 @@ public class SplitFileProcessingService {
       .compose((JobExecution jobExecution) -> {
         if (
           jobExecution.getSubordinationType() ==
-          JobExecution.SubordinationType.COMPOSITE_PARENT
+            JobExecution.SubordinationType.COMPOSITE_PARENT
         ) {
           return client.getChangeManagerJobExecutionsChildrenById(
             jobExecutionId,
@@ -505,7 +512,7 @@ public class SplitFileProcessingService {
   /**
    * Sends a InitJobExecutionsRqDto with sufficient error handling
    *
-   * @param client the {@link ChangeManagerClient} to send the request with
+   * @param client  the {@link ChangeManagerClient} to send the request with
    * @param request the request to send
    * @return a promise which will succeed with the response body as a {@link InitJobExecutionsRsDto}
    */
@@ -530,6 +537,7 @@ public class SplitFileProcessingService {
 
   /**
    * Create parent job executions for all files described in the upload definition.
+   *
    * @return a {@link Future} containing a map from filename/key -> {@link JobExecution}
    */
   protected Future<Map<String, JobExecution>> createParentJobExecutions(
@@ -578,7 +586,7 @@ public class SplitFileProcessingService {
   /**
    * Split a file into chunks, returning a {@link SplitFileInformation} object containing
    * the original key, the total number of records in the file, and the keys of the split chunks.
-   *
+   * <p>
    * Note that non-MARC binary format files will not be split; instead, the keys of the split
    * chunks will simply be a list containing only the original key
    */
@@ -623,16 +631,16 @@ public class SplitFileProcessingService {
   protected Buffer verifyOkStatus(HttpResponse<Buffer> response) {
     if (
       response.statusCode() >= HttpStatus.SC_OK &&
-      response.statusCode() <= HttpStatus.SC_NO_CONTENT
+        response.statusCode() <= HttpStatus.SC_NO_CONTENT
     ) {
       return response.bodyAsBuffer();
     } else {
       throw LOGGER.throwing(
         new IllegalStateException(
           "Response came back with status code " +
-          response.statusCode() +
-          " and body " +
-          response.bodyAsString()
+            response.statusCode() +
+            " and body " +
+            response.bodyAsString()
         )
       );
     }

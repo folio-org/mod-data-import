@@ -308,7 +308,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Future<List<JobExecutionDto>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
     if (!uploadDefinition.getFileDefinitions().isEmpty()) {
-      return getJobExecutionById(uploadDefinition.getMetaJobExecutionId(), params)
+      String metaJobExecutionId = uploadDefinition.getMetaJobExecutionId();
+      LOGGER.info("getJobExecutions:: MetaJobExecutionId : {}, status: {} in the UploadDefinition", metaJobExecutionId, uploadDefinition.getStatus());
+      return getJobExecutionById(metaJobExecutionId, params)
         .compose(jobExecution -> {
           if (JobExecution.SubordinationType.PARENT_MULTIPLE.equals(jobExecution.getSubordinationType())) {
             return getChildrenJobExecutions(jobExecution.getId(), params)

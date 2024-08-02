@@ -57,7 +57,7 @@ curl -i --silent --location --request POST "$OKAPI_URL/data-import/uploadDefinit
 	--data-raw "{
 		\"uploadDefinition\": `cat $tmpfile2`,
 		\"jobProfileInfo\": {
-		  \"id\": \"22fafcc3-f582-493d-88b0-3c538480cd83\",
+		  \"id\": \"e34d7b92-9b83-11eb-a8b3-0242ac130003\",
 		  \"name\": \"Create MARC Bibs\",
 		  \"dataType\": \"MARC\"
 		}

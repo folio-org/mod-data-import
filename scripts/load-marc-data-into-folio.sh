@@ -58,7 +58,7 @@ curl -i --silent --location --request POST "$OKAPI_URL/data-import/uploadDefinit
 		\"uploadDefinition\": `cat $tmpfile2`,
 		\"jobProfileInfo\": {
 		  \"id\": \"e34d7b92-9b83-11eb-a8b3-0242ac130003\",
-		  \"name\": \"Create MARC Bibs\",
+		  \"name\": \"Default - Create instance and SRS MARC Bib\",
 		  \"dataType\": \"MARC\"
 		}
 	      }"

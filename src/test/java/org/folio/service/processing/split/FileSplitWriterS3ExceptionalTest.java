@@ -12,6 +12,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
 import java.io.InputStream;
+import org.folio.s3.exception.S3ClientException;
 import org.folio.service.s3storage.MinioStorageService;
 import org.junit.Before;
 import org.junit.Rule;
@@ -94,7 +95,7 @@ public class FileSplitWriterS3ExceptionalTest {
   public void testExceptionDuringUpload(TestContext context)
     throws IOException {
     when(minioStorageService.write(any(), any()))
-      .thenReturn(Future.failedFuture("test"));
+      .thenReturn(Future.failedFuture(new S3ClientException("wrong bucket")));
 
     vertx
       .getOrCreateContext()

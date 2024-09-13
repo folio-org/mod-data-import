@@ -146,6 +146,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
         String filePath = client.write(path, is);
         blockingFuture.complete(filePath);
       } catch (S3ClientException e) {
+        LOGGER.error("Error while writing file to S3 for path {} cause: ", path, e);
         blockingFuture.fail(e);
       }
     });

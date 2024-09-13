@@ -1,6 +1,7 @@
 ## 2024-xx-xx v3.2.0-SNAPSHOT
 * [MODDATAIMP-1054](https://folio-org.atlassian.net/browse/MODDATAIMP-1054) Add error handling for script interrupts
 * [MODDATAIMP-1054](https://folio-org.atlassian.net/browse/MODDATAIMP-1054) Fixing : "File upload already in progress" appears when data import job was run for more than one file.
+* [MODDATAIMP-1082](https://folio-org.atlassian.net/browse/MODDATAIMP-1082) Improve error logging for AWS-related issue.
 
 ## 2024-03-21 v3.1.0
 * [MODDATAIMP-1020](https://folio-org.atlassian.net/browse/MODDATAIMP-1020) Update load-marc-data-into-folio script with Poppy

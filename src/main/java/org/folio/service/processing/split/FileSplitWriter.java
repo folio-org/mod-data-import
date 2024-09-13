@@ -250,12 +250,12 @@ public class FileSplitWriter implements WriteStream<Buffer> {
               .write(chunkKey, is)
               .onFailure((Throwable err) -> {
                 LOGGER.error(
-                  "Failed uploading file {}:",
+                  "Failed uploading file {}: {}",
                   chunkKey,
-                  err.getCause()
+                  err.getMessage()
                 );
 
-                chunkPromise.fail(err.getCause());
+                chunkPromise.fail(err.getMessage());
               })
               .onSuccess((String result) -> {
                 LOGGER.info("Successfully uploaded file {} to S3", chunkKey);

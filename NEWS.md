@@ -4,6 +4,7 @@
 * [MODDATAIMP-1082](https://folio-org.atlassian.net/browse/MODDATAIMP-1082) Improve error logging for AWS-related issue.
 * [MODDATAIMP-1085](https://folio-org.atlassian.net/browse/MODDATAIMP-1085) Provide module permissions for subject types and sources 
 * [MODDATAIMP-1088](https://folio-org.atlassian.net/browse/MODDATAIMP-1088) Upgrade Spring from 5.3.23 to 6.1.13
+* [MODDATAIMP-1087](https://folio-org.atlassian.net/browse/MODDATAIMP-1087) log4j-slf4j2-impl, log4j 2.24.0
 
 ## 2024-03-21 v3.1.0
 * [MODDATAIMP-1020](https://folio-org.atlassian.net/browse/MODDATAIMP-1020) Update load-marc-data-into-folio script with Poppy

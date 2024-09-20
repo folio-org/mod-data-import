@@ -3,6 +3,7 @@
 * [MODDATAIMP-1054](https://folio-org.atlassian.net/browse/MODDATAIMP-1054) Fixing : "File upload already in progress" appears when data import job was run for more than one file.
 * [MODDATAIMP-1082](https://folio-org.atlassian.net/browse/MODDATAIMP-1082) Improve error logging for AWS-related issue.
 * [MODDATAIMP-1085](https://folio-org.atlassian.net/browse/MODDATAIMP-1085) Provide module permissions for subject types and sources 
+* [MODDATAIMP-1083](https://folio-org.atlassian.net/browse/MODDATAIMP-1083) Fix inconsistencies in permission namings
 
 ## 2024-03-21 v3.1.0
 * [MODDATAIMP-1020](https://folio-org.atlassian.net/browse/MODDATAIMP-1020) Update load-marc-data-into-folio script with Poppy

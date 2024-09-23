@@ -373,12 +373,14 @@
     {
       "permissionName": "data-import.uploadDefinitions.item.get",
       "displayName": "Data Import - get upload definition item",
-      "description": "Get Upload Definition item"
+      "description": "Get Upload Definition item",
+      "replaces": ["data-import.uploaddefinitions.get"]
     },
     {
       "permissionName": "data-import.uploadDefinitions.collection.get",
       "displayName": "Data Import - get upload definition collection",
-      "description": "Get Upload Definition collection"
+      "description": "Get Upload Definition collection",
+      "replaces": ["data-import.uploaddefinitions.get"]
     },
     {
       "permissionName": "data-import.uploaddefinitions.put",
@@ -403,22 +405,26 @@
     {
       "permissionName": "data-import.uploadDefinitions.files.item.post",
       "displayName": "Data Import - Create new File Definition",
-      "description": "Create and handle File Definition"
+      "description": "Create and handle File Definition",
+      "replaces": ["data-import.uploaddefinitions.files.post"]
     },
     {
       "permissionName": "data-import.uploadDefinitions.processFiles.item.post",
       "displayName": "Data Import - Create new Process File Definition",
-      "description": "Create and handle Process File Definition"
+      "description": "Create and handle Process File Definition",
+      "replaces": ["data-import.uploaddefinitions.files.post"]
     },
     {
       "permissionName": "data-import.fileExtensions.item.get",
       "displayName": "Data Import - get file extension",
-      "description": "Get FileExtension"
+      "description": "Get FileExtension",
+      "replaces": ["data-import.fileExtensions.get"]
     },
     {
       "permissionName": "data-import.fileExtensions.collection.get",
       "displayName": "Data Import - get file extensions",
-      "description": "Get FileExtensions"
+      "description": "Get FileExtensions",
+      "replaces": ["data-import.fileExtensions.get"]
     },
     {
       "permissionName": "data-import.fileExtensions.post",
@@ -438,7 +444,8 @@
     {
       "permissionName": "data-import.fileExtensions.default.post",
       "displayName": "Data Import - restore file extensions to default",
-      "description": "Restore FileExtension to default"
+      "description": "Restore FileExtension to default",
+      "replaces": ["data-import.fileExtensions.default"]
     },
     {
       "permissionName": "data-import.datatypes.get",
@@ -448,12 +455,14 @@
     {
       "permissionName": "data-import.uploadUrl.item.get",
       "displayName": "Data Import - get S3 upload URL for the first part of a file",
-      "description": "Get S3 upload URL for the first part of a file"
+      "description": "Get S3 upload URL for the first part of a file",
+      "replaces": ["data-import.uploadUrl.get"]
     },
     {
       "permissionName": "data-import.uploadUrl.subsequent.item.get",
       "displayName": "Data Import - get S3 upload URL for the last part of a file",
-      "description": "Get S3 upload URL for the last part of a file"
+      "description": "Get S3 upload URL for the last part of a file",
+      "replaces": ["data-import.uploadUrl.get"]
     },
     {
       "permissionName": "data-import.downloadUrl.get",

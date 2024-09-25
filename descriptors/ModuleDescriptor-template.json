@@ -81,7 +81,8 @@
             "data-import.uploaddefinitions.delete"
           ],
           "modulePermissions": [
-            "change-manager.jobexecutions.get",
+            "change-manager.jobExecutions.item.get",
+            "change-manager.jobExecutions.children.collection.get",
             "change-manager.jobexecutions.put"
           ]
         },
@@ -149,9 +150,11 @@
             "change-manager.jobexecutions.get",
             "change-manager.jobexecutions.post",
             "change-manager.jobexecutions.put",
-            "mapping-metadata.get",
-            "source-storage.records.get",
-            "source-storage.snapshots.get",
+            "mapping-metadata.item.get",
+            "source-storage.records.collection.get",
+            "source-storage.records.item.get",
+            "source-storage.snapshots.item.get",
+            "source-storage.snapshots.collection.get",
             "source-storage.snapshots.put",
             "users.collection.get",
             "inventory-storage.identifier-types.collection.get",
@@ -207,7 +210,8 @@
             "inventory-storage.preceding-succeeding-titles.item.delete",
             "inventory-storage.subject-sources.collection.get",
             "inventory-storage.subject-types.collection.get",
-            "converter-storage.field-protection-settings.get",
+            "converter-storage.field-protection-settings.item.get",
+            "converter-storage.field-protection-settings.collection.get",
             "converter-storage.jobprofilesnapshots.get",
             "invoice-storage.invoices.item.post",
             "invoice-storage.invoice-number.get",
@@ -325,7 +329,10 @@
           "methods": ["DELETE"],
           "pathPattern": "/data-import/jobExecutions/{jobExecutionId}/cancel",
           "permissionsRequired": ["data-import.jobexecution.cancel"],
-          "modulePermissions": ["change-manager.jobexecutions.put"]
+          "modulePermissions": [
+            "change-manager.jobExecutions.item.put",
+            "change-manager.jobExecutions.status.item.put"
+          ]
         },
         {
           "methods": ["GET"],

@@ -207,6 +207,7 @@
             "inventory-storage.preceding-succeeding-titles.item.delete",
             "inventory-storage.subject-sources.collection.get",
             "inventory-storage.subject-types.collection.get",
+            "inventory-storage.instance-date-types.collection.get",
             "converter-storage.field-protection-settings.get",
             "converter-storage.jobprofilesnapshots.get",
             "invoice-storage.invoices.item.post",

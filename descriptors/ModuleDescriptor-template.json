@@ -4,7 +4,7 @@
   "requires": [
     {
       "id": "source-manager-job-executions",
-      "version": "3.3"
+      "version": "3.4"
     },
     {
       "id": "users",
@@ -18,7 +18,7 @@
   "provides": [
     {
       "id": "data-import",
-      "version": "3.1",
+      "version": "3.2",
       "handlers": [
       	{
           "methods": [
@@ -48,7 +48,7 @@
           ],
           "pathPattern": "/data-import/uploadDefinitions",
           "permissionsRequired": [
-            "data-import.uploaddefinitions.get"
+            "data-import.uploadDefinitions.collection.get"
           ]
         },
         {
@@ -57,7 +57,7 @@
           ],
           "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}",
           "permissionsRequired": [
-            "data-import.uploaddefinitions.get"
+            "data-import.uploadDefinitions.item.get"
           ]
         },
         {
@@ -81,7 +81,8 @@
             "data-import.uploaddefinitions.delete"
           ],
           "modulePermissions": [
-            "change-manager.jobexecutions.get",
+            "change-manager.jobExecutions.item.get",
+            "change-manager.jobExecutions.children.collection.get",
             "change-manager.jobexecutions.put"
           ]
         },
@@ -105,7 +106,7 @@
           ],
           "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}/files",
           "permissionsRequired": [
-            "data-import.uploaddefinitions.files.post"
+            "data-import.uploadDefinitions.files.item.post"
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
@@ -143,15 +144,17 @@
           ],
           "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles",
           "permissionsRequired": [
-            "data-import.uploaddefinitions.files.post"
+            "data-import.uploadDefinitions.processFiles.item.post"
           ],
           "modulePermissions": [
             "change-manager.jobexecutions.get",
             "change-manager.jobexecutions.post",
             "change-manager.jobexecutions.put",
-            "mapping-metadata.get",
-            "source-storage.records.get",
-            "source-storage.snapshots.get",
+            "mapping-metadata.item.get",
+            "source-storage.records.collection.get",
+            "source-storage.records.item.get",
+            "source-storage.snapshots.item.get",
+            "source-storage.snapshots.collection.get",
             "source-storage.snapshots.put",
             "users.collection.get",
             "inventory-storage.identifier-types.collection.get",
@@ -208,7 +211,8 @@
             "inventory-storage.subject-sources.collection.get",
             "inventory-storage.subject-types.collection.get",
             "inventory-storage.instance-date-types.collection.get",
-            "converter-storage.field-protection-settings.get",
+            "converter-storage.field-protection-settings.item.get",
+            "converter-storage.field-protection-settings.collection.get",
             "converter-storage.jobprofilesnapshots.get",
             "invoice-storage.invoices.item.post",
             "invoice-storage.invoice-number.get",
@@ -260,6 +264,9 @@
             "source-storage.records.post",
             "source-storage.records.put",
             "source-storage.snapshots.post",
+            "source-storage.records.matching.collection.post",
+            "source-storage.records.formatted.item.get",
+            "source-storage.records.generation.item.put",
             "finance.funds.collection.get",
             "orders-storage.acquisition-methods.collection.get"
           ],
@@ -275,7 +282,7 @@
         {
           "methods": ["GET"],
           "pathPattern": "/data-import/fileExtensions",
-          "permissionsRequired": ["data-import.fileExtensions.get"]
+          "permissionsRequired": ["data-import.fileExtensions.collection.get"]
         },
         {
           "methods": ["POST"],
@@ -286,7 +293,7 @@
         {
           "methods": ["GET"],
           "pathPattern": "/data-import/fileExtensions/{id}",
-          "permissionsRequired": ["data-import.fileExtensions.get"]
+          "permissionsRequired": ["data-import.fileExtensions.item.get"]
         },
         {
           "methods": ["PUT"],
@@ -302,7 +309,7 @@
         {
           "methods": ["POST"],
           "pathPattern": "/data-import/fileExtensions/restore/default",
-          "permissionsRequired": ["data-import.fileExtensions.default"]
+          "permissionsRequired": ["data-import.fileExtensions.default.post"]
         },
         {
           "methods": ["GET"],
@@ -312,12 +319,12 @@
         {
           "methods": ["GET"],
           "pathPattern": "/data-import/uploadUrl",
-          "permissionsRequired": ["data-import.uploadUrl.get"]
+          "permissionsRequired": ["data-import.uploadUrl.item.get"]
         },
         {
           "methods": ["GET"],
           "pathPattern": "/data-import/uploadUrl/subsequent",
-          "permissionsRequired": ["data-import.uploadUrl.get"]
+          "permissionsRequired": ["data-import.uploadUrl.subsequent.item.get"]
         },
         {
           "methods": ["GET"],
@@ -328,7 +335,10 @@
           "methods": ["DELETE"],
           "pathPattern": "/data-import/jobExecutions/{jobExecutionId}/cancel",
           "permissionsRequired": ["data-import.jobexecution.cancel"],
-          "modulePermissions": ["change-manager.jobexecutions.put"]
+          "modulePermissions": [
+            "change-manager.jobExecutions.item.put",
+            "change-manager.jobExecutions.status.item.put"
+          ]
         },
         {
           "methods": ["GET"],
@@ -374,9 +384,16 @@
       "description": "Post Upload Definition"
     },
     {
-      "permissionName": "data-import.uploaddefinitions.get",
-      "displayName": "Data Import - get upload definition",
-      "description": "Get Upload Definition"
+      "permissionName": "data-import.uploadDefinitions.item.get",
+      "displayName": "Data Import - get upload definition item",
+      "description": "Get Upload Definition item",
+      "replaces": ["data-import.uploaddefinitions.get"]
+    },
+    {
+      "permissionName": "data-import.uploadDefinitions.collection.get",
+      "displayName": "Data Import - get upload definition collection",
+      "description": "Get Upload Definition collection",
+      "replaces": ["data-import.uploaddefinitions.get"]
     },
     {
       "permissionName": "data-import.uploaddefinitions.put",
@@ -399,14 +416,28 @@
       "description": "Delete file"
     },
     {
-      "permissionName": "data-import.uploaddefinitions.files.post",
+      "permissionName": "data-import.uploadDefinitions.files.item.post",
       "displayName": "Data Import - Create new File Definition",
-      "description": "Create and handle File Definition"
+      "description": "Create and handle File Definition",
+      "replaces": ["data-import.uploaddefinitions.files.post"]
     },
     {
-      "permissionName": "data-import.fileExtensions.get",
-      "displayName": "Data Import - get file extension(s)",
-      "description": "Get FileExtension(s)"
+      "permissionName": "data-import.uploadDefinitions.processFiles.item.post",
+      "displayName": "Data Import - Create new Process File Definition",
+      "description": "Create and handle Process File Definition",
+      "replaces": ["data-import.uploaddefinitions.files.post"]
+    },
+    {
+      "permissionName": "data-import.fileExtensions.item.get",
+      "displayName": "Data Import - get file extension",
+      "description": "Get FileExtension",
+      "replaces": ["data-import.fileExtensions.get"]
+    },
+    {
+      "permissionName": "data-import.fileExtensions.collection.get",
+      "displayName": "Data Import - get file extensions",
+      "description": "Get FileExtensions",
+      "replaces": ["data-import.fileExtensions.get"]
     },
     {
       "permissionName": "data-import.fileExtensions.post",
@@ -424,9 +455,10 @@
       "description": "Delete FileExtension"
     },
     {
-      "permissionName": "data-import.fileExtensions.default",
+      "permissionName": "data-import.fileExtensions.default.post",
       "displayName": "Data Import - restore file extensions to default",
-      "description": "Restore FileExtension to default"
+      "description": "Restore FileExtension to default",
+      "replaces": ["data-import.fileExtensions.default"]
     },
     {
       "permissionName": "data-import.datatypes.get",
@@ -434,9 +466,16 @@
       "description": "Get DataTypes"
     },
     {
-      "permissionName": "data-import.uploadUrl.get",
-      "displayName": "Data Import - get S3 upload URL",
-      "description": "Get S3 upload URL"
+      "permissionName": "data-import.uploadUrl.item.get",
+      "displayName": "Data Import - get S3 upload URL for the first part of a file",
+      "description": "Get S3 upload URL for the first part of a file",
+      "replaces": ["data-import.uploadUrl.get"]
+    },
+    {
+      "permissionName": "data-import.uploadUrl.subsequent.item.get",
+      "displayName": "Data Import - get S3 upload URL for the last part of a file",
+      "description": "Get S3 upload URL for the last part of a file",
+      "replaces": ["data-import.uploadUrl.get"]
     },
     {
       "permissionName": "data-import.downloadUrl.get",
@@ -454,18 +493,22 @@
       "description": "Entire set of permissions needed to use file uploads",
       "subPermissions": [
         "data-import.upload.file.post",
-        "data-import.uploadUrl.get",
+        "data-import.uploadUrl.item.get",
+        "data-import.uploadUrl.subsequent.item.get",
         "data-import.uploaddefinitions.post",
-        "data-import.uploaddefinitions.get",
+        "data-import.uploadDefinitions.item.get",
+        "data-import.uploadDefinitions.collection.get",
         "data-import.uploaddefinitions.put",
         "data-import.uploaddefinitions.delete",
         "data-import.uploaddefinitions.files.delete",
-        "data-import.uploaddefinitions.files.post",
-        "data-import.fileExtensions.get",
+        "data-import.uploadDefinitions.files.item.post",
+        "data-import.uploadDefinitions.processFiles.item.post",
+        "data-import.fileExtensions.item.get",
+        "data-import.fileExtensions.collection.get",
         "data-import.fileExtensions.post",
         "data-import.fileExtensions.put",
         "data-import.fileExtensions.delete",
-        "data-import.fileExtensions.default",
+        "data-import.fileExtensions.default.post",
         "data-import.datatypes.get"
       ],
       "visible": false

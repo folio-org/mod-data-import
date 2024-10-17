@@ -264,6 +264,9 @@
             "source-storage.records.post",
             "source-storage.records.put",
             "source-storage.snapshots.post",
+            "source-storage.records.matching.collection.post",
+            "source-storage.records.formatted.item.get",
+            "source-storage.records.generation.item.put",
             "finance.funds.collection.get",
             "orders-storage.acquisition-methods.collection.get"
           ],

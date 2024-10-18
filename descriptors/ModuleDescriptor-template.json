@@ -83,7 +83,7 @@
           "modulePermissions": [
             "change-manager.jobExecutions.item.get",
             "change-manager.jobExecutions.children.collection.get",
-            "change-manager.jobexecutions.put"
+            "change-manager.jobExecutions.item.put"
           ]
         },
         {
@@ -97,7 +97,7 @@
           "modulePermissions": [
             "configuration.entries.collection.get",
             "change-manager.jobexecutions.post",
-            "change-manager.jobexecutions.put"
+            "change-manager.jobExecutions.item.put"
           ]
         },
         {
@@ -122,7 +122,7 @@
             "data-import.assembleStorageFile.post"
           ],
           "modulePermissions": [
-            "change-manager.jobexecutions.put"
+            "change-manager.jobExecutions.item.put"
           ]
         },
         {
@@ -135,7 +135,7 @@
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
-            "change-manager.jobexecutions.put"
+            "change-manager.jobExecutions.item.put"
           ]
         },
         {
@@ -147,9 +147,11 @@
             "data-import.uploadDefinitions.processFiles.item.post"
           ],
           "modulePermissions": [
-            "change-manager.jobexecutions.get",
+            "change-manager.jobExecutions.item.get",
+            "change-manager.jobExecutions.children.collection.get",
             "change-manager.jobexecutions.post",
-            "change-manager.jobexecutions.put",
+            "change-manager.jobExecutions.status.item.put",
+            "change-manager.jobExecutions.jobProfile.item.put",
             "mapping-metadata.item.get",
             "source-storage.records.collection.get",
             "source-storage.records.item.get",

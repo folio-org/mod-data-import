@@ -150,6 +150,7 @@
             "change-manager.jobExecutions.item.get",
             "change-manager.jobExecutions.children.collection.get",
             "change-manager.jobexecutions.post",
+            "change-manager.jobExecutions.status.item.put",
             "change-manager.jobExecutions.jobProfile.item.put",
             "mapping-metadata.item.get",
             "source-storage.records.collection.get",

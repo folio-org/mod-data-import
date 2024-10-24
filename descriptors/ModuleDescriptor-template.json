@@ -122,6 +122,7 @@
             "data-import.assembleStorageFile.post"
           ],
           "modulePermissions": [
+            "change-manager.jobExecutions.status.item.put",
             "change-manager.jobExecutions.item.put"
           ]
         },

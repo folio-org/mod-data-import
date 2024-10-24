@@ -83,7 +83,7 @@
           "modulePermissions": [
             "change-manager.jobExecutions.item.get",
             "change-manager.jobExecutions.children.collection.get",
-            "change-manager.jobExecutions.item.put"
+            "change-manager.jobExecutions.status.item.put"
           ]
         },
         {
@@ -97,7 +97,7 @@
           "modulePermissions": [
             "configuration.entries.collection.get",
             "change-manager.jobexecutions.post",
-            "change-manager.jobExecutions.item.put"
+            "change-manager.jobExecutions.status.item.put"
           ]
         },
         {
@@ -136,7 +136,7 @@
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
-            "change-manager.jobExecutions.item.put"
+            "change-manager.jobExecutions.status.item.put"
           ]
         },
         {

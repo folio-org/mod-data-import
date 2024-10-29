@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-data-import</artifactId>
-  <version>3.2.0-SNAPSHOT</version>
+  <version>3.3.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -21,7 +21,7 @@
     <marc4j.version>2.9.2</marc4j.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mod-configuration-client.version>5.6.0</mod-configuration-client.version>
+    <mod-configuration-client.version>5.11.0</mod-configuration-client.version>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <sonar.exclusions>**/ApplicationConfig.java</sonar.exclusions>
     <aspectj.version>1.9.19</aspectj.version>
@@ -30,7 +30,7 @@
     <kafka-junit.version>3.3.0</kafka-junit.version>
     <spring.version>6.1.13</spring.version>
     <apache-httpclient.version>4.5.13</apache-httpclient.version>
-    <folio-s3-client.version>2.0.5</folio-s3-client.version>
+    <folio-s3-client.version>2.2.0</folio-s3-client.version>
     <aws-sdk-java.version>2.19.2</aws-sdk-java.version>
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
   </properties>
@@ -70,7 +70,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-liquibase-util</artifactId>
-      <version>1.8.0</version>
+      <version>1.9.0</version>
       <type>jar</type>
       <exclusions>
         <exclusion>
@@ -123,7 +123,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>2.1.0</version>
+      <version>2.2.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -157,7 +157,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>4.2.0</version>
+      <version>4.3.0</version>
     </dependency>
     <dependency>
       <groupId>io.rest-assured</groupId>
@@ -213,7 +213,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.12.1</version>
+      <version>1.13.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -235,7 +235,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
-      <version>3.1.0</version>
+      <version>3.2.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.kafka</groupId>

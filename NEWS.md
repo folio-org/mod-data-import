@@ -1,6 +1,6 @@
-## 2024-xx-xx v3.2.0-SNAPSHOT
+## 2024-10-29 v3.2.0
 * [MODDATAIMP-1054](https://folio-org.atlassian.net/browse/MODDATAIMP-1054) Add error handling for script interrupts
-* [MODDATAIMP-1054](https://folio-org.atlassian.net/browse/MODDATAIMP-1054) Fixing : "File upload already in progress" appears when data import job was run for more than one file.
+* [MODDATAIMP-1046](https://folio-org.atlassian.net/browse/MODDATAIMP-1046) Fixing : "File upload already in progress" appears when data import job was run for more than one file.
 * [MODDATAIMP-1082](https://folio-org.atlassian.net/browse/MODDATAIMP-1082) Improve error logging for AWS-related issue.
 * [MODDATAIMP-1085](https://folio-org.atlassian.net/browse/MODDATAIMP-1085) Provide module permissions for subject types and sources 
 * [MODDATAIMP-1088](https://folio-org.atlassian.net/browse/MODDATAIMP-1088) Upgrade Spring from 5.3.23 to 6.1.13

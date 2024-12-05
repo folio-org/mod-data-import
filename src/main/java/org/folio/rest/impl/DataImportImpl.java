@@ -87,7 +87,7 @@ public class DataImportImpl implements DataImport {
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        LOGGER.debug("postDataImportUploadDefinitions:: uploadDefinitionId {}, tenantId {}", entity.getId(), tenantId);
+        LOGGER.info("postDataImportUploadDefinitions:: uploadDefinitionId {}, tenantId {}", entity.getId(), tenantId);
         uploadDefinitionService.checkNewUploadDefinition(entity, tenantId).onComplete(errors -> {
           if (errors.failed()) {
             LOGGER.warn(UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE, errors.cause());
@@ -97,6 +97,10 @@ public class DataImportImpl implements DataImport {
           } else {
             OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
             uploadDefinitionService.addUploadDefinition(entity, params)
+              .map(l -> {
+                LOGGER.info("getDataImportUploadUrl:: Return uploadDefinition on POST: {}", JsonObject.mapFrom(l).encodePrettily());
+                return l;
+              })
               .map((Response) PostDataImportUploadDefinitionsResponse
                 .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionsResponse.headersFor201()))
               .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -176,10 +180,14 @@ public class DataImportImpl implements DataImport {
                                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        LOGGER.debug("getDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
+        LOGGER.info("getDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
         uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId, tenantId)
           .map(optionalDefinition -> optionalDefinition.orElseThrow(() ->
             new NotFoundException(String.format("Upload Definition with id '%s' not found", uploadDefinitionId))))
+          .map(l -> {
+            LOGGER.info("getDataImportUploadUrl:: Return uploadDefinitions on GET: {}", JsonObject.mapFrom(l).encodePrettily());
+            return l;
+          })
           .map(GetDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -463,8 +471,12 @@ public class DataImportImpl implements DataImport {
   @Override
   public void getDataImportUploadUrl(String fileName, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      LOGGER.debug("getDataImportUploadUrl:: getting upload url for filename {}", fileName);
+      LOGGER.info("getDataImportUploadUrl:: getting upload url for filename {}", fileName);
       minioStorageService.getFileUploadFirstPartUrl(fileName, tenantId)
+        .map(l -> {
+          LOGGER.info("getDataImportUploadUrl:: Return uploadUrl: {}", JsonObject.mapFrom(l).encodePrettily());
+          return l;
+        })
         .map(GetDataImportUploadUrlResponse::respond200WithApplicationJson)
         .map(Response.class::cast)
         .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -524,7 +536,7 @@ public class DataImportImpl implements DataImport {
                               String fileId, AssembleFileDto entity, Map<String, String> okapiHeaders,
                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      LOGGER.debug(
+      LOGGER.info(
         "postDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileId:: Assemble Storage File to complete upload def={} file={} key={}",
         uploadDefinitionId,
         fileId,

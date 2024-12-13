@@ -26,7 +26,7 @@
     <sonar.exclusions>**/ApplicationConfig.java</sonar.exclusions>
     <aspectj.version>1.9.19</aspectj.version>
     <lombok.version>1.18.30</lombok.version>
-    <kafkaclients.version>3.3.2</kafkaclients.version>
+    <kafkaclients.version>3.7.1</kafkaclients.version>
     <kafka-junit.version>3.3.0</kafka-junit.version>
     <spring.version>6.1.13</spring.version>
     <apache-httpclient.version>4.5.13</apache-httpclient.version>

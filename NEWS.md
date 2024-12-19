@@ -1,9 +1,11 @@
+## 2024-12-20 v3.2.3
+* [MODDATAIMP-1121](https://folio-org.atlassian.net/browse/MODDATAIMP-1121) Remove token header for Eureka env 
+
 ## 2024-12-09 v3.2.2
 * [MODDATAIMP-1124](https://folio-org.atlassian.net/browse/MODDATAIMP-1124) Fix handling afterFileSave futures to prevent DI failures
 
 ## 2024-11-08 v3.2.1
 * [MODDATAIMP-1109](https://folio-org.atlassian.net/browse/MODDATAIMP-1109) Issue with mod-data-import module when configuration for AWS is set
-* [MODDATAIMP-1121](https://folio-org.atlassian.net/browse/MODDATAIMP-1121) Remove token header for Eureka env 
 
 ## 2024-10-29 v3.2.0
 * [MODDATAIMP-1054](https://folio-org.atlassian.net/browse/MODDATAIMP-1054) Add error handling for script interrupts

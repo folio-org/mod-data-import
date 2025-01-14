@@ -46,7 +46,6 @@ import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
-  private static final String UPLOAD_DEFINITION_ID_FIELD = "id";
   private static final String STATUS_FIELD = "'status'";
   private static final String METADATA_FIELD = "'metadata'";
   private static final String UPDATED_DATE_FIELD = "'updatedDate'";

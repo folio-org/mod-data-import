@@ -6,6 +6,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 
+import io.vertx.sqlclient.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -33,20 +34,23 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Optional;
 import java.util.TimeZone;
+import java.util.UUID;
 
+import static java.lang.String.format;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
+import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 
 @Repository
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private static final String UPLOAD_DEFINITION_TABLE = "upload_definitions";
-  private static final String UPLOAD_DEFINITION_ID_FIELD = "id";
   private static final String STATUS_FIELD = "'status'";
   private static final String METADATA_FIELD = "'metadata'";
   private static final String UPDATED_DATE_FIELD = "'updatedDate'";
   private static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSX";
+  private static final String GET_BY_ID_SQL = "SELECT jsonb FROM %s WHERE id = $1";
 
   private static final Logger LOGGER = LogManager.getLogger();
   private SimpleDateFormat dateFormatter;
@@ -94,9 +98,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       }).compose(v -> {
       Promise<RowSet<Row>> selectPromise = Promise.promise();
       StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ")
-        .append(PostgresClient.convertToPsqlStandard(tenantId))
-        .append(".")
-        .append(UPLOAD_DEFINITION_TABLE)
+        .append(formatFullTableName(tenantId, UPLOAD_DEFINITION_TABLE))
         .append(" WHERE id ='")
         .append(uploadDefinitionId).append("' LIMIT 1 FOR UPDATE;");
       client.select(tx.future(), selectUploadDefinitionQuery.toString(), selectPromise);
@@ -105,8 +107,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       if (resultSet.rowCount() != 1) {
         throw new NotFoundException("Upload Definition was not found. ID: " + uploadDefinitionId);
       }
-      UploadDefinition definition = new JsonObject(resultSet.iterator().next().getValue("jsonb").toString())
-        .mapTo(UploadDefinition.class);
+      UploadDefinition definition = mapRowToUploadDefinition(resultSet);
       return mutator.mutate(definition);
     }).compose(mutatedObject -> updateUploadDefinition(tx.future(), mutatedObject, tenantId))
       .onComplete(onUpdate -> {
@@ -141,17 +142,17 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   @Override
   public Future<Optional<UploadDefinition>> getUploadDefinitionById(String id, String tenantId) {
-    Promise<Results<UploadDefinition>> promise = Promise.promise();
+    Promise<RowSet<Row>> promise = Promise.promise();
     try {
-      Criteria idCrit = constructCriteria(UPLOAD_DEFINITION_ID_FIELD, id).setJSONB(false);
-      pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, new Criterion(idCrit), false, promise);
+      String jobTable = formatFullTableName(tenantId, UPLOAD_DEFINITION_TABLE);
+      String query = format(GET_BY_ID_SQL, jobTable);
+      pgClientFactory.createInstance(tenantId).select(query, Tuple.of(UUID.fromString(id)), promise);
     } catch (Exception e) {
       LOGGER.warn("getUploadDefinitionById:: Error during get UploadDefinition by ID from view", e);
       promise.fail(e);
     }
-    return promise.future()
-      .map(Results::getResults)
-      .map(uploadDefinitions -> uploadDefinitions.isEmpty() ? Optional.empty() : Optional.of(uploadDefinitions.get(0)));
+
+    return promise.future().map(rowSet -> rowSet.rowCount() == 0 ? Optional.empty() : Optional.of(mapRowToUploadDefinition(rowSet)));
   }
 
   @Override
@@ -208,5 +209,14 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
     return new Criterion(constructCriteria(STATUS_FIELD, COMPLETED.value()))
       .addCriterion(updatedDateCriteria, "OR");
+  }
+
+  private static UploadDefinition mapRowToUploadDefinition(RowSet<Row> rowSet) {
+    return new JsonObject(rowSet.iterator().next().getValue("jsonb").toString())
+      .mapTo(UploadDefinition.class);
+  }
+
+  private String formatFullTableName(String tenantId, String table) {
+    return format("%s.%s", convertToPsqlStandard(tenantId), table);
   }
 }

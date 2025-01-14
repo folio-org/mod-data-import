@@ -50,7 +50,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   private static final String METADATA_FIELD = "'metadata'";
   private static final String UPDATED_DATE_FIELD = "'updatedDate'";
   private static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSX";
-  private static final String GET_BY_ID_SQL = "SELECT * FROM %s WHERE id = $1";
+  private static final String GET_BY_ID_SQL = "SELECT jsonb FROM %s WHERE id = $1";
 
   private static final Logger LOGGER = LogManager.getLogger();
   private SimpleDateFormat dateFormatter;

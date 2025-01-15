@@ -1,3 +1,6 @@
+## 2025-01-15 v3.2.4
+* [MODDATAIMP-1124](https://folio-org.atlassian.net/browse/MODDATAIMP-1124) Get upload definition by id directly from W DB instance to prevent failures starting DI job
+
 ## 2024-12-20 v3.2.3
 * [MODDATAIMP-1121](https://folio-org.atlassian.net/browse/MODDATAIMP-1121) Remove token header for Eureka env 
 

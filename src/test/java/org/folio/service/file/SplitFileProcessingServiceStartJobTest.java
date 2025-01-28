@@ -312,7 +312,7 @@ public class SplitFileProcessingServiceStartJobTest
       .postChangeManagerJobExecutions(any(), any());
 
     when(
-      changeManagerClient.putChangeManagerJobExecutionsById(any(), any(), any())
+      changeManagerClient.putChangeManagerJobExecutionsById(any(), any())
     )
       .thenAnswer(invocation -> {
         assertThat(

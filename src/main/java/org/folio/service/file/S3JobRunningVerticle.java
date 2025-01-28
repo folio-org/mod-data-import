@@ -272,7 +272,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   protected OkapiConnectionParams getConnectionParams(
     DataImportQueueItem queueItem
   ) {
-    return new OkapiConnectionParams(
+    return OkapiConnectionParams.createSystemUserConnectionParams(
       Map.of(
         XOkapiHeaders.URL.toLowerCase(),
         queueItem.getOkapiUrl(),
@@ -294,7 +294,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     DataImportQueueItem queueItem,
     String userId
   ) {
-    return new OkapiConnectionParams(
+    return OkapiConnectionParams.createSystemUserConnectionParams(
       Map.of(
         XOkapiHeaders.URL.toLowerCase(),
         queueItem.getOkapiUrl(),

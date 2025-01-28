@@ -1,10 +1,16 @@
-## 2024-xx-xx v3.2.0-SNAPSHOT
+## 2024-xx-xx v3.3.0-SNAPSHOT
+* [MODDATAIMP-1109](https://folio-org.atlassian.net/browse/MODDATAIMP-1109) Issue with mod-data-import module when configuration for AWS is set
+* [MODDATAIMP-1121](https://folio-org.atlassian.net/browse/MODDATAIMP-1121) Remove token header for Eureka env 
+
+## 2024-10-29 v3.2.0
 * [MODDATAIMP-1054](https://folio-org.atlassian.net/browse/MODDATAIMP-1054) Add error handling for script interrupts
-* [MODDATAIMP-1054](https://folio-org.atlassian.net/browse/MODDATAIMP-1054) Fixing : "File upload already in progress" appears when data import job was run for more than one file.
+* [MODDATAIMP-1046](https://folio-org.atlassian.net/browse/MODDATAIMP-1046) Fixing : "File upload already in progress" appears when data import job was run for more than one file.
 * [MODDATAIMP-1082](https://folio-org.atlassian.net/browse/MODDATAIMP-1082) Improve error logging for AWS-related issue.
 * [MODDATAIMP-1085](https://folio-org.atlassian.net/browse/MODDATAIMP-1085) Provide module permissions for subject types and sources 
 * [MODDATAIMP-1088](https://folio-org.atlassian.net/browse/MODDATAIMP-1088) Upgrade Spring from 5.3.23 to 6.1.13
 * [MODDATAIMP-1087](https://folio-org.atlassian.net/browse/MODDATAIMP-1087) log4j-slf4j2-impl, log4j 2.24.0
+* [MODDATAIMP-1099](https://folio-org.atlassian.net/browse/MODDATAIMP-1099) mod-data-import Ramsons 2024 R2 - RMB v35.3.x update
+* [MODDATAIMP-1083](https://folio-org.atlassian.net/browse/MODDATAIMP-1083) Fix inconsistencies in permission namings
 
 ## 2024-03-21 v3.1.0
 * [MODDATAIMP-1020](https://folio-org.atlassian.net/browse/MODDATAIMP-1020) Update load-marc-data-into-folio script with Poppy

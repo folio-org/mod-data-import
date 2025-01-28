@@ -328,7 +328,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Promise<JobExecutionDtoCollection> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
-      client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, 0, response -> {
+      client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, null,0, response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           Buffer responseAsBuffer = response.result().bodyAsBuffer();
           promise.handle(BufferMapper.mapBufferContentToEntityAsync(responseAsBuffer, JobExecutionDtoCollection.class));
@@ -349,7 +349,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     Promise<JobExecution> promise = Promise.promise();
     ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
-      client.getChangeManagerJobExecutionsById(jobExecutionId, null, response -> {
+      client.getChangeManagerJobExecutionsById(jobExecutionId,response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           Buffer responseAsBuffer = response.result().bodyAsBuffer();
           promise.handle(BufferMapper.mapBufferContentToEntityAsync(responseAsBuffer, JobExecution.class));

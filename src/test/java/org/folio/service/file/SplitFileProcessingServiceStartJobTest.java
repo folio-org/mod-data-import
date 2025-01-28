@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -311,14 +312,11 @@ public class SplitFileProcessingServiceStartJobTest
       .when(changeManagerClient)
       .postChangeManagerJobExecutions(any(), any());
 
-    when(
-      changeManagerClient.putChangeManagerJobExecutionsById(any(), any(), any())
-    )
+    when(changeManagerClient.putChangeManagerJobExecutionsById(any(), any()))
       .thenAnswer(invocation -> {
-        assertThat(
-          invocation.<JobExecution>getArgument(2).getTotalRecordsInFile(),
-          is(10)
-        );
+        JobExecution jobExecution = invocation.getArgument(1);
+        assertNotNull(jobExecution);
+        assertThat(jobExecution.getTotalRecordsInFile(), is(10));
 
         return getSuccessArBuffer(null);
       });

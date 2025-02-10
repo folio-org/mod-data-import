@@ -1,6 +1,5 @@
 package org.folio.service.storage;
 
-import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,9 +21,9 @@ public class FileStorageServiceBuilder {
    * @param tenantId - current tenant id
    * @return - new Service object
    */
-  public static Future<FileStorageService> build(Vertx vertx, String tenantId) {
+  public static FileStorageService build(Vertx vertx, String tenantId) {
     LOGGER.info("build:: building LocalFileStorageService");
-    return Future.succeededFuture(new LocalFileStorageService(vertx, tenantId));
+    return new LocalFileStorageService(vertx, tenantId);
   }
 
 }

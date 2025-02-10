@@ -28,8 +28,6 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   @Autowired
   private UploadDefinitionService uploadDefinitionService;
 
-  private Future<FileStorageService> fileStorage = Future.succeededFuture();
-
   private Optional<FileDefinition> findFileDefinition(UploadDefinition uploadDefinition, String fileId) {
     return uploadDefinition.getFileDefinitions()
       .stream()
@@ -91,7 +89,8 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
     Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDefinition, fileId);
     if (optionalFileDefinition.isPresent()) {
       FileDefinition fileDefinition = optionalFileDefinition.get();
-      return getStorage(params).compose(service -> service.saveFile(data, fileDefinition, params));
+      FileStorageService fileStorageService = FileStorageServiceBuilder.build(params.getVertx(), params.getTenantId());
+      return fileStorageService.saveFile(data, fileDefinition, params);
     } else {
       String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
       LOGGER.warn(errorMessage);
@@ -150,15 +149,5 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
     }
     list.add(fileDefinition);
     return list;
-  }
-
-  private Future<FileStorageService> getStorage(OkapiConnectionParams params) {
-    return fileStorage.compose(fileStorageService -> fileStorageService == null ? FileStorageServiceBuilder
-      .build(params.getVertx(), params.getTenantId())
-      .compose(h -> {
-        fileStorage = Future.succeededFuture(h);
-        return fileStorage;
-      })
-      : fileStorage);
   }
 }

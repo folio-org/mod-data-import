@@ -157,7 +157,7 @@ public abstract class AbstractRestTest {
 
   @Container
   private static final LocalStackContainer localStackContainer = new LocalStackContainer(
-    DockerImageName.parse("localstack/localstack:0.11.3")
+    DockerImageName.parse("localstack/localstack:s3-latest")
   )
     .withServices(LocalStackContainer.Service.S3);
 

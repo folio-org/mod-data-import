@@ -13,7 +13,6 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dataimport.util.ConfigurationUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.services.KafkaAdminClientService;
 import org.folio.service.kafka.DIKafkaTopicService;
@@ -27,7 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 public class ModTenantAPI extends TenantAPI {
 
-  private static final String DELAY_TIME_BETWEEN_CLEANUP_CODE = "data.import.cleanup.delay.time";
   private static final long DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS = 3600_000;
 
   private static final Logger LOGGER = LogManager.getLogger();
@@ -96,17 +94,14 @@ public class ModTenantAPI extends TenantAPI {
     Vertx vertx = context.owner();
     OkapiConnectionParams params = new OkapiConnectionParams(headers, vertx);
 
-    ConfigurationUtil.getPropertyByCode(DELAY_TIME_BETWEEN_CLEANUP_CODE, params)
-      .map(Long::parseLong)
-      .otherwise(DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS)
-      .onComplete(delayTimeAr -> vertx.setPeriodic(delayTimeAr.result(),
-        e -> vertx.<Void>executeBlocking(b -> storageCleanupService.cleanStorage(params),
-        cleanupAr -> {
-          if (cleanupAr.failed()) {
-            LOGGER.error("Error during cleaning file storage.", cleanupAr.cause());
-          } else {
-            LOGGER.info("File storage was successfully cleaned of unused files");
-          }
-        })));
+      vertx.setPeriodic(DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS,
+        e -> vertx.executeBlocking(b -> storageCleanupService.cleanStorage(params),
+          cleanupAr -> {
+            if (cleanupAr.failed()) {
+              LOGGER.error("Error during cleaning file storage.", cleanupAr.cause());
+            } else {
+              LOGGER.info("File storage was successfully cleaned of unused files");
+            }
+      }));
   }
 }

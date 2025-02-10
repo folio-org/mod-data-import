@@ -1,16 +1,12 @@
 package org.folio.rest;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -50,7 +46,6 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.springframework.core.io.ClassPathResource;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -312,24 +307,6 @@ public abstract class AbstractRestTest {
 
     WireMock.stubFor(get(GET_USER_URL + okapiUserIdHeader)
       .willReturn(okJson(userResponse.toString())));
-
-    WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
-      .withQueryParam("query", equalTo("module==DATA_IMPORT AND ( code==\"data.import.storage.path\")"))
-      .withQueryParam("offset", equalTo("0"))
-      .withQueryParam("limit", equalTo("3"))
-      .willReturn(okJson(configurationStoragePath.toString())));
-
-    WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
-      .withQueryParam("query", equalTo("module==DATA_IMPORT AND ( code==\"data.import.storage.type\")"))
-      .withQueryParam("offset", equalTo("0"))
-      .withQueryParam("limit", equalTo("3"))
-      .willReturn(okJson(configurationStorageType.toString())));
-
-    WireMock.stubFor(get(urlPathEqualTo("/configurations/entries"))
-      .withQueryParam("query", equalTo("module==DATA_IMPORT AND ( code==\"data.import.cleanup.time\")"))
-      .withQueryParam("offset", equalTo("0"))
-      .withQueryParam("limit", equalTo("3"))
-      .willReturn(okJson(configurationCleanupTime.toString())));
 
     WireMock.stubFor(post("/change-manager/jobExecutions").withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
       .willReturn(created().withBody(JsonObject.mapFrom(jobExecutionCreateSingleFile).toString())));

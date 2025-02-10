@@ -43,7 +43,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
     LOGGER.debug("cleanStorage:: cleaning storage");
     Promise<Boolean> promise = Promise.promise();
 
-    return FileStorageServiceBuilder.build(vertx, params.getTenantId(), params)
+    return FileStorageServiceBuilder.build(vertx, params.getTenantId())
       .compose(fileStorageService -> getTimeWithoutUploadDefinitionChanges(params)
         .compose(timeWithoutChanges -> {
           Date lastChangesDate = new Date(new Date().getTime() - timeWithoutChanges);

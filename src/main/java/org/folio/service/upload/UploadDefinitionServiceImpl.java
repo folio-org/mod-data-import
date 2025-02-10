@@ -158,7 +158,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Future<Boolean> deleteFile(FileDefinition fileDefinition, OkapiConnectionParams params) {
     return FileStorageServiceBuilder
-      .build(vertx, params.getTenantId(), params)
+      .build(vertx, params.getTenantId())
       .compose(service -> service.deleteFile(fileDefinition));
   }
 

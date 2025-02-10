@@ -21,6 +21,7 @@
     <marc4j.version>2.9.2</marc4j.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <mod-configuration-client.version>5.11.0</mod-configuration-client.version>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <sonar.exclusions>**/ApplicationConfig.java</sonar.exclusions>
     <aspectj.version>1.9.19</aspectj.version>
@@ -95,6 +96,11 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>mod-configuration-client</artifactId>
+      <version>${mod-configuration-client.version}</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>

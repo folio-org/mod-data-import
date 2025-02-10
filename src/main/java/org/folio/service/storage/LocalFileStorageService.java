@@ -9,7 +9,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 
-import javax.ws.rs.BadRequestException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,8 +17,6 @@ import java.nio.file.StandardOpenOption;
 public class LocalFileStorageService extends AbstractFileStorageService {
 
   private static final Logger LOGGER = LogManager.getLogger();
-
-  private static final String FILE_STORAGE_PATH_CODE = "data.import.storage.path";
 
   public LocalFileStorageService(Vertx vertx, String tenantId) {
     super(vertx, tenantId);
@@ -34,36 +31,31 @@ public class LocalFileStorageService extends AbstractFileStorageService {
   public Future<FileDefinition> saveFile(byte[] data, FileDefinition fileDefinition, OkapiConnectionParams params) {
     Promise<FileDefinition> promise = Promise.promise();
     String fileId = fileDefinition.getId();
-    getStoragePath(FILE_STORAGE_PATH_CODE, fileDefinition, params)
-      .onComplete(pathReply -> {
-        if (pathReply.succeeded()) {
-          String path = pathReply.result();
-          vertx.<Void>executeBlocking(b -> {
-              try {
-                if (!fs.existsBlocking(path)) {
-                  fs.mkdirsBlocking(path.substring(0, path.indexOf(fileDefinition.getName()) - 1));
-                }
-                final Path pathToFile = Paths.get(path);
-                Files.write(pathToFile, data, pathToFile.toFile().exists() ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
-                fileDefinition.setSourcePath(path);
-                b.complete();
-              } catch (Exception e) {
-                LOGGER.warn("saveFile:: Error during save file source data to the local system's storage. FileId: {}", fileId, e);
-                b.fail(e);
-              }
-            },
-            r -> {
-              if (r.failed()) {
-                LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, r.cause());
-                promise.fail(r.cause());
-              } else {
-                LOGGER.warn("saveFile:: File part was saved to the storage. FileId: {}", fileId);
-                promise.complete(fileDefinition);
-              }
-            });
+    String path = super.getStoragePath(fileDefinition);
+
+    vertx.executeBlocking(b -> {
+        try {
+          if (!fs.existsBlocking(path)) {
+            fs.mkdirsBlocking(path.substring(0, path.indexOf(fileDefinition.getName()) - 1));
+          }
+          final Path pathToFile = Paths.get(path);
+          Files.write(pathToFile, data,
+            pathToFile.toFile().exists() ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
+          fileDefinition.setSourcePath(path);
+          b.complete();
+        } catch (Exception e) {
+          LOGGER.warn("saveFile:: Error during save file source data to the local system's storage. FileId: {}", fileId,
+            e);
+          b.fail(e);
+        }
+      },
+      r -> {
+        if (r.failed()) {
+          LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, r.cause());
+          promise.fail(r.cause());
         } else {
-          LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, pathReply.cause());
-          promise.fail(new BadRequestException(pathReply.cause()));
+          LOGGER.warn("saveFile:: File part was saved to the storage. FileId: {}", fileId);
+          promise.complete(fileDefinition);
         }
       });
     return promise.future();
@@ -86,13 +78,5 @@ public class LocalFileStorageService extends AbstractFileStorageService {
       promise.complete(false);
     }
     return promise.future();
-  }
-
-  @Override
-  protected Future<String> getStoragePath(String code, FileDefinition fileDefinition, OkapiConnectionParams params) {
-    return fileDefinition.getSourcePath() != null ?
-      Future.succeededFuture(fileDefinition.getSourcePath())
-      : super.getStoragePath(code, fileDefinition, params)
-      .compose(path -> Future.succeededFuture(path + "/" + fileDefinition.getName()));
   }
 }

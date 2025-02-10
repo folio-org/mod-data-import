@@ -116,27 +116,6 @@ public abstract class AbstractRestTest {
       jobExecution.withId(UUID.randomUUID().toString()).withSubordinationType(JobExecutionDto.SubordinationType.CHILD)))
     .withTotalRecords(2);
 
-  private JsonObject configurationStoragePath = new JsonObject().put("totalRecords", 1)
-    .put("configs", new JsonArray().add(new JsonObject()
-      .put("module", "DATA_IMPORT")
-      .put("code", "data.import.storage.path")
-      .put("value", "./storage")
-    ));
-
-    private JsonObject configurationStorageType = new JsonObject().put("totalRecords", 1)
-      .put("configs", new JsonArray().add(new JsonObject()
-        .put("module", "DATA_IMPORT")
-        .put("code", "data.import.storage.type")
-        .put("value", "LOCAL_STORAGE")
-      ));
-
-    private JsonObject configurationCleanupTime = new JsonObject().put("totalRecords", 1)
-      .put("configs", new JsonArray().add(new JsonObject()
-        .put("module", "DATA_IMPORT")
-        .put("code", "data.import.cleanup.time")
-        .put("value", "3600000")
-      ));
-
   private InitJobExecutionsRsDto jobExecutionCreateSingleFile = new InitJobExecutionsRsDto()
     .withParentJobExecutionId(UUID.randomUUID().toString())
     .withJobExecutions(Collections.singletonList(

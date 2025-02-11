@@ -95,13 +95,13 @@ public class ModTenantAPI extends TenantAPI {
     OkapiConnectionParams params = new OkapiConnectionParams(headers, vertx);
 
       vertx.setPeriodic(DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS,
-        e -> vertx.executeBlocking(b -> storageCleanupService.cleanStorage(params),
+        e -> vertx.executeBlocking(() -> storageCleanupService.cleanStorage(params),
           cleanupAr -> {
             if (cleanupAr.failed()) {
               LOGGER.error("Error during cleaning file storage.", cleanupAr.cause());
             } else {
               LOGGER.info("File storage was successfully cleaned of unused files");
             }
-      }));
+          }));
   }
 }

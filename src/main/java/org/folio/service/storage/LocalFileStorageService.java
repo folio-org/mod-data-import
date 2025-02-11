@@ -33,31 +33,29 @@ public class LocalFileStorageService extends AbstractFileStorageService {
     String fileId = fileDefinition.getId();
     String path = getStoragePath(fileDefinition);
 
-    vertx.executeBlocking(b -> {
-        try {
-          if (!fs.existsBlocking(path)) {
-            fs.mkdirsBlocking(path.substring(0, path.indexOf(fileDefinition.getName()) - 1));
-          }
-          final Path pathToFile = Paths.get(path);
-          Files.write(pathToFile, data,
-            pathToFile.toFile().exists() ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
-          fileDefinition.setSourcePath(path);
-          b.complete();
-        } catch (Exception e) {
-          LOGGER.warn("saveFile:: Error during save file source data to the local system's storage. FileId: {}", fileId,
-            e);
-          b.fail(e);
+    vertx.executeBlocking(() -> {
+      try {
+        if (!fs.existsBlocking(path)) {
+          fs.mkdirsBlocking(path.substring(0, path.indexOf(fileDefinition.getName()) - 1));
         }
-      },
-      r -> {
-        if (r.failed()) {
-          LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, r.cause());
-          promise.fail(r.cause());
-        } else {
-          LOGGER.warn("saveFile:: File part was saved to the storage. FileId: {}", fileId);
-          promise.complete(fileDefinition);
-        }
-      });
+        final Path pathToFile = Paths.get(path);
+        Files.write(pathToFile, data,
+          pathToFile.toFile().exists() ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
+        fileDefinition.setSourcePath(path);
+        return fileDefinition;
+      } catch (Exception e) {
+        LOGGER.warn("saveFile:: Error during save file source data to the local system's storage. FileId: {}", fileId, e);
+        throw e;
+      }
+    }, r -> {
+      if (r.failed()) {
+        LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, r.cause());
+        promise.fail(r.cause());
+      } else {
+        LOGGER.info("saveFile:: File part was saved to the storage. FileId: {}", fileId);
+        promise.complete(r.result());
+      }
+    });
     return promise.future();
   }
 

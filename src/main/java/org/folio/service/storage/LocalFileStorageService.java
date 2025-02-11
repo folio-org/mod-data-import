@@ -31,7 +31,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
   public Future<FileDefinition> saveFile(byte[] data, FileDefinition fileDefinition, OkapiConnectionParams params) {
     Promise<FileDefinition> promise = Promise.promise();
     String fileId = fileDefinition.getId();
-    String path = super.getStoragePath(fileDefinition);
+    String path = getStoragePath(fileDefinition);
 
     vertx.executeBlocking(b -> {
         try {
@@ -78,5 +78,12 @@ public class LocalFileStorageService extends AbstractFileStorageService {
       promise.complete(false);
     }
     return promise.future();
+  }
+
+  @Override
+  protected String getStoragePath(FileDefinition fileDefinition) {
+    return fileDefinition.getSourcePath() != null ?
+      fileDefinition.getSourcePath()
+      : super.getStoragePath(fileDefinition) + "/" + fileDefinition.getName();
   }
 }

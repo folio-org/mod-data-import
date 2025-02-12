@@ -2,6 +2,7 @@ package org.folio.service.file;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -58,7 +59,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
         promise.complete(uploadDef);
       } else {
         String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
-        LOGGER.warn(errorMessage);
+        LOGGER.warn("beforeFileSave:: {}", errorMessage);
         promise.fail(new NotFoundException(errorMessage));
       }
       return promise.future();
@@ -89,11 +90,11 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
     Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDefinition, fileId);
     if (optionalFileDefinition.isPresent()) {
       FileDefinition fileDefinition = optionalFileDefinition.get();
-      FileStorageService fileStorageService = FileStorageServiceBuilder.build(params.getVertx(), params.getTenantId());
+      FileStorageService fileStorageService = FileStorageServiceBuilder.build(Vertx.currentContext().owner(), params.getTenantId());
       return fileStorageService.saveFile(data, fileDefinition, params);
     } else {
       String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
-      LOGGER.warn(errorMessage);
+      LOGGER.warn("saveFileChunk:: {}", errorMessage);
       return Future.failedFuture(new NotFoundException(errorMessage));
     }
   }

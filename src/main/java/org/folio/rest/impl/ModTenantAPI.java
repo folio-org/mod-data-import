@@ -23,10 +23,12 @@ import org.folio.service.cleanup.StorageCleanupService;
 import org.folio.service.fileextension.FileExtensionService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 public class ModTenantAPI extends TenantAPI {
 
-  private static final long DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS = 3600_000;
+  @Value("${data.import.cleanup.delay.time:3600000}")
+  private long delayTimeBetweenCleanupValueMillis;
 
   private static final Logger LOGGER = LogManager.getLogger();
 
@@ -94,7 +96,7 @@ public class ModTenantAPI extends TenantAPI {
     Vertx vertx = context.owner();
     OkapiConnectionParams params = new OkapiConnectionParams(headers, vertx);
 
-      vertx.setPeriodic(DELAY_TIME_BETWEEN_CLEANUP_VALUE_MILLIS,
+      vertx.setPeriodic(delayTimeBetweenCleanupValueMillis,
         e -> vertx.executeBlocking(b -> storageCleanupService.cleanStorage(params),
           cleanupAr -> {
             if (cleanupAr.failed()) {

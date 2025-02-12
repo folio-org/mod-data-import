@@ -14,6 +14,7 @@ import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -27,7 +28,8 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private static final long TIME_WITHOUT_CHANGES_DEFAULT_VALUE_MILLIS = 3600000L;
+  @Value("${data.import.cleanup.time:3600000}")
+  private long timeWithoutChangesDefaultValueMillis;
 
   @Autowired
   private Vertx vertx;
@@ -41,7 +43,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
 
     FileStorageService fileStorageService = FileStorageServiceBuilder.build(vertx, params.getTenantId());
 
-    Date lastChangesDate = new Date(new Date().getTime() - TIME_WITHOUT_CHANGES_DEFAULT_VALUE_MILLIS);
+    Date lastChangesDate = new Date(new Date().getTime() - timeWithoutChangesDefaultValueMillis);
     return uploadDefinitionDao.getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(COMPLETED, lastChangesDate, 0, 0, params.getTenantId())
       .map(DefinitionCollection::getUploadDefinitions)
       .compose(uploadDefinitions -> deleteFilesByUploadDefinitions(fileStorageService, uploadDefinitions))

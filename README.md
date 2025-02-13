@@ -13,8 +13,6 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 * [Deploying the module](#deploying-the-module)
 * [Maximum upload file size and java heap memory setups](#maximum-upload-file-size-and-java-heap-memory-setups)
     * [Example](#example)
-* [Scalability](#scalability)
-  * [Module properties to set up at mod-configuration](#module-properties-to-set-up-at-mod-configuration)
 * [File splitting configuration](#file-splitting-configuration)
 * [Interaction with AWS S3/Minio](#interaction-with-aws-s3minio)
 * [Queue prioritization algorithm](#queue-prioritization-algorithm)
@@ -113,17 +111,6 @@ It is necessary to have the size of the java heap equal to the expected max file
 |   256mb   |     270+ mb    |
 |   512mb   |     560+ mb    |
 |    1GB    |     1.1+ GB    |
-
-## Scalability
-
-To initialise processing of a file user should choose a Job Profile - that information is crucial as it basically contains the instructions on what to do with the uploaded file. However, this process happens after file is uploaded and comes to mod-data-import as a separate request.
-External storage is required to make mod-data-import scalable. Implementation of the module has the possibility to read the configuration settings from mod-configuration.
-To allow multiple instance deployment, for every instance the same persistent volume must be mounted to the mount point defined by the value of ****_data.import.storage.path_ property.****
-
-### Module properties to set up at mod-configuration
-
-* **_data.import.storage.type_** - type of data storage used for uploaded files. Default value is **LOCAL_STORAGE**. Other implementations for storage should be added.
-* **_data.import.storage.path_** - **path where uploaded file will be stored**
 
 ## File splitting configuration
 

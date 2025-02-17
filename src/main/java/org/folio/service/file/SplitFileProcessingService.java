@@ -211,7 +211,6 @@ public class SplitFileProcessingService {
                 return client
                   .putChangeManagerJobExecutionsById(
                     execution.getId(),
-                    null,
                     execution
                   )
                   .map(this::verifyOkStatus);
@@ -345,7 +344,6 @@ public class SplitFileProcessingService {
    * @param parentJobExecution     the parent composite job execution
    * @param jobProfileInfo         the job profile to be used for later processing
    * @param client                 the {@link ChangeManagerClient} to make API calls to
-   * @param jobProfileId           the ID of the job profile to be used for later processing
    * @param parentJobSize          the size of the parent job, as calculated by {@code FileSplitUtilities}
    * @param params                 the headers from the original request
    * @param keys                   the list of S3 keys to register, as returned by {@code FileSplitService}
@@ -445,6 +443,7 @@ public class SplitFileProcessingService {
           return client.getChangeManagerJobExecutionsChildrenById(
             jobExecutionId,
             Integer.MAX_VALUE,
+            null,
             0
           );
         } else {

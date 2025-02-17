@@ -84,8 +84,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       succeededFuture()
         .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
         .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
-        .compose(ar -> FileStorageServiceBuilder.build(this.vertx, params.getTenantId(), params))
-        .compose(fileStorageService -> {
+        .compose(v -> {
+          FileStorageService fileStorageService = FileStorageServiceBuilder.build(this.vertx, params.getTenantId());
           processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params);
           uploadDefinitionService.updateBlocking(
             uploadDefinition.getId(),

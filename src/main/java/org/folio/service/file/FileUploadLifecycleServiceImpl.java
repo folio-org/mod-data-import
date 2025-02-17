@@ -2,6 +2,7 @@ package org.folio.service.file;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -27,8 +28,6 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
 
   @Autowired
   private UploadDefinitionService uploadDefinitionService;
-
-  private Future<FileStorageService> fileStorage = Future.succeededFuture();
 
   private Optional<FileDefinition> findFileDefinition(UploadDefinition uploadDefinition, String fileId) {
     return uploadDefinition.getFileDefinitions()
@@ -60,7 +59,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
         promise.complete(uploadDef);
       } else {
         String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
-        LOGGER.warn(errorMessage);
+        LOGGER.warn("beforeFileSave:: {}", errorMessage);
         promise.fail(new NotFoundException(errorMessage));
       }
       return promise.future();
@@ -91,10 +90,11 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
     Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDefinition, fileId);
     if (optionalFileDefinition.isPresent()) {
       FileDefinition fileDefinition = optionalFileDefinition.get();
-      return getStorage(params).compose(service -> service.saveFile(data, fileDefinition, params));
+      FileStorageService fileStorageService = FileStorageServiceBuilder.build(Vertx.currentContext().owner(), params.getTenantId());
+      return fileStorageService.saveFile(data, fileDefinition, params);
     } else {
       String errorMessage = "FileDefinition not found. FileDefinition ID: " + fileId;
-      LOGGER.warn(errorMessage);
+      LOGGER.warn("saveFileChunk:: {}", errorMessage);
       return Future.failedFuture(new NotFoundException(errorMessage));
     }
   }
@@ -150,15 +150,5 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
     }
     list.add(fileDefinition);
     return list;
-  }
-
-  private Future<FileStorageService> getStorage(OkapiConnectionParams params) {
-    return fileStorage.compose(fileStorageService -> fileStorageService == null ? FileStorageServiceBuilder
-      .build(params.getVertx(), params.getTenantId(), params)
-      .compose(h -> {
-        fileStorage = Future.succeededFuture(h);
-        return fileStorage;
-      })
-      : fileStorage);
   }
 }

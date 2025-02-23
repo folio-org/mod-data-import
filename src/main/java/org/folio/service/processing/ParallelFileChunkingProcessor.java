@@ -76,23 +76,23 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   @Override
   public void process(JsonObject jsonRequest, JsonObject jsonParams) { //NOSONAR
-      ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
-      UploadDefinition uploadDefinition = request.getUploadDefinition();
-      JobProfileInfo jobProfile = request.getJobProfileInfo();
-      OkapiConnectionParams params = OkapiConnectionParams.createSystemUserConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
-      UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
-      succeededFuture()
-        .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
-        .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
-        .compose(v -> {
-          FileStorageService fileStorageService = FileStorageServiceBuilder.build(this.vertx, params.getTenantId());
-          processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params);
-          uploadDefinitionService.updateBlocking(
-            uploadDefinition.getId(),
-            definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
-            params.getTenantId());
-          return succeededFuture();
-        }).onFailure(e -> LOGGER.error("process:: Unable to process file:", e));
+    ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
+    UploadDefinition uploadDefinition = request.getUploadDefinition();
+    JobProfileInfo jobProfile = request.getJobProfileInfo();
+    OkapiConnectionParams params = OkapiConnectionParams.createSystemUserConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
+    UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
+    succeededFuture()
+      .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
+      .compose(jobExecutions -> updateJobsProfile(jobExecutions, jobProfile, params))
+      .compose(ar -> FileStorageServiceBuilder.build(this.vertx, params.getTenantId(), params))
+      .compose(fileStorageService -> {
+        processFiles(jobProfile, uploadDefinitionService, fileStorageService, uploadDefinition, params);
+        uploadDefinitionService.updateBlocking(
+          uploadDefinition.getId(),
+          definition -> succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
+          params.getTenantId());
+        return succeededFuture();
+      }).onFailure(e -> LOGGER.error("process:: Unable to process file:", e));
   }
 
   /**

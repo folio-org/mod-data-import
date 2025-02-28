@@ -295,6 +295,8 @@ public abstract class AbstractRestTest {
       .willReturn(ok()));
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
       .willReturn(okJson(JsonObject.mapFrom(jobExecution).toString())));
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/status"), true))
+      .willReturn(okJson(JsonObject.mapFrom(jobExecution).toString())));
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))
       .willReturn(okJson(JsonObject.mapFrom(childrenJobExecutions).toString())));
   }

@@ -3,11 +3,16 @@ package org.folio.rest;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
+import io.restassured.response.ValidatableResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.File;
@@ -178,6 +183,20 @@ public class ProcessS3APITest extends AbstractRestTest {
       .post("/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles")
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    await().atMost(60, SECONDS).pollInterval(5, SECONDS).until(() -> {
+      ValidatableResponse response = RestAssured.given()
+        .spec(spec)
+        .when()
+        .get("/data-import/uploadDefinitions/" + uploadDefinition.getId())
+        .then()
+        .statusCode(HttpStatus.SC_OK)
+        .body("metaJobExecutionId", notNullValue())
+        .body("id", notNullValue());
+
+      String status = response.extract().body().jsonPath().getString("status");
+      return COMPLETED.name().equals(status);
+    });
   }
 
   @Test

@@ -69,19 +69,38 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   @Override
   public Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, OkapiConnectionParams params) {
     LOGGER.debug("afterFileSave:: fileDefinition.jobExecutionId {}", fileDefinition.getJobExecutionId());
-    return uploadDefinitionService.updateBlocking(fileDefinition.getUploadDefinitionId(), definition -> {
-      definition.setFileDefinitions(replaceFile(definition.getFileDefinitions(),
-        fileDefinition.withUploadedDate(new Date()).withStatus(FileDefinition.Status.UPLOADED)));
-      setUploadDefinitionStatusAfterFileUpload(definition);
-      uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
-        .onComplete(booleanAsyncResult -> {
-          if (booleanAsyncResult.failed()) {
-            LOGGER.warn("afterFileSave:: Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
-              fileDefinition.getJobExecutionId(), fileDefinition.getId(), booleanAsyncResult.cause());
-          }
-        });
-      return Future.succeededFuture(definition);
-    }, params.getTenantId());
+    return updateUploadDefinition(fileDefinition, params)
+      .compose(definition -> updateJobExecutionStatus(fileDefinition, params, definition));
+  }
+
+  private Future<UploadDefinition> updateUploadDefinition(FileDefinition fileDefinition, OkapiConnectionParams params) {
+    return uploadDefinitionService.updateBlocking(
+      fileDefinition.getUploadDefinitionId(),
+      definition -> {
+        definition.setFileDefinitions(updateFileDefinition(definition, fileDefinition));
+        setUploadDefinitionStatusAfterFileUpload(definition);
+        return Future.succeededFuture(definition);
+      },
+      params.getTenantId()
+    );
+  }
+
+  private List<FileDefinition> updateFileDefinition(UploadDefinition definition, FileDefinition fileDefinition) {
+    return replaceFile(definition.getFileDefinitions(), fileDefinition.withUploadedDate(new Date()).withStatus(FileDefinition.Status.UPLOADED));
+  }
+
+  private Future<UploadDefinition> updateJobExecutionStatus(FileDefinition fileDefinition, OkapiConnectionParams params, UploadDefinition uploadDefinition) {
+    LOGGER.debug("updateJobExecutionStatus:: JobExecutionId {}, uploadDefinitionId {}", fileDefinition.getJobExecutionId(), uploadDefinition.getId());
+    return uploadDefinitionService.updateJobExecutionStatus(
+        fileDefinition.getJobExecutionId(),
+        new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED),
+        params
+      ).map(result -> uploadDefinition)
+      .otherwise(throwable -> {
+        LOGGER.warn("afterFileSave:: Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
+          fileDefinition.getJobExecutionId(), fileDefinition.getId(), throwable);
+        return uploadDefinition;
+      });
   }
 
   @Override

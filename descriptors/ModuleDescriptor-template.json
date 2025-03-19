@@ -9,10 +9,6 @@
     {
       "id": "users",
       "version": "15.0 16.0"
-    },
-    {
-      "id": "configuration",
-      "version": "2.0"
     }
   ],
   "provides": [
@@ -38,7 +34,6 @@
             "data-import.uploaddefinitions.post"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get",
             "change-manager.jobexecutions.post"
           ]
         },
@@ -67,9 +62,6 @@
           "pathPattern": "/data-import/uploadDefinitions/{uploadDefinitionId}",
           "permissionsRequired": [
             "data-import.uploaddefinitions.put"
-          ],
-          "modulePermissions": [
-            "configuration.entries.collection.get"
           ]
         },
         {
@@ -95,7 +87,6 @@
             "data-import.upload.file.post"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get",
             "change-manager.jobexecutions.post",
             "change-manager.jobExecutions.status.item.put"
           ]
@@ -109,7 +100,6 @@
             "data-import.uploadDefinitions.files.item.post"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get",
             "change-manager.jobexecutions.post"
           ]
         },
@@ -135,7 +125,6 @@
             "data-import.uploaddefinitions.files.delete"
           ],
           "modulePermissions": [
-            "configuration.entries.collection.get",
             "change-manager.jobExecutions.status.item.put"
           ]
         },

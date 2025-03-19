@@ -3,6 +3,7 @@ package org.folio.service.file;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import javax.ws.rs.BadRequestException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -130,7 +131,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
         return Future.succeededFuture(definition);
       },
       params.getTenantId()
-    ).compose(rollbackDef -> Future.failedFuture(throwable)); // Ensure failure is propagated
+    ).compose(rollbackDef -> Future.failedFuture(new BadRequestException("Failed to update job execution status", throwable))); // Ensure failure is propagated
   }
 
   /**

@@ -1,7 +1,9 @@
-## 2024-xx-xx v3.3.0-SNAPSHOT
+## 2024-03-13 v3.3.0
 * [MODDATAIMP-1109](https://folio-org.atlassian.net/browse/MODDATAIMP-1109) Issue with mod-data-import module when configuration for AWS is set
-* [MODDATAIMP-1121](https://folio-org.atlassian.net/browse/MODDATAIMP-1121) Remove token header for Eureka env 
+* [MODDATAIMP-1121](https://folio-org.atlassian.net/browse/MODDATAIMP-1121) Remove token header for Eureka env
+* [MODDATAIMP-1125](https://folio-org.atlassian.net/browse/MODDATAIMP-1125) Remove dependency on mod-configuration
 * [MODDATAIMP-1176](https://folio-org.atlassian.net/browse/MODDATAIMP-1176) Update to Java 21
+* Upgrade localstack test container from 0.11.3 to s3-latest
 
 ## 2024-10-29 v3.2.0
 * [MODDATAIMP-1054](https://folio-org.atlassian.net/browse/MODDATAIMP-1054) Add error handling for script interrupts

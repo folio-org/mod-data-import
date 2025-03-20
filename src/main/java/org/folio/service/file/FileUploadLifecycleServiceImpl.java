@@ -3,6 +3,7 @@ package org.folio.service.file;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import javax.ws.rs.BadRequestException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -69,19 +70,76 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   @Override
   public Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, OkapiConnectionParams params) {
     LOGGER.debug("afterFileSave:: fileDefinition.jobExecutionId {}", fileDefinition.getJobExecutionId());
-    return uploadDefinitionService.updateBlocking(fileDefinition.getUploadDefinitionId(), definition -> {
-      definition.setFileDefinitions(replaceFile(definition.getFileDefinitions(),
-        fileDefinition.withUploadedDate(new Date()).withStatus(FileDefinition.Status.UPLOADED)));
-      setUploadDefinitionStatusAfterFileUpload(definition);
-      uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
-        .onComplete(booleanAsyncResult -> {
-          if (booleanAsyncResult.failed()) {
-            LOGGER.warn("afterFileSave:: Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
-              fileDefinition.getJobExecutionId(), fileDefinition.getId(), booleanAsyncResult.cause());
-          }
-        });
-      return Future.succeededFuture(definition);
-    }, params.getTenantId());
+    return updateUploadDefinition(fileDefinition, params)
+      .compose(definition ->
+        updateJobExecutionStatus(fileDefinition, params, definition)
+          .map(success -> definition)
+          .recover(throwable ->
+            rollbackUploadUpdate(fileDefinition, params, throwable)
+          )
+      );
+  }
+
+  /**
+   * Updates the upload definition with the new file definition and status.
+   * If successful, returns the updated UploadDefinition.
+   */
+  private Future<UploadDefinition> updateUploadDefinition(FileDefinition fileDefinition, OkapiConnectionParams params) {
+    return uploadDefinitionService.updateBlocking(
+      fileDefinition.getUploadDefinitionId(),
+      definition -> {
+        definition.setFileDefinitions(updateFileDefinition(definition, fileDefinition));
+        setUploadDefinitionStatusAfterFileUpload(definition);
+        return Future.succeededFuture(definition);
+      },
+      params.getTenantId()
+    );
+  }
+
+  private List<FileDefinition> updateFileDefinition(UploadDefinition definition, FileDefinition fileDefinition) {
+    return replaceFile(definition.getFileDefinitions(), fileDefinition.withUploadedDate(new Date()).withStatus(FileDefinition.Status.UPLOADED));
+  }
+
+  /**
+   * Updates the job execution status. If successful, returns true.
+   */
+  private Future<Boolean> updateJobExecutionStatus(FileDefinition fileDefinition, OkapiConnectionParams params, UploadDefinition uploadDefinition) {
+    LOGGER.debug("updateJobExecutionStatus:: JobExecutionId {}, uploadDefinitionId {}", fileDefinition.getJobExecutionId(), uploadDefinition.getId());
+    return uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
+      .onComplete(booleanAsyncResult -> {
+        if (booleanAsyncResult.failed()) {
+          LOGGER.warn("afterFileSave:: Couldn't update JobExecution status with id {} to FILE_UPLOADED after file with id {} was saved to storage",
+            fileDefinition.getJobExecutionId(), fileDefinition.getId(), booleanAsyncResult.cause());
+        }
+      });
+  }
+
+  /**
+   * Rolls back the upload definition update in case of a failure in job execution status update.
+   */
+  private Future<UploadDefinition> rollbackUploadUpdate(FileDefinition fileDefinition,
+                                                        OkapiConnectionParams params, Throwable throwable) {
+    LOGGER.warn("Rollback: Job execution status update failed for jobExecutionId {}. Rolling back upload definition update.",
+      fileDefinition.getJobExecutionId(), throwable);
+
+    // Rollback file definition status to previous state
+    return uploadDefinitionService.updateBlocking(
+      fileDefinition.getUploadDefinitionId(),
+      definition -> {
+        definition.setFileDefinitions(rollbackFileDefinition(definition, fileDefinition));
+        setUploadDefinitionStatusAfterFileUpload(definition);
+        return Future.succeededFuture(definition);
+      },
+      params.getTenantId()
+    ).compose(rollbackDef -> Future.failedFuture(new BadRequestException("Failed to update job execution status", throwable))); // Ensure failure is propagated
+  }
+
+  /**
+   * Rolls back file definition to its previous status.
+   */
+  private List<FileDefinition> rollbackFileDefinition(UploadDefinition definition, FileDefinition fileDefinition) {
+    return replaceFile(definition.getFileDefinitions(), fileDefinition.withStatus(FileDefinition.Status.NEW) // Reverting status
+    );
   }
 
   @Override

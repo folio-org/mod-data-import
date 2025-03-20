@@ -65,55 +65,55 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   private String uploadDefIdForTest2;
   private String uploadDefIdForTest3;
 
-  private static FileDefinition file1 = new FileDefinition()
+  private static final FileDefinition file1 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars_Bibs(1).mrc.md1547160916680")
     .withName("CornellFOLIOExemplars_Bibs(1).mrc")
     .withSize(209);
 
-  private static FileDefinition file2 = new FileDefinition()
+  private static final FileDefinition file2 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars.mrc.md1547160916680")
     .withName("CornellFOLIOExemplars.mrc")
     .withSize(209);
 
-  private static FileDefinition file3 = new FileDefinition()
+  private static final FileDefinition file3 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars.mrc.md1547160916680")
     .withName("CornellFOLIOExemplars.mrc")
     .withSize(Integer.MAX_VALUE);
 
-  private static FileDefinition file4 = new FileDefinition()
+  private static final FileDefinition file4 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars1.mrc.md1547160916681")
     .withName("CornellFOLIOExemplars1.mrc")
     .withSize(Integer.MAX_VALUE);
 
-  private static FileDefinition file5 = new FileDefinition()
+  private static final FileDefinition file5 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars.GIF.md1547160916680")
     .withName("CornellFOLIOExemplars.GIF")
     .withSize(209);
 
-  private static FileDefinition file6 = new FileDefinition()
+  private static final FileDefinition file6 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars.jpg.md1547160916680")
     .withName("CornellFOLIOExemplars.jpg")
     .withSize(209);
 
-  private static UploadDefinition uploadDef1 = new UploadDefinition()
+  private static final UploadDefinition uploadDef1 = new UploadDefinition()
     .withFileDefinitions(Collections.singletonList(file1));
 
-  private static UploadDefinition uploadDef2 = new UploadDefinition()
+  private static final UploadDefinition uploadDef2 = new UploadDefinition()
     .withFileDefinitions(Collections.singletonList(file1));
 
-  private static UploadDefinition uploadDef3 = new UploadDefinition()
+  private static final UploadDefinition uploadDef3 = new UploadDefinition()
     .withFileDefinitions(Collections.singletonList(file1));
 
-  private static UploadDefinition uploadDef4 = new UploadDefinition()
+  private static final UploadDefinition uploadDef4 = new UploadDefinition()
     .withFileDefinitions(Arrays.asList(file1, file2));
 
-  private static UploadDefinition uploadDef5 = new UploadDefinition()
+  private static final UploadDefinition uploadDef5 = new UploadDefinition()
     .withFileDefinitions(Arrays.asList(file3, file4));
 
-  private static UploadDefinition uploadDef6 = new UploadDefinition()
+  private static final UploadDefinition uploadDef6 = new UploadDefinition()
     .withFileDefinitions(Collections.singletonList(file5));
 
-  private static UploadDefinition uploadDef7 = new UploadDefinition()
+  private static final UploadDefinition uploadDef7 = new UploadDefinition()
     .withFileDefinitions(Arrays.asList(file5, file6));
 
   @After
@@ -271,7 +271,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(DEFINITION_PATH + "?query=id==" + UUID.randomUUID().toString())
+      .get(DEFINITION_PATH + "?query=id==" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(0))
@@ -337,7 +337,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .spec(spec)
       .body(uploadDef3)
       .when()
-      .put(DEFINITION_PATH + "/" + UUID.randomUUID().toString())
+      .put(DEFINITION_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND)
       .log().all();
@@ -356,7 +356,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .extract().body().as(UploadDefinition.class);
     String uploadDefId = uploadDefinition.getId();
-    String fileId = uploadDefinition.getFileDefinitions().get(0).getId();
+    String fileId = uploadDefinition.getFileDefinitions().getFirst().getId();
     async.complete();
     async = context.async();
     ClassLoader classLoader = getClass().getClassLoader();
@@ -373,14 +373,14 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .body("fileDefinitions[0].status", is(FileDefinition.Status.UPLOADED.name()))
       .body("fileDefinitions.uploadedDate", notNullValue())
       .extract().body().as(UploadDefinition.class);
-    String path = uploadDefinition1.getFileDefinitions().get(0).getSourcePath();
+    String path = uploadDefinition1.getFileDefinitions().getFirst().getSourcePath();
     File file2 = new File(path);
     assertTrue(FileUtils.contentEquals(file, file2));
     async.complete();
   }
 
   @Test
-  public void fileUpload2(TestContext context) throws IOException {
+  public void fileUploadFailedIfSrmReturnedException(TestContext context) throws IOException {
     Async async = context.async();
     UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
@@ -392,29 +392,22 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .extract().body().as(UploadDefinition.class);
     String uploadDefId = uploadDefinition.getId();
-    String fileId = uploadDefinition.getFileDefinitions().get(0).getId();
-    String id = uploadDefinition.getFileDefinitions().get(0).getJobExecutionId();
+    String fileId = uploadDefinition.getFileDefinitions().getFirst().getId();
+    String id = uploadDefinition.getFileDefinitions().getFirst().getJobExecutionId();
     async.complete();
     WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + id + "/status"), true))
       .willReturn(WireMock.notFound()));
     async = context.async();
     ClassLoader classLoader = getClass().getClassLoader();
     File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
-    UploadDefinition uploadDefinition1 = RestAssured.given()
+    RestAssured.given()
       .spec(specUpload)
       .when()
       .body(FileUtils.openInputStream(file))
       .post(DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId)
       .then()
       .log().all()
-      .statusCode(HttpStatus.SC_OK)
-      .body("status", is(UploadDefinition.Status.LOADED.name()))
-      .body("fileDefinitions[0].status", is(FileDefinition.Status.UPLOADED.name()))
-      .body("fileDefinitions.uploadedDate", notNullValue())
-      .extract().body().as(UploadDefinition.class);
-    String path = uploadDefinition1.getFileDefinitions().get(0).getSourcePath();
-    File file2 = new File(path);
-    assertTrue(FileUtils.contentEquals(file, file2));
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();
   }
 
@@ -431,7 +424,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .extract().body().as(UploadDefinition.class);
     String uploadDefId = uploadDefinition.getId();
-    String fileId = uploadDefinition.getFileDefinitions().get(0).getId();
+    String fileId = uploadDefinition.getFileDefinitions().getFirst().getId();
     async.complete();
 
     Vertx vertx = Vertx.vertx();
@@ -487,9 +480,9 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .when()
       .body(file)
       .post(DEFINITION_PATH + "/"
-        + UUID.randomUUID().toString()
+        + UUID.randomUUID()
         + FILE_PATH + "/"
-        + UUID.randomUUID().toString())
+        + UUID.randomUUID())
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_NOT_FOUND);
@@ -514,7 +507,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .when()
       .delete(DEFINITION_PATH + "/" + uploadDefinition.getId()
         + FILE_PATH + "/"
-        + uploadDefinition.getFileDefinitions().get(0).getId())
+        + uploadDefinition.getFileDefinitions().getFirst().getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
@@ -527,9 +520,9 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .spec(spec)
       .when()
       .delete(DEFINITION_PATH + "/"
-        + UUID.randomUUID().toString()
+        + UUID.randomUUID()
         + FILE_PATH + "/"
-        + UUID.randomUUID().toString()
+        + UUID.randomUUID()
       )
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND)
@@ -541,7 +534,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(DEFINITION_PATH + "/" + UUID.randomUUID().toString())
+      .delete(DEFINITION_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND)
       .log().all();
@@ -582,7 +575,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .statusCode(HttpStatus.SC_CREATED)
       .log().all().extract().body().as(UploadDefinition.class);
     async.complete();
-    String jobId = def.getFileDefinitions().get(0).getJobExecutionId();
+    String jobId = def.getFileDefinitions().getFirst().getJobExecutionId();
     WireMock.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + jobId + "?"), true))
       .willReturn(WireMock.badRequest()));
     WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + jobId + "status"), true))
@@ -707,7 +700,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .spec(spec)
       .when()
       .delete(DEFINITION_PATH + "/" + uploadDefinition.getId()
-        + FILE_PATH + "/" + uploadDefinition.getFileDefinitions().get(0).getId())
+        + FILE_PATH + "/" + uploadDefinition.getFileDefinitions().getFirst().getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT)
       .log().all();
@@ -1179,7 +1172,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("validation.uploadDefinition.fileExtension.blocked"))
-      .body("errors[0].code", is(uploadDef6.getFileDefinitions().get(0).getName()))
+      .body("errors[0].code", is(uploadDef6.getFileDefinitions().getFirst().getName()))
       .body("total_records", is(1));
     async.complete();
     async = context.async();

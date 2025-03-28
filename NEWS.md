@@ -1,4 +1,7 @@
-## 2024-03-13 v3.3.0
+## 2025-03-28 v3.3.1
+* Handle update job execution status during file upload successively [MODDATAIMP-1136](https://folio-org.atlassian.net/browse/MODDATAIMP-1136)
+
+## 2025-03-13 v3.3.0
 * [MODDATAIMP-1109](https://folio-org.atlassian.net/browse/MODDATAIMP-1109) Issue with mod-data-import module when configuration for AWS is set
 * [MODDATAIMP-1121](https://folio-org.atlassian.net/browse/MODDATAIMP-1121) Remove token header for Eureka env
 * [MODDATAIMP-1125](https://folio-org.atlassian.net/browse/MODDATAIMP-1125) Remove dependency on mod-configuration

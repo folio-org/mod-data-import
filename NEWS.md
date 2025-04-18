@@ -1,3 +1,6 @@
+## 2025-04-18 v3.3.2
+* [MODDATAIMP-1190](https://folio-org.atlassian.net/browse/MODDATAIMP-1190) Netty 4.1.118 (Vert.x 4.5.14, AWS S3 2.31.21) fixing Netty SSL vuln
+
 ## 2025-03-28 v3.3.1
 * Handle update job execution status during file upload successively [MODDATAIMP-1136](https://folio-org.atlassian.net/browse/MODDATAIMP-1136)
 

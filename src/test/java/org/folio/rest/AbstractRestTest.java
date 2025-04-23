@@ -23,7 +23,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import lombok.extern.log4j.Log4j2;
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.liquibase.LiquibaseUtil;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.client.TenantClient;
@@ -49,6 +48,7 @@ import org.junit.ClassRule;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
@@ -57,8 +57,6 @@ import java.util.Collections;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 
@@ -127,7 +125,9 @@ public abstract class AbstractRestTest {
     .withJobExecutions(Arrays.asList(new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars_Bibs(1).mrc"),
       new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars.mrc")));
 
-  public static EmbeddedKafkaCluster kafkaCluster;
+  @Container
+  public static final KafkaContainer kafkaContainer = new KafkaContainer("apache/kafka-native:3.8.0")
+      .withStartupAttempts(3);
 
   @Container
   private static final LocalStackContainer localStackContainer = new LocalStackContainer(
@@ -149,12 +149,10 @@ public abstract class AbstractRestTest {
     vertx = Vertx.vertx();
 
     log.info("Starting Kafka...");
-    kafkaCluster = provisionWith(defaultClusterConfig());
-    kafkaCluster.start();
-    String[] hostAndPort = kafkaCluster.getBrokerList().split(":");
+    kafkaContainer.start();
 
-    System.setProperty(KAFKA_HOST, hostAndPort[0]);
-    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    System.setProperty(KAFKA_HOST, kafkaContainer.getHost());
+    System.setProperty(KAFKA_PORT, kafkaContainer.getFirstMappedPort() + "");
     System.setProperty(KAFKA_MAX_REQUEST_SIZE, "1048576");
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
 
@@ -256,7 +254,7 @@ public abstract class AbstractRestTest {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopPostgresTester();
       }
-      kafkaCluster.close();
+      kafkaContainer.close();
       async.complete();
     }));
   }

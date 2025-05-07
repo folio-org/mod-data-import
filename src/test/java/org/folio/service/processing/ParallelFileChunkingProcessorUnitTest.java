@@ -7,8 +7,10 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import lombok.SneakyThrows;
-import net.mguenther.kafka.junit.ObserveKeyValues;
 import org.apache.commons.lang.StringUtils;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
@@ -26,11 +28,12 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INITIALIZATION_STARTED;
@@ -384,17 +387,34 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     return profiles;
   }
 
+  private Properties getConsumerProperties() {
+    var properties = new Properties();
+    kafkaConfig.getConsumerProps().forEach((key, value) -> {
+      if (value != null) {
+        properties.put(key, value);
+      }
+    });
+    properties.put(ConsumerConfig.GROUP_ID_CONFIG, "ParallelFileChunkingProcessorUnitTest");
+    return properties;
+  }
+
+  private String getEventPayload(String topicToObserve) {
+    try (var kafkaConsumer = new KafkaConsumer<String, String>(getConsumerProperties())) {
+      kafkaConsumer.subscribe(List.of(topicToObserve));
+      var records = kafkaConsumer.poll(Duration.ofSeconds(60));
+      if (records.isEmpty()) {
+        throw new IllegalStateException("Expected Kafka event at " + topicToObserve + " but got none");
+      }
+      Event obtainedEvent = Json.decodeValue(records.iterator().next().value(), Event.class);
+      return obtainedEvent.getEventPayload();
+    }
+  }
+
   @SneakyThrows
   private void assertInitializationDataFromKafka(String jobExecutionId, String tenantId, int recordNumber) {
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_INITIALIZATION_STARTED.value());
-
-    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .observeFor(60, TimeUnit.SECONDS)
-      .build());
-
-    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
-    DataImportInitConfig initConfig = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportInitConfig.class);
+    DataImportInitConfig initConfig = Json.decodeValue(getEventPayload(topicToObserve), DataImportInitConfig.class);
 
     assertNotNull(initConfig);
     assertEquals(Integer.valueOf(recordNumber), initConfig.getTotalRecords());
@@ -409,15 +429,9 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private void assertRawChunkDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId, int recordNumber) {
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_RAW_RECORDS_CHUNK_READ.value());
+    RawRecordsDto rawRecordsDto = Json.decodeValue(getEventPayload(topicToObserve), RawRecordsDto.class);
 
-    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-        .observeFor(60, TimeUnit.SECONDS)
-        .build());
-
-    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
-    RawRecordsDto rawRecordsDto = Json.decodeValue(obtainedEvent.getEventPayload(), RawRecordsDto.class);
     verify(fileStorageService, times(1)).getFile(any());
-
     assertNotNull(rawRecordsDto);
     assertEquals(Integer.valueOf(recordNumber), rawRecordsDto.getRecordsMetadata().getTotal());
     assertEquals(contentType, rawRecordsDto.getRecordsMetadata().getContentType().value());
@@ -427,16 +441,9 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private void assertErrorFromKafka(FileStorageService fileStorageService, String tenantId, String errorMessage) {
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_ERROR.value());
-
-    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-        .observeFor(60, TimeUnit.SECONDS)
-        .build());
-
-    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
-    DataImportEventPayload dataImportEventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
+    DataImportEventPayload dataImportEventPayload = Json.decodeValue(getEventPayload(topicToObserve), DataImportEventPayload.class);
 
     verify(fileStorageService, times(1)).getFile(any());
-
     assertNotNull(dataImportEventPayload);
     assertEquals(DI_ERROR.value(), dataImportEventPayload.getEventType());
     String error = dataImportEventPayload.getContext().get("ERROR");

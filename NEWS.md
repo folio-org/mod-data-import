@@ -1,3 +1,7 @@
+## 2025-05-.... v3.3.3
+* [MODDATAIMP-1196](https://folio-org.atlassian.net/browse/MODDATAIMP-1196) Replace net.mguenther.kafka:kafka-junit (EOL)
+* [MODDATAIMP-1204](https://folio-org.atlassian.net/browse/MODDATAIMP-1204) data-import-processing-core 4.4.3 fixing vulns
+
 ## 2025-04-18 v3.3.2
 * [MODDATAIMP-1190](https://folio-org.atlassian.net/browse/MODDATAIMP-1190) Netty 4.1.118 (Vert.x 4.5.14, AWS S3 2.31.21) fixing Netty SSL vuln
 

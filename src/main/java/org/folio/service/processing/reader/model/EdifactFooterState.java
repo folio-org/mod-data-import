@@ -35,7 +35,9 @@ public class EdifactFooterState extends EdifactState {
 
   private void postUpdate(String footer) {
     for (InitialRecord initialRecord : parser.getInitialRecords()) {
-      initialRecord.setRecord(initialRecord.getRecord() + footer);
+      if (!initialRecord.getRecord().contains(MESSAGE_END)) {
+        initialRecord.setRecord(initialRecord.getRecord() + footer);
+      }
     }
   }
 

@@ -179,6 +179,8 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   }
 
   private KafkaProducerRecord<String, String> createKafkaProducerRecord(RawRecordsDto chunk) {
+    LOGGER.warn("chunk:: {}", Json.encode(chunk));
+
     Event event = new Event()
       .withId(chunk.getId())
       .withEventType(DI_RAW_RECORDS_CHUNK_READ.value())
@@ -191,8 +193,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     int chunkNumber = ++messageCounter;
     String key = String.valueOf(chunkNumber % maxDistributionNum);
 
-    var producerRecord = new
-      KafkaProducerRecordBuilder<String, Object>(event.getEventMetadata().getTenantId())
+    var producerRecord = new KafkaProducerRecordBuilder<String, Object>(event.getEventMetadata().getTenantId())
       .key(key)
       .value(event)
       .topic(topicName)

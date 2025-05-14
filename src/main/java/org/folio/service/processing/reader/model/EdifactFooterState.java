@@ -34,12 +34,12 @@ public class EdifactFooterState extends EdifactState {
   }
 
   private void postUpdate(String footer) {
-    for (InitialRecord initialRecord : parser.getInitialRecords()) {
-      int unzIndex = initialRecord.getRecord().indexOf("UNZ");
+    parser.getInitialRecords().forEach(initialRecord -> {
+      int unzIndex = initialRecord.getRecord().indexOf(MESSAGE_END + getDataElementSeparator());
       if (unzIndex > -1) {
         initialRecord.setRecord(initialRecord.getRecord().substring(0, unzIndex) + footer);
       }
-    }
+    });
   }
 
 }

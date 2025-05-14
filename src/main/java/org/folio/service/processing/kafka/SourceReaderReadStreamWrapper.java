@@ -179,7 +179,6 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   }
 
   private KafkaProducerRecord<String, String> createKafkaProducerRecord(RawRecordsDto chunk) {
-    LOGGER.trace("chunk:: {}", Json.encode(chunk));
 
     Event event = new Event()
       .withId(chunk.getId())

@@ -1,6 +1,5 @@
 package org.folio.service.processing.reader.model;
 
-import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.service.processing.reader.EdifactParser;
 
 import java.util.Map;

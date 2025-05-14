@@ -35,8 +35,9 @@ public class EdifactFooterState extends EdifactState {
 
   private void postUpdate(String footer) {
     for (InitialRecord initialRecord : parser.getInitialRecords()) {
-      if (!initialRecord.getRecord().contains(MESSAGE_END)) {
-        initialRecord.setRecord(initialRecord.getRecord() + footer);
+      int unzIndex = initialRecord.getRecord().indexOf("UNZ");
+      if (unzIndex > -1) {
+        initialRecord.setRecord(initialRecord.getRecord().substring(0, unzIndex) + footer);
       }
     }
   }

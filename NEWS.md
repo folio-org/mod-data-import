@@ -1,3 +1,6 @@
+## 2025-05-15 v3.3.4
+* [MODDATAIMP-1206](https://folio-org.atlassian.net/browse/MODDATAIMP-1206) The invoice is not created after importing .edi file
+
 ## 2025-05-08 v3.3.3
 * [MODDATAIMP-1196](https://folio-org.atlassian.net/browse/MODDATAIMP-1196) Replace net.mguenther.kafka:kafka-junit (EOL)
 * [MODDATAIMP-1204](https://folio-org.atlassian.net/browse/MODDATAIMP-1204) data-import-processing-core 4.4.3 fixing vulns

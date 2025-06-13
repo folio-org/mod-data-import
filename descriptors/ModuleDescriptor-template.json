@@ -479,6 +479,11 @@
       "description": "Cancel running job"
     },
     {
+      "permissionName": "data-import.central-record.item.put",
+      "displayName": "Data Import - update shared record",
+      "description": "Update shared instance and MARC record"
+    },
+    {
       "permissionName": "data-import.upload.all",
       "displayName": "Data Import File Upload - all permissions",
       "description": "Entire set of permissions needed to use file uploads",

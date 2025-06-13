@@ -1,3 +1,6 @@
+## 2025-mm-dd v3.4.0-SNAPSHOT
+* [MODDATAIMP-1214](https://folio-org.atlassian.net/browse/MODDATAIMP-1214) Add permission to permit update of shared instance and MARC
+
 ## 2024-03-13 v3.3.0
 * [MODDATAIMP-1109](https://folio-org.atlassian.net/browse/MODDATAIMP-1109) Issue with mod-data-import module when configuration for AWS is set
 * [MODDATAIMP-1121](https://folio-org.atlassian.net/browse/MODDATAIMP-1121) Remove token header for Eureka env

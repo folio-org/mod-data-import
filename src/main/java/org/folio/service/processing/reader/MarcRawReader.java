@@ -37,6 +37,7 @@ public class MarcRawReader implements SourceReader {
     this.chunkSize = chunkSize;
     recordsCounter = new MutableInt(0);
     try {
+      LOGGER.info("Reading records from: {}", file.getAbsolutePath());
       this.reader = new MarcPermissiveStreamReader(FileUtils.openInputStream(file), true, true);
     } catch (IOException e) {
       String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();

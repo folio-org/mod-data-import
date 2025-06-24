@@ -262,7 +262,7 @@
             "orders-storage.acquisition-methods.collection.get"
           ],
           "permissionsDesired": [
-            "data-import.central-record.item.put",
+            "consortia.data-import.central-record-update.execute",
             "invoices.acquisitions-units-assignments.assign",
             "orders.acquisitions-units-assignments.assign",
             "orders.acquisitions-units-assignments.manage",
@@ -478,11 +478,6 @@
       "permissionName": "data-import.jobexecution.cancel",
       "displayName": "Data Import - cancel running job",
       "description": "Cancel running job"
-    },
-    {
-      "permissionName": "data-import.central-record.item.put",
-      "displayName": "Data Import - update shared record",
-      "description": "Update shared instance and MARC record"
     },
     {
       "permissionName": "data-import.upload.all",

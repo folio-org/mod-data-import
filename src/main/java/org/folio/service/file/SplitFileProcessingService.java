@@ -115,7 +115,7 @@ public class SplitFileProcessingService {
       promise ->
         initializeJob(entity, client)
           .compose(splitPieces ->
-            CompositeFuture.all(
+            Future.all(
               splitPieces
                 .values()
                 .stream()
@@ -127,7 +127,6 @@ public class SplitFileProcessingService {
                     splitFileInformation
                   )
                 )
-                .map(Future.class::cast)
                 .toList()
             )
           )
@@ -166,18 +165,17 @@ public class SplitFileProcessingService {
     ProcessFilesRqDto entity,
     ChangeManagerClient client
   ) {
-    CompositeFuture splittingFuture = CompositeFuture.all(
+    CompositeFuture splittingFuture = Future.all(
       entity
         .getUploadDefinition()
         .getFileDefinitions()
         .stream()
         .map(FileDefinition::getSourcePath)
         .map(key -> splitFile(key, entity.getJobProfileInfo()))
-        .map(Future.class::cast)
         .toList()
     );
 
-    return CompositeFuture
+    return Future
       .all(
         createParentJobExecutions(entity, client),
         splittingFuture.map(cf ->
@@ -199,26 +197,23 @@ public class SplitFileProcessingService {
         return splitInformation;
       })
       .compose(result ->
-        CompositeFuture
-          .all(
-            result
-              .values()
-              .stream()
-              .map((SplitFileInformation splitInfo) -> {
-                JobExecution execution = splitInfo.getJobExecution();
-                execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
+        Future.all(
+          result
+            .values()
+            .stream()
+            .map((SplitFileInformation splitInfo) -> {
+              JobExecution execution = splitInfo.getJobExecution();
+              execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
 
-                return client
-                  .putChangeManagerJobExecutionsById(
-                    execution.getId(),
-                    execution
-                  )
-                  .map(this::verifyOkStatus);
-              })
-              .map(Future.class::cast)
-              .toList()
-          )
-          .map(result)
+              return client
+                .putChangeManagerJobExecutionsById(
+                  execution.getId(),
+                  execution
+                )
+                .map(this::verifyOkStatus);
+            })
+            .toList()
+        ).map(result)
       )
       .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
   }
@@ -284,7 +279,7 @@ public class SplitFileProcessingService {
             return result;
           })
           .compose(v ->
-            CompositeFuture.all(
+            Future.all(
               // we use an IntStream here to have access to i, as the index (and therefore part number)
               IntStream
                 .range(0, childExecs.size())
@@ -324,7 +319,6 @@ public class SplitFileProcessingService {
                       )
                   );
                 })
-                .map(Future.class::cast)
                 .toList()
             )
           )
@@ -388,9 +382,7 @@ public class SplitFileProcessingService {
       partNumber++;
     }
 
-    return CompositeFuture.join(
-      futures.stream().map(Future.class::cast).toList()
-    );
+    return Future.join(futures);
   }
 
   /**
@@ -536,7 +528,7 @@ public class SplitFileProcessingService {
     ProcessFilesRqDto entity,
     ChangeManagerClient client
   ) {
-    return CompositeFuture
+    return Future
       .all(
         entity
           .getUploadDefinition()
@@ -560,7 +552,6 @@ public class SplitFileProcessingService {
               .map(InitJobExecutionsRsDto::getJobExecutions)
               .map(executions -> executions.get(0))
           )
-          .map(Future.class::cast)
           .toList()
       )
       .map(CompositeFuture::<JobExecution>list)

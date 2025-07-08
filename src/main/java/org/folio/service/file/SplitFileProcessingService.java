@@ -495,9 +495,7 @@ public class SplitFileProcessingService {
           }
         }
 
-        return CompositeFuture.all(
-          futures.stream().map(Future.class::cast).toList()
-        );
+        return Future.all(futures);
       })
       .onFailure(err -> LOGGER.error("Error cancelling job", err))
       .mapEmpty();

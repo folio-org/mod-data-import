@@ -1,7 +1,9 @@
 package org.folio.rest;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
+import static com.github.tomakehurst.wiremock.client.WireMock.delete;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
@@ -293,6 +295,8 @@ public abstract class AbstractRestTest {
       .willReturn(ok()));
     WireMock.stubFor(put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/status"), true))
       .willReturn(ok()));
+    WireMock.stubFor(delete(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/records"), true))
+      .willReturn(noContent()));
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
       .willReturn(okJson(JsonObject.mapFrom(jobExecution).toString())));
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))

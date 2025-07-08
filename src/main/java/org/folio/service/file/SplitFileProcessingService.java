@@ -488,11 +488,13 @@ public class SplitFileProcessingService {
               // don't cancel jobs that are already completed
             }
             default -> futures.add(
-              client
-                .putChangeManagerJobExecutionsStatusById(
-                  exec.getId(),
-                  new StatusDto().withStatus(StatusDto.Status.CANCELLED)
-                )
+              client.deleteChangeManagerJobExecutionsRecordsById(exec.getId())
+
+//              client
+//                .putChangeManagerJobExecutionsStatusById(
+//                  exec.getId(),
+//                  new StatusDto().withStatus(StatusDto.Status.CANCELLED)
+//                )
                 .map(this::verifyOkStatus)
                 .mapEmpty()
             );

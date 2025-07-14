@@ -456,11 +456,7 @@ public class SplitFileProcessingService {
 
         // parent execution
         futures.add(
-          client
-            .putChangeManagerJobExecutionsStatusById(
-              jobExecutionId,
-              new StatusDto().withStatus(StatusDto.Status.CANCELLED)
-            )
+          client.deleteChangeManagerJobExecutionsRecordsById(jobExecutionId)
             .map(this::verifyOkStatus)
             .mapEmpty()
         );

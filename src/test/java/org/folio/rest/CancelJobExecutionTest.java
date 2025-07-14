@@ -1,15 +1,12 @@
 package org.folio.rest;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathTemplate;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.hamcrest.Matchers.is;
 
@@ -214,8 +211,9 @@ public class CancelJobExecutionTest extends AbstractRestTest {
         )
       );
 
-      // verify all the actual cancels for children jobs
+      // verify all the actual cancels
       Arrays.asList(
+        parentId,
         newId,
         parsingInProgressId,
         parsingFinishedId,
@@ -227,13 +225,7 @@ public class CancelJobExecutionTest extends AbstractRestTest {
       );
 
       // verify no more than those verified above
-      verify(exactly(6), deleteRequestedFor(urlPathMatching("/change-manager/jobExecutions/.*/records")));
-      // verify request to update status with CANCELLED for parent job
-      verify(
-        exactly(1),
-        putRequestedFor(urlPathTemplate("/change-manager/jobExecutions/{jobId}/status"))
-          .withPathParam("jobId", equalTo(parentId))
-      );
+      verify(exactly(7), deleteRequestedFor(urlPathMatching("/change-manager/jobExecutions/.*/records")));
     }));
   }
 

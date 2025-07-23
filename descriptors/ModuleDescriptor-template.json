@@ -329,7 +329,8 @@
           "permissionsRequired": ["data-import.jobexecution.cancel"],
           "modulePermissions": [
             "change-manager.jobExecutions.item.put",
-            "change-manager.jobExecutions.status.item.put"
+            "change-manager.jobExecutions.status.item.put",
+            "change-manager.records.delete"
           ]
         },
         {

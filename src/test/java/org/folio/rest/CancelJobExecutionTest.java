@@ -1,18 +1,18 @@
 package org.folio.rest;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.hamcrest.Matchers.is;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import io.restassured.RestAssured;
-import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -149,106 +149,88 @@ public class CancelJobExecutionTest extends AbstractRestTest {
     // entirely arbitrary which ones we choose here; just want to have some to reference
     // when cancelling child jobs, it will delete from the queue if present, but it does not
     // use that as an indicator of if it's processed/etc.
-    CompositeFuture
-      .all(
-        queueItemDao.addQueueItem(
-          new DataImportQueueItem()
-            .withId("9eb41611-dad4-45ee-9632-07d0dc2033dd")
-            .withJobExecutionId(newJob.getId())
-            .withUploadDefinitionId("0bbcd4bd-33b7-4ced-9806-b83f0072797f")
-            .withTimestamp(new Date())
-        ),
-        queueItemDao.addQueueItem(
-          new DataImportQueueItem()
-            .withId("aa3480d4-f842-4425-a195-a93423803d2b")
-            .withJobExecutionId(parsingInProgressJob.getId())
-            .withUploadDefinitionId("65bf117b-98ea-44e8-b5a2-c0f925e7989c")
-            .withTimestamp(new Date())
-        ),
-        queueItemDao.addQueueItem(
-          new DataImportQueueItem()
-            .withId("f29efbb0-d9f7-4f99-a84e-d8901ef4eb0e")
-            .withJobExecutionId(parsingFinishedJob.getId())
-            .withUploadDefinitionId("eb184d75-188a-4f5b-9f3f-d4735d7748d1")
-            .withTimestamp(new Date())
-        ),
-        queueItemDao.addQueueItem(
-          new DataImportQueueItem()
-            .withId("b7bdf243-4ff7-430a-85f2-72c3215f1859")
-            .withJobExecutionId(processingInProgressJob.getId())
-            .withUploadDefinitionId("62004e64-865c-41c8-8524-a7ddaa367430")
-            .withTimestamp(new Date())
-        )
+    Future.all(
+      queueItemDao.addQueueItem(
+        new DataImportQueueItem()
+          .withId("9eb41611-dad4-45ee-9632-07d0dc2033dd")
+          .withJobExecutionId(newJob.getId())
+          .withUploadDefinitionId("0bbcd4bd-33b7-4ced-9806-b83f0072797f")
+          .withTimestamp(new Date())
+      ),
+      queueItemDao.addQueueItem(
+        new DataImportQueueItem()
+          .withId("aa3480d4-f842-4425-a195-a93423803d2b")
+          .withJobExecutionId(parsingInProgressJob.getId())
+          .withUploadDefinitionId("65bf117b-98ea-44e8-b5a2-c0f925e7989c")
+          .withTimestamp(new Date())
+      ),
+      queueItemDao.addQueueItem(
+        new DataImportQueueItem()
+          .withId("f29efbb0-d9f7-4f99-a84e-d8901ef4eb0e")
+          .withJobExecutionId(parsingFinishedJob.getId())
+          .withUploadDefinitionId("eb184d75-188a-4f5b-9f3f-d4735d7748d1")
+          .withTimestamp(new Date())
+      ),
+      queueItemDao.addQueueItem(
+        new DataImportQueueItem()
+          .withId("b7bdf243-4ff7-430a-85f2-72c3215f1859")
+          .withJobExecutionId(processingInProgressJob.getId())
+          .withUploadDefinitionId("62004e64-865c-41c8-8524-a7ddaa367430")
+          .withTimestamp(new Date())
       )
-      .onComplete(
-        context.asyncAssertSuccess(result -> {
-          // make request to cancel parent
-          RestAssured
-            .given()
-            .spec(spec)
-            .pathParam("jobExecutionId", parentId)
-            .when()
-            .delete(JOB_EXECUTION_CANCEL_PATH)
-            .then()
-            .log()
-            .all()
-            .statusCode(HttpStatus.SC_OK)
-            .body("ok", is(true));
+    ).onComplete(context.asyncAssertSuccess(result -> {
+      // make request to cancel parent
+      RestAssured
+        .given()
+        .spec(spec)
+        .pathParam("jobExecutionId", parentId)
+        .when()
+        .delete(JOB_EXECUTION_CANCEL_PATH)
+        .then()
+        .log()
+        .all()
+        .statusCode(HttpStatus.SC_OK)
+        .body("ok", is(true));
 
-          queueItemDao
-            .getAllQueueItems()
-            .onComplete(
-              context.asyncAssertSuccess(items -> {
-                context.assertEquals(0, items.getDataImportQueueItems().size());
-              })
-            );
+      queueItemDao
+        .getAllQueueItems()
+        .onComplete(
+          context.asyncAssertSuccess(items -> {
+            context.assertEquals(0, items.getDataImportQueueItems().size());
+          })
+        );
 
-          verify(
-            exactly(2),
-            getRequestedFor(urlPathMatching("/change-manager/jobExecutions/.*"))
-          );
-          verify(
-            exactly(1),
-            getRequestedFor(
-              urlPathMatching("/change-manager/jobExecutions/.*/children")
-            )
-          );
-
-          // verify all the actual cancels
-          Arrays
-            .asList(
-              parentId,
-              newId,
-              parsingInProgressId,
-              parsingFinishedId,
-              processingInProgressId,
-              processingFinishedId,
-              commitInProgressId
-            )
-            .forEach(id -> {
-              verify(
-                exactly(1),
-                putRequestedFor(
-                  urlPathMatching(
-                    "/change-manager/jobExecutions/" + id + "/status"
-                  )
-                )
-              );
-            });
-
-          // verify no more than those verified above
-          verify(
-            exactly(7),
-            putRequestedFor(
-              urlPathMatching("/change-manager/jobExecutions/.*/status")
-            )
-          );
-        })
+      verify(
+        exactly(2),
+        getRequestedFor(urlPathMatching("/change-manager/jobExecutions/.*"))
       );
+      verify(
+        exactly(1),
+        getRequestedFor(
+          urlPathMatching("/change-manager/jobExecutions/.*/children")
+        )
+      );
+
+      // verify all the actual cancels
+      Arrays.asList(
+        parentId,
+        newId,
+        parsingInProgressId,
+        parsingFinishedId,
+        processingInProgressId,
+        processingFinishedId,
+        commitInProgressId
+      ).forEach(id ->
+        verify(exactly(1), deleteRequestedFor(urlPathMatching("/change-manager/jobExecutions/" + id + "/records")))
+      );
+
+      // verify no more than those verified above
+      verify(exactly(7), deleteRequestedFor(urlPathMatching("/change-manager/jobExecutions/.*/records")));
+    }));
   }
 
   @Test
-  public void testNonParent(TestContext context) {
+  public void testNonParent() {
     String parentId = "fb1036b0-dd35-4b61-8b64-b041530ba23c";
 
     // set up job execution
@@ -276,7 +258,7 @@ public class CancelJobExecutionTest extends AbstractRestTest {
   }
 
   @Test
-  public void testNotFound(TestContext context) {
+  public void testNotFound() {
     String parentId = "fb1036b0-dd35-4b61-8b64-b041530ba23c";
 
     // mock response to parent

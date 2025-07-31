@@ -90,82 +90,49 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   }
 
   @Override
-  public Future<DataImportQueueItemCollection> getAllWaitingQueueItems() {
-    Promise<RowSet<Row>> promise = Promise.promise();
+  public Future<DataImportQueueItemCollection> getAllWaitingQueueItems(PgConnection connection) {
     try {
-      String preparedQuery = format(
-        GET_ALL_BY_PROCESSING_SQL,
-        MODULE_GLOBAL_SCHEMA,
-        QUEUE_ITEM_TABLE
-      );
-      pgClientFactory
-        .getInstance()
-        .select(preparedQuery, Tuple.of(false), promise);
+      return connection
+        .preparedQuery(format(GET_ALL_BY_PROCESSING_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE))
+        .execute(Tuple.of(false))
+        .map(DataImportQueueItemDaoImpl::mapResultSetToQueueItemList);
     } catch (Exception e) {
-      LOGGER.warn(
-        "getDataImportQueueItem:: Error while searching for waiting DataImportQueueItems",
-        e
-      );
-      promise.fail(e);
+      LOGGER.warn("getAllWaitingQueueItems:: Error while searching for waiting DataImportQueueItems", e);
+      return Future.failedFuture(e);
     }
-    return promise
-      .future()
-      .map(DataImportQueueItemDaoImpl::mapResultSetToQueueItemList);
   }
 
   @Override
-  public Future<DataImportQueueItemCollection> getAllInProgressQueueItems() {
-    Promise<RowSet<Row>> promise = Promise.promise();
+  public Future<DataImportQueueItemCollection> getAllInProgressQueueItems(PgConnection connection) {
     try {
-      String preparedQuery = format(
-        GET_ALL_BY_PROCESSING_SQL,
-        MODULE_GLOBAL_SCHEMA,
-        QUEUE_ITEM_TABLE
-      );
-      pgClientFactory
-        .getInstance()
-        .select(preparedQuery, Tuple.of(true), promise);
+      return connection
+        .preparedQuery(format(GET_ALL_BY_PROCESSING_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE))
+        .execute(Tuple.of(true))
+        .map(DataImportQueueItemDaoImpl::mapResultSetToQueueItemList);
     } catch (Exception e) {
-      LOGGER.warn(
-        "getDataImportQueueItem:: Error while searching for in progress DataImportQueueItems",
-        e
-      );
-      promise.fail(e);
+      LOGGER.warn("getAllInProgressQueueItems:: Error while searching for in progress DataImportQueueItems", e);
+      return Future.failedFuture(e);
     }
-    return promise
-      .future()
-      .map(DataImportQueueItemDaoImpl::mapResultSetToQueueItemList);
   }
 
   @Override
   public Future<Optional<DataImportQueueItem>> getAllQueueItemsAndProcessAtomic(
     BiFunction<DataImportQueueItemCollection, DataImportQueueItemCollection, Optional<DataImportQueueItem>> processor
   ) {
-    return pgClientFactory
-      .getInstance()
-      .withTransaction((PgConnection conn) -> {
+    return pgClientFactory.getInstance()
+      .withTransaction((PgConnection connection) -> {
         // lock the table to ensure no other workers can read or update
-        conn.query(
-          format(
-            LOCK_ACCESS_EXCLUSIVE_SQL,
-            MODULE_GLOBAL_SCHEMA,
-            QUEUE_ITEM_TABLE
-          )
-        );
-
-        return CompositeFuture
-          .all(getAllInProgressQueueItems(), getAllWaitingQueueItems())
+        return connection.query(format(LOCK_ACCESS_EXCLUSIVE_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE))
+          .execute()
+          .compose(v -> Future.all(getAllInProgressQueueItems(connection), getAllWaitingQueueItems(connection)))
           .map((CompositeFuture compositeFuture) -> {
-            DataImportQueueItemCollection inProgress = compositeFuture.resultAt(
-              0
-            );
+            DataImportQueueItemCollection inProgress = compositeFuture.resultAt(0);
             DataImportQueueItemCollection waiting = compositeFuture.resultAt(1);
-
             return processor.apply(inProgress, waiting);
           })
           .compose((Optional<DataImportQueueItem> result) -> {
             if (result.isPresent()) {
-              return updateQueueItem(result.get().withProcessing(true))
+              return updateQueueItem(connection, result.get().withProcessing(true))
                 .map(Optional::of);
             }
             return Future.succeededFuture(result);
@@ -242,59 +209,45 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
 
   @Override
   public Future<DataImportQueueItem> updateQueueItem(
-    DataImportQueueItem dataImportQueueItem
+    PgConnection connection, DataImportQueueItem dataImportQueueItem
   ) {
-    Promise<RowSet<Row>> promise = Promise.promise();
     try {
-      String query = format(
-        UPDATE_BY_ID_SQL,
-        MODULE_GLOBAL_SCHEMA,
-        QUEUE_ITEM_TABLE
+      Tuple params = Tuple.of(
+        dataImportQueueItem.getId(),
+        dataImportQueueItem.getJobExecutionId(),
+        dataImportQueueItem.getUploadDefinitionId(),
+        dataImportQueueItem.getTenant(),
+        dataImportQueueItem.getOriginalSize(),
+        dataImportQueueItem.getFilePath(),
+        LocalDateTime.ofInstant(
+          dataImportQueueItem.getTimestamp().toInstant(),
+          timeZone.toZoneId()
+        ),
+        dataImportQueueItem.getPartNumber(),
+        dataImportQueueItem.getProcessing(),
+        dataImportQueueItem.getOkapiUrl(),
+        dataImportQueueItem.getDataType(),
+        dataImportQueueItem.getOkapiToken(),
+        dataImportQueueItem.getOkapiPermissions()
       );
-      pgClientFactory
-        .getInstance()
-        .execute(
-          query,
-          Tuple.of(
-            dataImportQueueItem.getId(),
-            dataImportQueueItem.getJobExecutionId(),
-            dataImportQueueItem.getUploadDefinitionId(),
-            dataImportQueueItem.getTenant(),
-            dataImportQueueItem.getOriginalSize(),
-            dataImportQueueItem.getFilePath(),
-            LocalDateTime.ofInstant(
-              dataImportQueueItem.getTimestamp().toInstant(),
-              timeZone.toZoneId()
-            ),
-            dataImportQueueItem.getPartNumber(),
-            dataImportQueueItem.getProcessing(),
-            dataImportQueueItem.getOkapiUrl(),
-            dataImportQueueItem.getDataType(),
-            dataImportQueueItem.getOkapiToken(),
-            dataImportQueueItem.getOkapiPermissions()
-          ),
-          promise
-        );
-    } catch (Exception e) {
-      LOGGER.error("Error updating queue Item %s", dataImportQueueItem.getId());
-      promise.fail(e);
-    }
-    return promise
-      .future()
-      .map((RowSet<Row> updateResult) -> {
-        if (updateResult.rowCount() == 1) {
-          return dataImportQueueItem;
-        } else {
-          throw LOGGER.throwing(
-            new NotFoundException(
-              format(
-                "DataImportQueueItem with id %s was not updated",
-                dataImportQueueItem.getId()
+
+      return connection.preparedQuery(format(UPDATE_BY_ID_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE))
+        .execute(params)
+        .map((RowSet<Row> updateResult) -> {
+          if (updateResult.rowCount() == 1) {
+            return dataImportQueueItem;
+          } else {
+            throw LOGGER.throwing(
+              new NotFoundException(
+                format("DataImportQueueItem with id %s was not updated", dataImportQueueItem.getId())
               )
-            )
-          );
-        }
-      });
+            );
+          }
+        });
+    } catch (Exception e) {
+      LOGGER.error("updateQueueItem:: Error updating queue Item by id: '{}'", dataImportQueueItem.getId(), e);
+      return Future.failedFuture(e);
+    }
   }
 
   @Override

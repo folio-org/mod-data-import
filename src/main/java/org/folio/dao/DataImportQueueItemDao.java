@@ -3,6 +3,8 @@ package org.folio.dao;
 import io.vertx.core.Future;
 import java.util.Optional;
 import java.util.function.BiFunction;
+
+import io.vertx.pgclient.PgConnection;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
 
@@ -19,14 +21,14 @@ public interface DataImportQueueItemDao {
    *
    * @return future with {@link DataImportQueueItemCollection}
    */
-  Future<DataImportQueueItemCollection> getAllWaitingQueueItems();
+  Future<DataImportQueueItemCollection> getAllWaitingQueueItems(PgConnection connection);
 
   /**
    * Get all {@link DataImportQueueItem} in database where processing=true
    *
    * @return future with {@link DataImportQueueItemCollection}
    */
-  Future<DataImportQueueItemCollection> getAllInProgressQueueItems();
+  Future<DataImportQueueItemCollection> getAllInProgressQueueItems(PgConnection connection);
 
   /**
    * Get all in progress and waiting queue items, send them through the
@@ -66,10 +68,11 @@ public interface DataImportQueueItemDao {
    * Updates {@link DataImportQueueItem} in database
    *
    * @param fileExtension FileExtension to update
+   * @param conn
    * @return future with {@link DataImportQueueItem}
    */
   Future<DataImportQueueItem> updateQueueItem(
-    DataImportQueueItem dataImportQueueItem
+    PgConnection conn, DataImportQueueItem dataImportQueueItem
   );
 
   /**

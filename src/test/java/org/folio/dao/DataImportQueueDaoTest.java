@@ -42,7 +42,6 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
   private DataImportQueueItem IN_PROGRESS_1;
   private DataImportQueueItem IN_PROGRESS_2;
 
-  private PostgresClientFactory pgClientFactory;
   private DataImportQueueItemDao queueItemDao;
 
   @Before
@@ -117,9 +116,8 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
         .withOkapiUrl("okapi-url-p-2")
         .withDataType("data-type-p-2");
 
-    this.pgClientFactory = new PostgresClientFactory(vertx);
     queueItemDao =
-      new DataImportQueueItemDaoImpl(pgClientFactory);
+      new DataImportQueueItemDaoImpl(new PostgresClientFactory(vertx));
   }
 
   @Test

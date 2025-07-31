@@ -6,28 +6,32 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.sqlclient.Tuple;
+
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.Optional;
+
+import io.vertx.pgclient.PgConnection;
+import io.vertx.sqlclient.Tuple;
 import lombok.extern.log4j.Log4j2;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
+import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.MockitoAnnotations;
 
 @Log4j2
 @RunWith(VertxUnitRunner.class)
@@ -38,6 +42,7 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
   private DataImportQueueItem IN_PROGRESS_1;
   private DataImportQueueItem IN_PROGRESS_2;
 
+  private PostgresClientFactory pgClientFactory;
   private DataImportQueueItemDao queueItemDao;
 
   @Before
@@ -112,8 +117,9 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
         .withOkapiUrl("okapi-url-p-2")
         .withDataType("data-type-p-2");
 
+    this.pgClientFactory = new PostgresClientFactory(vertx);
     queueItemDao =
-      new DataImportQueueItemDaoImpl(new PostgresClientFactory(vertx));
+      new DataImportQueueItemDaoImpl(pgClientFactory);
   }
 
   @Test
@@ -162,42 +168,25 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
 
   @Test
   public void testGetWaitingAndInProgress(TestContext context) {
-    CompositeFuture
-      .all(
-        queueItemDao.addQueueItem(WAITING_1),
-        queueItemDao.addQueueItem(WAITING_2),
-        queueItemDao.addQueueItem(IN_PROGRESS_1),
-        queueItemDao.addQueueItem(IN_PROGRESS_2)
-      )
-      .onComplete(
-        context.asyncAssertSuccess(v -> {
-          queueItemDao
-            .getAllWaitingQueueItems()
-            .onComplete(
-              context.asyncAssertSuccess(result -> {
-                assertThat(result.getTotalRecords(), is(2));
-
-                assertThat(
-                  result.getDataImportQueueItems(),
-                  containsInAnyOrder(WAITING_1, WAITING_2)
-                );
-              })
-            );
-
-          queueItemDao
-            .getAllInProgressQueueItems()
-            .onComplete(
-              context.asyncAssertSuccess(result -> {
-                assertThat(result.getTotalRecords(), is(2));
-
-                assertThat(
-                  result.getDataImportQueueItems(),
-                  containsInAnyOrder(IN_PROGRESS_1, IN_PROGRESS_2)
-                );
-              })
-            );
-        })
-      );
+    Future.all(
+      queueItemDao.addQueueItem(WAITING_1),
+      queueItemDao.addQueueItem(WAITING_2),
+      queueItemDao.addQueueItem(IN_PROGRESS_1),
+      queueItemDao.addQueueItem(IN_PROGRESS_2)
+    )
+    .compose(v -> PostgresClient.getInstance(vertx).getConnection())
+    .compose(connection -> Future.all(
+      queueItemDao.getAllWaitingQueueItems(connection),
+      queueItemDao.getAllInProgressQueueItems(connection)
+    ))
+    .onComplete(context.asyncAssertSuccess(future -> {
+      DataImportQueueItemCollection waitingQueueItems = future.resultAt(0);
+      DataImportQueueItemCollection inProgressQueueItems = future.resultAt(1);
+      assertThat(waitingQueueItems.getTotalRecords(), is(2));
+      assertThat(inProgressQueueItems.getTotalRecords(), is(2));
+      assertThat(waitingQueueItems.getDataImportQueueItems(), containsInAnyOrder(WAITING_1, WAITING_2));
+      assertThat(inProgressQueueItems.getDataImportQueueItems(), containsInAnyOrder(IN_PROGRESS_1, IN_PROGRESS_2));
+    }));
   }
 
   @Test
@@ -340,27 +329,16 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
 
   @Test
   public void testUpdate(TestContext context) {
-    CompositeFuture
-      .all(
-        queueItemDao.addQueueItem(WAITING_1),
-        queueItemDao.addQueueItem(IN_PROGRESS_1)
-      )
-      .onComplete(
-        context.asyncAssertSuccess(v -> {
-          queueItemDao
-            .updateQueueItem(WAITING_1)
-            .onComplete(
-              context.asyncAssertSuccess(result ->
-                assertThat(result, is(WAITING_1))
-              )
-            );
+    PostgresClient pgClient = PostgresClient.getInstance(vertx);
+    Future.all(queueItemDao.addQueueItem(WAITING_1), queueItemDao.addQueueItem(IN_PROGRESS_1))
+      .onComplete(context.asyncAssertSuccess(v -> {
+        pgClient.withConnection(connection -> queueItemDao.updateQueueItem(connection, WAITING_1))
+          .onComplete(context.asyncAssertSuccess(result -> assertThat(result, is(WAITING_1))));
 
-          // cannot update what does not exist
-          queueItemDao
-            .updateQueueItem(WAITING_2)
-            .onComplete(context.asyncAssertFailure());
-        })
-      );
+        // cannot update what does not exist
+        pgClient.withConnection(connection -> queueItemDao.updateQueueItem(connection, WAITING_2))
+          .onComplete(context.asyncAssertFailure());
+      }));
   }
 
   @Test
@@ -453,9 +431,7 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
 
   @Test
   public void testExceptional(TestContext context) {
-    PostgresClientFactory badPostgresFactory = mock(
-      PostgresClientFactory.class
-    );
+    PostgresClientFactory badPostgresFactory = mock(PostgresClientFactory.class);
     PostgresClient badPostgresClient = mock(PostgresClient.class);
     when(badPostgresFactory.getInstance()).thenReturn(badPostgresClient);
     doThrow(new RuntimeException("test exception"))
@@ -464,31 +440,29 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
     doThrow(new RuntimeException("test exception"))
       .when(badPostgresClient)
       .select(any(), any(Tuple.class), any());
-    doThrow(new RuntimeException("test exception"))
-      .when(badPostgresClient)
-      .execute(any(), any(Tuple.class), any());
-    doThrow(new RuntimeException("test exception"))
-      .when(badPostgresClient)
-      .execute(any(), any(Tuple.class));
 
-    DataImportQueueItemDao failingQueueItemDao = new DataImportQueueItemDaoImpl(
-      badPostgresFactory
-    );
+    PgConnection badPgConnection = mock(PgConnection.class);
+    doThrow(new RuntimeException("test exception"))
+      .when(badPgConnection)
+      .preparedQuery(anyString());
+
+    DataImportQueueItemDao failingQueueItemDao = new DataImportQueueItemDaoImpl(badPostgresFactory);
 
     failingQueueItemDao
       .getAllQueueItems()
       .onComplete(context.asyncAssertFailure());
     failingQueueItemDao
-      .getAllWaitingQueueItems()
+      .getAllWaitingQueueItems(badPgConnection)
       .onComplete(context.asyncAssertFailure());
     failingQueueItemDao
-      .getAllInProgressQueueItems()
+      .getAllInProgressQueueItems(badPgConnection)
       .onComplete(context.asyncAssertFailure());
     failingQueueItemDao
       .getQueueItemById("test-id")
       .onComplete(context.asyncAssertFailure());
     failingQueueItemDao
-      .updateQueueItem(WAITING_1)
+      .updateQueueItem(badPgConnection, WAITING_1)
       .onComplete(context.asyncAssertFailure());
   }
+
 }

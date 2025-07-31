@@ -231,7 +231,8 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
         dataImportQueueItem.getOkapiPermissions()
       );
 
-      return connection.preparedQuery(format(UPDATE_BY_ID_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE))
+      return connection
+        .preparedQuery(format(UPDATE_BY_ID_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE))
         .execute(params)
         .map((RowSet<Row> updateResult) -> {
           if (updateResult.rowCount() == 1) {

@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -29,6 +30,7 @@ import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
 import org.folio.rest.persist.PostgresClient;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -289,6 +291,37 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
             )
         )
       );
+  }
+
+  @Test
+  public void shouldAllowOnlyOneWorkerToProcessQueueItemAtSameTime(TestContext context) {
+    Future.all(
+      queueItemDao.addQueueItem(WAITING_1),
+      queueItemDao.addQueueItem(WAITING_2)
+    ).onComplete(context.asyncAssertSuccess(v -> {
+      Future<Optional<DataImportQueueItem>> worker1Future =
+        queueItemDao.getAllQueueItemsAndProcessAtomic((inProgress, waiting) -> {
+          // Worker1 tries to process WAITING_1
+          return waiting.getDataImportQueueItems().stream()
+            .filter(item -> item.getId().equals(WAITING_1.getId()))
+            .findFirst();
+        });
+
+      Future<Optional<DataImportQueueItem>> worker2Future =
+        queueItemDao.getAllQueueItemsAndProcessAtomic((inProgress, waiting) -> {
+          // Worker2 also tries to process WAITING_1
+          Optional<DataImportQueueItem> itemOptional = waiting.getDataImportQueueItems().stream()
+            .filter(item -> item.getId().equals(WAITING_1.getId()))
+            .findFirst();
+          context.assertTrue(itemOptional.isEmpty());
+          return itemOptional;
+        });
+
+      Future.all(worker1Future, worker2Future).onComplete(context.asyncAssertSuccess(cf -> {
+        assertTrue(worker1Future.result().isPresent());
+        assertTrue(worker2Future.result().isEmpty());
+      }));
+    }));
   }
 
   @Test

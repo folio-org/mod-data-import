@@ -29,7 +29,6 @@ import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
 import org.folio.rest.persist.PostgresClient;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

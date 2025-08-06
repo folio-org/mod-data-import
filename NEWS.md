@@ -1,3 +1,6 @@
+## 2025-05-15 v3.3.5
+* [MODDATAIMP-1223](https://folio-org.atlassian.net/browse/MODDATAIMP-1223) File splitting creates duplicate records
+
 ## 2025-05-15 v3.3.4
 * [MODDATAIMP-1206](https://folio-org.atlassian.net/browse/MODDATAIMP-1206) The invoice is not created after importing .edi file
 

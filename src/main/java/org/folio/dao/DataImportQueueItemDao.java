@@ -3,6 +3,8 @@ package org.folio.dao;
 import io.vertx.core.Future;
 import java.util.Optional;
 import java.util.function.BiFunction;
+
+import io.vertx.pgclient.PgConnection;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
 
@@ -15,24 +17,26 @@ public interface DataImportQueueItemDao {
   Future<DataImportQueueItemCollection> getAllQueueItems();
 
   /**
-   * Get all {@link DataImportQueueItem} in database where processing=false
+   * Get all {@link DataImportQueueItem} in database where processing=false using the specified {@code connection}
    *
+   * @param connection database connection
    * @return future with {@link DataImportQueueItemCollection}
    */
-  Future<DataImportQueueItemCollection> getAllWaitingQueueItems();
+  Future<DataImportQueueItemCollection> getAllWaitingQueueItems(PgConnection connection);
 
   /**
-   * Get all {@link DataImportQueueItem} in database where processing=true
+   * Get all {@link DataImportQueueItem} in database where processing=true using the specified {@code connection}
    *
+   * @param connection database connection
    * @return future with {@link DataImportQueueItemCollection}
    */
-  Future<DataImportQueueItemCollection> getAllInProgressQueueItems();
+  Future<DataImportQueueItemCollection> getAllInProgressQueueItems(PgConnection connection);
 
   /**
    * Get all in progress and waiting queue items, send them through the
    * {@code processor}, and mark the processor's output as
    * {@code processing=true}.
-   *
+   * <p>
    * This is done as <strong>one atomic operation</strong>, ensuring that no
    * other worker can process the same queue item.
    *
@@ -57,19 +61,20 @@ public interface DataImportQueueItemDao {
   /**
    * Saves {@link DataImportQueueItem} to database
    *
-   * @param DataImportQueueItem DataImportQueueItem to save
+   * @param dataImportQueueItem DataImportQueueItem to save
    * @return future with added row's ID
    */
   Future<String> addQueueItem(DataImportQueueItem dataImportQueueItem);
 
   /**
-   * Updates {@link DataImportQueueItem} in database
+   * Updates {@link DataImportQueueItem} in database using the specified {@code connection}
    *
-   * @param fileExtension FileExtension to update
+   * @param connection          database connection
+   * @param dataImportQueueItem DataImportQueueItem to update
    * @return future with {@link DataImportQueueItem}
    */
   Future<DataImportQueueItem> updateQueueItem(
-    DataImportQueueItem dataImportQueueItem
+    PgConnection connection, DataImportQueueItem dataImportQueueItem
   );
 
   /**
@@ -83,8 +88,8 @@ public interface DataImportQueueItemDao {
   /**
    * Deletes all {@link DataImportQueueItem}s from database with the provided job execution ID.
    *
-   * @param id DataImportQueueItem id
+   * @param jobExecutionId JobExecution id
    * @return future that resolves with the number of deleted rows, failing if none were deleted
    */
-  Future<Integer> deleteQueueItemsByJobExecutionId(String jobExecution);
+  Future<Integer> deleteQueueItemsByJobExecutionId(String jobExecutionId);
 }

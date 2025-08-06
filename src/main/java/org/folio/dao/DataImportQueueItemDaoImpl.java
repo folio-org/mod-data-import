@@ -120,9 +120,9 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
     BiFunction<DataImportQueueItemCollection, DataImportQueueItemCollection, Optional<DataImportQueueItem>> processor
   ) {
     return pgClientFactory.getInstance()
-      .withTransaction((PgConnection connection) -> {
+      .withTransaction((PgConnection connection) ->
         // lock the table to ensure no other workers can read or update
-        return connection.query(format(LOCK_ACCESS_EXCLUSIVE_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE))
+        connection.query(format(LOCK_ACCESS_EXCLUSIVE_SQL, MODULE_GLOBAL_SCHEMA, QUEUE_ITEM_TABLE))
           .execute()
           .compose(v -> Future.all(getAllInProgressQueueItems(connection), getAllWaitingQueueItems(connection)))
           .map((CompositeFuture compositeFuture) -> {
@@ -136,8 +136,8 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
                 .map(Optional::of);
             }
             return Future.succeededFuture(result);
-          });
-      });
+          })
+      );
   }
 
   @Override

@@ -42,6 +42,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
@@ -134,7 +135,6 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param file               file on disk
    * @param jobExecutionId     job execution ID
    * @param jobProfile         job profile, contains profile type
-   * @param fileStorageService service to obtain file
    * @param params             parameters necessary for connection to the OKAPI
    * @return Future
    */
@@ -181,8 +181,8 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     KafkaProducer<String, String> producer = new SimpleKafkaProducerManager(vertx, kafkaConfig).createShared(eventType);
     readStreamWrapper.pipeTo(new WriteStreamWrapper(producer))
       .<Void>mapEmpty()
-      .eventually(x -> producer.flush())
-      .eventually(x -> producer.close())
+      .eventually((Supplier<Future<Void>>) producer::flush)
+      .eventually((Supplier<Future<Void>>) producer::close)
       .onComplete(res -> {
         if (res.succeeded()) {
           LOGGER.info("processFile:: Sending event to Kafka finished. jobExecutionId: {}, eventType: {}",
@@ -236,7 +236,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       if (updatedJobsProfileAr.failed()) {
         promise.fail(updatedJobsProfileAr.cause());
       } else {
-        LOGGER.info("updateJobsProfile:: All the child jobs have been updated by job profile, parent job {}", jobs.get(0).getParentJobId());
+        LOGGER.info("updateJobsProfile:: All the child jobs have been updated by job profile, parent job {}", jobs.getFirst().getParentJobId());
         promise.complete();
       }
     });

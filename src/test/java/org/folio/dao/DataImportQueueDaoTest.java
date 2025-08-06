@@ -12,7 +12,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -136,7 +135,7 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
 
   @Test
   public void testGetAllQueueItems(TestContext context) {
-    CompositeFuture
+    Future
       .all(
         queueItemDao.addQueueItem(WAITING_1),
         queueItemDao.addQueueItem(WAITING_2),
@@ -191,7 +190,7 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
 
   @Test
   public void testAtomicUpdateWithNoChange(TestContext context) {
-    CompositeFuture
+    Future
       .all(
         queueItemDao.addQueueItem(WAITING_1),
         queueItemDao.addQueueItem(WAITING_2),
@@ -243,7 +242,7 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
 
   @Test
   public void testAtomicUpdateWithChange(TestContext context) {
-    CompositeFuture
+    Future
       .all(
         queueItemDao.addQueueItem(WAITING_1),
         queueItemDao.addQueueItem(WAITING_2),
@@ -326,7 +325,7 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
 
   @Test
   public void testGetById(TestContext context) {
-    CompositeFuture
+    Future
       .all(
         queueItemDao.addQueueItem(WAITING_1),
         queueItemDao.addQueueItem(IN_PROGRESS_1)
@@ -374,7 +373,7 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
 
   @Test
   public void testDeleteById(TestContext context) {
-    CompositeFuture
+    Future
       .all(
         queueItemDao.addQueueItem(WAITING_1),
         queueItemDao.addQueueItem(WAITING_2)
@@ -414,7 +413,7 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
 
   @Test
   public void testDeleteByJobExecutionId(TestContext context) {
-    CompositeFuture
+    Future
       .all(
         queueItemDao.addQueueItem(WAITING_1),
         queueItemDao.addQueueItem(WAITING_2),

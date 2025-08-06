@@ -1,3 +1,6 @@
+## 2025-01-15 v3.2.5
+* [MODDATAIMP-1223](https://folio-org.atlassian.net/browse/MODDATAIMP-1223) File splitting creates duplicate records
+
 ## 2025-01-15 v3.2.4
 * [MODDATAIMP-1124](https://folio-org.atlassian.net/browse/MODDATAIMP-1124) Get upload definition by id directly from W DB instance to prevent failures starting DI job
 

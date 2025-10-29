@@ -278,6 +278,7 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         LOGGER.info("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Starting file processing for upload definition {}", uploadDefinitionId);
+        LOGGER.info("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: request headers {}", okapiHeaders);
 
         if (this.fileSplittingEnabled) {
           OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());

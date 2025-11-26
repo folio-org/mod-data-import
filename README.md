@@ -134,15 +134,14 @@ The worker count is useful for production/multi-tenant environments, where you m
 
 This module uses S3-compatible storage as part of the file upload process. The following environment variables must be set with values for your S3-compatible storage (AWS S3, Minio Server):
 
-| Name                    | Type              | Required           | Default                  | Description                                                                   |
-| ----------------------- | ----------------- | ------------------ | ------------------------ | ----------------------------------------------------------------------------- |
-| `AWS_URL`               | URL as string     | yes                | `http://127.0.0.1:9000/` | URL of S3-compatible storage                                                  |
-| `AWS_REGION`            | string            | yes                | _none_                   | S3 region                                                                     |
-| `AWS_BUCKET`            | string            | yes                | _none_                   | Bucket to store and retrieve data                                             |
-| `AWS_ACCESS_KEY_ID`     | string            | yes                | _none_                   | S3 access key                                                                 |
-| `AWS_SECRET_ACCESS_KEY` | string            | yes                | _none_                   | S3 secret key                                                                 |
-| `AWS_SDK`               | `true` or `false` | no, if using MinIO | `false`                  | If AWS S3 is being used (`true` if so, `false` other platforms such as MinIO) |
-| `S3_FORCEPATHSTYLE`     | `true` or `false` | no                 | `false`                  | If path-style requests should be used instead of virtual-hosted style         |
+| Name                   | Type              | Required           | Default                  | Description                                                                   |
+|------------------------| ----------------- | ------------------ | ------------------------ | ----------------------------------------------------------------------------- |
+| `S3_URL`               | URL as string     | yes                | `http://127.0.0.1:9000/` | URL of S3-compatible storage                                                  |
+| `S3_REGION`            | string            | yes                | _none_                   | S3 region                                                                     |
+| `S3_BUCKET`            | string            | yes                | _none_                   | Bucket to store and retrieve data                                             |
+| `S3_ACCESS_KEY_ID`     | string            | yes                | _none_                   | S3 access key                                                                 |
+| `S3_SECRET_ACCESS_KEY` | string            | yes                | _none_                   | S3 secret key                                                                 |
+| `S3_IS_AWS`            | `true` or `false` | no, if using MinIO | `false`                  | If AWS S3 is being used (`true` if so, `false` other platforms such as MinIO) |
 
 Path-style vs virtual-hosted style requests are described [on the AWS S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access).
 

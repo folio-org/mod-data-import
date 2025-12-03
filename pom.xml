@@ -31,6 +31,7 @@
     <aws-sdk-java.version>2.31.21</aws-sdk-java.version>
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
     <testcontainers.version>1.20.6</testcontainers.version>
+    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -336,6 +337,19 @@
             <phase>compile</phase>
             <goals>
               <goal>compile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>${maven-source-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar-no-fork</goal>
             </goals>
           </execution>
         </executions>

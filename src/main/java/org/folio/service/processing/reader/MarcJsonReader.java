@@ -15,7 +15,6 @@ import org.folio.rest.jaxrs.model.RecordsMetadata;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
 
@@ -29,7 +28,6 @@ public class MarcJsonReader implements SourceReader {
 
   public static final String JSON_EXTENSION = "json";
   private JsonReader reader;
-  private InputStream inputStream;
   private int chunkSize;
   private MutableInt recordsCounter;
 
@@ -37,8 +35,7 @@ public class MarcJsonReader implements SourceReader {
     this.chunkSize = chunkSize;
     recordsCounter = new MutableInt(0);
     try {
-      this.inputStream = FileUtils.openInputStream(file);
-      this.reader = new JsonReader(new InputStreamReader(inputStream));
+      this.reader = new JsonReader(new InputStreamReader(FileUtils.openInputStream(file)));
     } catch (IOException e) {
       LOGGER.warn("MarcJsonReader:: Cannot initialize reader", e);
       throw new RecordsReaderException(e);
@@ -92,11 +89,8 @@ public class MarcJsonReader implements SourceReader {
       if (reader != null) {
         reader.close();
       }
-      if (inputStream != null) {
-        inputStream.close();
-      }
     } catch (IOException e) {
-      LOGGER.warn("close:: Error closing reader/input stream", e);
+      LOGGER.warn("close:: Error closing reader", e);
     }
   }
 }

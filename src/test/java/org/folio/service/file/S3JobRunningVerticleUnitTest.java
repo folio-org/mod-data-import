@@ -121,6 +121,7 @@ public class S3JobRunningVerticleUnitTest {
         .withOkapiUrl("okapi-url")
         .withOkapiToken("token")
         .withOkapiPermissions("permissions")
+        .withOkapiRequestId("request-id")
     );
 
     assertThat(params.getTenantId(), is("tenant"));
@@ -129,6 +130,10 @@ public class S3JobRunningVerticleUnitTest {
     assertThat(
       params.getHeaders().get("x-okapi-permissions"),
       is("permissions")
+    );
+    assertThat(
+      params.getHeaders().get("x-okapi-request-id"),
+      is("request-id")
     );
   }
 
@@ -139,7 +144,8 @@ public class S3JobRunningVerticleUnitTest {
         .withTenant("tenant")
         .withOkapiUrl("okapi-url")
         .withOkapiToken("token")
-        .withOkapiPermissions("permissions"),
+        .withOkapiPermissions("permissions")
+        .withOkapiRequestId("request-id"),
       "user-id"
     );
 
@@ -149,6 +155,10 @@ public class S3JobRunningVerticleUnitTest {
     assertThat(
       params.getHeaders().get("x-okapi-permissions"),
       is("permissions")
+    );
+    assertThat(
+      params.getHeaders().get("x-okapi-request-id"),
+      is("request-id")
     );
     assertThat(params.getHeaders().get("x-okapi-user-id"), is("user-id"));
   }
@@ -218,6 +228,9 @@ public class S3JobRunningVerticleUnitTest {
   public void testCreateLocalFileSuccess(TestContext context) {
     File testResult = new File("result");
 
+    // Mock both 2-parameter (Windows) and 3-parameter (Unix) versions
+    when(fileSystem.createTempFile(anyString(), anyString()))
+      .thenReturn(Future.succeededFuture(testResult.toString()));
     when(fileSystem.createTempFile(anyString(), anyString(), anyString()))
       .thenReturn(Future.succeededFuture(testResult.toString()));
 
@@ -406,7 +419,8 @@ public class S3JobRunningVerticleUnitTest {
       .withTenant("tenant")
       .withOkapiUrl("okapi-url")
       .withOkapiToken("token")
-      .withOkapiPermissions("permissions");
+      .withOkapiPermissions("permissions")
+      .withOkapiRequestId("request-id");
 
     doReturn(Future.succeededFuture(tempFile))
       .when(verticle)
@@ -474,7 +488,8 @@ public class S3JobRunningVerticleUnitTest {
       .withTenant("tenant")
       .withOkapiUrl("okapi-url")
       .withOkapiToken("token")
-      .withOkapiPermissions("permissions");
+      .withOkapiPermissions("permissions")
+      .withOkapiRequestId("request-id");
 
     doReturn(Future.succeededFuture(tempFile))
       .when(verticle)
@@ -544,7 +559,8 @@ public class S3JobRunningVerticleUnitTest {
         .withTenant("tenant")
         .withOkapiUrl("okapi-url")
         .withOkapiToken("token")
-        .withOkapiPermissions("permissions");
+        .withOkapiPermissions("permissions")
+        .withOkapiRequestId("request-id");
 
       doThrow(new UncheckedIOException(new IOException()))
         .when(verticle)

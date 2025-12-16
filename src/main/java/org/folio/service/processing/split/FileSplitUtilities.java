@@ -50,16 +50,25 @@ public class FileSplitUtilities {
     InputStream inStream,
     JobProfileInfo profile
   ) throws IOException {
-    File tempFile = Files
-      .createTempFile(
+    Path tempFilePath;
+    if (isWindows()) {
+      // Windows doesn't support POSIX permissions - create without them
+      tempFilePath = Files.createTempFile(
+        "di-tmp-",
+        Path.of(filename).getFileName().toString()
+      );
+    } else {
+      // Unix/Linux/Mac - use POSIX permissions for security
+      tempFilePath = Files.createTempFile(
         "di-tmp-",
         // later stage requires correct file extension
         Path.of(filename).getFileName().toString(),
         PosixFilePermissions.asFileAttribute(
           PosixFilePermissions.fromString("rwx------")
         )
-      )
-      .toFile();
+      );
+    }
+    File tempFile = tempFilePath.toFile();
 
     try (
       InputStream autoCloseMe = inStream;
@@ -77,13 +86,25 @@ public class FileSplitUtilities {
     }
   }
 
+  public static boolean isWindows() {
+    return System.getProperty("os.name").toLowerCase().contains("win");
+  }
+
   public static Path createTemporaryDir(String key) throws IOException {
-    return Files.createTempDirectory(
-      String.format("di-split-%s", key.replace('/', '-')),
-      PosixFilePermissions.asFileAttribute(
-        PosixFilePermissions.fromString("rwx------")
-      )
-    );
+    if (isWindows()) {
+      // Windows doesn't support POSIX permissions - create without them
+      return Files.createTempDirectory(
+        String.format("di-split-%s", key.replace('/', '-'))
+      );
+    } else {
+      // Unix/Linux/Mac - use POSIX permissions for security
+      return Files.createTempDirectory(
+        String.format("di-split-%s", key.replace('/', '-')),
+        PosixFilePermissions.asFileAttribute(
+          PosixFilePermissions.fromString("rwx------")
+        )
+      );
+    }
   }
 
   public boolean isMarcBinary(String path, JobProfileInfo profile) {

@@ -65,4 +65,9 @@ public class MarcXmlReader implements SourceReader {
   public RecordsMetadata.ContentType getContentType() {
     return RecordsMetadata.ContentType.MARC_XML;
   }
+
+  @Override
+  public void close() {
+    // Document is already loaded into memory, no resources to close
+  }
 }

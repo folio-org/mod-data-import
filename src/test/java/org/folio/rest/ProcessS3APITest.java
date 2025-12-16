@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
+
+import lombok.SneakyThrows;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.AssembleFileDto;
@@ -44,6 +46,7 @@ public class ProcessS3APITest extends AbstractRestTest {
   }
 
   @Test
+  @SneakyThrows
   public void testProcessingSuccess() throws IOException {
     UploadDefinition uploadDefinition = RestAssured
       .given()
@@ -97,7 +100,7 @@ public class ProcessS3APITest extends AbstractRestTest {
               .getResource(
                 uploadDefinition.getFileDefinitions().get(0).getName()
               )
-              .getFile()
+              .toURI()
           )
         )
       );

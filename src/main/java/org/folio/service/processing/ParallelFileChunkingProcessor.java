@@ -208,14 +208,16 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       return 0;
     }
 
-    SourceReader reader = SourceReaderBuilder.build(file, jobProfile);
-
-    int total = 0;
-    while (reader.hasNext()) {
-      total += reader.next().size();
+    try (SourceReader reader = SourceReaderBuilder.build(file, jobProfile)) {
+      int total = 0;
+      while (reader.hasNext()) {
+        total += reader.next().size();
+      }
+      return total;
+    } catch (Exception e) {
+      LOGGER.error("Error counting records in file", e);
+      throw new RecordsReaderException("Error counting records in file", e);
     }
-
-    return total;
   }
 
   /**

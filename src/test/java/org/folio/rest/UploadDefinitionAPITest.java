@@ -335,7 +335,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     String uploadDefId = uploadDefinition.getId();
     String fileId = uploadDefinition.getFileDefinitions().getFirst().getId();
     ClassLoader classLoader = getClass().getClassLoader();
-    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
+    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).toURI());
     UploadDefinition uploadDefinition1 = RestAssured.given()
       .spec(specUpload)
       .when()
@@ -371,7 +371,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
     WireMock.stubFor(WireMock.put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/" + id + "/status"), true))
       .willReturn(WireMock.notFound()));
     ClassLoader classLoader = getClass().getClassLoader();
-    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
+    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).toURI());
     RestAssured.given()
       .spec(specUpload)
       .when()
@@ -425,9 +425,10 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
   }
 
   @Test
+  @SneakyThrows
   public void fileUploadNotFound() {
     ClassLoader classLoader = getClass().getClassLoader();
-    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).getFile());
+    File file = new File(Objects.requireNonNull(classLoader.getResource("CornellFOLIOExemplars_Bibs.mrc")).toURI());
     RestAssured.given()
       .spec(specUpload)
       .when()

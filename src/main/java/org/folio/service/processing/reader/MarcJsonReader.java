@@ -92,8 +92,11 @@ public class MarcJsonReader implements SourceReader {
       if (reader != null) {
         reader.close();
       }
+      if (inputStream != null) {
+        inputStream.close();
+      }
     } catch (IOException e) {
-      LOGGER.warn("close:: Error closing reader", e);
+      LOGGER.warn("close:: Error closing reader/input stream", e);
     }
   }
 }

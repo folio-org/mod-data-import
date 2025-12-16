@@ -14,8 +14,8 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>35.3.0</raml-module-builder.version>
-    <vertx.version>4.5.7</vertx.version>
+    <raml-module-builder.version>35.3.1</raml-module-builder.version>
+    <vertx.version>4.5.23</vertx.version>
     <junit.version>4.13.2</junit.version>
     <rest-assured.version>4.3.1</rest-assured.version>
     <marc4j.version>2.9.2</marc4j.version>

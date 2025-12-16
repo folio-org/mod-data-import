@@ -1,3 +1,6 @@
+## 2025-12-dd v3.2.6
+* [MODDATAIMP-1250](https://folio-org.atlassian.net/browse/MODDATAIMP-1250) Suppress verbose logging in RMB by upgrading to RMB 35.3.1, Vert.x 4.5.23
+
 ## 2025-08-12 v3.2.5
 * [MODDATAIMP-1223](https://folio-org.atlassian.net/browse/MODDATAIMP-1223) File splitting creates duplicate records
 

@@ -237,6 +237,8 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
 
     LOGGER.debug("handleEnd:: End handler. Processing completed: {}", this);
 
+    closeReader();
+
     Handler<Void> endHandler;
     synchronized (this) {
       handler = null;
@@ -248,6 +250,10 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   }
 
   private void handleException(Throwable t) {
+    closed = true;
+
+    closeReader();
+
     if (exceptionHandler != null && t instanceof Exception) {
       exceptionHandler.handle(t);
     } else {
@@ -255,4 +261,12 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     }
   }
 
+  private void closeReader() {
+    try {
+      reader.close();
+      LOGGER.debug("closeReader:: Reader closed successfully");
+    } catch (Exception e) {
+      LOGGER.warn("closeReader:: Error closing reader", e);
+    }
+  }
 }

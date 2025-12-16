@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.folio.kafka.services.KafkaAdminClientService;
+import org.folio.kafka.services.KafkaEnvironmentProperties;
 import org.folio.kafka.services.KafkaTopic;
 import org.folio.service.kafka.support.DataImportKafkaTopic;
 import org.junit.Before;
@@ -33,11 +34,13 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 
 @RunWith(VertxUnitRunner.class)
 public class KafkaAdminClientServiceTest {
 
   private final String STUB_TENANT = "foo-tenant";
+  private static final String ENV_VARIABLE = "folio";
   private KafkaAdminClient mockClient;
   private Vertx vertx;
   @Mock
@@ -129,8 +132,10 @@ public class KafkaAdminClientServiceTest {
   }
 
   private Future<Void> createKafkaTopicsAsync(KafkaAdminClient client) {
-    try (var mocked = mockStatic(KafkaAdminClient.class)) {
-      mocked.when(() -> KafkaAdminClient.create(eq(vertx), anyMap())).thenReturn(client);
+    try (MockedStatic<KafkaAdminClient> mockedClient = mockStatic(KafkaAdminClient.class);
+         MockedStatic<KafkaEnvironmentProperties> mockedEnv = mockStatic(KafkaEnvironmentProperties.class)) {
+      mockedClient.when(() -> KafkaAdminClient.create(eq(vertx), anyMap())).thenReturn(client);
+      mockedEnv.when(KafkaEnvironmentProperties::environment).thenReturn(ENV_VARIABLE);
 
       return new KafkaAdminClientService(vertx)
         .createKafkaTopics(diKafkaTopicService.createTopicObjects(), STUB_TENANT);

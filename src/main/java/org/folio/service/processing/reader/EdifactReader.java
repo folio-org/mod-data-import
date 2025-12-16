@@ -79,5 +79,12 @@ public class EdifactReader implements SourceReader {
   public RecordsMetadata.ContentType getContentType() {
     return RecordsMetadata.ContentType.EDIFACT_RAW;
   }
+
+  @Override
+  public void close() {
+    if (segmentsStream != null) {
+      segmentsStream.close();
+    }
+  }
 }
 

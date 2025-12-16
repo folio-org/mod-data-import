@@ -30,6 +30,7 @@ import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.StatusDto.ErrorStatus;
 import org.folio.service.processing.ParallelFileChunkingProcessor;
 import org.folio.service.processing.ranking.ScoreService;
+import org.folio.service.processing.split.FileSplitUtilities;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -253,13 +254,19 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   }
 
   protected Future<File> createLocalFile(DataImportQueueItem queueItem) {
-    return vertx
-      .fileSystem()
-      .createTempFile(
-        "di-tmp-",
-        Path.of(queueItem.getFilePath()).getFileName().toString(),
-        "rwx------"
-      )
+    String prefix = "di-tmp-";
+    String suffix = Path.of(queueItem.getFilePath()).getFileName().toString();
+
+    Future<String> tempFileFuture;
+    if (FileSplitUtilities.isWindows()) {
+      // Windows doesn't support POSIX permissions - create without them
+      tempFileFuture = vertx.fileSystem().createTempFile(prefix, suffix);
+    } else {
+      // Unix/Linux/Mac - use POSIX permissions for security
+      tempFileFuture = vertx.fileSystem().createTempFile(prefix, suffix, "rwx------");
+    }
+
+    return tempFileFuture
       .map(File::new)
       .onSuccess(localFile ->
         LOGGER.info("Created temporary file {}", localFile.toPath())
@@ -281,7 +288,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         XOkapiHeaders.TOKEN.toLowerCase(),
         queueItem.getOkapiToken(),
         XOkapiHeaders.PERMISSIONS.toLowerCase(),
-        queueItem.getOkapiPermissions()
+        queueItem.getOkapiPermissions(),
+        XOkapiHeaders.REQUEST_ID.toLowerCase(),
+        queueItem.getOkapiRequestId()
       ),
       vertx
     );
@@ -304,6 +313,8 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         queueItem.getOkapiToken(),
         XOkapiHeaders.PERMISSIONS.toLowerCase(),
         queueItem.getOkapiPermissions(),
+        XOkapiHeaders.REQUEST_ID.toLowerCase(),
+        queueItem.getOkapiRequestId(),
         XOkapiHeaders.USER_ID.toLowerCase(),
         userId
       ),

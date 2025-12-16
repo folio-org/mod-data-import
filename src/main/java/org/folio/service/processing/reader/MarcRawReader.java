@@ -14,6 +14,7 @@ import org.marc4j.marc.Record;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.List;
@@ -30,6 +31,7 @@ public class MarcRawReader implements SourceReader {
 
   private static final Charset CHARSET = Charset.forName(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.record.charset", "UTF8"));
   private MarcPermissiveStreamReader reader;
+  private InputStream inputStream;
   private int chunkSize;
   private MutableInt recordsCounter;
 
@@ -37,7 +39,8 @@ public class MarcRawReader implements SourceReader {
     this.chunkSize = chunkSize;
     recordsCounter = new MutableInt(0);
     try {
-      this.reader = new MarcPermissiveStreamReader(FileUtils.openInputStream(file), true, true);
+      this.inputStream = FileUtils.openInputStream(file);
+      this.reader = new MarcPermissiveStreamReader(inputStream, true, true);
     } catch (IOException e) {
       String errorMessage = "Can not initialize reader. Cause: " + e.getMessage();
       LOGGER.warn(errorMessage);
@@ -81,5 +84,16 @@ public class MarcRawReader implements SourceReader {
   @Override
   public RecordsMetadata.ContentType getContentType() {
     return RecordsMetadata.ContentType.MARC_RAW;
+  }
+
+  @Override
+  public void close() {
+    try {
+      if (inputStream != null) {
+        inputStream.close();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("close:: Error closing input stream", e);
+    }
   }
 }

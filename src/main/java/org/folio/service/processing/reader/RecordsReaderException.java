@@ -10,4 +10,7 @@ public class RecordsReaderException extends RuntimeException {
     super(cause);
   }
 
+  public RecordsReaderException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

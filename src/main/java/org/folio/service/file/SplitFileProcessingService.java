@@ -304,18 +304,10 @@ public class SplitFileProcessingService {
                       )
                       .withOkapiToken(params.getToken())
                       .withOkapiPermissions(
-                        params
-                          .getHeaders()
-                          .entries()
-                          .stream()
-                          .filter(header ->
-                            XOkapiHeaders.PERMISSIONS.equalsIgnoreCase(
-                              header.getKey()
-                            )
-                          )
-                          .findFirst()
-                          .map(Map.Entry::getValue)
-                          .orElse("")
+                        getHeaderValue(params, XOkapiHeaders.PERMISSIONS)
+                      )
+                      .withOkapiRequestId(
+                        getHeaderValue(params, XOkapiHeaders.REQUEST_ID)
                       )
                   );
                 })
@@ -632,6 +624,17 @@ public class SplitFileProcessingService {
     } else {
       return null;
     }
+  }
+
+  private String getHeaderValue(OkapiConnectionParams params, String headerName) {
+    return params
+      .getHeaders()
+      .entries()
+      .stream()
+      .filter(header -> headerName.equalsIgnoreCase(header.getKey()))
+      .findFirst()
+      .map(Map.Entry::getValue)
+      .orElse("");
   }
 
   /**

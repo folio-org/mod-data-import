@@ -82,4 +82,15 @@ public class MarcJsonReader implements SourceReader {
   public RecordsMetadata.ContentType getContentType() {
     return RecordsMetadata.ContentType.MARC_JSON;
   }
+
+  @Override
+  public void close() {
+    try {
+      if (reader != null) {
+        reader.close();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("close:: Error closing reader", e);
+    }
+  }
 }

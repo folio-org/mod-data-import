@@ -62,7 +62,10 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
         .withPartNumber(1)
         .withProcessing(false)
         .withOkapiUrl("okapi-url-1")
-        .withDataType("data-type-1");
+        .withDataType("data-type-1")
+        .withOkapiToken("okapi-token-1")
+        .withOkapiPermissions("okapi-permissions-1")
+        .withOkapiRequestId("okapi-request-id-1");
     WAITING_2 =
       new DataImportQueueItem()
         .withId("c7e786c6-6fd1-5633-9d09-ced97fc1ff9e")
@@ -79,7 +82,10 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
         .withPartNumber(2)
         .withProcessing(false)
         .withOkapiUrl("okapi-url-2")
-        .withDataType("data-type-2");
+        .withDataType("data-type-2")
+        .withOkapiToken("okapi-token-2")
+        .withOkapiPermissions("okapi-permissions-2")
+        .withOkapiRequestId("okapi-request-id-2");
 
     IN_PROGRESS_1 =
       new DataImportQueueItem()
@@ -97,7 +103,10 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
         .withPartNumber(1)
         .withProcessing(true)
         .withOkapiUrl("okapi-url-p-1")
-        .withDataType("data-type-p-1");
+        .withDataType("data-type-p-1")
+        .withOkapiToken("okapi-token-p-1")
+        .withOkapiPermissions("okapi-permissions-p-1")
+        .withOkapiRequestId("okapi-request-id-p-1");
     IN_PROGRESS_2 =
       new DataImportQueueItem()
         .withId("9a197f42-16c9-5a4b-a213-1adf4498fb02")
@@ -114,7 +123,10 @@ public class DataImportQueueDaoTest extends AbstractRestTest {
         .withPartNumber(2)
         .withProcessing(true)
         .withOkapiUrl("okapi-url-p-2")
-        .withDataType("data-type-p-2");
+        .withDataType("data-type-p-2")
+        .withOkapiToken("okapi-token-p-2")
+        .withOkapiPermissions("okapi-permissions-p-2")
+        .withOkapiRequestId("okapi-request-id-p-2");
 
     queueItemDao =
       new DataImportQueueItemDaoImpl(new PostgresClientFactory(vertx));

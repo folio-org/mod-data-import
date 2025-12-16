@@ -634,7 +634,7 @@ public class SplitFileProcessingService {
       .filter(header -> headerName.equalsIgnoreCase(header.getKey()))
       .findFirst()
       .map(Map.Entry::getValue)
-      .orElse(null);
+      .orElse("");
   }
 
   /**

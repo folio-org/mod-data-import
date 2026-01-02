@@ -6,12 +6,11 @@ import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
 import io.restassured.filter.Filter;
 import io.restassured.response.ValidatableResponse;
-import io.vertx.core.Promise;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetClient;
-import io.vertx.core.net.NetSocket;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -420,7 +419,6 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
   @Test
   public void fileUploadShouldReturnFileDefinitionWithStatusErrorWhenFileUploadStreamInterrupted(TestContext context) {
-    Async async = context.async();
     UploadDefinition uploadDefinition = RestAssured.given()
       .spec(spec)
       .body(uploadDef3)
@@ -432,38 +430,28 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .extract().body().as(UploadDefinition.class);
     String uploadDefId = uploadDefinition.getId();
     String fileId = uploadDefinition.getFileDefinitions().get(0).getId();
-    async.complete();
 
     Vertx vertx = Vertx.vertx();
-    Promise<Object> promise = Promise.promise();
-    Async async2 = context.async();
     NetClient netClient = vertx.createNetClient();
-    netClient.connect(port, "localhost", con -> {
-      context.assertTrue(con.succeeded());
-      if (con.failed()) {
-        async2.complete();
-        return;
-      }
-      int falseDataSize = 10;
-      NetSocket socket = con.result();
-      socket.write("POST " + DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId + " HTTP/1.1\r\n");
-      socket.write("Content-Type: application/octet-stream\r\n");
-      socket.write("Accept: application/json,text/plain\r\n");
-      socket.write("x-okapi-tenant: " + TENANT_ID + "\r\n");
-      socket.write("Content-Length: " + falseDataSize + "\r\n");
-      socket.write("\r\n");
-      socket.write("123\r\n");  // body is 5 bytes
-      Buffer buf = Buffer.buffer();
-      socket.handler(buf::appendBuffer);
-      vertx.setTimer(100, x -> socket.end());
-      socket.endHandler(x -> {
-        if (!async2.isCompleted()) {
-          promise.complete();
-        }
+    Future<Void> future = netClient.connect(port, "localhost")
+      .compose(socket -> {
+        int falseDataSize = 10;
+        Buffer buf = Buffer.buffer();
+        socket.handler(buf::appendBuffer);
+        socket.write("POST " + DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId + " HTTP/1.1\r\n");
+        socket.write("Host: localhost:" + port + "\r\n");
+        socket.write("Content-Type: application/octet-stream\r\n");
+        socket.write("Accept: application/json,text/plain\r\n");
+        socket.write("x-okapi-tenant: " + TENANT_ID + "\r\n");
+        socket.write("Content-Length: " + falseDataSize + "\r\n");
+        socket.write("\r\n");
+        socket.write("123\r\n");  // body is 5 bytes
+        return socket.end();
       });
-    });
 
-    promise.future().onComplete(ar -> vertx.setTimer(100, e -> {
+    Async async = context.async();
+    future.onComplete(ar -> vertx.setTimer(100, id -> context.verify(v -> {
+      context.assertTrue(ar.succeeded());
       RestAssured.given()
         .spec(spec)
         .when()
@@ -474,8 +462,8 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
         .body("status", is(ERROR.name()))
         .body("fileDefinitions[0].status", is(FileDefinition.Status.ERROR.name()))
         .body("fileDefinitions.uploadedDate", notNullValue());
-      async2.complete();
-    }));
+      async.complete();
+    })));
   }
 
   @Test

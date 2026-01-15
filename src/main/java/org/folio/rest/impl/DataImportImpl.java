@@ -244,14 +244,14 @@ public class DataImportImpl implements DataImport {
         }
         fileUploadStateFuture = fileUploadStateFuture.compose(def ->
           fileService.saveFileChunk(fileId, def, data, params)
-            .compose(fileDefinition -> data.length == 0 ?
-              fileService.afterFileSave(fileDefinition, params)
+            .compose(fileDefinition -> data.length == 0
+              ? fileService.afterFileSave(fileDefinition, params)
               : Future.succeededFuture(def)));
         responseFuture = fileUploadStateFuture.map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond200WithApplicationJson);
       } else {
         responseFuture = uploadDefinitionService.updateFileDefinitionStatus(uploadDefinitionId, fileId, ERROR, tenantId)
           .map(this::areAllFileDefinitionsFailed)
-          .compose(filesFailed -> filesFailed
+          .compose(filesFailed -> Boolean.TRUE.equals(filesFailed)
             ? uploadDefinitionService.updateUploadDefinitionStatus(uploadDefinitionId, UploadDefinition.Status.ERROR, tenantId)
             : Future.succeededFuture())
           .map(String.format("Upload stream for file with id '%s' has been interrupted", fileId))

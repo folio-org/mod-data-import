@@ -1,5 +1,5 @@
-## 2025-08-dd v3.3.6
-* [MODDATAIMP-1251](https://folio-org.atlassian.net/browse/MODDATAIMP-1251) Upgrade RMB v35.4.2 (suppress verbose logging in RMB), and Vert.x 4.5.23 (CVE-2025-67735 Netty CRLF injection fix)
+## 2026-01-15 v3.3.6
+* [MODDATAIMP-1251](https://folio-org.atlassian.net/browse/MODDATAIMP-1251) Upgrade RMB v35.4.2 (suppress verbose logging in RMB), and Vert.x 4.5.23 (CVE-2025-67735 Netty CRLF injection fix), and folio-s3-client v2.3.1 (CVE-2025-59952 XML Injection fix)
 
 ## 2025-08-12 v3.3.5
 * [MODDATAIMP-1228](https://folio-org.atlassian.net/browse/MODDATAIMP-1228) File splitting creates duplicate records

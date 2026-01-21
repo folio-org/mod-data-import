@@ -1,4 +1,4 @@
-## 2026-01-dd v3.2.7
+## 2026-01-21 v3.2.7
 * [MODDATAIMP-1268](https://folio-org.atlassian.net/browse/MODDATAIMP-1268) Upgrade software.amazon.awssdk:s3 to v2.29.6
 
 ## 2026-01-15 v3.2.6

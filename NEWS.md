@@ -1,3 +1,6 @@
+## 2026-01-dd v3.2.7
+* [MODDATAIMP-1268](https://folio-org.atlassian.net/browse/MODDATAIMP-1268) Upgrade software.amazon.awssdk:s3 to v2.29.6
+
 ## 2026-01-15 v3.2.6
 * [MODDATAIMP-1250](https://folio-org.atlassian.net/browse/MODDATAIMP-1250) Upgrade RMB v35.3.2 (suppress verbose logging in RMB), Vert.x 4.5.23 (CVE-2025-67735 Netty CRLF injection fix), and folio-s3-slient v2.2.2 to fix CVE-2025-59952 XML Injection 
 

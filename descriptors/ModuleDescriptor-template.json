@@ -536,6 +536,7 @@
       { "name": "S3_ACCESS_KEY_ID", "value": "AKIAIOSFODNN7EXAMPLE" },
       { "name": "S3_SECRET_ACCESS_KEY", "value": "wJalrXUtnFEMI/K7MDENG/EXAMPLEKEY" },
       { "name": "S3_IS_AWS", "value": "false" },
+      { "name": "S3_SUB_PATH", "value": "mod-data-import"},
       { "name": "SPLIT_FILES_ENABLED", "value": "false" },
       { "name": "RECORDS_PER_SPLIT_FILE", "value": "1000" },
       { "name": "SCORE_JOB_SMALLEST", "value": "40" },

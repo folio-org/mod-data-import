@@ -33,7 +33,7 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .body(
         "url",
         allOf(
-          matchesRegex(".*/test-bucket/data-import/diku/\\d+-test-name.*"),
+          matchesRegex(".*/test-bucket/mod-data-import/data-import/diku/\\d+-test-name.*"),
           containsString("partNumber=1")
         )
       )
@@ -56,7 +56,7 @@ public class UploadUrlAPITest extends AbstractRestTest {
       .body(
         "url",
         allOf(
-          containsString("/test-bucket/data-import/diku/1234-test-name"),
+          containsString("/test-bucket/mod-data-import/data-import/diku/1234-test-name"),
           containsString("partNumber=5"),
           containsString("uploadId=upload-id-here")
         )

@@ -115,7 +115,7 @@ public class DataImportImpl implements DataImport {
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        LOGGER.debug("getDataImportUploadDefinitions:: query {}", query);
+        LOGGER.debug("getDataImportUploadDefinitions:: getting data import UploadDefinitions");
         String preparedQuery = addCreatedByConditionToCqlQuery(query, okapiHeaders);
         uploadDefinitionService.getUploadDefinitions(preparedQuery, offset, limit, tenantId)
           .map(GetDataImportUploadDefinitionsResponse::respond200WithApplicationJson)
@@ -123,7 +123,7 @@ public class DataImportImpl implements DataImport {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOGGER.warn("getDataImportUploadDefinitions:: Cannot get upload definitions by query {}", query, e);
+        LOGGER.warn("getDataImportUploadDefinitions:: Cannot get upload definitions by query", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -316,7 +316,7 @@ public class DataImportImpl implements DataImport {
                                           Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        LOGGER.debug("getDataImportFileExtensions:: query {}", query);
+        LOGGER.debug("getDataImportFileExtensions:: getting data import file extensions");
         fileExtensionService.getFileExtensions(query, offset, limit, tenantId)
           .map(GetDataImportFileExtensionsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -603,11 +603,10 @@ public class DataImportImpl implements DataImport {
     try {
       String[] split = token.split("\\.");
       String json = getJson(split[1]);
-      LOGGER.error(json);
       JsonObject tokenJson = new JsonObject(json);
       return tokenJson.getString("user_id");
     } catch (Exception e) {
-      LOGGER.warn("getUserIdFromToken:: Invalid x-okapi-token: {}", token, e);
+      LOGGER.warn("getUserIdFromToken:: Invalid x-okapi-token", e);
       return null;
     }
   }

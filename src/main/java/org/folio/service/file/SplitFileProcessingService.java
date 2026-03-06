@@ -145,7 +145,7 @@ public class SplitFileProcessingService {
           .onFailure(err -> {
             String jobExecutionId = entity.getUploadDefinition().getMetaJobExecutionId();
             if (jobExecutionId != null) {
-              LOGGER.warn("startJob:: File was processed with errors by jobExecutionId {}. Cause: {}", jobExecutionId, err.getCause());
+              LOGGER.warn("startJob:: File was processed with errors by jobExecutionId {}. Cause: {}", jobExecutionId, err.getMessage());
               uploadDefinitionService.updateJobExecutionStatus(jobExecutionId, new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params);
               uploadDefinitionService.updateUploadDefinitionStatus(entity.getUploadDefinition().getId(), UploadDefinition.Status.ERROR, params.getTenantId())
                 .onFailure(errMsg -> LOGGER.error("startJob::Unable to update UploadDefinitionStatus by jobExecutionId {}. Cause: {}", jobExecutionId, errMsg));

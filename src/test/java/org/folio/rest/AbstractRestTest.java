@@ -87,6 +87,7 @@ public abstract class AbstractRestTest {
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
   protected static final String MINIO_BUCKET = "test-bucket";
+  protected static final String SUB_PATH = "mod-data-import";
 
   private static final String GET_USER_URL = "/users?query=id==";
 
@@ -167,6 +168,7 @@ public abstract class AbstractRestTest {
     System.setProperty("minio.secretKey", localStackContainer.getSecretKey());
     System.setProperty("minio.bucket", MINIO_BUCKET);
     System.setProperty("minio.awsSdk", "false");
+    System.setProperty("minio.subpath", SUB_PATH);
 
     s3Client = S3ClientFactory.getS3Client(
       S3ClientProperties
@@ -177,6 +179,7 @@ public abstract class AbstractRestTest {
         .bucket(MINIO_BUCKET)
         .awsSdk(false)
         .region(localStackContainer.getRegion())
+        .subPath(SUB_PATH)
         .build()
     );
     s3Client.createBucketIfNotExists();

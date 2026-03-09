@@ -10,10 +10,10 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.FileExtension;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
+import org.folio.rest.persist.Conn;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.SQLConnection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,7 +58,8 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
     try {
       String[] fieldList = {"*"};
       CQLWrapper cql = getCQLWrapper(FILE_EXTENSIONS_TABLE, query, limit, offset);
-      pgClientFactory.createInstance(tenantId).get(FILE_EXTENSIONS_TABLE, FileExtension.class, fieldList, cql, true, false, promise);
+      pgClientFactory.createInstance(tenantId)
+        .get(FILE_EXTENSIONS_TABLE, FileExtension.class, fieldList, cql, true, false, promise::handle);
     } catch (Exception e) {
       LOGGER.warn("getFileExtensions:: Error while searching for FileExtensions", e);
       promise.fail(e);
@@ -72,7 +73,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   public Future<FileExtensionCollection> getAllFileExtensionsFromTable(String tableName, String tenantId) {
     Promise<Results<FileExtension>> promise = Promise.promise();
     try {
-      pgClientFactory.createInstance(tenantId).get(tableName, FileExtension.class, new Criterion(), true, false, promise);
+      pgClientFactory.createInstance(tenantId).get(tableName, FileExtension.class, new Criterion(), true);
     } catch (Exception e) {
       LOGGER.warn("getAllFileExtensionsFromTable:: Error while searching for FileExtensions", e);
       promise.fail(e);
@@ -88,17 +89,16 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   }
 
   private Future<Optional<FileExtension>> getFileExtensionByField(String fieldName, String fieldValue, String tenantId) {
-    Promise<Results<FileExtension>> promise = Promise.promise();
     try {
       Criteria crit = constructCriteria(fieldName, fieldValue);
-      pgClientFactory.createInstance(tenantId).get(FILE_EXTENSIONS_TABLE, FileExtension.class, new Criterion(crit), true, false, promise);
+      return pgClientFactory.createInstance(tenantId)
+        .get(FILE_EXTENSIONS_TABLE, FileExtension.class, new Criterion(crit), true)
+        .map(Results::getResults)
+        .map(fileExtensions -> fileExtensions.isEmpty() ? Optional.empty() : Optional.of(fileExtensions.getFirst()));
     } catch (Exception e) {
       LOGGER.warn("getFileExtensionByField:: Error querying FileExtensions by {}", fieldName, e);
-      promise.fail(e);
+      return Future.failedFuture(e);
     }
-    return promise.future()
-      .map(Results::getResults)
-      .map(fileExtensions -> fileExtensions.isEmpty() ? Optional.empty() : Optional.of(fileExtensions.get(0)));
   }
 
   @Override
@@ -107,15 +107,13 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
     return getFileExtensions(caseInsensitiveExtensionQuery, 0, 1, tenantId)
       .map(fileExtensions -> fileExtensions.getFileExtensions().isEmpty()
-        ? Optional.empty() : Optional.of(fileExtensions.getFileExtensions().get(0)));
+        ? Optional.empty() : Optional.of(fileExtensions.getFileExtensions().getFirst()));
   }
 
   @Override
   public Future<String> addFileExtension(FileExtension fileExtension, String tenantId) {
     LOGGER.debug("addFileExtension:: adding file extension {} for tenant {}", fileExtension.getId(), tenantId);
-    Promise<String> promise = Promise.promise();
-    pgClientFactory.createInstance(tenantId).save(FILE_EXTENSIONS_TABLE, fileExtension.getId(), fileExtension, promise);
-    return promise.future();
+    return pgClientFactory.createInstance(tenantId).save(FILE_EXTENSIONS_TABLE, fileExtension.getId(), fileExtension);
   }
 
   @Override
@@ -146,78 +144,107 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   @Override
   public Future<Boolean> deleteFileExtension(String id, String tenantId) {
     LOGGER.debug("deleteFileExtension:: delete file extension with id {} for tenant {}", id, tenantId);
-    Promise<RowSet<Row>> promise = Promise.promise();
-    pgClientFactory.createInstance(tenantId).delete(FILE_EXTENSIONS_TABLE, id, promise);
-    return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+    return pgClientFactory.createInstance(tenantId).delete(FILE_EXTENSIONS_TABLE, id)
+      .map(deleteResult -> deleteResult.rowCount() == 1);
   }
 
   @Override
+//  public Future<FileExtensionCollection> restoreFileExtensions(String tenantId) {
+//    LOGGER.debug("restoreFileExtensions:: restore file extension for tenant {}", tenantId);
+//    PostgresClient client = pgClientFactory.createInstance(tenantId);
+//    Promise<FileExtensionCollection> promise = Promise.promise();
+//    Promise<SQLConnection> tx = Promise.promise();
+//    Future.succeededFuture()
+//      .compose(v -> {
+//        client.startTx(tx);
+//        return tx.future();
+//      }).compose(v -> {
+//      Promise<RowSet<Row>> deletePromise = Promise.promise();
+//      client.delete(tx.future(), FILE_EXTENSIONS_TABLE, new Criterion(), deletePromise);
+//      return deletePromise.future();
+//    }).compose(v -> copyExtensionsFromDefault(tx.future(), tenantId))
+//      .compose(updateHandler -> {
+//        if (updateHandler.rowCount() < 1) {
+//          throw new InternalServerErrorException();
+//        }
+//        Promise<Void> endPromise = Promise.promise();
+//        client.endTx(tx.future(), endPromise);
+//        return endPromise.future();
+//      }).onComplete(result -> {
+//      if (result.failed()) {
+//        client.rollbackTx(tx.future(), rollback -> promise.fail(result.cause()));
+//      } else {
+//        promise.complete();
+//      }
+//    });
+//    return promise.future()
+//      .compose(v -> getAllFileExtensionsFromTable(FILE_EXTENSIONS_TABLE, tenantId));
+//  }
+
   public Future<FileExtensionCollection> restoreFileExtensions(String tenantId) {
     LOGGER.debug("restoreFileExtensions:: restore file extension for tenant {}", tenantId);
-    PostgresClient client = pgClientFactory.createInstance(tenantId);
-    Promise<FileExtensionCollection> promise = Promise.promise();
-    Promise<SQLConnection> tx = Promise.promise();
-    Future.succeededFuture()
-      .compose(v -> {
-        client.startTx(tx);
-        return tx.future();
-      }).compose(v -> {
-      Promise<RowSet<Row>> deletePromise = Promise.promise();
-      client.delete(tx.future(), FILE_EXTENSIONS_TABLE, new Criterion(), deletePromise);
-      return deletePromise.future();
-    }).compose(v -> copyExtensionsFromDefault(tx.future(), tenantId))
-      .compose(updateHandler -> {
-        if (updateHandler.rowCount() < 1) {
+    return pgClientFactory.createInstance(tenantId).withTrans(connection -> connection
+      .delete(FILE_EXTENSIONS_TABLE, new Criterion())
+      .compose(v -> copyExtensionsFromDefault(connection, tenantId))
+      .compose(rowSet -> {
+        if (rowSet.rowCount() < 1) {
           throw new InternalServerErrorException();
         }
-        Promise<Void> endPromise = Promise.promise();
-        client.endTx(tx.future(), endPromise);
-        return endPromise.future();
-      }).onComplete(result -> {
-      if (result.failed()) {
-        client.rollbackTx(tx.future(), rollback -> promise.fail(result.cause()));
-      } else {
-        promise.complete();
-      }
-    });
-    return promise.future()
-      .compose(v -> getAllFileExtensionsFromTable(FILE_EXTENSIONS_TABLE, tenantId));
+        return Future.<Void>succeededFuture();
+      })
+    ).compose(v -> getAllFileExtensionsFromTable(FILE_EXTENSIONS_TABLE, tenantId));
   }
 
-  private Future<RowSet<Row>> copyExtensionsFromDefault(Future<SQLConnection> tx, String tenantId) {
+//  private Future<RowSet<Row>> copyExtensionsFromDefault2(Future<SQLConnection> tx, String tenantId) {
+//    LOGGER.debug("copyExtensionsFromDefault:: copy extensions from default for tenant {}", tenantId);
+//    String moduleName = PostgresClient.getModuleName();
+//    Promise<RowSet<Row>> promise = Promise.promise();
+//    StringBuilder sqlScript = new StringBuilder("INSERT INTO ")
+//      .append(tenantId).append("_").append(moduleName).append(".").append(FILE_EXTENSIONS_TABLE)
+//      .append(" SELECT * FROM ")
+//      .append(tenantId).append("_").append(moduleName).append(".").append(DEFAULT_FILE_EXTENSIONS_TABLE).append(";");
+//    pgClientFactory.createInstance(tenantId).execute(tx, sqlScript.toString(), promise);
+//    return promise.future();
+//  }
+
+  private Future<RowSet<Row>> copyExtensionsFromDefault(Conn connection, String tenantId) {
     LOGGER.debug("copyExtensionsFromDefault:: copy extensions from default for tenant {}", tenantId);
     String moduleName = PostgresClient.getModuleName();
-    Promise<RowSet<Row>> promise = Promise.promise();
     StringBuilder sqlScript = new StringBuilder("INSERT INTO ")
       .append(tenantId).append("_").append(moduleName).append(".").append(FILE_EXTENSIONS_TABLE)
       .append(" SELECT * FROM ")
       .append(tenantId).append("_").append(moduleName).append(".").append(DEFAULT_FILE_EXTENSIONS_TABLE).append(";");
-    pgClientFactory.createInstance(tenantId).execute(tx, sqlScript.toString(), promise);
-    return promise.future();
+    return connection.execute(sqlScript.toString());
   }
 
   @Override
+//  public Future<RowSet<Row>> copyExtensionsFromDefault2(String tenantId) {
+//    PostgresClient client = pgClientFactory.createInstance(tenantId);
+//    Promise<RowSet<Row>> promise = Promise.promise();
+//    Promise<SQLConnection> tx = Promise.promise();
+//    Future.succeededFuture()
+//      .compose(v -> {
+//        client.startTx(tx);
+//        return tx.future();
+//      }).compose(v -> copyExtensionsFromDefault(tx.future(), tenantId))
+//      .onComplete(r -> {
+//        if (r.succeeded()) {
+//          client.endTx(tx.future(), end ->
+//            promise.complete(r.result()));
+//        } else {
+//          client.rollbackTx(tx.future(), rollback -> {
+//            LOGGER.warn("copyExtensionsFromDefault:: Error during coping file extensions from default table to the main", r.cause());
+//            promise.fail(r.cause());
+//          });
+//        }
+//      });
+//    return promise.future();
+//  }
+
   public Future<RowSet<Row>> copyExtensionsFromDefault(String tenantId) {
     PostgresClient client = pgClientFactory.createInstance(tenantId);
-    Promise<RowSet<Row>> promise = Promise.promise();
-    Promise<SQLConnection> tx = Promise.promise();
-    Future.succeededFuture()
-      .compose(v -> {
-        client.startTx(tx);
-        return tx.future();
-      }).compose(v -> copyExtensionsFromDefault(tx.future(), tenantId))
-      .onComplete(r -> {
-        if (r.succeeded()) {
-          client.endTx(tx.future(), end ->
-            promise.complete(r.result()));
-        } else {
-          client.rollbackTx(tx.future(), rollback -> {
-            LOGGER.warn("copyExtensionsFromDefault:: Error during coping file extensions from default table to the main", r.cause());
-            promise.fail(r.cause());
-          });
-        }
-      });
-    return promise.future();
+    return client.withTrans(connection -> copyExtensionsFromDefault(connection, tenantId))
+      .onFailure(e -> LOGGER.warn("copyExtensionsFromDefault:: Error during coping file extensions from default table to the main", e));
   }
 }
 

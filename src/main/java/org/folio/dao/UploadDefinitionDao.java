@@ -4,6 +4,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.rest.persist.Conn;
 import org.folio.rest.persist.SQLConnection;
 
 import java.util.Date;
@@ -51,7 +52,9 @@ public interface UploadDefinitionDao {
    * @param tenantId         tenant id
    * @return future with updated {@link UploadDefinition}
    */
-  Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition, String tenantId);
+//  Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition, String tenantId);
+
+  Future<UploadDefinition> updateUploadDefinition(Conn connection, UploadDefinition uploadDefinition, String tenantId);
 
   /**
    * Updates {@link UploadDefinition} in database with row blocking

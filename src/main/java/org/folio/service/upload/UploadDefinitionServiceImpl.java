@@ -13,7 +13,6 @@ import org.folio.HttpStatus;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.impl.util.BufferMapper;
 import org.folio.rest.jaxrs.model.Error;
@@ -183,7 +182,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
           return errors;
         }));
     }
-    return GenericCompositeFuture.all(listOfValidations)
+    return Future.all(listOfValidations)
       .map(errors);
   }
 
@@ -395,7 +394,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     for (JobExecutionDto jobExecution : jobExecutions) {
       futures.add(updateJobExecutionStatus(jobExecution.getId(), status, params));
     }
-    return GenericCompositeFuture.all(futures).map(Future::succeeded);
+    return Future.all(futures).map(Future::succeeded);
   }
 
   private Future<Boolean> deleteFiles(List<FileDefinition> fileDefinitions, OkapiConnectionParams params) {
@@ -403,7 +402,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     for (FileDefinition fileDefinition : fileDefinitions) {
       futures.add(deleteFile(fileDefinition, params));
     }
-    return GenericCompositeFuture.all(futures).map(Future::succeeded);
+    return Future.all(futures).map(Future::succeeded);
   }
 
   private JobExecutionDto convertToJobExecutionDto(JobExecution jobExecution) {

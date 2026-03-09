@@ -19,6 +19,8 @@ import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
+import static io.vertx.core.ThreadingModel.WORKER;
+
 public class InitAPIImpl implements InitAPI {
 
   private static final Logger LOGGER = LogManager.getLogger();
@@ -51,11 +53,7 @@ public class InitAPIImpl implements InitAPI {
 
       if (fileSplittingEnabled) {
         LOGGER.info("Starting S3JobRunningVerticle");
-
-        vertx.deployVerticle(
-          s3JobRunningVerticle,
-          new DeploymentOptions().setWorker(true)
-        );
+        vertx.deployVerticle(s3JobRunningVerticle, new DeploymentOptions().setThreadingModel(WORKER));
       } else {
         LOGGER.info(
           "File splitting is disabled; not starting S3JobRunningVerticle"

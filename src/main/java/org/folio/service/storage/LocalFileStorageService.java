@@ -29,11 +29,10 @@ public class LocalFileStorageService extends AbstractFileStorageService {
 
   @Override
   public Future<FileDefinition> saveFile(byte[] data, FileDefinition fileDefinition, OkapiConnectionParams params) {
-    Promise<FileDefinition> promise = Promise.promise();
     String fileId = fileDefinition.getId();
     String path = getStoragePath(fileDefinition);
 
-    vertx.executeBlocking(() -> {
+    return vertx.executeBlocking(() -> {
       try {
         if (!fs.existsBlocking(path)) {
           fs.mkdirsBlocking(path.substring(0, path.indexOf(fileDefinition.getName()) - 1));
@@ -47,16 +46,8 @@ public class LocalFileStorageService extends AbstractFileStorageService {
         LOGGER.warn("saveFile:: Error during save file source data to the local system's storage. FileId: {}", fileId, e);
         throw e;
       }
-    }, r -> {
-      if (r.failed()) {
-        LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, r.cause());
-        promise.fail(r.cause());
-      } else {
-        LOGGER.info("saveFile:: File part was saved to the storage. FileId: {}", fileId);
-        promise.complete(r.result());
-      }
-    });
-    return promise.future();
+    }).onSuccess(v -> LOGGER.info("saveFile:: File part was saved to the storage. FileId: {}", fileId))
+      .onFailure(e -> LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, e));
   }
 
   @Override
@@ -80,8 +71,8 @@ public class LocalFileStorageService extends AbstractFileStorageService {
 
   @Override
   protected String getStoragePath(FileDefinition fileDefinition) {
-    return fileDefinition.getSourcePath() != null ?
-      fileDefinition.getSourcePath()
+    return fileDefinition.getSourcePath() != null
+      ? fileDefinition.getSourcePath()
       : super.getStoragePath(fileDefinition) + "/" + fileDefinition.getName();
   }
 }

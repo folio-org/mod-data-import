@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.service.s3storage.MinioStorageService;
@@ -45,8 +44,6 @@ public class FileSplitService {
    *
    * @return a {@link Promise} that wraps a list of string keys and will resolve
    *         once every split chunk has been uploaded to MinIO/S3.
-   * @throws IOException if the file cannot be read or if temporary files cannot
-   *                     be created
    */
   public Future<List<String>> splitFileFromS3(Context context, String key) {
     return minioStorageService
@@ -83,11 +80,7 @@ public class FileSplitService {
 
     Path tempDir = FileSplitUtilities.createTemporaryDir(key);
 
-    LOGGER.info(
-      "Streaming stream with key={} to writer, temporary folder={}...",
-      key,
-      tempDir
-    );
+    LOGGER.info("Streaming stream with key={} to writer, temporary folder={}...", key, tempDir);
 
     FileSplitWriter writer = new FileSplitWriter(
       FileSplitWriterOptions
@@ -122,12 +115,10 @@ public class FileSplitService {
 
         return vertx
           .fileSystem()
-          .deleteRecursive(tempDir.toString(), true)
+          .deleteRecursive(tempDir.toString())
           .map(innerResult);
       })
-      .onSuccess(result ->
-        LOGGER.info("All done splitting! Got chunks {}", result)
-      )
+      .onSuccess(result -> LOGGER.info("All done splitting! Got chunks {}", result))
       .onFailure(err -> LOGGER.error("Unable to split file: ", err))
       .onComplete(v -> asyncStream.close());
   }

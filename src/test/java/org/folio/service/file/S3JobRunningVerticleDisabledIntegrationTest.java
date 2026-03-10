@@ -4,7 +4,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 
-import io.vertx.core.impl.VertxInternal;
+import io.vertx.core.impl.VertxImpl;
+import io.vertx.core.internal.deployment.DeploymentManager;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.rest.AbstractRestTest;
@@ -31,13 +32,14 @@ public class S3JobRunningVerticleDisabledIntegrationTest
 
   @Test
   public void testRunning() {
+    DeploymentManager deploymentManager = ((VertxImpl) vertx).deploymentManager();
     assertThat(
       "S3JobRunningVerticle is not deployed when splitting is disabled",
       vertx
         .deploymentIDs()
         .stream()
-        .map(id -> ((VertxInternal) vertx).getDeployment(id))
-        .map(deployment -> deployment.verticleIdentifier())
+        .map(deploymentManager::deployment)
+        .map(deployment -> deployment.deployment().identifier())
         .toList(),
       not(hasItem("java:org.folio.service.file.S3JobRunningVerticle"))
     );

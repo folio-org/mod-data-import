@@ -71,16 +71,15 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<FileExtensionCollection> getAllFileExtensionsFromTable(String tableName, String tenantId) {
-    Promise<Results<FileExtension>> promise = Promise.promise();
     try {
-      pgClientFactory.createInstance(tenantId).get(tableName, FileExtension.class, new Criterion(), true);
+      return pgClientFactory.createInstance(tenantId).get(tableName, FileExtension.class, new Criterion(), true)
+        .map(results -> new FileExtensionCollection()
+          .withFileExtensions(results.getResults())
+          .withTotalRecords(results.getResultInfo().getTotalRecords()));
     } catch (Exception e) {
       LOGGER.warn("getAllFileExtensionsFromTable:: Error while searching for FileExtensions", e);
-      promise.fail(e);
+      return Future.failedFuture(e);
     }
-    return promise.future().map(results -> new FileExtensionCollection()
-      .withFileExtensions(results.getResults())
-      .withTotalRecords(results.getResultInfo().getTotalRecords()));
   }
 
   @Override

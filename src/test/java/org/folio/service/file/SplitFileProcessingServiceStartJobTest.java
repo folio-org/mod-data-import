@@ -22,7 +22,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
@@ -82,7 +81,7 @@ public class SplitFileProcessingServiceStartJobTest
           responseHandler.handle(
             getSuccessArBuffer(
               new InitJobExecutionsRsDto()
-                .withJobExecutions(Arrays.asList(JOB_EXECUTION_1))
+                .withJobExecutions(List.of(JOB_EXECUTION_1))
             )
           );
         } else if (request.getFiles().get(0).getName().contains("2")) {
@@ -381,7 +380,7 @@ public class SplitFileProcessingServiceStartJobTest
   @Test
   public void testInitializeChildren(TestContext context) {
     doReturn(
-      CompositeFuture.all(
+      Future.all(
         Future.succeededFuture(JOB_EXECUTION_2),
         Future.succeededFuture(JOB_EXECUTION_3)
       )
@@ -492,7 +491,7 @@ public class SplitFileProcessingServiceStartJobTest
 
   @Test
   public void testInitializeChildrenFailure(TestContext context) {
-    doReturn(CompositeFuture.all(new ArrayList<>()))
+    doReturn(Future.all(new ArrayList<>()))
       .when(service)
       .registerSplitFileParts(
         any(),

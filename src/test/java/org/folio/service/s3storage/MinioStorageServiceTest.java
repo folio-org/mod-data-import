@@ -375,7 +375,6 @@ public class MinioStorageServiceTest {
       .getFileDownloadUrl(S3_TEST_KEY)
       .onComplete(
         context.asyncAssertFailure(err -> {
-          verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
           verify(folioS3Client, times(1)).list(S3_TEST_KEY);
           Mockito.verifyNoMoreInteractions(folioS3Client);
 
@@ -396,7 +395,6 @@ public class MinioStorageServiceTest {
       .getFileDownloadUrl(S3_TEST_KEY)
       .onComplete(
         context.asyncAssertFailure(err -> {
-          verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
           verify(folioS3Client, times(1)).list(S3_TEST_KEY);
           Mockito.verifyNoMoreInteractions(folioS3Client);
 

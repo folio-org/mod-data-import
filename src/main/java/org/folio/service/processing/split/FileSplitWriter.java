@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -103,9 +102,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     int len = 0;
 
     for (int i = 0; i < bytes.length; i++) {
-      if (
-        bytes[i] == recordTerminator && (++recordCount == maxRecordsPerChunk)
-      ) {
+      if (bytes[i] == recordTerminator && (++recordCount == maxRecordsPerChunk)) {
         len = i + 1 - start;
 
         try {
@@ -136,7 +133,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     Handler<AsyncResult<Void>> handler,
     Exception e
   ) {
-    LOGGER.error("Error writing file chunk: ", e);
+    LOGGER.error("handleWriteException:: Error writing file chunk: ", e);
 
     handler.handle(Future.failedFuture(e));
 
@@ -165,7 +162,9 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       chunkUploadingCompositeFuturePromise.complete(Future.all(chunkProcessingFutures));
       return Future.succeededFuture();
     } catch (IOException e) {
-      chunkUploadingCompositeFuturePromise.fail(e);
+      if (!chunkUploadingCompositeFuturePromise.future().isComplete()) {
+        chunkUploadingCompositeFuturePromise.fail(e);
+      }
       return Future.failedFuture(e);
     }
   }
@@ -199,7 +198,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     }
     currentChunkKey = fileName;
     currentChunkStream = new ByteArrayOutputStream(lastChunkSize);
-    LOGGER.debug("starting chunk {}", currentChunkKey);
+    LOGGER.debug("startChunk:: starting chunk {}", currentChunkKey);
   }
 
   /** Finalize the current chunk */
@@ -225,11 +224,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       currentChunkStream = null;
       recordCount = 0;
 
-      LOGGER.debug(
-        "finished chunk of size {} written to {}",
-        lastChunkSize,
-        currentChunkKey
-      );
+      LOGGER.debug("endChunk:: finished chunk of size {} written to {}", lastChunkSize, currentChunkKey);
     }
   }
 
@@ -288,26 +283,26 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     Promise<String> chunkPromise = Promise.promise();
     chunkProcessingFutures.add(chunkPromise.future());
     if (uploadFilesToS3) {
-      LOGGER.debug("Uploading file {} to S3", chunkKey);
+      LOGGER.debug("uploadChunkAsync:: Uploading file {} to S3", chunkKey);
 
       try {
         minioStorageService
           .write(chunkKey, is)
           .onFailure(e -> {
-            LOGGER.error("Failed uploading file {}, cause:", chunkKey, e);
+            LOGGER.error("uploadChunkAsync:: Failed uploading file {}, cause:", chunkKey, e);
             chunkPromise.fail(e);
           })
           .onSuccess(result -> {
-            LOGGER.info("Successfully uploaded file {} to S3", chunkKey);
+            LOGGER.info("uploadChunkAsync:: Successfully uploaded file {} to S3", chunkKey);
             chunkPromise.complete(chunkKey);
           });
       } catch (IOException e) {
-        LOGGER.error("Exception uploading file {} to S3", chunkKey, e);
+        LOGGER.error("uploadChunkAsync:: Exception uploading file {} to S3", chunkKey, e);
         chunkPromise.fail(e);
       }
     } else {
       chunkPromise.complete(chunkPath);
     }
-    LOGGER.debug("Finished processing chunk: {}", chunkKey);
+    LOGGER.debug("uploadChunkAsync:: Finished processing chunk: {}", chunkKey);
   }
 }

@@ -84,44 +84,6 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
     Future<UploadDefinition> mutate(UploadDefinition definition);
   }
 
-//  public Future<UploadDefinition> updateBlocking2(String uploadDefinitionId, UploadDefinitionMutator mutator, String tenantId) {
-//    PostgresClient client = pgClientFactory.createInstance(tenantId);
-//    Promise<UploadDefinition> promise = Promise.promise();
-//    String rollbackMessage = "updateBlocking:: Rollback transaction. Error during upload definition update. uploadDefinitionId " + uploadDefinitionId;
-//    Promise<SQLConnection> tx = Promise.promise();
-//    Future.succeededFuture()
-//      .compose(v -> {
-//        client.startTx(tx);
-//        return tx.future();
-//      }).compose(v -> {
-//      Promise<RowSet<Row>> selectPromise = Promise.promise();
-//      StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ")
-//        .append(formatFullTableName(tenantId, UPLOAD_DEFINITION_TABLE))
-//        .append(" WHERE id ='")
-//        .append(uploadDefinitionId).append("' LIMIT 1 FOR UPDATE;");
-//      client.select(tx.future(), selectUploadDefinitionQuery.toString(), selectPromise);
-//      return selectPromise.future();
-//    }).compose(resultSet -> {
-//      if (resultSet.rowCount() != 1) {
-//        throw new NotFoundException("Upload Definition was not found. ID: " + uploadDefinitionId);
-//      }
-//      UploadDefinition definition = mapRowToUploadDefinition(resultSet);
-//      return mutator.mutate(definition);
-//    }).compose(mutatedObject -> updateUploadDefinition(tx.future(), mutatedObject, tenantId))
-//      .onComplete(onUpdate -> {
-//        if (onUpdate.succeeded()) {
-//          client.endTx(tx.future(), endTx ->
-//            promise.complete(onUpdate.result()));
-//        } else {
-//          client.rollbackTx(tx.future(), r -> {
-//            LOGGER.warn(rollbackMessage, onUpdate.cause());
-//            promise.fail(onUpdate.cause());
-//          });
-//        }
-//      });
-//    return promise.future();
-//  }
-
   public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator, String tenantId) {
     String rollbackMessage = "updateBlocking:: Rollback transaction. Error during upload definition update. uploadDefinitionId: " + uploadDefinitionId;
 

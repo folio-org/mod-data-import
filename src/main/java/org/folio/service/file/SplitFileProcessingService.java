@@ -116,29 +116,17 @@ public class SplitFileProcessingService {
       () -> {
         initializeJob(entity, client)
           .compose(splitPieces ->
-            Future.all(
-              splitPieces
-                .values()
-                .stream()
-                .map(splitFileInformation ->
-                  initializeChildren(
-                    entity,
-                    client,
-                    params,
-                    splitFileInformation
-                  )
-                )
-                .toList()
+            Future.all(splitPieces.values()
+              .stream()
+              .map(splitFileInformation -> initializeChildren(entity, client, params, splitFileInformation))
+              .toList()
             )
           )
           // do this after everything has been queued successfully
           .compose(v ->
             uploadDefinitionService.updateBlocking(
               entity.getUploadDefinition().getId(),
-              definition ->
-                Future.succeededFuture(
-                  definition.withStatus(UploadDefinition.Status.COMPLETED)
-                ),
+              definition -> Future.succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
               params.getTenantId()
             )
           )

@@ -148,38 +148,6 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   }
 
   @Override
-//  public Future<FileExtensionCollection> restoreFileExtensions(String tenantId) {
-//    LOGGER.debug("restoreFileExtensions:: restore file extension for tenant {}", tenantId);
-//    PostgresClient client = pgClientFactory.createInstance(tenantId);
-//    Promise<FileExtensionCollection> promise = Promise.promise();
-//    Promise<SQLConnection> tx = Promise.promise();
-//    Future.succeededFuture()
-//      .compose(v -> {
-//        client.startTx(tx);
-//        return tx.future();
-//      }).compose(v -> {
-//      Promise<RowSet<Row>> deletePromise = Promise.promise();
-//      client.delete(tx.future(), FILE_EXTENSIONS_TABLE, new Criterion(), deletePromise);
-//      return deletePromise.future();
-//    }).compose(v -> copyExtensionsFromDefault(tx.future(), tenantId))
-//      .compose(updateHandler -> {
-//        if (updateHandler.rowCount() < 1) {
-//          throw new InternalServerErrorException();
-//        }
-//        Promise<Void> endPromise = Promise.promise();
-//        client.endTx(tx.future(), endPromise);
-//        return endPromise.future();
-//      }).onComplete(result -> {
-//      if (result.failed()) {
-//        client.rollbackTx(tx.future(), rollback -> promise.fail(result.cause()));
-//      } else {
-//        promise.complete();
-//      }
-//    });
-//    return promise.future()
-//      .compose(v -> getAllFileExtensionsFromTable(FILE_EXTENSIONS_TABLE, tenantId));
-//  }
-
   public Future<FileExtensionCollection> restoreFileExtensions(String tenantId) {
     LOGGER.debug("restoreFileExtensions:: restore file extension for tenant {}", tenantId);
     return pgClientFactory.createInstance(tenantId).withTrans(connection -> connection
@@ -194,18 +162,6 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
     ).compose(v -> getAllFileExtensionsFromTable(FILE_EXTENSIONS_TABLE, tenantId));
   }
 
-//  private Future<RowSet<Row>> copyExtensionsFromDefault2(Future<SQLConnection> tx, String tenantId) {
-//    LOGGER.debug("copyExtensionsFromDefault:: copy extensions from default for tenant {}", tenantId);
-//    String moduleName = PostgresClient.getModuleName();
-//    Promise<RowSet<Row>> promise = Promise.promise();
-//    StringBuilder sqlScript = new StringBuilder("INSERT INTO ")
-//      .append(tenantId).append("_").append(moduleName).append(".").append(FILE_EXTENSIONS_TABLE)
-//      .append(" SELECT * FROM ")
-//      .append(tenantId).append("_").append(moduleName).append(".").append(DEFAULT_FILE_EXTENSIONS_TABLE).append(";");
-//    pgClientFactory.createInstance(tenantId).execute(tx, sqlScript.toString(), promise);
-//    return promise.future();
-//  }
-
   private Future<RowSet<Row>> copyExtensionsFromDefault(Conn connection, String tenantId) {
     LOGGER.debug("copyExtensionsFromDefault:: copy extensions from default for tenant {}", tenantId);
     String moduleName = PostgresClient.getModuleName();
@@ -217,29 +173,6 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   }
 
   @Override
-//  public Future<RowSet<Row>> copyExtensionsFromDefault2(String tenantId) {
-//    PostgresClient client = pgClientFactory.createInstance(tenantId);
-//    Promise<RowSet<Row>> promise = Promise.promise();
-//    Promise<SQLConnection> tx = Promise.promise();
-//    Future.succeededFuture()
-//      .compose(v -> {
-//        client.startTx(tx);
-//        return tx.future();
-//      }).compose(v -> copyExtensionsFromDefault(tx.future(), tenantId))
-//      .onComplete(r -> {
-//        if (r.succeeded()) {
-//          client.endTx(tx.future(), end ->
-//            promise.complete(r.result()));
-//        } else {
-//          client.rollbackTx(tx.future(), rollback -> {
-//            LOGGER.warn("copyExtensionsFromDefault:: Error during coping file extensions from default table to the main", r.cause());
-//            promise.fail(r.cause());
-//          });
-//        }
-//      });
-//    return promise.future();
-//  }
-
   public Future<RowSet<Row>> copyExtensionsFromDefault(String tenantId) {
     PostgresClient client = pgClientFactory.createInstance(tenantId);
     return client.withTrans(connection -> copyExtensionsFromDefault(connection, tenantId))

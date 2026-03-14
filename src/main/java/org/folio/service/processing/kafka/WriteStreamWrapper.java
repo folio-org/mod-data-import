@@ -37,23 +37,10 @@ public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<Strin
       .onComplete(ar -> logChunkProcessingResult(data.headers(), ar));
   }
 
-//  @Override
-//  public void write(KafkaProducerRecord<String, String> data, Handler<AsyncResult<Void>> handler) {
-//    producer.write(data, ar -> {
-//      logChunkProcessingResult(data.headers(), ar);
-//      handler.handle(ar);
-//    });
-//  }
-
   @Override
   public Future<Void> end() {
     return producer.end();
   }
-
-//  @Override
-//  public void end(Handler<AsyncResult<Void>> handler) {
-//    producer.end(handler);
-//  }
 
   @Override
   public WriteStream<KafkaProducerRecord<String, String>> setWriteQueueMaxSize(int maxSize) {

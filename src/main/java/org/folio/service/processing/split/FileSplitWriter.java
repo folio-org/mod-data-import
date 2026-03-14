@@ -95,7 +95,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     return promise.future();
   }
 
-//  @Override
   public void write(Buffer data, Handler<AsyncResult<Void>> handler) {
     byte[] bytes = data.getBytes();
     int start = 0;
@@ -142,18 +141,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     }
     chunkUploadingCompositeFuturePromise.fail(e);
   }
-
-//  @Override
-//  public void end(Handler<AsyncResult<Void>> handler) {
-//    try {
-//      endChunk();
-//      handler.handle(Future.succeededFuture());
-//      chunkUploadingCompositeFuturePromise.complete(Future.all(chunkProcessingFutures));
-//    } catch (IOException e) {
-//      handler.handle(Future.failedFuture(e));
-//      chunkUploadingCompositeFuturePromise.fail(e);
-//    }
-//  }
 
   @Override
   public Future<Void> end() {
@@ -228,53 +215,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     }
   }
 
-//  private void uploadChunkAsync(
-//    InputStream is,
-//    String chunkKey,
-//    String chunkPath
-//  ) {
-//    Promise<String> chunkPromise = Promise.promise();
-//    chunkProcessingFutures.add(chunkPromise.future());
-//    vertxContext.executeBlocking(s
-//      event -> {
-//        // chunk file uploading to S3
-//        if (uploadFilesToS3) {
-//          LOGGER.debug("Uploading file {} to S3", chunkKey);
-//
-//          try {
-//            minioStorageService
-//              .write(chunkKey, is)
-//              .onFailure((Throwable err) -> {
-//                LOGGER.error(
-//                  "Failed uploading file {}: {}",
-//                  chunkKey,
-//                  err.getMessage()
-//                );
-//
-//                chunkPromise.fail(err.getMessage());
-//              })
-//              .onSuccess((String result) -> {
-//                LOGGER.info("Successfully uploaded file {} to S3", chunkKey);
-//
-//                chunkPromise.complete(chunkKey);
-//              });
-//          } catch (IOException e) {
-//            LOGGER.error("Exception uploading file {} to S3", chunkKey);
-//            LOGGER.error(e);
-//            event.fail(e);
-//            chunkPromise.fail(e);
-//            return;
-//          }
-//        } else {
-//          event.complete();
-//          chunkPromise.complete(chunkPath);
-//        }
-//        LOGGER.debug("Finished processing chunk: {}", chunkKey);
-//      },
-//      false
-//    );
-//  }
-
   private void uploadChunkAsync(
     InputStream is,
     String chunkKey,
@@ -282,6 +222,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   ) {
     Promise<String> chunkPromise = Promise.promise();
     chunkProcessingFutures.add(chunkPromise.future());
+    // chunk file uploading to S3
     if (uploadFilesToS3) {
       LOGGER.debug("uploadChunkAsync:: Uploading file {} to S3", chunkKey);
 

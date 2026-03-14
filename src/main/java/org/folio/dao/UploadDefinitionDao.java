@@ -1,11 +1,9 @@
 package org.folio.dao;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.rest.persist.Conn;
-import org.folio.rest.persist.SQLConnection;
 
 import java.util.Date;
 import java.util.Optional;
@@ -47,13 +45,11 @@ public interface UploadDefinitionDao {
   /**
    * Updates {@link UploadDefinition} in database in transaction
    *
-   * @param tx               {@link SQLConnection} transaction's connection
+   * @param connection       {@link Conn} transaction's connection
    * @param uploadDefinition {@link UploadDefinition} to update
    * @param tenantId         tenant id
    * @return future with updated {@link UploadDefinition}
    */
-//  Future<UploadDefinition> updateUploadDefinition(AsyncResult<SQLConnection> tx, UploadDefinition uploadDefinition, String tenantId);
-
   Future<UploadDefinition> updateUploadDefinition(Conn connection, UploadDefinition uploadDefinition, String tenantId);
 
   /**
@@ -61,7 +57,7 @@ public interface UploadDefinitionDao {
    *
    * @param uploadDefinitionId - id of {@link UploadDefinition}
    * @param mutator            - callback for change {@link UploadDefinition} before save
-   * @param tenantId           tenant id
+   * @param tenantId           - tenant id
    * @return - future with updated {@link UploadDefinition}
    */
   Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator, String tenantId);

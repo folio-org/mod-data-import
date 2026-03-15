@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.folio.kafka.SimpleConfigurationReader;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.marc4j.MarcException;
@@ -15,11 +16,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-
-import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 
 /**
  * Implementation reads source records from the local file system in fixed-size buffer.
@@ -28,16 +27,20 @@ import static org.folio.rest.RestVerticle.MODULE_SPECIFIC_ARGS;
 public class MarcRawReader implements SourceReader {
 
   private static final Logger LOGGER = LogManager.getLogger();
+  private static final String RECORD_CHARSET_PARAM = "file.processing.buffer.record.charset";
 
-  private static final Charset CHARSET = Charset.forName(MODULE_SPECIFIC_ARGS.getOrDefault("file.processing.buffer.record.charset", "UTF8"));
+  private final Charset charset;
   private MarcPermissiveStreamReader reader;
   private InputStream inputStream;
   private int chunkSize;
   private MutableInt recordsCounter;
 
   public MarcRawReader(File file, int chunkSize) {
+    String charsetConfig = SimpleConfigurationReader.getValue(RECORD_CHARSET_PARAM, StandardCharsets.UTF_8.name());
+    this.charset = Charset.forName(charsetConfig);
     this.chunkSize = chunkSize;
     recordsCounter = new MutableInt(0);
+
     try {
       this.inputStream = FileUtils.openInputStream(file);
       this.reader = new MarcPermissiveStreamReader(inputStream, true, true);
@@ -61,14 +64,10 @@ public class MarcRawReader implements SourceReader {
       }
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      MarcStreamWriter streamWriter = new MarcStreamWriter(bos, CHARSET.name());
+      MarcStreamWriter streamWriter = new MarcStreamWriter(bos, charset.name());
       streamWriter.write(rawRecord);
       streamWriter.close();
-      try {
-        recordsBuffer.add(new InitialRecord().withRecord(bos.toString(CHARSET.name())).withOrder(recordsCounter.getAndIncrement()));
-      } catch (UnsupportedEncodingException e) {
-        LOGGER.warn("next:: Error during reading MARC record. Record will be skipped.", e);
-      }
+      recordsBuffer.add(new InitialRecord().withRecord(bos.toString(charset)).withOrder(recordsCounter.getAndIncrement()));
       if (recordsBuffer.isFull()) {
         return recordsBuffer.getRecords();
       }

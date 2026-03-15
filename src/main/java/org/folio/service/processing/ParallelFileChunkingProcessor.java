@@ -16,7 +16,6 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SimpleKafkaProducerManager;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.DataImportInitConfig;
@@ -234,7 +233,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     for (JobExecutionDto job : jobs) {
       updateJobProfileFutures.add(updateJobProfile(job.getId(), jobProfile, params));
     }
-    GenericCompositeFuture.all(updateJobProfileFutures).onComplete(updatedJobsProfileAr -> {
+    Future.all(updateJobProfileFutures).onComplete(updatedJobsProfileAr -> {
       if (updatedJobsProfileAr.failed()) {
         promise.fail(updatedJobsProfileAr.cause());
       } else {

@@ -111,33 +111,22 @@ public class SplitFileProcessingService {
     ChangeManagerClient client,
     OkapiConnectionParams params
   ) {
-    return executor.executeBlocking(
-      promise ->
+    Promise<Void> promise = Promise.promise();
+    executor.executeBlocking(
+      () -> {
         initializeJob(entity, client)
           .compose(splitPieces ->
-            Future.all(
-              splitPieces
-                .values()
-                .stream()
-                .map(splitFileInformation ->
-                  initializeChildren(
-                    entity,
-                    client,
-                    params,
-                    splitFileInformation
-                  )
-                )
-                .toList()
+            Future.all(splitPieces.values()
+              .stream()
+              .map(splitFileInformation -> initializeChildren(entity, client, params, splitFileInformation))
+              .toList()
             )
           )
           // do this after everything has been queued successfully
           .compose(v ->
             uploadDefinitionService.updateBlocking(
               entity.getUploadDefinition().getId(),
-              definition ->
-                Future.succeededFuture(
-                  definition.withStatus(UploadDefinition.Status.COMPLETED)
-                ),
+              definition -> Future.succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
               params.getTenantId()
             )
           )
@@ -153,9 +142,12 @@ public class SplitFileProcessingService {
             LOGGER.error("Unable to start job: ", err);
           })
           .<Void>mapEmpty()
-          .onComplete(promise),
+          .onComplete(promise);
+        return null;
+      },
       false
     );
+    return promise.future();
   }
 
   /**
@@ -565,10 +557,10 @@ public class SplitFileProcessingService {
     String key,
     JobProfileInfo profile
   ) {
-    return executor.executeBlocking(
-      promise ->
-        Future
-          .succeededFuture(new SplitFileInformation().withKey(key))
+    Promise<SplitFileInformation> promise = Promise.promise();
+    executor.executeBlocking(
+      () -> {
+        Future.succeededFuture(new SplitFileInformation().withKey(key))
           // splitting and counting must be done sequentially as splitting deletes the original file
           .compose(result ->
             minioStorageService
@@ -589,20 +581,21 @@ public class SplitFileProcessingService {
                 .splitFileFromS3(vertx.getOrCreateContext(), key)
                 .map(file::withSplitKeys);
             } else {
-              return Future.succeededFuture(
-                file.withSplitKeys(Arrays.asList(key))
-              );
+              return Future.succeededFuture(file.withSplitKeys(List.of(key)));
             }
           })
-          .onComplete(promise),
+          .onComplete(promise);
+        return null;
+      },
       false
     );
+    return promise.future();
   }
 
   protected Buffer verifyOkStatus(HttpResponse<Buffer> response) {
     if (
-      response.statusCode() >= HttpStatus.SC_OK &&
-        response.statusCode() <= HttpStatus.SC_NO_CONTENT
+      response.statusCode() >= HttpStatus.SC_OK
+        && response.statusCode() <= HttpStatus.SC_NO_CONTENT
     ) {
       return response.bodyAsBuffer();
     } else {

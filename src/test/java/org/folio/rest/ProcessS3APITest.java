@@ -13,13 +13,12 @@ import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
 import io.restassured.response.ValidatableResponse;
-import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.Json;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.File;
-import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Arrays;
+import java.util.List;
 
 import lombok.SneakyThrows;
 import org.apache.commons.io.FileUtils;
@@ -47,21 +46,16 @@ public class ProcessS3APITest extends AbstractRestTest {
 
   @Test
   @SneakyThrows
-  public void testProcessingSuccess() throws IOException {
+  public void testProcessingSuccess() {
     UploadDefinition uploadDefinition = RestAssured
       .given()
       .spec(spec)
-      .body(
-        new UploadDefinition()
-          .withFileDefinitions(
-            Arrays.asList(
-              new FileDefinition()
-                .withJobExecutionId("9907701d-dd5e-5e9e-8ae6-4dbf7ef10e5d")
-                .withUiKey("1.mrc1547160916680")
-                .withName("1.mrc")
-                .withSize(10)
-            )
-          )
+      .body(new UploadDefinition()
+        .withFileDefinitions(List.of(new FileDefinition()
+          .withJobExecutionId("9907701d-dd5e-5e9e-8ae6-4dbf7ef10e5d")
+          .withUiKey("1.mrc1547160916680")
+          .withName("1.mrc")
+          .withSize(10)))
       )
       .when()
       .post("/data-import/uploadDefinitions")
@@ -109,21 +103,14 @@ public class ProcessS3APITest extends AbstractRestTest {
     RestAssured
       .given()
       .spec(spec)
-      .body(
-        new AssembleFileDto()
-          .withKey(uploadInfo.getKey())
-          .withUploadId(uploadInfo.getUploadId())
-          .withTags(Arrays.asList(eTag))
-      )
+      .body(new AssembleFileDto()
+        .withKey(uploadInfo.getKey())
+        .withUploadId(uploadInfo.getUploadId())
+        .withTags(List.of(eTag)))
       .pathParam("uploadDefinitionId", uploadDefinition.getId())
-      .pathParam(
-        "fileDefinitionId",
-        uploadDefinition.getFileDefinitions().get(0).getId()
-      )
+      .pathParam("fileDefinitionId", uploadDefinition.getFileDefinitions().getFirst().getId())
       .when()
-      .post(
-        "/data-import/uploadDefinitions/{uploadDefinitionId}/files/{fileDefinitionId}/assembleStorageFile"
-      )
+      .post("/data-import/uploadDefinitions/{uploadDefinitionId}/files/{fileDefinitionId}/assembleStorageFile")
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
 
@@ -131,56 +118,30 @@ public class ProcessS3APITest extends AbstractRestTest {
       .getFileDefinitions()
       .forEach(fd -> fd.setSourcePath(uploadInfo.getKey()));
 
-    WireMock.stubFor(
-      WireMock
-        .post("/change-manager/jobExecutions")
-        .willReturn(
-          WireMock
-            .created()
-            .withBody(
-              JsonObject
-                .mapFrom(
-                  new InitJobExecutionsRsDto()
-                    .withJobExecutions(
-                      Arrays.asList(
-                        new JobExecution()
-                          .withId("445308a4-d3e0-562e-a7fe-28b2ef5ceb23")
-                          .withSourcePath(uploadInfo.getKey())
-                      )
-                    )
-                )
-                .encode()
-            )
+    WireMock.stubFor(WireMock
+      .post("/change-manager/jobExecutions")
+      .willReturn(WireMock.created()
+        .withBody(Json.encode(new InitJobExecutionsRsDto()
+          .withJobExecutions(List.of(new JobExecution()
+            .withId("445308a4-d3e0-562e-a7fe-28b2ef5ceb23")
+            .withSourcePath(uploadInfo.getKey()))))
         )
+      )
     );
 
-    WireMock.stubFor(
-      WireMock
-        .get(urlPathMatching("/change-manager/jobExecutions/[^/]*"))
-        .willReturn(
-          WireMock.okJson(
-            JsonObject
-              .mapFrom(
-                new JobExecution()
-                  .withId("3ed691e7-df5b-58e8-aaec-a18962a40744")
-              )
-              .encode()
-          )
-        )
+    WireMock.stubFor(WireMock
+      .get(urlPathMatching("/change-manager/jobExecutions/[^/]*"))
+      .willReturn(WireMock.okJson(Json.encode(new JobExecution().withId("3ed691e7-df5b-58e8-aaec-a18962a40744"))))
     );
 
     RestAssured
       .given()
       .spec(spec)
-      .body(
-        new ProcessFilesRqDto()
-          .withUploadDefinition(uploadDefinition)
-          .withJobProfileInfo(
-            new JobProfileInfo()
-              .withId("3aa9cdff-737a-5d08-916f-94e862c0ae5f")
-              .withDataType(JobProfileInfo.DataType.MARC)
-          )
-      )
+      .body(Json.encodePrettily(new ProcessFilesRqDto()
+        .withUploadDefinition(uploadDefinition)
+        .withJobProfileInfo(new JobProfileInfo()
+          .withId("3aa9cdff-737a-5d08-916f-94e862c0ae5f")
+          .withDataType(JobProfileInfo.DataType.MARC))))
       .pathParam("uploadDefinitionId", uploadDefinition.getId())
       .when()
       .post("/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles")

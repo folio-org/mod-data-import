@@ -1,7 +1,6 @@
 package org.folio.service.s3storage;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import java.io.InputStream;
 import java.util.List;
@@ -39,21 +38,19 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     String tenantId
   ) {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
-
     String key = buildKey(tenantId, uploadFileName);
 
-    return vertx
-      .executeBlocking((Promise<String> blockingFuture) -> {
-        // we just built the key; no need to verify
-        try {
-          String uploadId = client.initiateMultipartUpload(key);
-          LOGGER.info("Created upload ID {} for key {}", uploadId, key);
-          blockingFuture.complete(uploadId);
-        } catch (S3ClientException e) {
-          blockingFuture.fail(e);
-        }
-      })
-      .compose(outcome -> getFileUploadPartUrl(key, outcome, 1));
+    return vertx.executeBlocking(() -> {
+      // we just built the key; no need to verify
+      try {
+        String uploadId = client.initiateMultipartUpload(key);
+        LOGGER.info("Created upload ID {} for key {}", uploadId, key);
+        return uploadId;
+      } catch (S3ClientException e) {
+        LOGGER.warn("Failed to create upload ID for key {}", key, e);
+        throw e;
+      }
+    }).compose(outcome -> getFileUploadPartUrl(key, outcome, 1));
   }
 
   @Override
@@ -65,26 +62,17 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
     return vertx
-      .executeBlocking((Promise<String> blockingFuture) -> {
+      .executeBlocking(() -> {
         try {
           verifyKey(key);
-
-          LOGGER.info(
-            "Getting presigned URL for part {} of key {}/upload ID {}",
-            partNumber,
-            key,
-            uploadId
-          );
-          blockingFuture.complete(
-            client.getPresignedMultipartUploadUrl(key, uploadId, partNumber)
-          );
+          LOGGER.info("Getting presigned URL for part {} of key {}/upload ID {}", partNumber, key, uploadId);
+          return client.getPresignedMultipartUploadUrl(key, uploadId, partNumber);
         } catch (S3ClientException e) {
-          blockingFuture.fail(e);
+          LOGGER.warn("Failed to get presigned URL for part {} of key {}/upload ID {}", partNumber, key, uploadId, e);
+          throw e;
         }
       })
-      .map(url ->
-        new FileUploadInfo().withUrl(url).withKey(key).withUploadId(uploadId)
-      );
+      .map(url -> new FileUploadInfo().withUrl(url).withKey(key).withUploadId(uploadId));
   }
 
   @Override
@@ -92,7 +80,7 @@ public class MinioStorageServiceImpl implements MinioStorageService {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
     return vertx
-      .executeBlocking((Promise<String> blockingFuture) -> {
+      .executeBlocking(() -> {
         try {
           verifyKey(key);
 
@@ -100,17 +88,14 @@ public class MinioStorageServiceImpl implements MinioStorageService {
           // to check if it exists, we need to search with "key" as a prefix
           // hence the list() call and array checking
           if (client.list(key).stream().noneMatch(key::equals)) {
-            blockingFuture.fail(
-              LOGGER.throwing(
-                new NotFoundException("Key " + key + " is not present in S3")
-              )
-            );
+            throw LOGGER.throwing(new NotFoundException("Key " + key + " is not present in S3"));
           }
 
           LOGGER.info("Getting presigned URL for key {}", key);
-          blockingFuture.complete(client.getPresignedUrl(key));
+          return client.getPresignedUrl(key);
         } catch (S3ClientException e) {
-          blockingFuture.fail(e);
+          LOGGER.warn("Failed to get presigned URL for key {}", key, e);
+          throw e;
         }
       })
       .map(url -> new FileDownloadInfo().withUrl(url));
@@ -120,16 +105,15 @@ public class MinioStorageServiceImpl implements MinioStorageService {
   public Future<InputStream> readFile(String key) {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    return vertx.executeBlocking((Promise<InputStream> blockingFuture) -> {
+    return vertx.executeBlocking(() -> {
       try {
         verifyKey(key);
-
-        LOGGER.info("Created input stream to read remote file for key {}", key);
         InputStream inStream = client.read(key);
-        blockingFuture.complete(inStream);
+        LOGGER.info("Created input stream to read remote file for key {}", key);
+        return inStream;
       } catch (S3ClientException e) {
-        LOGGER.error("Could not read from S3:", e);
-        blockingFuture.fail(e);
+        LOGGER.error("Could not read from S3 for key {}", key, e);
+        throw e;
       }
     });
   }
@@ -138,16 +122,14 @@ public class MinioStorageServiceImpl implements MinioStorageService {
   public Future<String> write(String path, InputStream is) {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    return vertx.executeBlocking((Promise<String> blockingFuture) -> {
+    return vertx.executeBlocking(() -> {
       try {
         verifyKey(path);
-
         LOGGER.info("Writing remote file for path {}", path);
-        String filePath = client.write(path, is);
-        blockingFuture.complete(filePath);
+        return client.write(path, is);
       } catch (S3ClientException e) {
         LOGGER.error("Error while writing file to S3 for path {} cause: ", path, e);
-        blockingFuture.fail(e);
+        throw e;
       }
     });
   }
@@ -156,16 +138,16 @@ public class MinioStorageServiceImpl implements MinioStorageService {
   public Future<Void> remove(String key) {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    return vertx.executeBlocking((Promise<Void> blockingFuture) -> {
+    return vertx.executeBlocking(() -> {
       try {
         verifyKey(key);
 
         LOGGER.info("Deleting file {}", key);
         client.remove(key);
-        blockingFuture.complete();
+        return null;
       } catch (S3ClientException e) {
-        LOGGER.error("Could not remove from S3:", e);
-        blockingFuture.fail(e);
+        LOGGER.error("Could not remove from S3 by key {} cause:", key, e);
+        throw e;
       }
     });
   }
@@ -177,16 +159,14 @@ public class MinioStorageServiceImpl implements MinioStorageService {
   ) {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
-    return vertx.executeBlocking((Promise<Void> blockingFuture) -> {
+    return vertx.executeBlocking(() -> {
       try {
         verifyKey(path);
-
         client.completeMultipartUpload(path, uploadId, partEtags);
-
-        blockingFuture.complete();
+        return null;
       } catch (S3ClientException e) {
-        LOGGER.error("Failed to complete multipart upload", e);
-        blockingFuture.fail(e);
+        LOGGER.error("Failed to complete multipart upload for path {}, uploadId {}", path, uploadId, e);
+        throw e;
       }
     });
   }

@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -92,20 +91,17 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   @Override
   public Future<Void> write(Buffer data) {
     Promise<Void> promise = Promise.promise();
-    write(data, promise);
+    write(data, promise::handle);
     return promise.future();
   }
 
-  @Override
   public void write(Buffer data, Handler<AsyncResult<Void>> handler) {
     byte[] bytes = data.getBytes();
     int start = 0;
     int len = 0;
 
     for (int i = 0; i < bytes.length; i++) {
-      if (
-        bytes[i] == recordTerminator && (++recordCount == maxRecordsPerChunk)
-      ) {
+      if (bytes[i] == recordTerminator && (++recordCount == maxRecordsPerChunk)) {
         len = i + 1 - start;
 
         try {
@@ -136,7 +132,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     Handler<AsyncResult<Void>> handler,
     Exception e
   ) {
-    LOGGER.error("Error writing file chunk: ", e);
+    LOGGER.error("handleWriteException:: Error writing file chunk: ", e);
 
     handler.handle(Future.failedFuture(e));
 
@@ -147,25 +143,16 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   }
 
   @Override
-  public void end(Handler<AsyncResult<Void>> handler) {
+  public Future<Void> end() {
     try {
       endChunk();
-      handler.handle(Future.succeededFuture());
-      // Future.all is not available, CompositeFuture.all is broken,
-      // and we're on an older Vert.x, so we must resort to this ugly re-encapsulation
-      // https://github.com/eclipse-vertx/vert.x/issues/2627
-      chunkUploadingCompositeFuturePromise.complete(
-        CompositeFuture.all(
-          Arrays.asList(
-            chunkProcessingFutures.toArray(
-              new Future[chunkProcessingFutures.size()]
-            )
-          )
-        )
-      );
+      chunkUploadingCompositeFuturePromise.complete(Future.all(chunkProcessingFutures));
+      return Future.succeededFuture();
     } catch (IOException e) {
-      handler.handle(Future.failedFuture(e));
-      chunkUploadingCompositeFuturePromise.fail(e);
+      if (!chunkUploadingCompositeFuturePromise.future().isComplete()) {
+        chunkUploadingCompositeFuturePromise.fail(e);
+      }
+      return Future.failedFuture(e);
     }
   }
 
@@ -198,7 +185,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     }
     currentChunkKey = fileName;
     currentChunkStream = new ByteArrayOutputStream(lastChunkSize);
-    LOGGER.debug("starting chunk {}", currentChunkKey);
+    LOGGER.debug("startChunk:: starting chunk {}", currentChunkKey);
   }
 
   /** Finalize the current chunk */
@@ -224,11 +211,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       currentChunkStream = null;
       recordCount = 0;
 
-      LOGGER.debug(
-        "finished chunk of size {} written to {}",
-        lastChunkSize,
-        currentChunkKey
-      );
+      LOGGER.debug("endChunk:: finished chunk of size {} written to {}", lastChunkSize, currentChunkKey);
     }
   }
 
@@ -239,43 +222,28 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   ) {
     Promise<String> chunkPromise = Promise.promise();
     chunkProcessingFutures.add(chunkPromise.future());
-    vertxContext.executeBlocking(
-      event -> {
-        // chunk file uploading to S3
-        if (uploadFilesToS3) {
-          LOGGER.debug("Uploading file {} to S3", chunkKey);
+    // chunk file uploading to S3
+    if (uploadFilesToS3) {
+      LOGGER.debug("uploadChunkAsync:: Uploading file {} to S3", chunkKey);
 
-          try {
-            minioStorageService
-              .write(chunkKey, is)
-              .onFailure((Throwable err) -> {
-                LOGGER.error(
-                  "Failed uploading file {}: {}",
-                  chunkKey,
-                  err.getMessage()
-                );
-
-                chunkPromise.fail(err.getMessage());
-              })
-              .onSuccess((String result) -> {
-                LOGGER.info("Successfully uploaded file {} to S3", chunkKey);
-
-                chunkPromise.complete(chunkKey);
-              });
-          } catch (IOException e) {
-            LOGGER.error("Exception uploading file {} to S3", chunkKey);
-            LOGGER.error(e);
-            event.fail(e);
+      try {
+        minioStorageService
+          .write(chunkKey, is)
+          .onFailure(e -> {
+            LOGGER.error("uploadChunkAsync:: Failed uploading file {}, cause:", chunkKey, e);
             chunkPromise.fail(e);
-            return;
-          }
-        } else {
-          event.complete();
-          chunkPromise.complete(chunkPath);
-        }
-        LOGGER.debug("Finished processing chunk: {}", chunkKey);
-      },
-      false
-    );
+          })
+          .onSuccess(result -> {
+            LOGGER.info("uploadChunkAsync:: Successfully uploaded file {} to S3", chunkKey);
+            chunkPromise.complete(chunkKey);
+          });
+      } catch (IOException e) {
+        LOGGER.error("uploadChunkAsync:: Exception uploading file {} to S3", chunkKey, e);
+        chunkPromise.fail(e);
+      }
+    } else {
+      chunkPromise.complete(chunkPath);
+    }
+    LOGGER.debug("uploadChunkAsync:: Finished processing chunk: {}", chunkKey);
   }
 }

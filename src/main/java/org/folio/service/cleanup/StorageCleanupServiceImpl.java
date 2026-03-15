@@ -1,6 +1,5 @@
 package org.folio.service.cleanup;
 
-import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -69,7 +68,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
     uploadDefinitions.stream()
       .flatMap(uploadDefinition -> uploadDefinition.getFileDefinitions().stream())
       .forEach(fileDefinition -> deleteFilesFutures.add(fileStorageService.deleteFile(fileDefinition)));
-    return GenericCompositeFuture.all(deleteFilesFutures);
+    return Future.all(deleteFilesFutures);
   }
 
 }

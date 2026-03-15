@@ -30,6 +30,9 @@ public class FolioS3ClientFactory {
   @Value("#{ T(Boolean).parseBoolean('${minio.forcePathStyle}')}")
   private boolean forcePathStyle;
 
+  @Value("${minio.subPath}")
+  private String subPath;
+
   private FolioS3Client folioS3Client;
 
   public FolioS3ClientFactory() {
@@ -55,6 +58,7 @@ public class FolioS3ClientFactory {
         .awsSdk(awsSdk)
         .forcePathStyle(forcePathStyle)
         .region(region)
+        .subPath(subPath)
         .build()
     );
   }

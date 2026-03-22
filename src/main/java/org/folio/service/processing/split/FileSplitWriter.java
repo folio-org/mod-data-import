@@ -3,7 +3,6 @@ package org.folio.service.processing.split;
 import static java.nio.file.StandardOpenOption.CREATE;
 
 import io.vertx.codegen.annotations.Nullable;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -90,12 +89,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   @Override
   public Future<Void> write(Buffer data) {
-    Promise<Void> promise = Promise.promise();
-    write(data, promise::handle);
-    return promise.future();
-  }
-
-  public void write(Buffer data, Handler<AsyncResult<Void>> handler) {
     byte[] bytes = data.getBytes();
     int start = 0;
     int len = 0;
@@ -111,7 +104,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
           currentChunkStream.write(bytes, start, len);
           endChunk();
         } catch (IOException e) {
-          handleWriteException(handler, e);
+          return handleWriteException(e);
         }
 
         start = i + 1;
@@ -126,20 +119,18 @@ public class FileSplitWriter implements WriteStream<Buffer> {
       }
       currentChunkStream.write(bytes, start, len);
     }
+
+    return Future.succeededFuture();
   }
 
-  private void handleWriteException(
-    Handler<AsyncResult<Void>> handler,
-    Exception e
-  ) {
+  private Future<Void> handleWriteException(Exception e) {
     LOGGER.error("handleWriteException:: Error writing file chunk: ", e);
-
-    handler.handle(Future.failedFuture(e));
 
     if (exceptionHandler != null) {
       exceptionHandler.handle(e);
     }
     chunkUploadingCompositeFuturePromise.fail(e);
+    return Future.failedFuture(e);
   }
 
   @Override

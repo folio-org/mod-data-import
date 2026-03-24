@@ -111,43 +111,34 @@ public class SplitFileProcessingService {
     ChangeManagerClient client,
     OkapiConnectionParams params
   ) {
-    Promise<Void> promise = Promise.promise();
-    executor.executeBlocking(
-      () -> {
-        initializeJob(entity, client)
-          .compose(splitPieces ->
-            Future.all(splitPieces.values()
-              .stream()
-              .map(splitFileInformation -> initializeChildren(entity, client, params, splitFileInformation))
-              .toList()
-            )
-          )
-          // do this after everything has been queued successfully
-          .compose(v ->
-            uploadDefinitionService.updateBlocking(
-              entity.getUploadDefinition().getId(),
-              definition -> Future.succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
-              params.getTenantId()
-            )
-          )
-          .onSuccess(v -> LOGGER.info("Job split and queued successfully!"))
-          .onFailure(err -> {
-            String jobExecutionId = entity.getUploadDefinition().getMetaJobExecutionId();
-            if (jobExecutionId != null) {
-              LOGGER.warn("startJob:: File was processed with errors by jobExecutionId {}. Cause: {}", jobExecutionId, err.getMessage());
-              uploadDefinitionService.updateJobExecutionStatus(jobExecutionId, new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params);
-              uploadDefinitionService.updateUploadDefinitionStatus(entity.getUploadDefinition().getId(), UploadDefinition.Status.ERROR, params.getTenantId())
-                .onFailure(errMsg -> LOGGER.error("startJob::Unable to update UploadDefinitionStatus by jobExecutionId {}. Cause: {}", jobExecutionId, errMsg));
-            }
-            LOGGER.error("Unable to start job: ", err);
-          })
-          .<Void>mapEmpty()
-          .onComplete(promise);
-        return null;
-      },
-      false
-    );
-    return promise.future();
+    return initializeJob(entity, client)
+      .compose(splitPieces ->
+        Future.all(splitPieces.values()
+          .stream()
+          .map(splitFileInformation -> initializeChildren(entity, client, params, splitFileInformation))
+          .toList()
+        )
+      )
+      // do this after everything has been queued successfully
+      .compose(v ->
+        uploadDefinitionService.updateBlocking(
+          entity.getUploadDefinition().getId(),
+          definition -> Future.succeededFuture(definition.withStatus(UploadDefinition.Status.COMPLETED)),
+          params.getTenantId()
+        )
+      )
+      .onSuccess(v -> LOGGER.info("startJob:: Job split and queued successfully!"))
+      .onFailure(err -> {
+        String jobExecutionId = entity.getUploadDefinition().getMetaJobExecutionId();
+        if (jobExecutionId != null) {
+          LOGGER.warn("startJob:: File was processed with errors by jobExecutionId {}. Cause: {}", jobExecutionId, err.getMessage());
+          uploadDefinitionService.updateJobExecutionStatus(jobExecutionId, new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params);
+          uploadDefinitionService.updateUploadDefinitionStatus(entity.getUploadDefinition().getId(), UploadDefinition.Status.ERROR, params.getTenantId())
+            .onFailure(errMsg -> LOGGER.error("startJob::Unable to update UploadDefinitionStatus by jobExecutionId {}. Cause: {}", jobExecutionId, errMsg));
+        }
+        LOGGER.error("Unable to start job: ", err);
+      })
+      .mapEmpty();
   }
 
   /**
@@ -182,10 +173,7 @@ public class SplitFileProcessingService {
         Map<String, JobExecution> executions = cf.resultAt(0);
         Map<String, SplitFileInformation> splitInformation = cf.resultAt(1);
 
-        splitInformation.forEach((key, value) ->
-          value.setJobExecution(executions.get(key))
-        );
-
+        splitInformation.forEach((key, value) -> value.setJobExecution(executions.get(key)));
         return splitInformation;
       })
       .compose(result ->
@@ -197,11 +185,7 @@ public class SplitFileProcessingService {
               JobExecution execution = splitInfo.getJobExecution();
               execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
 
-              return client
-                .putChangeManagerJobExecutionsById(
-                  execution.getId(),
-                  execution
-                )
+              return client.putChangeManagerJobExecutionsById(execution.getId(), execution)
                 .map(this::verifyOkStatus);
             })
             .toList()
@@ -353,7 +337,7 @@ public class SplitFileProcessingService {
 
       futures.add(
         sendJobExecutionRequest(client, initJobExecutionsRqDto)
-          .map(collection -> collection.getJobExecutions().get(0))
+          .map(collection -> collection.getJobExecutions().getFirst())
           .onFailure(err ->
             LOGGER.error(
               "Unable to register split file execution for {}: ",
@@ -542,8 +526,7 @@ public class SplitFileProcessingService {
           .stream()
           .collect(Collectors.toMap(JobExecution::getSourcePath, exec -> exec));
       })
-      .onFailure(err -> LOGGER.error("Error creating parent job execution", err)
-      );
+      .onFailure(err -> LOGGER.error("Error creating parent job execution", err));
   }
 
   /**
@@ -553,50 +536,27 @@ public class SplitFileProcessingService {
    * Note that non-MARC binary format files will not be split; instead, the keys of the split
    * chunks will simply be a list containing only the original key
    */
-  protected Future<SplitFileInformation> splitFile(
-    String key,
-    JobProfileInfo profile
-  ) {
-    Promise<SplitFileInformation> promise = Promise.promise();
-    executor.executeBlocking(
-      () -> {
-        Future.succeededFuture(new SplitFileInformation().withKey(key))
-          // splitting and counting must be done sequentially as splitting deletes the original file
-          .compose(result ->
-            minioStorageService
-              .readFile(key)
-              .map((InputStream stream) -> {
-                try {
-                  return result.withTotalRecords(
-                    FileSplitUtilities.countRecordsInFile(key, stream, profile)
-                  );
-                } catch (IOException e) {
-                  throw new UncheckedIOException(e);
-                }
-              })
-          )
-          .compose((SplitFileInformation file) -> {
-            if (FileSplitUtilities.isMarcBinary(key, profile)) {
-              return fileSplitService
-                .splitFileFromS3(vertx.getOrCreateContext(), key)
-                .map(file::withSplitKeys);
-            } else {
-              return Future.succeededFuture(file.withSplitKeys(List.of(key)));
-            }
-          })
-          .onComplete(promise);
-        return null;
-      },
-      false
-    );
-    return promise.future();
+  protected Future<SplitFileInformation> splitFile(String key, JobProfileInfo profile) {
+    return Future.succeededFuture(new SplitFileInformation().withKey(key))
+      // splitting and counting must be done sequentially as splitting deletes the original file
+      .compose(result -> minioStorageService.readFile(key)
+        .compose((InputStream stream) -> executor.executeBlocking(
+          () -> result.withTotalRecords(FileSplitUtilities.countRecordsInFile(key, stream, profile)), false)
+        )
+      )
+      .compose((SplitFileInformation file) -> {
+        if (FileSplitUtilities.isMarcBinary(key, profile)) {
+          return fileSplitService
+            .splitFileFromS3(vertx.getOrCreateContext(), key)
+            .map(file::withSplitKeys);
+        } else {
+          return Future.succeededFuture(file.withSplitKeys(List.of(key)));
+        }
+      });
   }
 
   protected Buffer verifyOkStatus(HttpResponse<Buffer> response) {
-    if (
-      response.statusCode() >= HttpStatus.SC_OK
-        && response.statusCode() <= HttpStatus.SC_NO_CONTENT
-    ) {
+    if (response.statusCode() >= HttpStatus.SC_OK && response.statusCode() <= HttpStatus.SC_NO_CONTENT) {
       return response.bodyAsBuffer();
     } else {
       throw LOGGER.throwing(

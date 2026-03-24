@@ -18,8 +18,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import org.folio.service.s3storage.MinioStorageService;
 import org.junit.Before;
@@ -102,40 +102,26 @@ public class FileSplitServiceTest {
   }
 
   @Test
-  @SuppressWarnings("java:S2699")
-  public void testSplitFileFromS3Exceptional(TestContext context)
-    throws IOException {
-    when(minioStorageService.readFile("test-key"))
-      .thenReturn(
-        Future.succeededFuture(new ByteArrayInputStream(new byte[1]))
-      );
-
-    try (
-      MockedStatic<FileSplitUtilities> mock = Mockito.mockStatic(
-        FileSplitUtilities.class,
-        Mockito.CALLS_REAL_METHODS
-      )
-    ) {
-      mock
-        .when(() -> FileSplitUtilities.createTemporaryDir(anyString()))
-        .thenThrow(IOException.class);
+  public void testSplitFileFromS3Exceptional(TestContext context) {
+    // invalid key with NUL character to cause attempt to create temporary directory with invalid name
+    // during FileSplitUtilities.createTemporaryDir(key) method call
+    String key = "test-key" + '\0';
+    when(minioStorageService.readFile(key))
+      .thenReturn(Future.succeededFuture(new ByteArrayInputStream(new byte[1])));
 
       fileSplitService
-        .splitFileFromS3(vertx.getOrCreateContext(), "test-key")
-        .onComplete(
-          context.asyncAssertFailure(result -> {
-            assertThat(result, is(instanceOf(UncheckedIOException.class)));
+        .splitFileFromS3(vertx.getOrCreateContext(), key)
+        .onComplete(context.asyncAssertFailure(result -> {
+          assertThat(result, is(instanceOf(InvalidPathException.class)));
 
-            verify(minioStorageService, times(1)).readFile("test-key");
+          verify(minioStorageService, times(1)).readFile(key);
 
-            verifyNoMoreInteractions(minioStorageService);
-          })
-        );
-    }
+          verifyNoMoreInteractions(minioStorageService);
+        }));
   }
 
   @Test
-  public void testSplitStream(TestContext context) throws IOException {
+  public void testSplitStream(TestContext context) {
     fileSplitService
       .splitStream(
         vertx.getOrCreateContext(),

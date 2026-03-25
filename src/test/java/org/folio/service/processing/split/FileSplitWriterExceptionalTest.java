@@ -49,7 +49,6 @@ public class FileSplitWriterExceptionalTest {
             FileSplitWriter writer = new FileSplitWriter(
               FileSplitWriterOptions
                 .builder()
-                .vertxContext(vertx.getOrCreateContext())
                 .chunkUploadingCompositeFuturePromise(
                   chunkUploadingCompositeFuturePromise
                 )
@@ -90,7 +89,6 @@ public class FileSplitWriterExceptionalTest {
       FileSplitWriter writer = new FileSplitWriter(
         FileSplitWriterOptions
           .builder()
-          .vertxContext(vertx.getOrCreateContext())
           .chunkUploadingCompositeFuturePromise(
             chunkUploadingCompositeFuturePromise
           )

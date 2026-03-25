@@ -1,7 +1,6 @@
 package org.folio.service.processing.split;
 
 import io.vertx.core.CompositeFuture;
-import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import javax.annotation.Nonnull;
@@ -15,9 +14,6 @@ import org.folio.service.s3storage.MinioStorageService;
 public class FileSplitWriterOptions {
 
   private MinioStorageService minioStorageService;
-
-  @Nonnull
-  private Context vertxContext;
 
   /**
    * A promise that will resolve with a CompositeFuture containing either S3

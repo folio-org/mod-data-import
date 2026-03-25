@@ -29,7 +29,7 @@ public class FileSplitWriterDeleteLocalTest {
   private static final String TEST_KEY = "10.mrc";
 
   @Test
-  public void testCleanup(TestContext context) throws IOException {
+  public void testCleanup(TestContext context) {
     vertx
       .getOrCreateContext()
       .owner()
@@ -45,7 +45,6 @@ public class FileSplitWriterDeleteLocalTest {
             FileSplitWriter writer = new FileSplitWriter(
               FileSplitWriterOptions
                 .builder()
-                .vertxContext(vertx.getOrCreateContext())
                 .chunkUploadingCompositeFuturePromise(
                   chunkUploadingCompositeFuturePromise
                 )

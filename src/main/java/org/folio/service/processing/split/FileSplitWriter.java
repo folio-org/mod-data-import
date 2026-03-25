@@ -4,7 +4,6 @@ import static java.nio.file.StandardOpenOption.CREATE;
 
 import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.CompositeFuture;
-import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -27,7 +26,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private final Context vertxContext;
   private final MinioStorageService minioStorageService;
   private final Promise<CompositeFuture> chunkUploadingCompositeFuturePromise;
   private final List<Future<String>> chunkProcessingFutures;
@@ -53,7 +51,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private int lastChunkSize;
 
   public FileSplitWriter(FileSplitWriterOptions options) {
-    this.vertxContext = options.getVertxContext();
     this.minioStorageService = options.getMinioStorageService();
     this.chunkUploadingCompositeFuturePromise =
       options.getChunkUploadingCompositeFuturePromise();

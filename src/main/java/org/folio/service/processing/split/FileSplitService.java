@@ -73,7 +73,6 @@ public class FileSplitService {
       FileSplitWriter writer = new FileSplitWriter(
         FileSplitWriterOptions
           .builder()
-          .vertxContext(context)
           .minioStorageService(minioStorageService)
           .chunkUploadingCompositeFuturePromise(promise)
           .outputKey(key)

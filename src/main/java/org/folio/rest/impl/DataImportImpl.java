@@ -281,24 +281,26 @@ public class DataImportImpl implements DataImport {
 
         ensureProcessFilesRqDtoWithFileDefinitionSourcePath(entity)
           .compose(v -> {
+            asyncResultHandler.handle(Future.succeededFuture(
+              PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()));
+
             if (this.fileSplittingEnabled) {
               OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+              var httpClient = vertxContext.owner().createHttpClient();
               ChangeManagerClient changeManagerClient = new ChangeManagerClient(params.getOkapiUrl(),
-                params.getTenantId(), params.getToken(), vertxContext.owner().createHttpClient());
-              return splitFileProcessingService.startJob(entity, changeManagerClient, params)
-                .mapEmpty();
+                params.getTenantId(), params.getToken(), httpClient);
+              splitFileProcessingService.startJob(entity, changeManagerClient, params);
+            } else {
+              fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders));
             }
-            fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders));
             return Future.succeededFuture();
           })
-          .onFailure(e -> LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Error during file processing for uploadDefinitionId: {}", uploadDefinitionId, e));
-
-        Future.succeededFuture()
-          .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
-          .map(Response.class::cast)
-          .onComplete(asyncResultHandler);
+          .onFailure(e -> {
+            LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Error during file processing for uploadDefinitionId: {}", uploadDefinitionId, e);
+            asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+          });
       } catch (Exception e) {
-        LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Cannot upload definitions process files by uploadDefinitionId {}", uploadDefinitionId);
+        LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Cannot upload definitions process files by uploadDefinitionId {}", uploadDefinitionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

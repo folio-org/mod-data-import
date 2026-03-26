@@ -4,7 +4,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
@@ -17,7 +19,7 @@ import io.vertx.core.json.Json;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.File;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.util.List;
 
 import lombok.SneakyThrows;
@@ -35,6 +37,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 @RunWith(VertxUnitRunner.class)
 public class ProcessS3APITest extends AbstractRestTest {
@@ -71,7 +74,7 @@ public class ProcessS3APITest extends AbstractRestTest {
       .when()
       .queryParam(
         "fileName",
-        uploadDefinition.getFileDefinitions().get(0).getName()
+        uploadDefinition.getFileDefinitions().getFirst().getName()
       )
       .get("/data-import/uploadUrl")
       .then()
@@ -80,7 +83,7 @@ public class ProcessS3APITest extends AbstractRestTest {
       .body()
       .as(FileUploadInfo.class);
 
-    HttpURLConnection con = (HttpURLConnection) new URL(uploadInfo.getUrl())
+    HttpURLConnection con = (HttpURLConnection) URI.create(uploadInfo.getUrl()).toURL()
       .openConnection();
     con.setRequestMethod("PUT");
     con.setDoOutput(true);
@@ -92,7 +95,7 @@ public class ProcessS3APITest extends AbstractRestTest {
             getClass()
               .getClassLoader()
               .getResource(
-                uploadDefinition.getFileDefinitions().get(0).getName()
+                uploadDefinition.getFileDefinitions().getFirst().getName()
               )
               .toURI()
           )
@@ -168,26 +171,53 @@ public class ProcessS3APITest extends AbstractRestTest {
     WireMock.stubFor(put(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.*"), true))
       .willReturn(ok()));
 
+    UploadDefinition uploadDefinition = RestAssured
+      .given()
+      .spec(spec)
+      .body(new UploadDefinition()
+        .withFileDefinitions(List.of(new FileDefinition()
+          .withJobExecutionId("9907701d-dd5e-5e9e-8ae6-4dbf7ef10e5d")
+          .withUiKey("1.mrc1547160916680")
+          .withName("1.mrc")
+          .withSize(10)))
+      )
+      .when()
+      .post("/data-import/uploadDefinitions")
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().body().as(UploadDefinition.class);
+
     RestAssured
       .given()
       .spec(spec)
       .body(
         new ProcessFilesRqDto()
-          .withUploadDefinition(
-            new UploadDefinition()
-              .withId("cfa58c5f-6911-53bb-8ce1-73c8bd4e1cef")
-          )
+          .withUploadDefinition(uploadDefinition)
           .withJobProfileInfo(
             new JobProfileInfo()
               .withId("3aa9cdff-737a-5d08-916f-94e862c0ae5f")
               .withDataType(JobProfileInfo.DataType.MARC)
           )
       )
-      .pathParam("uploadDefinitionId", "cfa58c5f-6911-53bb-8ce1-73c8bd4e1cef")
+      .pathParam("uploadDefinitionId", uploadDefinition.getId())
       .when()
       .post("/data-import/uploadDefinitions/{uploadDefinitionId}/processFiles")
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    // waits for uploadDefinition status change to avoid test failure caused by ongoing background processing
+    // that attempts to send a request for parent job creation after the test is completed and the mock server is reset
+    Awaitility.await().untilAsserted(() ->
+      RestAssured.given()
+        .spec(spec)
+        .when()
+        .get("/data-import/uploadDefinitions/" + uploadDefinition.getId())
+        .then()
+        .log().all()
+        .statusCode(HttpStatus.SC_OK)
+        .body("metaJobExecutionId", is(uploadDefinition.getMetaJobExecutionId()))
+        .body("id", notNullValue())
+        .body("status", is(ERROR.name())));
   }
 
   @AfterClass

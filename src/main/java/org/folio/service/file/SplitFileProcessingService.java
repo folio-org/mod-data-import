@@ -8,11 +8,8 @@ import io.vertx.core.WorkerExecutor;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -231,7 +228,7 @@ public class SplitFileProcessingService {
           // update parent
           .compose(r ->
             fileProcessor.updateJobsProfile(
-              Arrays.asList(
+              List.of(
                 new JobExecutionDto()
                   .withId(splitInfo.getJobExecution().getId())
               ),
@@ -325,7 +322,7 @@ public class SplitFileProcessingService {
     int partNumber = 1;
     for (String key : keys) {
       InitJobExecutionsRqDto initJobExecutionsRqDto = new InitJobExecutionsRqDto()
-        .withFiles(Arrays.asList(new File().withName(key)))
+        .withFiles(List.of(new File().withName(key)))
         .withParentJobId(parentJobExecution.getId())
         .withJobProfileInfo(jobProfileInfo)
         .withJobPartNumber(partNumber)
@@ -355,7 +352,7 @@ public class SplitFileProcessingService {
 
   /**
    * Gets the S3 storage key for a given job execution ID.
-   *
+   * <p>
    * <strong>No guarantee is made that the returned key will be valid in these cases:</strong>
    * <ul>
    * <li>The job execution ID refers to a parent or other meta job</li>
@@ -502,7 +499,7 @@ public class SplitFileProcessingService {
           .map(key -> new File().withName(key))
           .map(file ->
             new InitJobExecutionsRqDto()
-              .withFiles(Arrays.asList(file))
+              .withFiles(List.of(file))
               .withJobProfileInfo(entity.getJobProfileInfo())
               .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
               .withUserId(
@@ -514,7 +511,7 @@ public class SplitFileProcessingService {
           .map(request ->
             sendJobExecutionRequest(client, request)
               .map(InitJobExecutionsRsDto::getJobExecutions)
-              .map(executions -> executions.get(0))
+              .map(List::getFirst)
           )
           .toList()
       )

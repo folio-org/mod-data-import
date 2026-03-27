@@ -97,7 +97,7 @@ public class SplitFileProcessingServiceRegistrationTest
           assertThat(result.succeeded(), is(true));
           assertThat(result.list(), hasSize(1));
 
-          JobExecution execution = (JobExecution) result.list().get(0);
+          JobExecution execution = (JobExecution) result.list().getFirst();
           assertThat(execution.getId(), is("test-execution-id"));
 
           WireMock.verify(

@@ -44,10 +44,10 @@ public class MinioStorageServiceImpl implements MinioStorageService {
       // we just built the key; no need to verify
       try {
         String uploadId = client.initiateMultipartUpload(key);
-        LOGGER.info("Created upload ID {} for key {}", uploadId, key);
+        LOGGER.info("getFileUploadFirstPartUrl:: Created upload ID {} for key {}", uploadId, key);
         return uploadId;
       } catch (S3ClientException e) {
-        LOGGER.warn("Failed to create upload ID for key {}", key, e);
+        LOGGER.warn("getFileUploadFirstPartUrl:: Failed to create upload ID for key {}", key, e);
         throw e;
       }
     }).compose(outcome -> getFileUploadPartUrl(key, outcome, 1));
@@ -65,10 +65,11 @@ public class MinioStorageServiceImpl implements MinioStorageService {
       .executeBlocking(() -> {
         try {
           verifyKey(key);
-          LOGGER.info("Getting presigned URL for part {} of key {}/upload ID {}", partNumber, key, uploadId);
+          LOGGER.info("getFileUploadPartUrl:: Getting presigned URL for part {} of key {}/upload ID {}", partNumber, key, uploadId);
           return client.getPresignedMultipartUploadUrl(key, uploadId, partNumber);
         } catch (S3ClientException e) {
-          LOGGER.warn("Failed to get presigned URL for part {} of key {}/upload ID {}", partNumber, key, uploadId, e);
+          LOGGER.warn("getFileUploadPartUrl:: Failed to get presigned URL for part {} of key {}/upload ID {}",
+            partNumber, key, uploadId, e);
           throw e;
         }
       })
@@ -91,10 +92,10 @@ public class MinioStorageServiceImpl implements MinioStorageService {
             throw LOGGER.throwing(new NotFoundException("Key " + key + " is not present in S3"));
           }
 
-          LOGGER.info("Getting presigned URL for key {}", key);
+          LOGGER.info("getFileDownloadUrl:: Getting presigned URL for key {}", key);
           return client.getPresignedUrl(key);
         } catch (S3ClientException e) {
-          LOGGER.warn("Failed to get presigned URL for key {}", key, e);
+          LOGGER.warn("getFileDownloadUrl:: Failed to get presigned URL for key {}", key, e);
           throw e;
         }
       })
@@ -109,10 +110,10 @@ public class MinioStorageServiceImpl implements MinioStorageService {
       try {
         verifyKey(key);
         InputStream inStream = client.read(key);
-        LOGGER.info("Created input stream to read remote file for key {}", key);
+        LOGGER.info("readFile:: Created input stream to read remote file for key {}", key);
         return inStream;
       } catch (S3ClientException e) {
-        LOGGER.error("Could not read from S3 for key {}", key, e);
+        LOGGER.error("readFile:: Could not read from S3 for key {}", key, e);
         throw e;
       }
     });
@@ -142,11 +143,11 @@ public class MinioStorageServiceImpl implements MinioStorageService {
       try {
         verifyKey(key);
 
-        LOGGER.info("Deleting file {}", key);
+        LOGGER.info("remove:: Deleting file {}", key);
         client.remove(key);
         return null;
       } catch (S3ClientException e) {
-        LOGGER.error("Could not remove from S3 by key {} cause:", key, e);
+        LOGGER.error("remove:: Could not remove from S3 by key {} cause:", key, e);
         throw e;
       }
     });
@@ -165,7 +166,8 @@ public class MinioStorageServiceImpl implements MinioStorageService {
         client.completeMultipartUpload(path, uploadId, partEtags);
         return null;
       } catch (S3ClientException e) {
-        LOGGER.error("Failed to complete multipart upload for path {}, uploadId {}", path, uploadId, e);
+        LOGGER.error("completeMultipartFileUpload:: Failed to complete multipart upload for path {}, uploadId {}",
+          path, uploadId, e);
         throw e;
       }
     });

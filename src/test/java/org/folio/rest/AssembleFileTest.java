@@ -79,7 +79,7 @@ public class AssembleFileTest extends AbstractRestTest {
       .pathParam("uploadDefinitionId", definition.getId())
       .pathParam(
         "fileDefinitionId",
-        definition.getFileDefinitions().get(0).getId()
+        definition.getFileDefinitions().getFirst().getId()
       )
       .when()
       .post(ASSEMBLE_PATH)
@@ -89,11 +89,11 @@ public class AssembleFileTest extends AbstractRestTest {
     UploadDefinition result = getUploadDefinition(definition.getId());
 
     assertThat(
-      result.getFileDefinitions().get(0).getSourcePath(),
+      result.getFileDefinitions().getFirst().getSourcePath(),
       is(firstPartUploadInfo.getKey())
     );
     assertThat(
-      result.getFileDefinitions().get(0).getStatus(),
+      result.getFileDefinitions().getFirst().getStatus(),
       is(FileDefinition.Status.UPLOADED)
     );
   }
@@ -117,7 +117,7 @@ public class AssembleFileTest extends AbstractRestTest {
       .pathParam("uploadDefinitionId", definition.getId())
       .pathParam(
         "fileDefinitionId",
-        definition.getFileDefinitions().get(0).getId()
+        definition.getFileDefinitions().getFirst().getId()
       )
       .when()
       .post(ASSEMBLE_PATH)
@@ -127,11 +127,11 @@ public class AssembleFileTest extends AbstractRestTest {
     UploadDefinition result = getUploadDefinition(definition.getId());
 
     assertThat(
-      result.getFileDefinitions().get(0).getSourcePath(),
+      result.getFileDefinitions().getFirst().getSourcePath(),
       is(nullValue())
     );
     assertThat(
-      result.getFileDefinitions().get(0).getStatus(),
+      result.getFileDefinitions().getFirst().getStatus(),
       is(FileDefinition.Status.UPLOADING)
     );
   }

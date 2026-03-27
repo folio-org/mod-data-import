@@ -69,7 +69,7 @@ public class DownloadUrlAPITest extends AbstractRestTest {
       .pathParam("uploadDefinitionId", definition.getId())
       .pathParam(
         "fileDefinitionId",
-        definition.getFileDefinitions().get(0).getId()
+        definition.getFileDefinitions().getFirst().getId()
       )
       .when()
       .post(ASSEMBLE_PATH)

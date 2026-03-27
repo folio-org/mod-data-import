@@ -77,21 +77,21 @@ public class SplitFileProcessingServiceStartJobTest
         assertThat(request.getJobProfileInfo(), is(JOB_PROFILE_INFO));
         assertThat(request.getUserId(), is("created-user-id"));
 
-        if (request.getFiles().get(0).getName().contains("1")) {
+        if (request.getFiles().getFirst().getName().contains("1")) {
           responseHandler.handle(
             getSuccessArBuffer(
               new InitJobExecutionsRsDto()
                 .withJobExecutions(List.of(JOB_EXECUTION_1))
             )
           );
-        } else if (request.getFiles().get(0).getName().contains("2")) {
+        } else if (request.getFiles().getFirst().getName().contains("2")) {
           responseHandler.handle(
             getSuccessArBuffer(
               new InitJobExecutionsRsDto()
                 .withJobExecutions(Arrays.asList(JOB_EXECUTION_2))
             )
           );
-        } else if (request.getFiles().get(0).getName().contains("3")) {
+        } else if (request.getFiles().getFirst().getName().contains("3")) {
           responseHandler.handle(
             getSuccessArBuffer(
               new InitJobExecutionsRsDto()
@@ -281,21 +281,21 @@ public class SplitFileProcessingServiceStartJobTest
         assertThat(request.getFiles(), hasSize(1));
         assertThat(request.getJobProfileInfo(), is(JOB_PROFILE_INFO));
 
-        if (request.getFiles().get(0).getName().contains("1")) {
+        if (request.getFiles().getFirst().getName().contains("1")) {
           responseHandler.handle(
             getSuccessArBuffer(
               new InitJobExecutionsRsDto()
                 .withJobExecutions(Arrays.asList(JOB_EXECUTION_1))
             )
           );
-        } else if (request.getFiles().get(0).getName().contains("2")) {
+        } else if (request.getFiles().getFirst().getName().contains("2")) {
           responseHandler.handle(
             getSuccessArBuffer(
               new InitJobExecutionsRsDto()
                 .withJobExecutions(Arrays.asList(JOB_EXECUTION_2))
             )
           );
-        } else if (request.getFiles().get(0).getName().contains("3")) {
+        } else if (request.getFiles().getFirst().getName().contains("3")) {
           responseHandler.handle(
             getSuccessArBuffer(
               new InitJobExecutionsRsDto()

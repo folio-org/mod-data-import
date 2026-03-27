@@ -283,13 +283,13 @@ public class MinioStorageServiceTest {
   }
 
   @Test
-  public void testRemoveFileSuccessful(TestContext context) throws IOException {
+  public void testRemoveFileSuccessful(TestContext context) {
     Mockito.doReturn(S3_TEST_KEY).when(folioS3Client).remove(S3_TEST_KEY);
 
     minioStorageService
       .remove(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertSuccess(_v -> {
+        context.asyncAssertSuccess(v -> {
           Mockito.verify(folioS3Client, times(1)).remove(S3_TEST_KEY);
           Mockito.verifyNoMoreInteractions(folioS3Client);
         })
@@ -297,7 +297,7 @@ public class MinioStorageServiceTest {
   }
 
   @Test
-  public void testRemoveFileFailure(TestContext context) throws IOException {
+  public void testRemoveFileFailure(TestContext context) {
     S3ClientException exception = new S3ClientException("test exception");
 
     Mockito.doThrow(exception).when(folioS3Client).remove(S3_TEST_KEY);

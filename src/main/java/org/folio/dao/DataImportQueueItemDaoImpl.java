@@ -76,12 +76,9 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
         MODULE_GLOBAL_SCHEMA,
         QUEUE_ITEM_TABLE
       );
-      pgClientFactory.getInstance().select(preparedQuery, promise);
+      pgClientFactory.getInstance().select(preparedQuery, promise::handle);
     } catch (Exception e) {
-      LOGGER.warn(
-        "getDataImportQueueItem:: Error while searching for all DataImportQueueItems",
-        e
-      );
+      LOGGER.warn("getDataImportQueueItem:: Error while searching for all DataImportQueueItems", e);
       promise.fail(e);
     }
     return promise
@@ -151,21 +148,16 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
       );
       pgClientFactory
         .getInstance()
-        .select(preparedQuery, Tuple.of(id), promise);
+        .select(preparedQuery, Tuple.of(id), promise::handle);
     } catch (Exception e) {
-      LOGGER.warn(
-        "getDataImportQueueItem:: Error while searching for DataImportQueueItem by ID",
-        e
-      );
+      LOGGER.warn("getDataImportQueueItem:: Error while searching for DataImportQueueItem by ID", e);
       promise.fail(e);
     }
     return promise
       .future()
       .map((RowSet<Row> resultSet) -> {
         if (resultSet.rowCount() == 0) {
-          throw new NotFoundException(
-            format("DataImportQueueItem with id '%s' was not found", id)
-          );
+          throw new NotFoundException(format("DataImportQueueItem with id '%s' was not found", id));
         } else {
           return mapRowJsonToQueueItem(resultSet.iterator().next());
         }
@@ -174,38 +166,32 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
 
   @Override
   public Future<String> addQueueItem(DataImportQueueItem dataImportQueueItem) {
-    Promise<RowSet<Row>> promise = Promise.promise();
     String preparedQuery = format(
       INSERT_SQL,
       MODULE_GLOBAL_SCHEMA,
       QUEUE_ITEM_TABLE
     );
-    pgClientFactory
-      .getInstance()
-      .execute(
-        preparedQuery,
-        Tuple.of(
-          dataImportQueueItem.getId(),
-          dataImportQueueItem.getJobExecutionId(),
-          dataImportQueueItem.getUploadDefinitionId(),
-          dataImportQueueItem.getTenant(),
-          dataImportQueueItem.getOriginalSize(),
-          dataImportQueueItem.getFilePath(),
-          LocalDateTime.ofInstant(
-            dataImportQueueItem.getTimestamp().toInstant(),
-            timeZone.toZoneId()
-          ),
-          dataImportQueueItem.getPartNumber(),
-          dataImportQueueItem.getProcessing(),
-          dataImportQueueItem.getOkapiUrl(),
-          dataImportQueueItem.getDataType(),
-          dataImportQueueItem.getOkapiToken(),
-          dataImportQueueItem.getOkapiPermissions(),
-          dataImportQueueItem.getOkapiRequestId()
-        ),
-        promise
-      );
-    return promise.future().map(dataImportQueueItem.getId());
+    Tuple queryParams = Tuple.of(
+      dataImportQueueItem.getId(),
+      dataImportQueueItem.getJobExecutionId(),
+      dataImportQueueItem.getUploadDefinitionId(),
+      dataImportQueueItem.getTenant(),
+      dataImportQueueItem.getOriginalSize(),
+      dataImportQueueItem.getFilePath(),
+      LocalDateTime.ofInstant(
+        dataImportQueueItem.getTimestamp().toInstant(),
+        timeZone.toZoneId()
+      ),
+      dataImportQueueItem.getPartNumber(),
+      dataImportQueueItem.getProcessing(),
+      dataImportQueueItem.getOkapiUrl(),
+      dataImportQueueItem.getDataType(),
+      dataImportQueueItem.getOkapiToken(),
+      dataImportQueueItem.getOkapiPermissions(),
+      dataImportQueueItem.getOkapiRequestId()
+    );
+    return pgClientFactory.getInstance()
+      .execute(preparedQuery, queryParams).map(dataImportQueueItem.getId());
   }
 
   @Override

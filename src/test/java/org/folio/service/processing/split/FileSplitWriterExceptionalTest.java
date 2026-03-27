@@ -29,7 +29,7 @@ public class FileSplitWriterExceptionalTest {
   private static final String TEST_KEY = "10.mrc";
 
   @Test
-  public void testInvalidDirectory(TestContext context) throws IOException {
+  public void testInvalidDirectory(TestContext context) {
     Async async = context.strictAsync(1); // ensure only one exception
 
     vertx
@@ -49,7 +49,6 @@ public class FileSplitWriterExceptionalTest {
             FileSplitWriter writer = new FileSplitWriter(
               FileSplitWriterOptions
                 .builder()
-                .vertxContext(vertx.getOrCreateContext())
                 .chunkUploadingCompositeFuturePromise(
                   chunkUploadingCompositeFuturePromise
                 )
@@ -90,7 +89,6 @@ public class FileSplitWriterExceptionalTest {
       FileSplitWriter writer = new FileSplitWriter(
         FileSplitWriterOptions
           .builder()
-          .vertxContext(vertx.getOrCreateContext())
           .chunkUploadingCompositeFuturePromise(
             chunkUploadingCompositeFuturePromise
           )

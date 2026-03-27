@@ -2,6 +2,7 @@
 * [MODDATAIMP-1214](https://folio-org.atlassian.net/browse/MODDATAIMP-1214) Ensure permission that allows update of shared instance and MARC
 * [MODSOURMAN-1136](https://folio-org.atlassian.net/browse/MODSOURMAN-1136) Use dedicated job cancellation endpoint instead for job status update
 * [MODDATAIMP-1223](https://folio-org.atlassian.net/browse/MODDATAIMP-1223) File splitting creates duplicate records
+* [MODDATAIMP-1234](https://folio-org.atlassian.net/browse/MODDATAIMP-1234) Upgrade module to Vert.x 5.0
 
 ## 2024-03-13 v3.3.0
 * [MODDATAIMP-1109](https://folio-org.atlassian.net/browse/MODDATAIMP-1109) Issue with mod-data-import module when configuration for AWS is set

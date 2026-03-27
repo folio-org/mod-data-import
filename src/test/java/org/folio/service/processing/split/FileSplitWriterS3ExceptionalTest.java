@@ -53,7 +53,6 @@ public class FileSplitWriterS3ExceptionalTest {
       new FileSplitWriter(
         FileSplitWriterOptions
           .builder()
-          .vertxContext(vertx.getOrCreateContext())
           .minioStorageService(minioStorageService)
           .chunkUploadingCompositeFuturePromise(
             chunkUploadingCompositeFuturePromise

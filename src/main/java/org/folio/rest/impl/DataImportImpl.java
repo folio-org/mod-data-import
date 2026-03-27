@@ -279,33 +279,28 @@ public class DataImportImpl implements DataImport {
       try {
         LOGGER.info("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Starting file processing for upload definition {}", uploadDefinitionId);
 
-        if (this.fileSplittingEnabled) {
-          OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-          splitFileProcessingService
-            .startJob(
-              entity,
-              new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertxContext.owner().createHttpClient()),
-              params
-            );
-          Future.succeededFuture()
-            .map(PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204())
-            .map(Response.class::cast)
-            .onComplete(asyncResultHandler);
-        } else {
-          fileProcessor.process(
-            JsonObject.mapFrom(entity),
-            JsonObject.mapFrom(okapiHeaders)
-          );
-          Future
-            .succeededFuture()
-            .map(
-              PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()
-            )
-            .map(Response.class::cast)
-            .onComplete(asyncResultHandler);
-        }
+        ensureProcessFilesRqDtoWithFileDefinitionSourcePath(entity)
+          .compose(v -> {
+            asyncResultHandler.handle(Future.succeededFuture(
+              PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()));
+
+            if (this.fileSplittingEnabled) {
+              OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+              var httpClient = vertxContext.owner().createHttpClient();
+              ChangeManagerClient changeManagerClient = new ChangeManagerClient(params.getOkapiUrl(),
+                params.getTenantId(), params.getToken(), httpClient);
+              splitFileProcessingService.startJob(entity, changeManagerClient, params);
+            } else {
+              fileProcessor.process(JsonObject.mapFrom(entity), JsonObject.mapFrom(okapiHeaders));
+            }
+            return Future.succeededFuture();
+          })
+          .onFailure(e -> {
+            LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Error during file processing for uploadDefinitionId: {}", uploadDefinitionId, e);
+            asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+          });
       } catch (Exception e) {
-        LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Cannot upload definitions process files by uploadDefinitionId {}", uploadDefinitionId);
+        LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Cannot upload definitions process files by uploadDefinitionId {}", uploadDefinitionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -614,5 +609,25 @@ public class DataImportImpl implements DataImport {
   private static String getJson(String strEncoded) {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
+  }
+
+  /**
+   * Populates {@code processFilesRqDto} with uploadDefinition from DB to ensure fileDefinition.sourcePath field value presence
+   * because since RMB v36.0.0, the fileDefinition.sourcePath field, defined as a read-only field, is passed as null
+   * to the {@link DataImportImpl#postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId} method during the
+   * endpoint call.
+   *
+   * @param processFilesRqDto - request DTO to be provided with FileDefinition.sourcePath field value
+   * @return Future of Void
+   */
+  private Future<Void> ensureProcessFilesRqDtoWithFileDefinitionSourcePath(ProcessFilesRqDto processFilesRqDto) {
+    String uploadDefinitionId = processFilesRqDto.getUploadDefinition().getId();
+    return uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId, tenantId)
+      .compose(uploadDefinitionOptional -> uploadDefinitionOptional.isPresent()
+        ? Future.succeededFuture(processFilesRqDto.withUploadDefinition(uploadDefinitionOptional.get()))
+        : Future.failedFuture(new NotFoundException("Upload definition not found by id: " + uploadDefinitionId)))
+      .onFailure(e ->
+        LOGGER.warn("ensureProcessFilesRqDtoWithFileDefinitionSourcePath:: Failed to get upload definition by id: {}", uploadDefinitionId, e))
+      .mapEmpty();
   }
 }

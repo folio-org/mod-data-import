@@ -33,25 +33,13 @@ public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<Strin
 
   @Override
   public Future<Void> write(KafkaProducerRecord<String, String> data) {
-    return Future.future(e -> producer.write(data, ar -> logChunkProcessingResult(data.headers(), ar)));
-  }
-
-  @Override
-  public void write(KafkaProducerRecord<String, String> data, Handler<AsyncResult<Void>> handler) {
-    producer.write(data, ar -> {
-      logChunkProcessingResult(data.headers(), ar);
-      handler.handle(ar);
-    });
+    return producer.write(data)
+      .onComplete(ar -> logChunkProcessingResult(data.headers(), ar));
   }
 
   @Override
   public Future<Void> end() {
-    return Future.future( e ->producer.end());
-  }
-
-  @Override
-  public void end(Handler<AsyncResult<Void>> handler) {
-    producer.end(handler);
+    return producer.end();
   }
 
   @Override

@@ -684,16 +684,19 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .put(OKAPI_TENANT_HEADER, TENANT_ID)
       .put(OKAPI_TOKEN_HEADER, TOKEN);
 
-    WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
-      .willReturn(WireMock.ok()));
-
     FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null);
     fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
-    UploadDefinition uploadDefinition = new UploadDefinition();
-    uploadDefinition.setId(UUID.randomUUID().toString());
-    uploadDefinition.setMetaJobExecutionId(UUID.randomUUID().toString());
-    uploadDefinition.setCreateDate(new Date());
-    uploadDefinition.setStatus(UploadDefinition.Status.IN_PROGRESS);
+
+    UploadDefinition uploadDefinition = RestAssured.given()
+      .spec(spec)
+      .body(uploadDef1)
+      .when()
+      .post(DEFINITION_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().body().as(UploadDefinition.class);
+
     JobProfileInfo jobProfile = new JobProfileInfo();
     jobProfile.setId(UUID.randomUUID().toString());
     jobProfile.setName(StringUtils.EMPTY);
@@ -710,6 +713,18 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    Awaitility.await().untilAsserted(() ->
+      RestAssured.given()
+        .spec(spec)
+        .when()
+        .get(DEFINITION_PATH + "/" + uploadDefinition.getId())
+        .then()
+        .log().all()
+        .statusCode(HttpStatus.SC_OK)
+        .body("metaJobExecutionId", is(uploadDefinition.getMetaJobExecutionId()))
+        .body("id", notNullValue())
+        .body("status", is(COMPLETED.name())));
   }
 
   @Test
@@ -769,7 +784,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .post(DEFINITION_PATH + "/" + uploadDefinition.getId() + PROCESS_FILE_IMPORT_PATH)
       .then()
       .log().all()
-      .statusCode(HttpStatus.SC_NO_CONTENT);
+      .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
   @Test
@@ -832,7 +847,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .spec(spec)
       .body("{}")
       .when()
-      .post(DEFINITION_PATH + "/" + UUID.randomUUID().toString() + PROCESS_FILE_IMPORT_PATH)
+      .post(DEFINITION_PATH + "/" + UUID.randomUUID() + PROCESS_FILE_IMPORT_PATH)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);

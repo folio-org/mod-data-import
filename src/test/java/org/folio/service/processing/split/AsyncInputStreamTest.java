@@ -107,8 +107,8 @@ public class AsyncInputStreamTest {
       context.verify(_v -> {
         assertThat(receivedData, hasSize(1));
         assertThat(receivedData, hasSize(1));
-        assertThat(receivedData.get(0), is(smallBuff));
-        assertThat(receivedData.get(0), is(smallBuff));
+        assertThat(receivedData.getFirst(), is(smallBuff));
+        assertThat(receivedData.getFirst(), is(smallBuff));
         async.complete();
       })
     );
@@ -134,8 +134,8 @@ public class AsyncInputStreamTest {
       context.verify(_v -> {
         assertThat(receivedData, hasSize(1));
         assertThat(receivedData, hasSize(1));
-        assertThat(receivedData.get(0), is(mediumBuff));
-        assertThat(receivedData.get(0), is(mediumBuff));
+        assertThat(receivedData.getFirst(), is(mediumBuff));
+        assertThat(receivedData.getFirst(), is(mediumBuff));
         async.complete();
       })
     );
@@ -161,7 +161,7 @@ public class AsyncInputStreamTest {
         assertThat(receivedData, hasSize(3));
         assertThat(receivedData, hasSize(3));
         assertThat(
-          receivedData.get(0),
+          receivedData.getFirst(),
           is(Arrays.copyOfRange(largeBuff, 0, 8192))
         );
         assertThat(
@@ -294,7 +294,7 @@ public class AsyncInputStreamTest {
         assertThat(receivedData, hasSize(1));
         assertThat(receivedData, hasSize(1));
         assertThat(
-          receivedData.get(0),
+          receivedData.getFirst(),
           is(Arrays.copyOfRange(largeBuff, 0, 8192))
         );
         async.complete();

@@ -26,7 +26,6 @@ public class FileSplitWriterUnusedMethodTest {
     FileSplitWriter writer = new FileSplitWriter(
       FileSplitWriterOptions
         .builder()
-        .vertxContext(vertx.getOrCreateContext())
         .chunkUploadingCompositeFuturePromise(Promise.promise())
         .outputKey("")
         .chunkFolder(temporaryFolder.newFolder().toString())

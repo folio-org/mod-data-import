@@ -105,7 +105,7 @@ public class ScoreServiceRankingTest {
       waiting
     );
 
-    assertThat(result, contains(waiting.getDataImportQueueItems().get(0)));
+    assertThat(result, contains(waiting.getDataImportQueueItems().getFirst()));
 
     waiting
       .getDataImportQueueItems()
@@ -123,7 +123,7 @@ public class ScoreServiceRankingTest {
       waiting
     );
 
-    assertThat(result, contains(waiting.getDataImportQueueItems().get(0)));
+    assertThat(result, contains(waiting.getDataImportQueueItems().getFirst()));
 
     waiting
       .getDataImportQueueItems()

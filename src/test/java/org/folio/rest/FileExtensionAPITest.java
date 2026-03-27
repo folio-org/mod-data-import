@@ -237,7 +237,7 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .body("id", is(fileExtension.getId()))
       .body("extension", is(fileExtension.getExtension()))
       .body("dataTypes.size()", is(fileExtension.getDataTypes().size()))
-      .body("dataTypes.get(0)", is(fileExtension.getDataTypes().get(0).value()))
+      .body("dataTypes.get(0)", is(fileExtension.getDataTypes().getFirst().value()))
       .body("importBlocked", is(true));
   }
 

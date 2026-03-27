@@ -217,7 +217,6 @@ public class FileSplitWriterRegularTest {
       new FileSplitWriter(
         FileSplitWriterOptions
           .builder()
-          .vertxContext(vertx.getOrCreateContext())
           .chunkUploadingCompositeFuturePromise(
             chunkUploadingCompositeFuturePromise
           )

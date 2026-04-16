@@ -1,8 +1,12 @@
-## 2025-mm-dd v3.4.0-SNAPSHOT
+## 2026-04-16 v3.4.0
 * [MODDATAIMP-1214](https://folio-org.atlassian.net/browse/MODDATAIMP-1214) Ensure permission that allows update of shared instance and MARC
 * [MODSOURMAN-1136](https://folio-org.atlassian.net/browse/MODSOURMAN-1136) Use dedicated job cancellation endpoint instead for job status update
 * [MODDATAIMP-1223](https://folio-org.atlassian.net/browse/MODDATAIMP-1223) File splitting creates duplicate records
 * [MODDATAIMP-1234](https://folio-org.atlassian.net/browse/MODDATAIMP-1234) Upgrade module to Vert.x 5.0
+* [MODDATAIMP-1279](https://folio-org.atlassian.net/browse/MODDATAIMP-1279) Add dynamic logging level setting
+* [MODDATAIMP-1271](https://folio-org.atlassian.net/browse/MODDATAIMP-1271) Add S3_SUB_PATH Environment Variable Support
+* [MODDATAIMP-1255](https://folio-org.atlassian.net/browse/MODDATAIMP-1255) Properly close resources for File Splitting functionality
+* [MODDATAIMP-1174](https://folio-org.atlassian.net/browse/MODDATAIMP-1174) Sensitive data in logs cleanup
 
 ## 2024-03-13 v3.3.0
 * [MODDATAIMP-1109](https://folio-org.atlassian.net/browse/MODDATAIMP-1109) Issue with mod-data-import module when configuration for AWS is set

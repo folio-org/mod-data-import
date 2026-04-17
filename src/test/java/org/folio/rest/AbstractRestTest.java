@@ -188,11 +188,8 @@ public abstract class AbstractRestTest {
     String okapiUrl = "http://localhost:" + port;
     PostgresClient.stopPostgresTester();
     PostgresClient.closeAllClients();
-    useExternalDatabase = System.getProperty(
-      "org.folio.source.record.manager.test.database",
-      "embedded");
 
-    String useExternalDatabase = System.getProperty(
+    useExternalDatabase = System.getProperty(
       "org.folio.data.import.test.database",
       "embedded");
 

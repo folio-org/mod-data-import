@@ -30,7 +30,7 @@
     <folio-s3-client.version>3.0.0</folio-s3-client.version>
     <aws-sdk-java.version>2.31.21</aws-sdk-java.version>
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
-    <testcontainers.version>1.20.6</testcontainers.version>
+    <testcontainers.version>2.0.4</testcontainers.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
   </properties>
 
@@ -245,17 +245,17 @@
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>kafka</artifactId>
+      <artifactId>testcontainers-kafka</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>localstack</artifactId>
+      <artifactId>testcontainers-localstack</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

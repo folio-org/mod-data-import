@@ -129,7 +129,7 @@ public abstract class AbstractRestTest {
       new JobExecution().withId(UUID.randomUUID().toString()).withSourcePath("CornellFOLIOExemplars.mrc")));
 
   @Container
-  public static final KafkaContainer kafkaContainer = new KafkaContainer("apache/kafka-native:3.8.0")
+  public static final KafkaContainer kafkaContainer = new KafkaContainer("apache/kafka-native:4.2.0")
       .withStartupAttempts(3);
 
   @Container

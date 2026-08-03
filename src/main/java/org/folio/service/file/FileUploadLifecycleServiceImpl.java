@@ -6,7 +6,7 @@ import io.vertx.core.Vertx;
 import javax.ws.rs.BadRequestException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
@@ -51,7 +51,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   }
 
   @Override
-  public Future<UploadDefinition> beforeFileSave(String fileId, String uploadDefinitionId, OkapiConnectionParams params) {
+  public Future<UploadDefinition> beforeFileSave(String fileId, String uploadDefinitionId, ConnectionParams params) {
     return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef -> {
       Promise<UploadDefinition> promise = Promise.promise();
       Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDef, fileId);
@@ -68,7 +68,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   }
 
   @Override
-  public Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, OkapiConnectionParams params) {
+  public Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, ConnectionParams params) {
     LOGGER.debug("afterFileSave:: fileDefinition.jobExecutionId {}", fileDefinition.getJobExecutionId());
     return updateUploadDefinition(fileDefinition, params)
       .compose(definition ->
@@ -84,7 +84,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
    * Updates the upload definition with the new file definition and status.
    * If successful, returns the updated UploadDefinition.
    */
-  private Future<UploadDefinition> updateUploadDefinition(FileDefinition fileDefinition, OkapiConnectionParams params) {
+  private Future<UploadDefinition> updateUploadDefinition(FileDefinition fileDefinition, ConnectionParams params) {
     return uploadDefinitionService.updateBlocking(
       fileDefinition.getUploadDefinitionId(),
       definition -> {
@@ -103,7 +103,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   /**
    * Updates the job execution status. If successful, returns true.
    */
-  private Future<Boolean> updateJobExecutionStatus(FileDefinition fileDefinition, OkapiConnectionParams params, UploadDefinition uploadDefinition) {
+  private Future<Boolean> updateJobExecutionStatus(FileDefinition fileDefinition, ConnectionParams params, UploadDefinition uploadDefinition) {
     LOGGER.debug("updateJobExecutionStatus:: JobExecutionId {}, uploadDefinitionId {}", fileDefinition.getJobExecutionId(), uploadDefinition.getId());
     return uploadDefinitionService.updateJobExecutionStatus(fileDefinition.getJobExecutionId(), new StatusDto().withStatus(StatusDto.Status.FILE_UPLOADED), params)
       .onComplete(booleanAsyncResult -> {
@@ -118,7 +118,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
    * Rolls back the upload definition update in case of a failure in job execution status update.
    */
   private Future<UploadDefinition> rollbackUploadUpdate(FileDefinition fileDefinition,
-                                                        OkapiConnectionParams params, Throwable throwable) {
+                                                        ConnectionParams params, Throwable throwable) {
     LOGGER.warn("Rollback: Job execution status update failed for jobExecutionId {}. Rolling back upload definition update.",
       fileDefinition.getJobExecutionId(), throwable);
 
@@ -143,7 +143,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   }
 
   @Override
-  public Future<FileDefinition> saveFileChunk(String fileId, UploadDefinition uploadDefinition, byte[] data, OkapiConnectionParams params) {
+  public Future<FileDefinition> saveFileChunk(String fileId, UploadDefinition uploadDefinition, byte[] data, ConnectionParams params) {
     LOGGER.debug("saveFileChunk:: fileId {}", fileId);
     Optional<FileDefinition> optionalFileDefinition = findFileDefinition(uploadDefinition, fileId);
     if (optionalFileDefinition.isPresent()) {
@@ -158,7 +158,7 @@ public class FileUploadLifecycleServiceImpl implements FileUploadLifecycleServic
   }
 
   @Override
-  public Future<Boolean> deleteFile(String id, String uploadDefinitionId, OkapiConnectionParams params) {
+  public Future<Boolean> deleteFile(String id, String uploadDefinitionId, ConnectionParams params) {
     LOGGER.debug("deleteFile:: fileId {}, uploadDefinitionId {}", id, uploadDefinitionId);
     return uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDefinition -> {
       Promise<UploadDefinition> promise = Promise.promise();

@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dataimport.util.ExceptionHelper;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.client.ChangeManagerClient;
@@ -95,7 +95,7 @@ public class DataImportImpl implements DataImport {
           } else if (errors.result().getTotalRecords() > 0) {
             asyncResultHandler.handle(Future.succeededFuture(PostDataImportUploadDefinitionsResponse.respond422WithApplicationJson(errors.result())));
           } else {
-            OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+            ConnectionParams params = new ConnectionParams(okapiHeaders);
             uploadDefinitionService.addUploadDefinition(entity, params)
               .map((Response) PostDataImportUploadDefinitionsResponse
                 .respond201WithApplicationJson(entity, PostDataImportUploadDefinitionsResponse.headersFor201()))
@@ -157,7 +157,7 @@ public class DataImportImpl implements DataImport {
     vertxContext.runOnContext(c -> {
       try {
         LOGGER.debug("deleteDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
-        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+        ConnectionParams params = new ConnectionParams(okapiHeaders);
         uploadDefinitionService.deleteUploadDefinition(uploadDefinitionId, params)
           .map(deleted -> (Response) DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.respond204())
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -215,7 +215,7 @@ public class DataImportImpl implements DataImport {
                                                                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       LOGGER.debug("deleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: fileId {}, uploadDefinitionId {}", fileId, uploadDefinitionId);
-      OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+      ConnectionParams params = new ConnectionParams(okapiHeaders);
       vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId, params)
         .map(deleted -> (Response) DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204())
         .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -236,7 +236,7 @@ public class DataImportImpl implements DataImport {
     try {
       LOGGER.debug("postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: uploadDefinitionId {}, fileId {}", uploadDefinitionId, fileId);
       Future<Response> responseFuture;
-      OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+      ConnectionParams params = new ConnectionParams(okapiHeaders);
       if (okapiHeaders.get(STREAM_ABORT) == null) {
         byte[] data = IOUtils.toByteArray(entity);
         if (fileUploadStateFuture == null) {
@@ -285,9 +285,9 @@ public class DataImportImpl implements DataImport {
               PostDataImportUploadDefinitionsProcessFilesByUploadDefinitionIdResponse.respond204()));
 
             if (this.fileSplittingEnabled) {
-              OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+              ConnectionParams params = new ConnectionParams(okapiHeaders);
               var httpClient = vertxContext.owner().createHttpClient();
-              ChangeManagerClient changeManagerClient = new ChangeManagerClient(params.getOkapiUrl(),
+              ChangeManagerClient changeManagerClient = new ChangeManagerClient(params.getConnectionUrl(),
                 params.getTenantId(), params.getToken(), httpClient);
               splitFileProcessingService.startJob(entity, changeManagerClient, params);
             } else {
@@ -337,7 +337,7 @@ public class DataImportImpl implements DataImport {
           } else if (errors.result().getTotalRecords() > 0) {
             asyncResultHandler.handle(Future.succeededFuture(PostDataImportFileExtensionsResponse.respond422WithApplicationJson(errors.result())));
           } else {
-            fileExtensionService.addFileExtension(entity, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
+            fileExtensionService.addFileExtension(entity, new ConnectionParams(okapiHeaders))
               .map((Response) PostDataImportFileExtensionsResponse
                 .respond201WithApplicationJson(entity, PostDataImportFileExtensionsResponse.headersFor201()))
               .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -385,7 +385,7 @@ public class DataImportImpl implements DataImport {
           } else if (errors.result().getTotalRecords() > 0) {
             asyncResultHandler.handle(Future.succeededFuture(PutDataImportFileExtensionsByIdResponse.respond422WithApplicationJson(errors.result())));
           } else {
-            fileExtensionService.updateFileExtension(entity, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
+            fileExtensionService.updateFileExtension(entity, new ConnectionParams(okapiHeaders))
               .map(updatedEntity -> (Response) PutDataImportFileExtensionsByIdResponse.respond200WithApplicationJson(updatedEntity))
               .otherwise(ExceptionHelper::mapExceptionToResponse)
               .onComplete(asyncResultHandler);
@@ -494,7 +494,7 @@ public class DataImportImpl implements DataImport {
         jobExecutionId
       );
       splitFileProcessingService
-        .getKey(jobExecutionId, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
+        .getKey(jobExecutionId, new ConnectionParams(okapiHeaders))
         .compose(key -> minioStorageService.getFileDownloadUrl(key))
         .map(GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse::respond200WithApplicationJson)
         .map(Response.class::cast)
@@ -525,7 +525,7 @@ public class DataImportImpl implements DataImport {
         fileId,
         entity.getKey()
       );
-      OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
+      ConnectionParams params = new ConnectionParams(okapiHeaders);
       fileService.beforeFileSave(fileId, uploadDefinitionId, params)
         .map(uploadDefinition ->
           uploadDefinition
@@ -550,8 +550,8 @@ public class DataImportImpl implements DataImport {
   @Override
   public void deleteDataImportJobExecutionsCancelByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(),params.getTenantId(),params.getToken(),vertxContext.owner().createHttpClient());
+    ConnectionParams params = new ConnectionParams(okapiHeaders);
+    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertxContext.owner().createHttpClient());
 
     vertxContext.runOnContext(v ->
       splitFileProcessingService.cancelJob(jobExecutionId, params, client)

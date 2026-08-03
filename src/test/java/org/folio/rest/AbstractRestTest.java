@@ -26,6 +26,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import lombok.extern.log4j.Log4j2;
 import org.folio.liquibase.LiquibaseUtil;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
@@ -59,8 +60,6 @@ import java.util.Collections;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 
 /**
  * Abstract test for the REST API testing needs.
@@ -270,16 +269,16 @@ public abstract class AbstractRestTest {
     String okapiUserIdHeader = UUID.randomUUID().toString();
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
-      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
-      .addHeader(OKAPI_TENANT_HEADER, TENANT_ID)
+      .addHeader(XOkapiHeaders.URL, "http://localhost:" + mockServer.port())
+      .addHeader(XOkapiHeaders.TENANT, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserIdHeader)
       .addHeader("Accept", "text/plain, application/json")
       .setBaseUri("http://localhost:" + port)
       .build();
     specUpload = new RequestSpecBuilder()
       .setContentType("application/octet-stream")
-      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
-      .addHeader(OKAPI_TENANT_HEADER, TENANT_ID)
+      .addHeader(XOkapiHeaders.URL, "http://localhost:" + mockServer.port())
+      .addHeader(XOkapiHeaders.TENANT, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_USERID_HEADER, UUID.randomUUID().toString())
       .setBaseUri("http://localhost:" + port)
       .addHeader("Accept", "text/plain, application/json")

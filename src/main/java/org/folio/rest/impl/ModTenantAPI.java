@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.tools.utils.TenantTool.tenantId;
 
 import io.vertx.core.AsyncResult;
@@ -13,8 +12,9 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.services.KafkaAdminClientService;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.service.kafka.DIKafkaTopicService;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.TenantAttributes;
@@ -72,7 +72,7 @@ public class ModTenantAPI extends TenantAPI {
 
   private Future<Boolean> setupDefaultFileExtensions(Map<String, String> headers) {
     try {
-      String tenantId = TenantTool.calculateTenantId(headers.get(OKAPI_TENANT_HEADER));
+      String tenantId = TenantTool.calculateTenantId(headers.get(XOkapiHeaders.TENANT));
       return
         fileExtensionService.getFileExtensions(null, 0, 1, tenantId)
           .compose(r -> createDefExtensionsIfNeeded(r, fileExtensionService, tenantId));
@@ -94,7 +94,7 @@ public class ModTenantAPI extends TenantAPI {
 
   private void initStorageCleanupService(Map<String, String> headers, Context context) {
     Vertx vertx = context.owner();
-    OkapiConnectionParams params = new OkapiConnectionParams(headers, vertx);
+    ConnectionParams params = new ConnectionParams(headers);
 
     vertx.setPeriodic(delayTimeBetweenCleanupValueMillis,
       id -> vertx.executeBlocking(() -> storageCleanupService.cleanStorage(params)

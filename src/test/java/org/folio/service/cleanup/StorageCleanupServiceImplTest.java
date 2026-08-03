@@ -10,7 +10,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.io.FileUtils;
 import org.folio.dao.UploadDefinitionDao;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.Metadata;
@@ -33,8 +34,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.LOADED;
 
@@ -52,7 +51,7 @@ public class StorageCleanupServiceImplTest extends AbstractRestTest {
   private UploadDefinitionDao uploadDefinitionDao;
   @Autowired
   private StorageCleanupService storageCleanupService;
-  private OkapiConnectionParams okapiParams;
+  private ConnectionParams okapiParams;
   private UploadDefinition uploadDefinition;
 
   private FileDefinition fileDefinition = new FileDefinition()
@@ -70,14 +69,15 @@ public class StorageCleanupServiceImplTest extends AbstractRestTest {
     SpringContextUtil.autowireDependencies(this, vertxContext);
   }
 
+  @Override
   @Before
   public void setUp(TestContext context) throws IOException {
     super.setUp(context);
 
     Map<String, String> headers = new HashedMap<>();
-    headers.put(OKAPI_TENANT_HEADER, TENANT_ID);
-    headers.put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port());
-    okapiParams = new OkapiConnectionParams(headers, vertx);
+    headers.put(XOkapiHeaders.TENANT, TENANT_ID);
+    headers.put(XOkapiHeaders.URL, "http://localhost:" + mockServer.port());
+    okapiParams = new ConnectionParams(headers);
 
 
     uploadDefinition = new UploadDefinition()

@@ -10,7 +10,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.services.KafkaProducerRecordBuilder;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
@@ -52,7 +52,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   private boolean closed;
 
   public SourceReaderReadStreamWrapper(Vertx vertx, SourceReader reader, String jobExecutionId, int totalRecordsInFile,
-                                       OkapiConnectionParams okapiConnectionParams, int maxDistributionNum, String topicName) {
+                                       ConnectionParams okapiConnectionParams, int maxDistributionNum, String topicName) {
     this.vertx = vertx;
     this.reader = reader;
     this.jobExecutionId = jobExecutionId;
@@ -61,7 +61,7 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     this.tenantId = okapiConnectionParams.getTenantId();
     this.kafkaHeaders = okapiConnectionParams
       .getHeaders()
-      .entries()
+      .entrySet()
       .stream()
       .map(e -> KafkaHeader.header(e.getKey(), e.getValue()))
       .collect(Collectors.toList());

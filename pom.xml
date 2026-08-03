@@ -14,24 +14,56 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>36.0.0</raml-module-builder.version>
-    <vertx.version>5.0.12</vertx.version>
-    <junit.version>4.13.2</junit.version>
-    <rest-assured.version>4.3.1</rest-assured.version>
-    <marc4j.version>2.9.2</marc4j.version>
+    <java.version>21</java.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <sonar.exclusions>**/ApplicationConfig.java</sonar.exclusions>
-    <aspectj.version>1.9.19</aspectj.version>
-    <lombok.version>1.18.30</lombok.version>
-    <spring.version>7.0.6</spring.version>
-    <apache-httpclient.version>4.5.13</apache-httpclient.version>
-    <folio-s3-client.version>3.0.0</folio-s3-client.version>
-    <aws-sdk-java.version>2.31.21</aws-sdk-java.version>
-    <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
+
+    <raml-module-builder.version>36.0.0</raml-module-builder.version>
+    <folio-s3-client.version>3.1.0-SNAPSHOT</folio-s3-client.version>
+    <folio-liquibase-util.version>1.12.0-SNAPSHOT</folio-liquibase-util.version>
+    <folio-di-support.version>4.1.0-SNAPSHOT</folio-di-support.version>
+    <data-import-processing-core.version>5.1.0-SNAPSHOT</data-import-processing-core.version>
+    <data-import-utils.version>3.0.0-SNAPSHOT</data-import-utils.version>
+    <mod-source-record-manager-client.version>4.1.0-SNAPSHOT</mod-source-record-manager-client.version>
+    <folio-kafka-wrapper.version>4.1.0-SNAPSHOT</folio-kafka-wrapper.version>
+    <okapi-common.version>7.0.5</okapi-common.version>
+
+    <vertx.version>5.1.5</vertx.version>
+    <spring.version>7.0.8</spring.version>
+    <marc4j.version>2.9.6</marc4j.version>
+    <aspectj.version>1.9.25.1</aspectj.version>
+    <lombok.version>1.18.46</lombok.version>
+    <aws-sdk-java.version>2.48.1</aws-sdk-java.version>
+    <gson.version>2.14.0</gson.version>
+    <dom4j.version>2.2.0</dom4j.version>
+    <staedi.version>1.26.3</staedi.version>
+    <jackson.version>2.22.1</jackson.version>
+    <log4j.version>2.26.1</log4j.version>
+
+    <junit.version>4.13.2</junit.version>
+    <rest-assured.version>6.0.1</rest-assured.version>
     <testcontainers.version>2.0.5</testcontainers.version>
-    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+    <wiremock.version>3.13.2</wiremock.version>
+    <assertj.version>3.27.7</assertj.version>
+    <hamcrest-all.version>1.3</hamcrest-all.version>
+    <mockito-inline.version>5.2.0</mockito-inline.version>
+    <byte-buddy.version>1.18.11</byte-buddy.version>
+
+    <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
+    <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+    <versions-maven-plugin.version>2.21.0</versions-maven-plugin.version>
+    <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+    <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
+    <aspectj-maven-plugin.version>1.14.1</aspectj-maven-plugin.version>
+    <properties-maven-plugin.version>1.3.0</properties-maven-plugin.version>
+    <exec-maven-plugin.version>3.6.3</exec-maven-plugin.version>
+    <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
+    <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
+    <maven-shade-plugin.version>3.6.2</maven-shade-plugin.version>
+    <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
+    <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -39,7 +71,7 @@
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-bom</artifactId>
-        <version>2.24.0</version>
+        <version>${log4j.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -57,10 +89,17 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-        <dependency>
+      <dependency>
         <groupId>org.testcontainers</groupId>
         <artifactId>testcontainers-bom</artifactId>
         <version>${testcontainers.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -76,8 +115,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-liquibase-util</artifactId>
-      <version>1.11.0</version>
-      <type>jar</type>
+      <version>${folio-liquibase-util.version}</version>
       <exclusions>
         <exclusion>
           <groupId>ch.qos.logback</groupId>
@@ -90,6 +128,33 @@
       <artifactId>folio-s3-client</artifactId>
       <version>${folio-s3-client.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>data-import-processing-core</artifactId>
+      <version>${data-import-processing-core.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>data-import-utils</artifactId>
+      <version>${data-import-utils.version}</version>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>mod-source-record-manager-client</artifactId>
+      <version>${mod-source-record-manager-client.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio.okapi</groupId>
+      <artifactId>okapi-common</artifactId>
+      <version>${okapi-common.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>folio-kafka-wrapper</artifactId>
+      <version>${folio-kafka-wrapper.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>s3</artifactId>
@@ -113,60 +178,6 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-context</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.marc4j</groupId>
-      <artifactId>marc4j</artifactId>
-      <version>${marc4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>folio-di-support</artifactId>
-      <version>4.0.0</version>
-      <type>jar</type>
-    </dependency>
-    <dependency>
-      <groupId>com.google.code.gson</groupId>
-      <artifactId>gson</artifactId>
-      <version>2.8.9</version>
-    </dependency>
-    <dependency>
-      <groupId>org.dom4j</groupId>
-      <artifactId>dom4j</artifactId>
-      <version>2.1.4</version>
-    </dependency>
-    <dependency>
-      <groupId>io.xlate</groupId>
-      <artifactId>staedi</artifactId>
-      <version>1.25.3</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-      <version>2.6</version>
-    </dependency>
-
-    <!-- test dependencies -->
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <version>${lombok.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>data-import-processing-core</artifactId>
-      <version>5.1.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>io.rest-assured</groupId>
-      <artifactId>rest-assured</artifactId>
-      <version>${rest-assured.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
     </dependency>
@@ -183,27 +194,50 @@
       <artifactId>jackson-module-jaxb-annotations</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.wiremock</groupId>
-      <artifactId>wiremock</artifactId>
-      <version>3.0.0</version>
-      <scope>test</scope>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.rest-assured</groupId>
-      <artifactId>json-schema-validator</artifactId>
-      <version>5.3.0</version>
-      <scope>test</scope>
+      <groupId>org.marc4j</groupId>
+      <artifactId>marc4j</artifactId>
+      <version>${marc4j.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>folio-di-support</artifactId>
+      <version>${folio-di-support.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>${gson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.dom4j</groupId>
+      <artifactId>dom4j</artifactId>
+      <version>${dom4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.xlate</groupId>
+      <artifactId>staedi</artifactId>
+      <version>${staedi.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>${lombok.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j2-impl</artifactId>
+    </dependency>
+
+    <!-- test dependencies -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.assertj</groupId>
-      <artifactId>assertj-core</artifactId>
-      <version>3.27.7</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -213,35 +247,33 @@
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
-      <artifactId>data-import-utils</artifactId>
-      <version>2.0.0</version>
-      <type>jar</type>
+      <artifactId>postgres-testing</artifactId>
+      <version>${raml-module-builder.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-slf4j2-impl</artifactId>
+      <groupId>org.wiremock</groupId>
+      <artifactId>wiremock</artifactId>
+      <version>${wiremock.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>mod-source-record-manager-client</artifactId>
-      <version>4.0.0</version>
-      <type>jar</type>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <version>${rest-assured.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.folio.okapi</groupId>
-      <artifactId>okapi-common</artifactId>
-      <version>7.0.1</version>
-      <type>jar</type>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>${rest-assured.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>folio-kafka-wrapper</artifactId>
-      <version>4.1.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>${apache-httpclient.version}</version>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
@@ -261,25 +293,19 @@
     <dependency>
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest-all</artifactId>
-      <version>1.3</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>postgres-testing</artifactId>
-      <version>${raml-module-builder.version}</version>
+      <version>${hamcrest-all.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-inline</artifactId>
-      <version>5.2.0</version>
+      <version>${mockito-inline.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>net.bytebuddy</groupId>
       <artifactId>byte-buddy</artifactId>
-      <version>1.17.1</version>
+      <version>${byte-buddy.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -306,27 +332,28 @@
           </execution>
         </executions>
       </plugin>
+
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
-        <version>2.18.0</version>
+        <version>${versions-maven-plugin.version}</version>
         <configuration>
           <generateBackupPoms>false</generateBackupPoms>
         </configuration>
       </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.14.0</version>
+        <version>${maven-compiler-plugin.version}</version>
         <configuration>
-          <release>21</release>
+          <release>${java.version}</release>
           <encoding>UTF-8</encoding>
           <annotationProcessors>
             <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
             <annotationProcessor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor</annotationProcessor>
           </annotationProcessors>
-          <generatedSourcesDirectory>${project.build.directory}/generated-sources/service/processing
-          </generatedSourcesDirectory>
+          <generatedSourcesDirectory>${project.build.directory}/generated-sources/service/processing</generatedSourcesDirectory>
         </configuration>
         <executions>
           <execution>
@@ -342,7 +369,9 @@
           </execution>
         </executions>
       </plugin>
+
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
         <version>${maven-source-plugin.version}</version>
         <executions>
@@ -355,10 +384,11 @@
           </execution>
         </executions>
       </plugin>
+
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.6.0</version>
+        <version>${build-helper-maven-plugin.version}</version>
         <executions>
           <execution>
             <id>add_generated_sources_folder</id>
@@ -392,11 +422,11 @@
       <plugin>
         <groupId>dev.aspectj</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.13.1</version>
+        <version>${aspectj-maven-plugin.version}</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <release>21</release>
+          <release>${java.version}</release>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
           <aspectLibraries>
@@ -435,7 +465,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>properties-maven-plugin</artifactId>
-        <version>1.2.1</version>
+        <version>${properties-maven-plugin.version}</version>
         <executions>
           <execution>
             <id>set-system-properties</id>
@@ -469,7 +499,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>3.5.0</version>
+        <version>${exec-maven-plugin.version}</version>
         <executions>
           <execution>
             <id>git submodule update</id>
@@ -493,7 +523,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
-        <version>3.2.0</version>
+        <version>${maven-resources-plugin.version}</version>
         <executions>
           <execution>
             <id>copy-resources</id>
@@ -534,7 +564,7 @@
       <plugin>
         <groupId>com.coderplus.maven.plugins</groupId>
         <artifactId>copy-rename-maven-plugin</artifactId>
-        <version>1.0.1</version>
+        <version>${copy-rename-maven-plugin.version}</version>
         <executions>
           <execution>
             <id>rename-descriptor-outputs</id>
@@ -561,7 +591,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.2.4</version>
+        <version>${maven-shade-plugin.version}</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -599,7 +629,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.22.2</version>
+        <version>${maven-surefire-plugin.version}</version>
         <configuration>
           <useSystemClassLoader>false</useSystemClassLoader>
         </configuration>
@@ -608,7 +638,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-release-plugin</artifactId>
-        <version>2.5.3</version>
+        <version>${maven-release-plugin.version}</version>
         <configuration>
           <preparationGoals>clean verify</preparationGoals>
           <tagNameFormat>v@{project.version}</tagNameFormat>

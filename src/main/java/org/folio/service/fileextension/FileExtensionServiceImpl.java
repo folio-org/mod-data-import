@@ -11,7 +11,7 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import org.folio.dao.FileExtensionDao;
 import org.folio.dao.FileExtensionDaoImpl;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.DataType;
 import org.folio.rest.jaxrs.model.DataTypeCollection;
@@ -65,7 +65,7 @@ public class FileExtensionServiceImpl implements FileExtensionService {
   }
 
   @Override
-  public Future<FileExtension> addFileExtension(FileExtension fileExtension, OkapiConnectionParams params) {
+  public Future<FileExtension> addFileExtension(FileExtension fileExtension, ConnectionParams params) {
     fileExtension.setId(UUID.randomUUID().toString());
     fileExtension.setDataTypes(sortDataTypes(fileExtension.getDataTypes()));
     String userId = fileExtension.getMetadata().getUpdatedByUserId();
@@ -76,7 +76,7 @@ public class FileExtensionServiceImpl implements FileExtensionService {
   }
 
   @Override
-  public Future<FileExtension> updateFileExtension(FileExtension fileExtension, OkapiConnectionParams params) {
+  public Future<FileExtension> updateFileExtension(FileExtension fileExtension, ConnectionParams params) {
     String userId = fileExtension.getMetadata().getUpdatedByUserId();
     return getFileExtensionById(fileExtension.getId(), params.getTenantId())
       .compose(optionalFileExtension -> optionalFileExtension.map(fileExt -> lookupUser(userId, params).compose(userInfo -> {
@@ -116,7 +116,7 @@ public class FileExtensionServiceImpl implements FileExtensionService {
    * @param params Okapi connection params
    * @return Future with found UserInfo
    */
-  private Future<UserInfo> lookupUser(String userId, OkapiConnectionParams params) {
+  private Future<UserInfo> lookupUser(String userId, ConnectionParams params) {
     LOGGER.debug("lookupUser:: userId {}", userId);
     Promise<UserInfo> promise = Promise.promise();
     RestUtil.doRequest(params, GET_USER_URL + userId, HttpMethod.GET, null)

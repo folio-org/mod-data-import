@@ -25,11 +25,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.With;
-import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.HttpStatus;
 import org.folio.dao.DataImportQueueItemDao;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.impl.util.BufferMapper;
@@ -106,7 +106,7 @@ public class SplitFileProcessingService {
   public Future<Void> startJob(
     ProcessFilesRqDto entity,
     ChangeManagerClient client,
-    OkapiConnectionParams params
+    ConnectionParams params
   ) {
     return initializeJob(entity, client)
       .compose(splitPieces ->
@@ -197,7 +197,7 @@ public class SplitFileProcessingService {
   protected Future<Void> initializeChildren(
     ProcessFilesRqDto entity,
     ChangeManagerClient client,
-    OkapiConnectionParams params,
+    ConnectionParams params,
     SplitFileInformation splitInfo
   ) {
     return registerSplitFileParts(
@@ -271,7 +271,7 @@ public class SplitFileProcessingService {
                       .withTimestamp(new Date())
                       .withPartNumber(i + 1)
                       .withProcessing(false)
-                      .withOkapiUrl(params.getOkapiUrl())
+                      .withOkapiUrl(params.getConnectionUrl())
                       .withDataType(
                         entity.getJobProfileInfo().getDataType().toString()
                       )
@@ -314,7 +314,7 @@ public class SplitFileProcessingService {
     JobProfileInfo jobProfileInfo,
     ChangeManagerClient client,
     int parentJobSize,
-    OkapiConnectionParams params,
+    ConnectionParams params,
     Collection<String> keys
   ) {
     List<Future<JobExecution>> futures = new ArrayList<>();
@@ -374,7 +374,7 @@ public class SplitFileProcessingService {
    */
   public Future<String> getKey(
     String jobExecutionId,
-    OkapiConnectionParams params
+    ConnectionParams params
   ) {
     return uploadDefinitionService
       .getJobExecutionById(jobExecutionId, params)
@@ -386,7 +386,7 @@ public class SplitFileProcessingService {
    */
   public Future<Void> cancelJob(
     String jobExecutionId,
-    OkapiConnectionParams params,
+    ConnectionParams params,
     ChangeManagerClient client
   ) {
     return uploadDefinitionService
@@ -576,10 +576,9 @@ public class SplitFileProcessingService {
     }
   }
 
-  private String getHeaderValue(OkapiConnectionParams params, String headerName) {
+  private String getHeaderValue(ConnectionParams params, String headerName) {
     return params
-      .getHeaders()
-      .entries()
+      .getHeaders().entrySet()
       .stream()
       .filter(header -> headerName.equalsIgnoreCase(header.getKey()))
       .findFirst()

@@ -6,7 +6,7 @@ import io.vertx.core.Vertx;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 
 import java.nio.file.Files;
@@ -28,7 +28,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
   }
 
   @Override
-  public Future<FileDefinition> saveFile(byte[] data, FileDefinition fileDefinition, OkapiConnectionParams params) {
+  public Future<FileDefinition> saveFile(byte[] data, FileDefinition fileDefinition, ConnectionParams params) {
     String fileId = fileDefinition.getId();
     String path = getStoragePath(fileDefinition);
 

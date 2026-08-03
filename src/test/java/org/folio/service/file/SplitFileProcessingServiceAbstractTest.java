@@ -16,7 +16,7 @@ import io.vertx.ext.web.client.HttpResponse;
 import java.util.Collection;
 import java.util.Map;
 import org.folio.dao.DataImportQueueItemDao;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -173,6 +173,7 @@ public abstract class SplitFileProcessingServiceAbstractTest
       );
     }
 
+    @Override
     public Future<Map<String, JobExecution>> createParentJobExecutions(
       ProcessFilesRqDto entity,
       ChangeManagerClient client
@@ -180,6 +181,7 @@ public abstract class SplitFileProcessingServiceAbstractTest
       return super.createParentJobExecutions(entity, client);
     }
 
+    @Override
     public Future<SplitFileInformation> splitFile(
       String key,
       JobProfileInfo profile
@@ -187,14 +189,17 @@ public abstract class SplitFileProcessingServiceAbstractTest
       return super.splitFile(key, profile);
     }
 
+    @Override
     public Buffer verifyOkStatus(HttpResponse<Buffer> response) {
       return super.verifyOkStatus(response);
     }
 
+    @Override
     public String getUserIdFromMetadata(Metadata metadata) {
       return super.getUserIdFromMetadata(metadata);
     }
 
+    @Override
     public Future<Map<String, SplitFileInformation>> initializeJob(
       ProcessFilesRqDto entity,
       ChangeManagerClient client
@@ -202,22 +207,24 @@ public abstract class SplitFileProcessingServiceAbstractTest
       return super.initializeJob(entity, client);
     }
 
+    @Override
     public Future<Void> initializeChildren(
       ProcessFilesRqDto entity,
       ChangeManagerClient client,
-      OkapiConnectionParams params,
+      ConnectionParams params,
       SplitFileInformation splitInfo
     ) {
       return super.initializeChildren(entity, client, params, splitInfo);
     }
 
+    @Override
     public CompositeFuture registerSplitFileParts(
       UploadDefinition parentUploadDefinition,
       JobExecution parentJobExecution,
       JobProfileInfo jobProfileInfo,
       ChangeManagerClient client,
       int parentJobSize,
-      OkapiConnectionParams params,
+      ConnectionParams params,
       Collection<String> keys
     ) {
       return super.registerSplitFileParts(

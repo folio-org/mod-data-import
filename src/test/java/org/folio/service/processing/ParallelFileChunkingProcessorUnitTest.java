@@ -10,9 +10,10 @@ import lombok.SneakyThrows;
 import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.DataImportInitConfig;
@@ -37,9 +38,6 @@ import java.util.UUID;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INITIALIZATION_STARTED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -91,9 +89,9 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
   @Before
   public void setUp() {
-    okapiHeaders.put(OKAPI_URL_HEADER, OKAPI_URL);
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID);
-    okapiHeaders.put(OKAPI_TOKEN_HEADER, TOKEN);
+    okapiHeaders.put(XOkapiHeaders.URL, OKAPI_URL);
+    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID);
+    okapiHeaders.put(XOkapiHeaders.TOKEN, TOKEN);
 
     kafkaConfig = KafkaConfig.builder()
       .kafkaHost(System.getProperty(KAFKA_HOST_PROP_NAME))
@@ -115,7 +113,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private void readAndSendAllChunks(TestContext context) {
     // given
     Async async = context.async();
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_MARC_RAW);
+    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_RAW);
 
     FileDefinition fileDefinition = createFileDefinition();
     JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
@@ -123,7 +121,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {
@@ -142,7 +140,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), null,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), null,new ConnectionParams(okapiHeaders));
     // then
     future.onComplete(ar -> {
       assertTrue(ar.failed());
@@ -160,7 +158,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {
@@ -179,7 +177,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {
@@ -192,7 +190,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   public void shouldReadJsonArrayFileAndSendAllChunks(TestContext context) {
     // given
     Async async = context.async();
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_MARC_JSON);
+    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_JSON);
 
     FileDefinition fileDefinition = createFileDefinition();
     JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
@@ -200,7 +198,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {
@@ -215,7 +213,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   public void shouldReadXmlArrayFileAndSendAllChunks(TestContext context) {
     // given
     Async async = context.async();
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_MARC_XML);
+    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_XML);
 
     FileDefinition fileDefinition = createFileDefinition();
     JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
@@ -223,7 +221,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {
@@ -244,7 +242,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {
@@ -263,7 +261,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {
@@ -282,7 +280,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {
@@ -295,7 +293,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   public void readTXTfileWithEDIFACTJobProfile(TestContext context) {
     // given
     Async async = context.async();
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_EDI_RAW);
+    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_EDI_RAW);
 
     FileDefinition fileDefinition = createFileDefinition();
     JobProfileInfo jobProfile = jobProfiles.get(EDI_FACT_JOB_PROFILE);
@@ -303,7 +301,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {
@@ -318,7 +316,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   public void shouldReturnErrorWhenReadEdifactTXTfileWithMARCJobProfile(TestContext context) {
     // given
     Async async = context.async();
-    okapiHeaders.put(OKAPI_TENANT_HEADER, TENANT_ID_TEST_EDI_RAW);
+    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_EDI_RAW);
 
     FileDefinition fileDefinition = createFileDefinition();
     JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
@@ -326,7 +324,7 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
     // when
     Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new OkapiConnectionParams(okapiHeaders, vertx));
+      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
 
     // then
     future.onComplete(ar -> {

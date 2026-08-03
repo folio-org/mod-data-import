@@ -21,7 +21,7 @@ import lombok.With;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.DataImportQueueItemDao;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
@@ -144,7 +144,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     // on failure and success
     AtomicReference<File> localFile = new AtomicReference<>();
 
-    OkapiConnectionParams params = getConnectionParams(queueItem);
+    ConnectionParams params = getConnectionParams(queueItem);
 
     return Future
       .succeededFuture(new QueueJob().withQueueItem(queueItem))
@@ -216,7 +216,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   protected Future<Void> updateJobExecutionStatusSafely(
     String jobExecutionId,
     StatusDto status,
-    OkapiConnectionParams params
+    ConnectionParams params
   ) {
     return uploadDefinitionService
       .updateJobExecutionStatus(jobExecutionId, status, params)
@@ -276,10 +276,10 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   /**
    * Get connection parameters (Okapi URL/token)
    */
-  protected OkapiConnectionParams getConnectionParams(
+  protected ConnectionParams getConnectionParams(
     DataImportQueueItem queueItem
   ) {
-    return OkapiConnectionParams.createSystemUserConnectionParams(
+    return ConnectionParams.createSystemUserConnectionParams(
       Map.of(
         XOkapiHeaders.URL.toLowerCase(),
         queueItem.getOkapiUrl(),
@@ -291,19 +291,18 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         queueItem.getOkapiPermissions(),
         XOkapiHeaders.REQUEST_ID.toLowerCase(),
         queueItem.getOkapiRequestId()
-      ),
-      vertx
+      )
     );
   }
 
   /**
    * Get connection parameters (Okapi URL/token), including a user ID
    */
-  protected OkapiConnectionParams getConnectionParams(
+  protected ConnectionParams getConnectionParams(
     DataImportQueueItem queueItem,
     String userId
   ) {
-    return OkapiConnectionParams.createSystemUserConnectionParams(
+    return ConnectionParams.createSystemUserConnectionParams(
       Map.of(
         XOkapiHeaders.URL.toLowerCase(),
         queueItem.getOkapiUrl(),
@@ -317,8 +316,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
         queueItem.getOkapiRequestId(),
         XOkapiHeaders.USER_ID.toLowerCase(),
         userId
-      ),
-      vertx
+      )
     );
   }
 

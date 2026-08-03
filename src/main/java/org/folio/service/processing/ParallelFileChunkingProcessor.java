@@ -11,7 +11,7 @@ import org.apache.commons.collections4.list.UnmodifiableList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.KafkaTopicNameHelper;
@@ -79,7 +79,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
       ProcessFilesRqDto request = jsonRequest.mapTo(ProcessFilesRqDto.class);
       UploadDefinition uploadDefinition = request.getUploadDefinition();
       JobProfileInfo jobProfile = request.getJobProfileInfo();
-      OkapiConnectionParams params = OkapiConnectionParams.createSystemUserConnectionParams(jsonParams.mapTo(HashMap.class), this.vertx);
+      ConnectionParams params = ConnectionParams.createSystemUserConnectionParams(jsonParams.mapTo(HashMap.class));
       UploadDefinitionService uploadDefinitionService = new UploadDefinitionServiceImpl(vertx);
       succeededFuture()
         .compose(ar -> uploadDefinitionService.getJobExecutions(uploadDefinition, params))
@@ -108,7 +108,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                             UploadDefinitionService uploadDefinitionService,
                             FileStorageService fileStorageService,
                             UploadDefinition uploadDefinition,
-                            OkapiConnectionParams params) {
+                            ConnectionParams params) {
     List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
     for (FileDefinition fileDefinition : fileDefinitions) {
       vertx.runOnContext(v ->
@@ -140,7 +140,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
   public Future<Void> processFile(File file,
                                   String jobExecutionId,
                                   JobProfileInfo jobProfile,
-                                  OkapiConnectionParams params) {
+                                  ConnectionParams params) {
     String eventType = DI_RAW_RECORDS_CHUNK_READ.value();
 
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
@@ -227,7 +227,7 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params     parameters necessary for connection to the OKAPI
    * @return Future
    */
-  public Future<Void> updateJobsProfile(List<JobExecutionDto> jobs, JobProfileInfo jobProfile, OkapiConnectionParams params) {
+  public Future<Void> updateJobsProfile(List<JobExecutionDto> jobs, JobProfileInfo jobProfile, ConnectionParams params) {
     Promise<Void> promise = Promise.promise();
     List<Future<Void>> updateJobProfileFutures = new ArrayList<>(jobs.size());
     for (JobExecutionDto job : jobs) {
@@ -252,9 +252,9 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
    * @param params     parameters necessary for connection to the OKAPI
    * @return Future
    */
-  private Future<Void> updateJobProfile(String jobId, JobProfileInfo jobProfile, OkapiConnectionParams params) {
+  private Future<Void> updateJobProfile(String jobId, JobProfileInfo jobProfile, ConnectionParams params) {
     Promise<Void> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
+    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.putChangeManagerJobExecutionsJobProfileById(jobId, jobProfile, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_OK.toInt()) {
@@ -272,28 +272,28 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
     return promise.future();
   }
 
-  private void sendDiInitializationForJob(String jobExecutionId, int totalRecordsCount, OkapiConnectionParams okapiParams) {
+  private void sendDiInitializationForJob(String jobExecutionId, int totalRecordsCount, ConnectionParams okapiParams) {
     DataImportInitConfig initConfig = new DataImportInitConfig();
     initConfig.setJobExecutionId(jobExecutionId);
     initConfig.setTotalRecords(totalRecordsCount);
 
-    sendEventToKafka(okapiParams.getTenantId(), Json.encode(initConfig), DI_INITIALIZATION_STARTED.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
+    sendEventToKafka(okapiParams.getTenantId(), Json.encode(initConfig), DI_INITIALIZATION_STARTED.value(), KafkaHeaderUtils.kafkaHeadersFromMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
       .onFailure(th -> LOGGER.warn("sendDiInitializationForJob:: Error publishing DI_INITIALIZATION_STARTED event for jobExecutionId: {}", jobExecutionId, th));
   }
 
-  private void sendDiErrorForJob(String jobExecutionId, OkapiConnectionParams okapiParams, String errorMsg) {
+  private void sendDiErrorForJob(String jobExecutionId, ConnectionParams okapiParams, String errorMsg) {
     HashMap<String, String> contextItems = new HashMap<>();
     contextItems.put("ERROR", errorMsg);
 
     DataImportEventPayload errorPayload = new DataImportEventPayload()
       .withEventType(DI_ERROR.value())
       .withJobExecutionId(jobExecutionId)
-      .withOkapiUrl(okapiParams.getOkapiUrl())
+      .withOkapiUrl(okapiParams.getConnectionUrl())
       .withTenant(okapiParams.getTenantId())
       .withToken(okapiParams.getToken())
       .withContext(contextItems);
 
-    sendEventToKafka(okapiParams.getTenantId(), Json.encode(errorPayload), DI_ERROR.value(), KafkaHeaderUtils.kafkaHeadersFromMultiMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
+    sendEventToKafka(okapiParams.getTenantId(), Json.encode(errorPayload), DI_ERROR.value(), KafkaHeaderUtils.kafkaHeadersFromMap(okapiParams.getHeaders()), kafkaConfig, null, vertx)
       .onFailure(th -> LOGGER.warn("sendDiErrorForJob:: Error publishing DI_ERROR event for jobExecutionId: {}", errorPayload.getJobExecutionId(), th));
   }
 }

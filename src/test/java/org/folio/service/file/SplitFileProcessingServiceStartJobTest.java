@@ -35,7 +35,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
@@ -219,7 +219,7 @@ public class SplitFileProcessingServiceStartJobTest
   }
 
   @Test
-  public void testSplitFileFailure(TestContext context) throws IOException {
+  public void testSplitFileFailure(TestContext context) {
     when(minioStorageService.readFile("test-key"))
       .thenReturn(
         Future.succeededFuture(
@@ -447,7 +447,7 @@ public class SplitFileProcessingServiceStartJobTest
               .withMetadata(METADATA)
           ),
         changeManagerClient,
-        new OkapiConnectionParams(Map.of("x-okapi-tenant", "tenant"), null),
+        new ConnectionParams(Map.of("x-okapi-tenant", "tenant"), null),
         SplitFileInformation
           .builder()
           .key("key/file-1-key")
@@ -525,7 +525,7 @@ public class SplitFileProcessingServiceStartJobTest
               .withMetadata(METADATA)
           ),
         changeManagerClient,
-        new OkapiConnectionParams(Map.of("x-okapi-tenant", "tenant"), null),
+        new ConnectionParams(Map.of("x-okapi-tenant", "tenant"), null),
         SplitFileInformation
           .builder()
           .key("key/file-1-key")
@@ -597,7 +597,7 @@ public class SplitFileProcessingServiceStartJobTest
             )
         ),
       changeManagerClient,
-      new OkapiConnectionParams(Map.of("x-okapi-tenant", "tenant"), null)
+      new ConnectionParams(Map.of("x-okapi-tenant", "tenant"), null)
     );
   }
 }

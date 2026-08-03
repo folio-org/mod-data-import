@@ -34,7 +34,7 @@ import java.io.UncheckedIOException;
 import java.util.Optional;
 import org.apache.commons.io.FileUtils;
 import org.folio.dao.DataImportQueueItemDao;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.StatusDto;
@@ -115,7 +115,7 @@ public class S3JobRunningVerticleUnitTest {
 
   @Test
   public void testConnectionParams() {
-    OkapiConnectionParams params = verticle.getConnectionParams(
+    ConnectionParams params = verticle.getConnectionParams(
       new DataImportQueueItem()
         .withTenant("tenant")
         .withOkapiUrl("okapi-url")
@@ -125,7 +125,7 @@ public class S3JobRunningVerticleUnitTest {
     );
 
     assertThat(params.getTenantId(), is("tenant"));
-    assertThat(params.getOkapiUrl(), is("okapi-url"));
+    assertThat(params.getConnectionUrl(), is("okapi-url"));
     assertThat(params.getToken(), is("token"));
     assertThat(
       params.getHeaders().get("x-okapi-permissions"),
@@ -139,7 +139,7 @@ public class S3JobRunningVerticleUnitTest {
 
   @Test
   public void testConnectionParamsWithUserId() {
-    OkapiConnectionParams params = verticle.getConnectionParams(
+    ConnectionParams params = verticle.getConnectionParams(
       new DataImportQueueItem()
         .withTenant("tenant")
         .withOkapiUrl("okapi-url")
@@ -150,7 +150,7 @@ public class S3JobRunningVerticleUnitTest {
     );
 
     assertThat(params.getTenantId(), is("tenant"));
-    assertThat(params.getOkapiUrl(), is("okapi-url"));
+    assertThat(params.getConnectionUrl(), is("okapi-url"));
     assertThat(params.getToken(), is("token"));
     assertThat(
       params.getHeaders().get("x-okapi-permissions"),

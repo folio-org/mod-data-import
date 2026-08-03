@@ -1,7 +1,7 @@
 package org.folio.service.cleanup;
 
 import io.vertx.core.Future;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 
 public interface StorageCleanupService {
 
@@ -12,5 +12,5 @@ public interface StorageCleanupService {
    * @param params Okapi connection params
    * @return Future with true if files were deleted and false in otherwise.
    */
-  Future<Boolean> cleanStorage(OkapiConnectionParams params);
+  Future<Boolean> cleanStorage(ConnectionParams params);
 }

@@ -11,6 +11,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpStatus;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
@@ -38,9 +39,6 @@ import java.util.UUID;
 import lombok.SneakyThrows;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.DefaultFileExtensionAPITest.FILE_EXTENSION_DEFAULT;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
@@ -206,7 +204,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
     String id = RestAssured.given()
       .spec(spec)
-      .header(OKAPI_TOKEN_HEADER, token)
+      .header(XOkapiHeaders.TOKEN, token)
       .filter(requestFilter)
       .body(uploadDef1)
       .when()
@@ -217,7 +215,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
 
     RestAssured.given()
       .spec(spec)
-      .header(OKAPI_TOKEN_HEADER, token)
+      .header(XOkapiHeaders.TOKEN, token)
       .filter(requestFilter)
       .when()
       .get(DEFINITION_PATH + "?query=status == NEW")
@@ -680,9 +678,9 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withJobProfileInfo(jobProf);
 
     JsonObject paramsJson = new JsonObject()
-      .put(OKAPI_URL_HEADER, OKAPI_URL)
-      .put(OKAPI_TENANT_HEADER, TENANT_ID)
-      .put(OKAPI_TOKEN_HEADER, TOKEN);
+      .put(XOkapiHeaders.URL, OKAPI_URL)
+      .put(XOkapiHeaders.TENANT, TENANT_ID)
+      .put(XOkapiHeaders.TOKEN, TOKEN);
 
     FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null);
     fileProcessor.process(JsonObject.mapFrom(processFilesReqDto), paramsJson);
@@ -755,9 +753,9 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .withJobProfileInfo(jobProf);
 
     JsonObject paramsJson = new JsonObject()
-      .put(OKAPI_URL_HEADER, OKAPI_URL)
-      .put(OKAPI_TENANT_HEADER, TENANT_ID)
-      .put(OKAPI_TOKEN_HEADER, TOKEN);
+      .put(XOkapiHeaders.URL, OKAPI_URL)
+      .put(XOkapiHeaders.TENANT, TENANT_ID)
+      .put(XOkapiHeaders.TOKEN, TOKEN);
 
     WireMock.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
       .willReturn(WireMock.serverError()));
@@ -827,7 +825,7 @@ public class UploadDefinitionAPITest extends AbstractRestTest {
       .log().all()
       .statusCode(HttpStatus.SC_NO_CONTENT);
 
-    Awaitility.await().untilAsserted(() -> {
+    Awaitility.await().untilAsserted(() ->  {
       RestAssured.given()
         .spec(spec)
         .when()

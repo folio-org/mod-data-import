@@ -2,7 +2,7 @@ package org.folio.service.upload;
 
 import io.vertx.core.Future;
 import org.folio.dao.UploadDefinitionDaoImpl;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FileDefinition;
@@ -46,7 +46,7 @@ public interface UploadDefinitionService {
    * @param uploadDefinition UploadDefinition to save
    * @return future with generated id
    */
-  Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, OkapiConnectionParams params);
+  Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, ConnectionParams params);
 
   /**
    * Updates {@link UploadDefinition} in database with row blocking
@@ -64,7 +64,7 @@ public interface UploadDefinitionService {
    * @param id UploadDefinition id
    * @return future with true if succeeded
    */
-  Future<Boolean> deleteUploadDefinition(String id, OkapiConnectionParams params);
+  Future<Boolean> deleteUploadDefinition(String id, ConnectionParams params);
 
   /**
    * Add File Definition into Upload Definition
@@ -83,7 +83,7 @@ public interface UploadDefinitionService {
    * @param params         OKAPI connection parameters
    * @return future with true if succeeded
    */
-  Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, OkapiConnectionParams params);
+  Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, ConnectionParams params);
 
   /**
    * Deletes file from storage
@@ -92,7 +92,7 @@ public interface UploadDefinitionService {
    * @param params         OKAPI connection parameters
    * @return future with true if succeeded
    */
-  Future<Boolean> deleteFile(FileDefinition fileDefinition, OkapiConnectionParams params);
+  Future<Boolean> deleteFile(FileDefinition fileDefinition, ConnectionParams params);
 
   /**
    * Validate new UploadDefinition before saving it
@@ -110,7 +110,7 @@ public interface UploadDefinitionService {
    * @param params           OKAPI connection parameters
    * @return future with list of job executions
    */
-  Future<List<JobExecutionDto>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params);
+  Future<List<JobExecutionDto>> getJobExecutions(UploadDefinition uploadDefinition, ConnectionParams params);
 
   /**
    * Updates {@link FileDefinition} status by specified FileDefinition id
@@ -139,5 +139,5 @@ public interface UploadDefinitionService {
    * @param jobExecutionId the ID of the job execution
    * @return - future with the requested {@link JobExecution}
    */
-  Future<JobExecution> getJobExecutionById(String jobExecutionId, OkapiConnectionParams params);
+  Future<JobExecution> getJobExecutionById(String jobExecutionId, ConnectionParams params);
 }

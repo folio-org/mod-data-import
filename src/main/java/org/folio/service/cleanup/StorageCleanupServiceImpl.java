@@ -7,7 +7,7 @@ import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.UploadDefinitionDao;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.storage.FileStorageService;
@@ -36,7 +36,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
   private UploadDefinitionDao uploadDefinitionDao;
 
   @Override
-  public Future<Boolean> cleanStorage(OkapiConnectionParams params) {
+  public Future<Boolean> cleanStorage(ConnectionParams params) {
     LOGGER.debug("cleanStorage:: cleaning storage");
     Promise<Boolean> promise = Promise.promise();
 

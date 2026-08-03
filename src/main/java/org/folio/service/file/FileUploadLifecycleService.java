@@ -1,7 +1,7 @@
 package org.folio.service.file;
 
 import io.vertx.core.Future;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
@@ -15,19 +15,19 @@ public interface FileUploadLifecycleService {
    *
    * @param fileId             - UUID for uploading {@link FileDefinition}
    * @param uploadDefinitionId - UUID for {@link UploadDefinition}
-   * @param params             - {@link OkapiConnectionParams} object with connection params
+   * @param params             - {@link ConnectionParams} object with connection params
    * @return - Future with completed {@link UploadDefinition} ready to start saving files data
    */
-  Future<UploadDefinition> beforeFileSave(String fileId, String uploadDefinitionId, OkapiConnectionParams params);
+  Future<UploadDefinition> beforeFileSave(String fileId, String uploadDefinitionId, ConnectionParams params);
 
   /**
    * Contains business logic that runs once after successfully saving the file to the  storage
    *
    * @param fileDefinition - UUID for uploading {@link FileDefinition}
-   * @param params         - {@link OkapiConnectionParams} object with connection params
+   * @param params         - {@link ConnectionParams} object with connection params
    * @return - Future with completed {@link UploadDefinition} for successfully saved file
    */
-  Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, OkapiConnectionParams params);
+  Future<UploadDefinition> afterFileSave(FileDefinition fileDefinition, ConnectionParams params);
 
   /**
    * The method is called for each piece of the file that is uploaded to the server.
@@ -36,10 +36,10 @@ public interface FileUploadLifecycleService {
    * @param fileId           - UUID for uploading {@link FileDefinition}
    * @param uploadDefinition - {@link UploadDefinition} object which describes uploading process
    * @param data             - byte array with data chunk
-   * @param params           - {@link OkapiConnectionParams} object with connection params
+   * @param params           - {@link ConnectionParams} object with connection params
    * @return - Future with completed {@link FileDefinition} for successfully saved file
    */
-  Future<FileDefinition> saveFileChunk(String fileId, UploadDefinition uploadDefinition, byte[] data, OkapiConnectionParams params);
+  Future<FileDefinition> saveFileChunk(String fileId, UploadDefinition uploadDefinition, byte[] data, ConnectionParams params);
 
   /**
    * Deletes File by id and Upload Definition Id
@@ -49,6 +49,6 @@ public interface FileUploadLifecycleService {
    * @param params             OKAPI connection parameters
    * @return future with true is succeeded
    */
-  Future<Boolean> deleteFile(String id, String uploadDefinitionId, OkapiConnectionParams params);
+  Future<Boolean> deleteFile(String id, String uploadDefinitionId, ConnectionParams params);
 
 }

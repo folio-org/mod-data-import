@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.dao.UploadDefinitionDao;
 import org.folio.dao.UploadDefinitionDaoImpl;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.impl.util.BufferMapper;
 import org.folio.rest.jaxrs.model.Error;
@@ -79,7 +79,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
+  public Future<UploadDefinition> addUploadDefinition(UploadDefinition uploadDefinition, ConnectionParams params) {
     uploadDefinition.setId(UUID.randomUUID().toString());
     uploadDefinition.setStatus(UploadDefinition.Status.NEW);
     uploadDefinition.setCreateDate(new Date());
@@ -99,7 +99,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<Boolean> deleteUploadDefinition(String id, OkapiConnectionParams params) {
+  public Future<Boolean> deleteUploadDefinition(String id, ConnectionParams params) {
     return getUploadDefinitionById(id, params.getTenantId())
       .compose(optionalUploadDefinition -> optionalUploadDefinition
         .map(uploadDefinition -> getJobExecutions(uploadDefinition, params)
@@ -136,9 +136,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, OkapiConnectionParams params) {
+  public Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, ConnectionParams params) {
     Promise<Boolean> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
+    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.putChangeManagerJobExecutionsStatusById(jobExecutionId, status, response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
@@ -155,7 +155,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<Boolean> deleteFile(FileDefinition fileDefinition, OkapiConnectionParams params) {
+  public Future<Boolean> deleteFile(FileDefinition fileDefinition, ConnectionParams params) {
     return FileStorageServiceBuilder.build(vertx, params.getTenantId())
       .deleteFile(fileDefinition);
   }
@@ -232,7 +232,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return errors;
   }
 
-  private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, OkapiConnectionParams params) {
+  private Future<UploadDefinition> createJobExecutions(UploadDefinition definition, ConnectionParams params) {
     Metadata metadata = definition.getMetadata();
 
     InitJobExecutionsRqDto initJobExecutionsRqDto =
@@ -245,7 +245,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .withSourceType(InitJobExecutionsRqDto.SourceType.FILES);
 
     Promise<UploadDefinition> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
+    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.postChangeManagerJobExecutions(initJobExecutionsRqDto, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
@@ -304,7 +304,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<List<JobExecutionDto>> getJobExecutions(UploadDefinition uploadDefinition, OkapiConnectionParams params) {
+  public Future<List<JobExecutionDto>> getJobExecutions(UploadDefinition uploadDefinition, ConnectionParams params) {
     if (!uploadDefinition.getFileDefinitions().isEmpty()) {
       String metaJobExecutionId = uploadDefinition.getMetaJobExecutionId();
       LOGGER.info("getJobExecutions:: MetaJobExecutionId : {}, status: {} in the UploadDefinition", metaJobExecutionId, uploadDefinition.getStatus());
@@ -322,9 +322,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     }
   }
 
-  private Future<JobExecutionDtoCollection> getChildrenJobExecutions(String jobExecutionParentId, OkapiConnectionParams params) {
+  private Future<JobExecutionDtoCollection> getChildrenJobExecutions(String jobExecutionParentId, ConnectionParams params) {
     Promise<JobExecutionDtoCollection> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
+    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, null,0, response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
@@ -343,9 +343,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<JobExecution> getJobExecutionById(String jobExecutionId, OkapiConnectionParams params) {
+  public Future<JobExecution> getJobExecutionById(String jobExecutionId, ConnectionParams params) {
     Promise<JobExecution> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getOkapiUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
+    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
     try {
       client.getChangeManagerJobExecutionsById(jobExecutionId,response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
@@ -389,7 +389,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         JobExecutionDto.Status.DISCARDED.equals(jobExecution.getStatus())).count() == jobExecutions.size();
   }
 
-  private Future<Boolean> updateJobExecutionStatuses(List<JobExecutionDto> jobExecutions, StatusDto status, OkapiConnectionParams params) {
+  private Future<Boolean> updateJobExecutionStatuses(List<JobExecutionDto> jobExecutions, StatusDto status, ConnectionParams params) {
     List<Future<Boolean>> futures = new ArrayList<>();
     for (JobExecutionDto jobExecution : jobExecutions) {
       futures.add(updateJobExecutionStatus(jobExecution.getId(), status, params));
@@ -397,7 +397,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return Future.all(futures).map(Future::succeeded);
   }
 
-  private Future<Boolean> deleteFiles(List<FileDefinition> fileDefinitions, OkapiConnectionParams params) {
+  private Future<Boolean> deleteFiles(List<FileDefinition> fileDefinitions, ConnectionParams params) {
     List<Future<Boolean>> futures = new ArrayList<>();
     for (FileDefinition fileDefinition : fileDefinitions) {
       futures.add(deleteFile(fileDefinition, params));

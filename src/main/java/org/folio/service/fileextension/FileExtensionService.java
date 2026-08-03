@@ -3,7 +3,7 @@ package org.folio.service.fileextension;
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.DataType;
 import org.folio.rest.jaxrs.model.DataTypeCollection;
 import org.folio.rest.jaxrs.model.FileExtension;
@@ -52,7 +52,7 @@ public interface FileExtensionService {
    * @param params        Okapi connection params
    * @return future with {@link FileExtension}
    */
-  Future<FileExtension> addFileExtension(FileExtension fileExtension, OkapiConnectionParams params);
+  Future<FileExtension> addFileExtension(FileExtension fileExtension, ConnectionParams params);
 
   /**
    * Updates {@link FileExtension} with given id
@@ -61,7 +61,7 @@ public interface FileExtensionService {
    * @param params        Okapi connection params
    * @return future with {@link FileExtension}
    */
-  Future<FileExtension> updateFileExtension(FileExtension fileExtension, OkapiConnectionParams params);
+  Future<FileExtension> updateFileExtension(FileExtension fileExtension, ConnectionParams params);
 
   /**
    * Deletes {@link FileExtension} by id

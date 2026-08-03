@@ -20,8 +20,8 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Arrays;
 import java.util.Map;
-import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dataimport.util.RestUtil;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
@@ -41,8 +41,8 @@ public class SplitFileProcessingServiceRegistrationTest
         new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC),
         changeManagerClient,
         0,
-        new OkapiConnectionParams(
-          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+        new ConnectionParams(
+          Map.of(XOkapiHeaders.TENANT, TENANT_ID),
           null
         ),
         Arrays.asList()
@@ -86,8 +86,8 @@ public class SplitFileProcessingServiceRegistrationTest
         new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC),
         changeManagerClient,
         123,
-        new OkapiConnectionParams(
-          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+        new ConnectionParams(
+          Map.of(XOkapiHeaders.TENANT, TENANT_ID),
           null
         ),
         Arrays.asList("key1")
@@ -145,8 +145,8 @@ public class SplitFileProcessingServiceRegistrationTest
         new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC),
         changeManagerClient,
         123,
-        new OkapiConnectionParams(
-          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+        new ConnectionParams(
+          Map.of(XOkapiHeaders.TENANT, TENANT_ID),
           null
         ),
         Arrays.asList("key1", "key2", "key3")
@@ -161,7 +161,7 @@ public class SplitFileProcessingServiceRegistrationTest
               .list()
               .stream()
               .map(JobExecution.class::cast)
-              .map(exec -> exec.getId())
+              .map(JobExecution::getId)
               .toList(),
             containsInAnyOrder(
               "test-execution-id",
@@ -200,8 +200,8 @@ public class SplitFileProcessingServiceRegistrationTest
         new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC),
         changeManagerClient,
         123,
-        new OkapiConnectionParams(
-          Map.of(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID),
+        new ConnectionParams(
+          Map.of(XOkapiHeaders.TENANT, TENANT_ID),
           null
         ),
         Arrays.asList("key1")

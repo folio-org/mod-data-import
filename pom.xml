@@ -24,7 +24,7 @@
     <folio-s3-client.version>3.1.0-SNAPSHOT</folio-s3-client.version>
     <folio-liquibase-util.version>1.12.0-SNAPSHOT</folio-liquibase-util.version>
     <folio-di-support.version>4.1.0-SNAPSHOT</folio-di-support.version>
-    <data-import-processing-core.version>5.1.0-SNAPSHOT</data-import-processing-core.version>
+    <data-import-processing-core.version>6.0.0-SNAPSHOT</data-import-processing-core.version>
     <data-import-utils.version>3.0.0-SNAPSHOT</data-import-utils.version>
     <mod-source-record-manager-client.version>4.1.0-SNAPSHOT</mod-source-record-manager-client.version>
     <folio-kafka-wrapper.version>4.1.0-SNAPSHOT</folio-kafka-wrapper.version>
@@ -135,7 +135,7 @@
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
-      <artifactId>data-import-utils</artifactId>
+      <artifactId>data-import-support</artifactId>
       <version>${data-import-utils.version}</version>
       <type>jar</type>
     </dependency>

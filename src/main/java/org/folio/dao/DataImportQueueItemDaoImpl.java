@@ -51,20 +51,13 @@ public class DataImportQueueItemDaoImpl implements DataImportQueueItemDao {
   private static final String LOCK_ACCESS_EXCLUSIVE_SQL =
     "LOCK TABLE %s.%s IN ACCESS EXCLUSIVE MODE";
 
-  private static final String DATE_FORMAT_PATTERN =
-    "yyyy-MM-dd'T'HH:mm:ss.SSSX";
-
-  private PostgresClientFactory pgClientFactory;
-  private SimpleDateFormat dateFormatter;
-  private TimeZone timeZone;
+  private final PostgresClientFactory pgClientFactory;
+  private final TimeZone timeZone;
 
   @Autowired
   public DataImportQueueItemDaoImpl(PostgresClientFactory pgClientFactory) {
     this.pgClientFactory = pgClientFactory;
-
     this.timeZone = TimeZone.getTimeZone(TimeZones.GMT_ID);
-    this.dateFormatter = new SimpleDateFormat(DATE_FORMAT_PATTERN);
-    this.dateFormatter.setTimeZone(this.timeZone);
   }
 
   @Override

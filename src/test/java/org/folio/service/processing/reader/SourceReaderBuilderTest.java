@@ -1,19 +1,18 @@
 package org.folio.service.processing.reader;
 
 import org.folio.rest.jaxrs.model.JobProfileInfo;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.File;
 
-/**
- * Testing SourceReaderBuilder
- */
-@RunWith(MockitoJUnitRunner.class)
-public class SourceReaderBuilderTest {
+import static org.assertj.core.api.Assertions.assertThat;
+
+@ExtendWith(MockitoExtension.class)
+class SourceReaderBuilderTest {
   private static final String SOURCE_XML_PATH = "src/test/resources/UChicago_SampleBibs.xml";
   private static final String SOURCE_JSON_PATH = "src/test/resources/ChalmersFOLIOExamples.json";
   private static final String SOURCE_MARC_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
@@ -27,101 +26,110 @@ public class SourceReaderBuilderTest {
   private JobProfileInfo marcJobProfile;
   private JobProfileInfo edifactJobProfile;
 
-  @Before
-  public void setUp() {
+  @BeforeEach
+  void setUp() {
     marcJobProfile = new JobProfileInfo();
     marcJobProfile.setDataType(JobProfileInfo.DataType.MARC);
     edifactJobProfile = new JobProfileInfo();
     edifactJobProfile.setDataType(JobProfileInfo.DataType.EDIFACT);
   }
 
+  @DisplayName("should return MarcJsonReader when source file is JSON")
   @Test
-  public void buildShouldReturnMarcJsonReader() {
-    //given
+  void shouldBuildMarcJsonReader() {
+    // arrange
     String expectedMarcType = "MARC_JSON";
-    //when
+
+    // act
     SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_JSON_PATH), marcJobProfile);
-    //then
-    Assert.assertEquals(expectedMarcType, reader.getContentType().toString());
+
+    // assert
+    assertThat(reader.getContentType()).hasToString(expectedMarcType);
   }
 
+  @DisplayName("should return MarcXmlReader when source file is XML")
   @Test
-  public void buildShouldReturnMarcXmlReader() {
-    //given
+  void shouldBuildMarcXmlReader() {
+    // arrange
     String expectedMarcType = "MARC_XML";
-    //when
+
+    // act
     SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_XML_PATH), marcJobProfile);
-    //then
-    Assert.assertEquals(expectedMarcType, reader.getContentType().toString());
+
+    // assert
+    assertThat(reader.getContentType()).hasToString(expectedMarcType);
   }
 
+  @DisplayName("should return MarcRawReader when source file is MRC")
   @Test
-  public void buildShouldReturnMarcRawReader() {
-    //given
+  void shouldBuildMarcRawReader() {
+    // arrange
     String expectedMarcType = "MARC_RAW";
-    //when
+
+    // act
     SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_MARC_PATH), marcJobProfile);
-    //then
-    Assert.assertEquals(expectedMarcType, reader.getContentType().toString());
+
+    // assert
+    assertThat(reader.getContentType()).hasToString(expectedMarcType);
   }
 
+  @DisplayName("should return EdifactReader for file with uppercase .EDI extension")
   @Test
-  public void buildShouldReturnEdifactReaderForFileWithEdiLowerCaseExtension() {
-    //given
-    SourceReader reader;
-    //when
-    reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_EDI_EXTENSION), edifactJobProfile);
-    //then
-    Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
+  void shouldBuildEdifactReaderForFileWithEdiUpperCaseExtension() {
+    // act
+    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_EDI_EXTENSION), edifactJobProfile);
+
+    // assert
+    assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
   }
 
+  @DisplayName("should return EdifactReader for file with lowercase .edi extension")
   @Test
-  public void buildShouldReturnEdifactReaderForFileWithEdiUpperCaseExtension() {
-    //given
-    SourceReader reader;
-    //when
-    reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_EDI_EXTENSION), edifactJobProfile);
-    //then
-    Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
+  void shouldBuildEdifactReaderForFileWithEdiLowerCaseExtension() {
+    // act
+    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_EDI_EXTENSION), edifactJobProfile);
+
+    // assert
+    assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
   }
 
+  @DisplayName("should return EdifactReader for file with mixed-case .eDI extension")
   @Test
-  public void buildShouldReturnEdifactReaderForFileWithEdiMixedCaseExtension() {
-    //given
-    SourceReader reader;
-    //when
-    reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_EDI_EXTENSION), edifactJobProfile);
-    //then
-    Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
+  void shouldBuildEdifactReaderForFileWithEdiMixedCaseExtension() {
+    // act
+    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_EDI_EXTENSION), edifactJobProfile);
+
+    // assert
+    assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
   }
 
+  @DisplayName("should return EdifactReader for file with lowercase .inv extension")
   @Test
-  public void buildShouldReturnEdifactReaderForFileWithInvLowerCaseExtension() {
-    //given
-    SourceReader reader;
-    //when
-    reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_INV_EXTENSION), edifactJobProfile);
-    //then
-    Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
+  void shouldBuildEdifactReaderForFileWithInvLowerCaseExtension() {
+    // act
+    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_INV_EXTENSION), edifactJobProfile);
+
+    // assert
+    assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
   }
 
+  @DisplayName("should return EdifactReader for file with uppercase .INV extension")
   @Test
-  public void buildShouldReturnEdifactReaderForFileWithInvUpperCaseExtension() {
-    //given
-    SourceReader reader;
-    //when
-    reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_INV_EXTENSION), edifactJobProfile);
-    //then
-    Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
+  void shouldBuildEdifactReaderForFileWithInvUpperCaseExtension() {
+    // act
+    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_INV_EXTENSION), edifactJobProfile);
+
+    // assert
+    assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
   }
 
+  @DisplayName("should return EdifactReader for file with mixed-case .InV extension")
   @Test
-  public void buildShouldReturnEdifactReaderForFileWithInvMixedCaseExtension() {
-    //given
-    SourceReader reader;
-    //when
-    reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_INV_EXTENSION), edifactJobProfile);
-    //then
-    Assert.assertEquals(EXPECTED_EDIFACT_TYPE, reader.getContentType().toString());
+  void shouldBuildEdifactReaderForFileWithInvMixedCaseExtension() {
+    // act
+    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_INV_EXTENSION), edifactJobProfile);
+
+    // assert
+    assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
   }
 }

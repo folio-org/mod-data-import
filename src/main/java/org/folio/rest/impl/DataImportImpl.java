@@ -12,7 +12,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.ConnectionParams;
-import org.folio.rest.RestVerticle;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.AssembleFileDto;
@@ -44,7 +44,6 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
 
-import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.RestVerticle.STREAM_ABORT;
 import static org.folio.rest.jaxrs.model.FileDefinition.Status.ERROR;
 
@@ -583,8 +582,8 @@ public class DataImportImpl implements DataImport {
   }
 
   private static String addCreatedByConditionToCqlQuery(String cqlQuery, Map<String, String> okapiHeaders) {
-    String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
-    String token = okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN);
+    String userId = okapiHeaders.get(XOkapiHeaders.USER_ID);
+    String token = okapiHeaders.get(XOkapiHeaders.TOKEN);
     if (userId == null && token != null) {
       userId = getUserIdFromToken(token);
     }

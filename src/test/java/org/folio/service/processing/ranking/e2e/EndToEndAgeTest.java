@@ -1,13 +1,10 @@
 package org.folio.service.processing.ranking.e2e;
 
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
-import org.junit.runner.RunWith;
 
 /**
  * Combines all rankers with realistic values and properties
  */
-@RunWith(VertxUnitRunner.class)
 public class EndToEndAgeTest extends AbstractEndToEndRankingTest {
 
   protected void initializeData() {

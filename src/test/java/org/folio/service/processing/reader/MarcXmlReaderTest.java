@@ -1,56 +1,62 @@
 package org.folio.service.processing.reader;
 
-import org.folio.rest.jaxrs.model.InitialRecord;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import org.folio.rest.jaxrs.model.InitialRecord;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-/**
- * Testing MarcXmlReader
- */
-@RunWith(MockitoJUnitRunner.class)
-public class MarcXmlReaderTest {
+@ExtendWith(MockitoExtension.class)
+class MarcXmlReaderTest {
   private static final String SOURCE_PATH = "src/test/resources/UChicago_SampleBibs.xml";
   private static final String INCORRECT_SOURCE_PATH = "src/test/resources/wrong.json";
   private static final int EXPECTED_RECORDS_NUMBER = 62;
   private static final String MARC_TYPE = "MARC_XML";
 
+  @DisplayName("should return all records from a MARC XML file")
   @Test
-  public void shouldReturnAllRecordsFromXmlFile() {
-    //given
+  void shouldReturnAllRecordsFromXmlFile() {
+    // arrange
     int chunkSize = 100;
     SourceReader reader = new MarcXmlReader(new File(SOURCE_PATH), chunkSize);
     List<InitialRecord> actualRecords = new ArrayList<>();
-    //when
+
+    // act
     while (reader.hasNext()) {
       actualRecords.addAll(reader.next());
     }
-    //then
-    Assert.assertEquals(EXPECTED_RECORDS_NUMBER, actualRecords.size());
+
+    // assert
+    assertThat(actualRecords).hasSize(EXPECTED_RECORDS_NUMBER);
   }
 
+  @DisplayName("should return MARC_XML as content type")
   @Test
-  public void getContentTypeShouldReturnMarcXmlTypeValue() {
-    //given
+  void shouldReturnMarcXmlContentType() {
+    // arrange
     int chunkSize = 50;
     SourceReader reader = new MarcXmlReader(new File(SOURCE_PATH), chunkSize);
-    //when
+
+    // act
     String typeValue = reader.getContentType().toString();
-    //then
-    Assert.assertNotNull(typeValue);
-    Assert.assertEquals(MARC_TYPE, typeValue);
+
+    // assert
+    assertThat(typeValue).isNotNull().isEqualTo(MARC_TYPE);
   }
 
-  @Test(expected = RecordsReaderException.class)
-  public void marcXmlReaderConstructorShouldThrowRecordsReaderException() {
-    //given
+  @DisplayName("should throw RecordsReaderException when source file does not exist")
+  @Test
+  void shouldThrowExceptionWhenSourceFileNotFound() {
     int chunkSize = 40;
-    //then
-    new MarcXmlReader(new File(INCORRECT_SOURCE_PATH), chunkSize);
+
+    var file = new File(INCORRECT_SOURCE_PATH);
+    assertThatThrownBy(() -> new MarcXmlReader(file, chunkSize))
+      .isInstanceOf(RecordsReaderException.class);
   }
 }

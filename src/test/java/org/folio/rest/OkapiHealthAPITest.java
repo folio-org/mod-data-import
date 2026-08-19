@@ -1,23 +1,16 @@
 package org.folio.rest;
 
-import io.restassured.RestAssured;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.folio.support.AbstractRestTest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-@RunWith(VertxUnitRunner.class)
-public class OkapiHealthAPITest extends AbstractRestTest {
+class OkapiHealthAPITest extends AbstractRestTest {
 
   private static final String HEALTH_URL = "/admin/health";
 
+  @DisplayName("should return 200 when module is healthy")
   @Test
-  public void testIsHealthy() {
-    RestAssured
-      .given()
-      .spec(spec)
-      .when()
-      .get(HEALTH_URL)
-      .then()
-      .statusCode(200);
+  void shouldReturn200_whenModuleIsHealthy() {
+    getRequest(HEALTH_URL).statusCode(200);
   }
 }

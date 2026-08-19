@@ -1,38 +1,26 @@
 package org.folio.rest;
 
-import io.restassured.RestAssured;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
+import static org.folio.support.TestUtil.FILE_EXTENSIONS_PATH;
 import static org.hamcrest.Matchers.is;
 
-@RunWith(VertxUnitRunner.class)
-public class DefaultFileExtensionAPITest extends AbstractRestTest {
+import org.apache.http.HttpStatus;
+import org.folio.support.AbstractRestTest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-  private static final String FILE_EXTENSION_PATH = "/data-import/fileExtensions";
-  static final String FILE_EXTENSION_DEFAULT = FILE_EXTENSION_PATH + "/restore/default";
+class DefaultFileExtensionAPITest extends AbstractRestTest {
 
+  static final String FILE_EXTENSION_DEFAULT = FILE_EXTENSIONS_PATH + "/restore/default";
+
+  @DisplayName("should restore 13 default file extensions when restore endpoint is called")
   @Test
-  public void shouldRestoreToDefault() {
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .post(FILE_EXTENSION_DEFAULT)
-      .then()
-      .log().all()
+  void shouldRestoreToDefault() {
+    postRequest(FILE_EXTENSION_DEFAULT, "")
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(13));
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(FILE_EXTENSION_PATH)
-      .then()
-      .log().all()
+    getRequest(FILE_EXTENSIONS_PATH)
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(13));
   }
-
 }

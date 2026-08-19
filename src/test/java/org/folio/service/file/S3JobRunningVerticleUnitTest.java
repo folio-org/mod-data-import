@@ -1,11 +1,9 @@
 package org.folio.service.file;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -16,6 +14,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
@@ -23,14 +22,16 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.FileSystem;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import org.apache.commons.io.FileUtils;
 import org.folio.dao.DataImportQueueItemDao;
@@ -43,78 +44,60 @@ import org.folio.service.processing.ParallelFileChunkingProcessor;
 import org.folio.service.processing.ranking.ScoreService;
 import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.upload.UploadDefinitionService;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
-public class S3JobRunningVerticleUnitTest {
+@ExtendWith({MockitoExtension.class, VertxExtension.class})
+class S3JobRunningVerticleUnitTest {
 
   private static final int POLL_INTERVAL = 100;
-
   private static final Vertx vertx = Vertx.vertx();
 
-  @Mock
-  Vertx mockVertx;
+  private @Mock Vertx mockVertx;
+  private @Mock FileSystem fileSystem;
+  private @Mock DataImportQueueItemDao queueItemDao;
+  private @Mock MinioStorageService minioStorageService;
+  private @Mock ScoreService scoreService;
+  private @Mock UploadDefinitionService uploadDefinitionService;
+  private @Mock ParallelFileChunkingProcessor fileProcessor;
 
-  @Mock
-  FileSystem fileSystem;
+  @TempDir
+  private Path tempDir;
 
-  @Mock
-  DataImportQueueItemDao queueItemDao;
+  private S3JobRunningVerticle verticle;
 
-  @Mock
-  MinioStorageService minioStorageService;
+  @BeforeEach
+  void setUp() {
+    S3JobRunningVerticle.workersInUse.set(0);
 
-  @Mock
-  ScoreService scoreService;
+    lenient().when(mockVertx.fileSystem()).thenReturn(fileSystem);
+    lenient().doAnswer(invocation -> {
+      new File(invocation.getArgument(0, String.class)).delete();
+      return Future.succeededFuture();
+    }).when(fileSystem).delete(anyString());
+    lenient().doAnswer(invocation -> {
+      invocation.<Handler<Void>>getArgument(0).handle(null);
+      return null;
+    }).when(mockVertx).runOnContext(any());
 
-  @Mock
-  UploadDefinitionService uploadDefinitionService;
-
-  @Mock
-  ParallelFileChunkingProcessor fileProcessor;
-
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-  S3JobRunningVerticle verticle;
-
-  @Before
-  public void setUp() throws IOException {
-    MockitoAnnotations.openMocks(this);
-
-    when(mockVertx.fileSystem()).thenReturn(fileSystem);
-    doAnswer(invocation -> {
-        invocation.<Handler<Void>>getArgument(0).handle(null);
-        return null;
-      })
-      .when(mockVertx)
-      .runOnContext(any());
-
-    this.verticle =
-      spy(
-        new S3JobRunningVerticle(
-          mockVertx,
-          queueItemDao,
-          minioStorageService,
-          scoreService,
-          uploadDefinitionService,
-          fileProcessor,
-          POLL_INTERVAL,
-          10
-        )
-      );
+    this.verticle = spy(
+      new S3JobRunningVerticle(
+        mockVertx, queueItemDao, minioStorageService, scoreService,
+        uploadDefinitionService, fileProcessor, POLL_INTERVAL, 10
+      )
+    );
   }
 
   @Test
-  public void testConnectionParams() {
+  @DisplayName("should build connection params from queue item fields")
+  void shouldBuildConnectionParams_fromQueueItemFields() {
     ConnectionParams params = verticle.getConnectionParams(
       new DataImportQueueItem()
         .withTenant("tenant")
@@ -124,21 +107,16 @@ public class S3JobRunningVerticleUnitTest {
         .withOkapiRequestId("request-id")
     );
 
-    assertThat(params.getTenantId(), is("tenant"));
-    assertThat(params.getConnectionUrl(), is("okapi-url"));
-    assertThat(params.getToken(), is("token"));
-    assertThat(
-      params.getHeaders().get("x-okapi-permissions"),
-      is("permissions")
-    );
-    assertThat(
-      params.getHeaders().get("x-okapi-request-id"),
-      is("request-id")
-    );
+    assertThat(params.getTenantId()).isEqualTo("tenant");
+    assertThat(params.getConnectionUrl()).isEqualTo("okapi-url");
+    assertThat(params.getToken()).isEqualTo("token");
+    assertThat(params.getHeaders().get("x-okapi-permissions")).isEqualTo("permissions");
+    assertThat(params.getHeaders().get("x-okapi-request-id")).isEqualTo("request-id");
   }
 
   @Test
-  public void testConnectionParamsWithUserId() {
+  @DisplayName("should include user ID header when building connection params with user ID")
+  void shouldIncludeUserIdHeader_whenBuildingConnectionParamsWithUserId() {
     ConnectionParams params = verticle.getConnectionParams(
       new DataImportQueueItem()
         .withTenant("tenant")
@@ -149,28 +127,21 @@ public class S3JobRunningVerticleUnitTest {
       "user-id"
     );
 
-    assertThat(params.getTenantId(), is("tenant"));
-    assertThat(params.getConnectionUrl(), is("okapi-url"));
-    assertThat(params.getToken(), is("token"));
-    assertThat(
-      params.getHeaders().get("x-okapi-permissions"),
-      is("permissions")
-    );
-    assertThat(
-      params.getHeaders().get("x-okapi-request-id"),
-      is("request-id")
-    );
-    assertThat(params.getHeaders().get("x-okapi-user-id"), is("user-id"));
+    assertThat(params.getTenantId()).isEqualTo("tenant");
+    assertThat(params.getConnectionUrl()).isEqualTo("okapi-url");
+    assertThat(params.getToken()).isEqualTo("token");
+    assertThat(params.getHeaders().get("x-okapi-permissions")).isEqualTo("permissions");
+    assertThat(params.getHeaders().get("x-okapi-request-id")).isEqualTo("request-id");
+    assertThat(params.getHeaders().get("x-okapi-user-id")).isEqualTo("user-id");
   }
 
   @Test
-  public void testDownloadFromS3Success(TestContext context)
-    throws IOException {
+  @DisplayName("should download 5 bytes from S3 and verify S3 client interactions")
+  void shouldDownload5Bytes_andVerifyS3Interactions(VertxTestContext testContext) throws IOException {
     InputStream inputStream = spy(new ByteArrayInputStream(new byte[5]));
-    when(minioStorageService.readFile("test-key"))
-      .thenReturn(Future.succeededFuture(inputStream));
+    when(minioStorageService.readFile("test-key")).thenReturn(Future.succeededFuture(inputStream));
 
-    File destFile = temporaryFolder.newFile();
+    File destFile = Files.createTempFile(tempDir, "", "").toFile();
 
     verticle
       .downloadFromS3(
@@ -179,35 +150,33 @@ public class S3JobRunningVerticleUnitTest {
           .withJobExecution(new JobExecution().withSourcePath("test-key"))
       )
       .onComplete(
-        context.asyncAssertSuccess(result -> {
+        testContext.succeeding(result -> {
           try (InputStream reader = new FileInputStream(destFile)) {
-            assertThat(reader.readAllBytes().length, is(5));
+            assertThat(reader.readAllBytes().length).isEqualTo(5);
 
-            // auto-closed by try-with-resources
             verify(inputStream, times(1)).close();
             verify(inputStream, times(1)).transferTo(any());
             verify(minioStorageService, times(1)).readFile("test-key");
-
             verifyNoMoreInteractions(minioStorageService);
             verifyNoMoreInteractions(inputStream);
+
+            testContext.completeNow();
           } catch (IOException e) {
-            context.fail(e);
+            testContext.failNow(e);
           }
         })
       );
   }
 
   @Test
-  public void testDownloadFromS3Failure(TestContext context)
+  @DisplayName("should fail download when S3 stream transferTo throws IOException")
+  void shouldFailDownload_whenS3StreamTransferToThrowsIOException(VertxTestContext testContext)
     throws IOException {
     InputStream inputStream = mock(ByteArrayInputStream.class);
-    when(inputStream.transferTo(any()))
-      .thenThrow(new IOException("test error"));
+    when(inputStream.transferTo(any())).thenThrow(new IOException("test error"));
+    when(minioStorageService.readFile("test-key")).thenReturn(Future.succeededFuture(inputStream));
 
-    when(minioStorageService.readFile("test-key"))
-      .thenReturn(Future.succeededFuture(inputStream));
-
-    File destFile = temporaryFolder.newFile();
+    File destFile = Files.createTempFile(tempDir, "", "").toFile();
 
     verticle
       .downloadFromS3(
@@ -216,132 +185,116 @@ public class S3JobRunningVerticleUnitTest {
           .withJobExecution(new JobExecution().withSourcePath("test-key"))
       )
       .onComplete(
-        context.asyncAssertFailure(v -> {
-          verify(minioStorageService, times(1)).readFile("test-key");
+        testContext.failing(v ->
+          testContext.verify(() -> {
+            verify(minioStorageService, times(1)).readFile("test-key");
+            verifyNoMoreInteractions(minioStorageService);
 
-          verifyNoMoreInteractions(minioStorageService);
-        })
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testCreateLocalFileSuccess(TestContext context) {
+  @DisplayName("should create local temp file for queue item file path")
+  void shouldCreateLocalTempFile_forQueueItemFilePath(VertxTestContext testContext) {
     File testResult = new File("result");
 
-    // Mock both 2-parameter (Windows) and 3-parameter (Unix) versions
-    when(fileSystem.createTempFile(anyString(), anyString()))
-      .thenReturn(Future.succeededFuture(testResult.toString()));
     when(fileSystem.createTempFile(anyString(), anyString(), anyString()))
       .thenReturn(Future.succeededFuture(testResult.toString()));
 
     verticle
       .createLocalFile(new DataImportQueueItem().withFilePath("path/test-file"))
       .onComplete(
-        context.asyncAssertSuccess(r ->
-          assertThat(r.toString(), is(testResult.toString()))
+        testContext.succeeding(r ->
+          testContext.verify(() -> {
+            assertThat(r.toString()).isEqualTo(testResult.toString());
+            testContext.completeNow();
+          })
         )
       );
   }
 
   @Test
-  public void testUpdateJobExecutionStatusSuccessful(TestContext context) {
-    when(
-      uploadDefinitionService.updateJobExecutionStatus(
-        eq("exec-id"),
-        any(),
-        any()
-      )
-    )
+  @DisplayName("should update job execution status successfully and verify service interaction")
+  void shouldUpdateJobExecutionStatus_successfully(VertxTestContext testContext) {
+    when(uploadDefinitionService.updateJobExecutionStatus(eq("exec-id"), any(), any()))
       .thenReturn(Future.succeededFuture(true));
 
     verticle
       .updateJobExecutionStatusSafely("exec-id", new StatusDto(), null)
       .onComplete(
-        context.asyncAssertSuccess(v -> {
-          verify(uploadDefinitionService, times(1))
-            .updateJobExecutionStatus(eq("exec-id"), any(), any());
-
-          verifyNoMoreInteractions(uploadDefinitionService);
-        })
+        testContext.succeeding(v ->
+          testContext.verify(() -> {
+            verify(uploadDefinitionService, times(1)).updateJobExecutionStatus(eq("exec-id"), any(), any());
+            verifyNoMoreInteractions(uploadDefinitionService);
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testUpdateJobExecutionStatusFailure(TestContext context) {
-    when(
-      uploadDefinitionService.updateJobExecutionStatus(
-        eq("exec-id"),
-        any(),
-        any()
-      )
-    )
+  @DisplayName("should fail when updateJobExecutionStatus returns false")
+  void shouldFail_whenUpdateJobExecutionStatusReturnsFalse(VertxTestContext testContext) {
+    when(uploadDefinitionService.updateJobExecutionStatus(eq("exec-id"), any(), any()))
       .thenReturn(Future.succeededFuture(false));
 
     verticle
       .updateJobExecutionStatusSafely("exec-id", new StatusDto(), null)
       .onComplete(
-        context.asyncAssertFailure(v -> {
-          verify(uploadDefinitionService, times(1))
-            .updateJobExecutionStatus(eq("exec-id"), any(), any());
-
-          verifyNoMoreInteractions(uploadDefinitionService);
-        })
+        testContext.failing(v ->
+          testContext.verify(() -> {
+            verify(uploadDefinitionService, times(1)).updateJobExecutionStatus(eq("exec-id"), any(), any());
+            verifyNoMoreInteractions(uploadDefinitionService);
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testWorkersAtCapacity(TestContext context) {
+  @DisplayName("should not request queue items when worker pool is at capacity")
+  void shouldNotRequestQueueItems_whenWorkerPoolIsAtCapacity() {
     S3JobRunningVerticle.workersInUse.set(10);
 
-    // at capacity; we should not request new queue items
     verticle.pollForJobs();
 
     verifyNoInteractions(scoreService);
   }
 
   @Test
-  public void testWorkersAlmostAtCapacityRunning(TestContext context) {
+  @DisplayName("should request one item and not request more when worker pool is almost at capacity")
+  void shouldRequestOneItem_andNotRequestMore_whenWorkerPoolIsAlmostAtCapacity(VertxTestContext testContext) {
     S3JobRunningVerticle.workersInUse.set(9);
 
     when(scoreService.getBestQueueItemAndMarkInProgress())
-      .thenReturn(
-        Future.succeededFuture(Optional.of(new DataImportQueueItem()))
-      );
+      .thenReturn(Future.succeededFuture(Optional.of(new DataImportQueueItem())));
 
-    doAnswer(invocation -> {
-        Promise<QueueJob> promise = Promise.promise();
-
-        // ensure we don't immediately complete it, to simulate realistic situations
-        vertx.setTimer(1L, v -> promise.complete(null));
-
-        return promise;
-      })
+    // never-completing promise keeps workersInUse at 10 so the recursive guard never fires
+    doAnswer(invocation -> Promise.promise())
       .when(verticle)
       .processQueueItem(any());
 
-    // should request item
     verticle.pollForJobs();
 
     vertx.setTimer(
       50L,
       v ->
-        context.verify(vv -> {
-          // after "running", should not request any additional items
-          // (since worker pool will then be at capacity)
+        testContext.verify(() -> {
           verify(scoreService, times(1)).getBestQueueItemAndMarkInProgress();
           verifyNoMoreInteractions(scoreService);
-
-          // no more requests made
           verify(verticle, times(1)).pollForJobs();
-
-          // back to 9/10 in progress, since our started one here should have finished
-          assertThat(S3JobRunningVerticle.workersInUse.get(), is(9));
+          assertThat(S3JobRunningVerticle.workersInUse.get()).isEqualTo(10);
+          testContext.completeNow();
         })
     );
   }
 
   @Test
-  public void testWorkersNoneToRun(TestContext context) {
+  @DisplayName("should not process any item when no queue items are available")
+  void shouldNotProcessAnyItem_whenNoQueueItemsAvailable(VertxTestContext testContext) {
     S3JobRunningVerticle.workersInUse.set(0);
 
     when(scoreService.getBestQueueItemAndMarkInProgress())
@@ -352,65 +305,49 @@ public class S3JobRunningVerticleUnitTest {
     vertx.setTimer(
       50L,
       v ->
-        context.verify(vv -> {
-          // after "running", should not request any additional items
-          // (since worker pool will then be at capacity)
+        testContext.verify(() -> {
           verify(scoreService, times(1)).getBestQueueItemAndMarkInProgress();
           verifyNoMoreInteractions(scoreService);
-
-          // no more requests made
           verify(verticle, times(1)).pollForJobs();
-
-          // no processing done
           verify(verticle, never()).processQueueItem(any());
-
-          // back to 0/10 in progress, since our started one here should have finished
-          assertThat(S3JobRunningVerticle.workersInUse.get(), is(9));
+          assertThat(S3JobRunningVerticle.workersInUse.get()).isEqualTo(0);
+          testContext.completeNow();
         })
     );
   }
 
   @Test
-  public void testWorkersRunningMultiple(TestContext context) {
+  @DisplayName("should process multiple queue items and poll three times when two items are available")
+  void shouldProcessMultipleQueueItems_andPollThreeTimes_whenTwoItemsAvailable(VertxTestContext testContext) {
     S3JobRunningVerticle.workersInUse.set(0);
 
-    // return two jobs
     when(scoreService.getBestQueueItemAndMarkInProgress())
-      .thenReturn(
-        Future.succeededFuture(Optional.of(new DataImportQueueItem()))
-      )
-      .thenReturn(
-        Future.succeededFuture(Optional.of(new DataImportQueueItem()))
-      )
+      .thenReturn(Future.succeededFuture(Optional.of(new DataImportQueueItem())))
+      .thenReturn(Future.succeededFuture(Optional.of(new DataImportQueueItem())))
       .thenReturn(Future.succeededFuture(Optional.empty()));
 
     doReturn(Future.succeededFuture()).when(verticle).processQueueItem(any());
 
-    // should request item
     verticle.pollForJobs();
 
     vertx.setTimer(
       50L,
       v ->
-        context.verify(vv -> {
-          // after "running", should not request any additional items
-          // (since worker pool will then be at capacity)
+        testContext.verify(() -> {
           verify(scoreService, times(3)).getBestQueueItemAndMarkInProgress();
           verifyNoMoreInteractions(scoreService);
-
-          // called 3x total
           verify(verticle, times(3)).pollForJobs();
-
-          // our "jobs" should have finished
-          assertThat(S3JobRunningVerticle.workersInUse.get(), is(0));
+          assertThat(S3JobRunningVerticle.workersInUse.get()).isEqualTo(0);
+          testContext.completeNow();
         })
     );
   }
 
   @Test
-  public void testProcessQueueItemSuccess(TestContext context)
+  @DisplayName("should process queue item successfully and delete temp file asynchronously")
+  void shouldProcessQueueItem_successfully_andDeleteTempFileAsync(VertxTestContext testContext)
     throws IOException {
-    File tempFile = temporaryFolder.newFile();
+    File tempFile = Files.createTempFile(tempDir, "", "").toFile();
 
     DataImportQueueItem queueItem = new DataImportQueueItem()
       .withId("queue-id")
@@ -422,64 +359,45 @@ public class S3JobRunningVerticleUnitTest {
       .withOkapiPermissions("permissions")
       .withOkapiRequestId("request-id");
 
-    doReturn(Future.succeededFuture(tempFile))
-      .when(verticle)
-      .createLocalFile(queueItem);
-
+    doReturn(Future.succeededFuture(tempFile)).when(verticle).createLocalFile(queueItem);
     when(uploadDefinitionService.getJobExecutionById(eq("job-exec-id"), any()))
-      .thenReturn(
-        Future.succeededFuture(
-          new JobExecution().withId("job-exec-id").withUserId("user-id")
-        )
-      );
-
-    doReturn(Future.succeededFuture())
-      .when(verticle)
-      .updateJobExecutionStatusSafely(any(), any(), any());
-
-    doAnswer(invocation -> Future.succeededFuture(invocation.getArgument(0)))
-      .when(verticle)
-      .downloadFromS3(any());
-
-    when(
-      fileProcessor.processFile(eq(tempFile), eq("job-exec-id"), any(), any())
-    )
+      .thenReturn(Future.succeededFuture(new JobExecution().withId("job-exec-id").withUserId("user-id")));
+    doReturn(Future.succeededFuture()).when(verticle).updateJobExecutionStatusSafely(any(), any(), any());
+    doAnswer(invocation -> Future.succeededFuture(invocation.getArgument(0))).when(verticle).downloadFromS3(any());
+    when(fileProcessor.processFile(eq(tempFile), eq("job-exec-id"), any(), any()))
       .thenReturn(Future.succeededFuture());
 
     verticle
       .processQueueItem(queueItem)
       .onComplete(
-        context.asyncAssertSuccess(v -> {
+        testContext.succeeding(v -> {
           verify(verticle, times(1)).createLocalFile(queueItem);
-          verify(uploadDefinitionService, times(1))
-            .getJobExecutionById(eq("job-exec-id"), any());
-          verify(verticle, times(1))
-            .updateJobExecutionStatusSafely(eq("job-exec-id"), any(), any());
+          verify(uploadDefinitionService, times(1)).getJobExecutionById(eq("job-exec-id"), any());
+          verify(verticle, times(1)).updateJobExecutionStatusSafely(eq("job-exec-id"), any(), any());
           verify(verticle, times(1)).downloadFromS3(any());
-          verify(fileProcessor, times(1))
-            .processFile(eq(tempFile), eq("job-exec-id"), any(), any());
-
+          verify(fileProcessor, times(1)).processFile(eq(tempFile), eq("job-exec-id"), any(), any());
           verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");
-
           verifyNoMoreInteractions(queueItemDao);
           verifyNoMoreInteractions(uploadDefinitionService);
           verifyNoMoreInteractions(fileProcessor);
 
-          // should still cleanup, but cleanup is async so
           vertx.setTimer(
             50L,
             vv ->
-              context.verify(vvv -> assertThat(tempFile.exists(), is(false)))
+              testContext.verify(() -> {
+                assertThat(tempFile.exists()).isFalse();
+                testContext.completeNow();
+              })
           );
         })
       );
   }
 
   @Test
-  public void testProcessQueueItemFailure(TestContext context)
+  @DisplayName("should fail and mark failure status then delete temp file when processFile throws")
+  void shouldFail_andMarkFailureStatus_thenDeleteTempFile_whenProcessFileThrows(VertxTestContext testContext)
     throws IOException {
-    // same as successful, but the call to process fails
-    File tempFile = temporaryFolder.newFile();
+    File tempFile = Files.createTempFile(tempDir, "", "").toFile();
 
     DataImportQueueItem queueItem = new DataImportQueueItem()
       .withId("queue-id")
@@ -491,66 +409,45 @@ public class S3JobRunningVerticleUnitTest {
       .withOkapiPermissions("permissions")
       .withOkapiRequestId("request-id");
 
-    doReturn(Future.succeededFuture(tempFile))
-      .when(verticle)
-      .createLocalFile(queueItem);
-
+    doReturn(Future.succeededFuture(tempFile)).when(verticle).createLocalFile(queueItem);
     when(uploadDefinitionService.getJobExecutionById(eq("job-exec-id"), any()))
-      .thenReturn(
-        Future.succeededFuture(new JobExecution().withId("job-exec-id"))
-      );
-
-    doReturn(Future.succeededFuture())
-      .when(verticle)
-      .updateJobExecutionStatusSafely(any(), any(), any());
-
-    doAnswer(invocation -> Future.succeededFuture(invocation.getArgument(0)))
-      .when(verticle)
-      .downloadFromS3(any());
-
-    when(
-      fileProcessor.processFile(eq(tempFile), eq("job-exec-id"), any(), any())
-    )
+      .thenReturn(Future.succeededFuture(new JobExecution().withId("job-exec-id").withUserId("user-id")));
+    doReturn(Future.succeededFuture()).when(verticle).updateJobExecutionStatusSafely(any(), any(), any());
+    doAnswer(invocation -> Future.succeededFuture(invocation.getArgument(0))).when(verticle).downloadFromS3(any());
+    when(fileProcessor.processFile(eq(tempFile), eq("job-exec-id"), any(), any()))
       .thenThrow(new RuntimeException("test error"));
 
     verticle
       .processQueueItem(queueItem)
       .onComplete(
-        context.asyncAssertFailure(v -> {
+        testContext.failing(v -> {
           verify(verticle, times(1)).createLocalFile(queueItem);
-          verify(uploadDefinitionService, times(1))
-            .getJobExecutionById(eq("job-exec-id"), any());
-          // once to mark in progress, second to mark failure
-          verify(verticle, times(2))
-            .updateJobExecutionStatusSafely(eq("job-exec-id"), any(), any());
+          verify(uploadDefinitionService, times(1)).getJobExecutionById(eq("job-exec-id"), any());
+          verify(verticle, times(2)).updateJobExecutionStatusSafely(eq("job-exec-id"), any(), any());
           verify(verticle, times(1)).downloadFromS3(any());
-
-          // should still cleanup
+          verify(fileProcessor, times(1)).processFile(eq(tempFile), eq("job-exec-id"), any(), any());
           verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");
-
           verifyNoMoreInteractions(queueItemDao);
           verifyNoMoreInteractions(uploadDefinitionService);
           verifyNoMoreInteractions(fileProcessor);
 
-          // should still cleanup, but cleanup is async so
           vertx.setTimer(
             50L,
             vv ->
-              context.verify(vvv -> assertThat(tempFile.exists(), is(false)))
+              testContext.verify(() -> {
+                assertThat(tempFile.exists()).isFalse();
+                testContext.completeNow();
+              })
           );
         })
       );
   }
 
   @Test
-  public void testProcessQueueItemEarlyFailure(TestContext context)
-    throws IOException {
-    // fails to early to create a file
+  @DisplayName("should fail early and clean up queue item when createLocalFile throws UncheckedIOException")
+  void shouldFailEarly_andCleanUpQueueItem_whenCreateLocalFileThrows(VertxTestContext testContext) {
     try (
-      MockedStatic<FileUtils> mock = Mockito.mockStatic(
-        FileUtils.class,
-        Mockito.CALLS_REAL_METHODS
-      )
+      MockedStatic<FileUtils> mock = Mockito.mockStatic(FileUtils.class, Mockito.CALLS_REAL_METHODS)
     ) {
       DataImportQueueItem queueItem = new DataImportQueueItem()
         .withId("queue-id")
@@ -562,32 +459,25 @@ public class S3JobRunningVerticleUnitTest {
         .withOkapiPermissions("permissions")
         .withOkapiRequestId("request-id");
 
-      doThrow(new UncheckedIOException(new IOException()))
-        .when(verticle)
-        .createLocalFile(queueItem);
-
-      doReturn(Future.succeededFuture())
-        .when(verticle)
-        .updateJobExecutionStatusSafely(any(), any(), any());
+      doThrow(new UncheckedIOException(new IOException())).when(verticle).createLocalFile(queueItem);
+      doReturn(Future.succeededFuture()).when(verticle).updateJobExecutionStatusSafely(any(), any(), any());
 
       verticle
         .processQueueItem(queueItem)
         .onComplete(
-          context.asyncAssertFailure(v -> {
-            verify(verticle, times(1)).createLocalFile(queueItem);
-            verify(verticle, times(1))
-              .updateJobExecutionStatusSafely(eq("job-exec-id"), any(), any());
+          testContext.failing(v ->
+            testContext.verify(() -> {
+              verify(verticle, times(1)).createLocalFile(queueItem);
+              verify(verticle, times(1)).updateJobExecutionStatusSafely(eq("job-exec-id"), any(), any());
+              verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");
+              verifyNoMoreInteractions(queueItemDao);
+              verifyNoMoreInteractions(uploadDefinitionService);
+              verifyNoMoreInteractions(fileProcessor);
+              mock.verifyNoInteractions();
 
-            // should still cleanup queue item
-            verify(queueItemDao, times(1)).deleteQueueItemById("queue-id");
-
-            verifyNoMoreInteractions(queueItemDao);
-            verifyNoMoreInteractions(uploadDefinitionService);
-            verifyNoMoreInteractions(fileProcessor);
-
-            // no calls to delete, though, since we had no file
-            mock.verifyNoInteractions();
-          })
+              testContext.completeNow();
+            })
+          )
         );
     }
   }

@@ -1,11 +1,26 @@
 package org.folio.service.processing;
 
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INITIALIZATION_STARTED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
+import static org.folio.support.TestUtil.TENANT_ID;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import io.vertx.core.json.Json;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
+import java.io.File;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -14,7 +29,6 @@ import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.AbstractRestTest;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.DataImportInitConfig;
 import org.folio.rest.jaxrs.model.Event;
@@ -22,39 +36,14 @@ import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.service.storage.FileStorageService;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mockito;
+import org.folio.support.AbstractRestTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
+class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INITIALIZATION_STARTED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-/**
- * Testing ParallelFileChunkingProcessor
- */
-@RunWith(VertxUnitRunner.class)
-public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
-  private static final String TOKEN = "token";
   private static final String KAFKA_ENV = "test-env";
-  private static final String TENANT_ID = "diku";
   private static final String TENANT_ID_TEST_MARC_RAW = "diku_marc_raw";
   private static final String TENANT_ID_TEST_MARC_JSON = "diku_marc_json";
   private static final String TENANT_ID_TEST_MARC_XML = "diku_marc_xml";
@@ -82,14 +71,13 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   private static final int RECORDS_NUMBER = 62;
 
   private final Map<String, String> okapiHeaders = new HashMap<>();
-  private final Vertx vertx = Vertx.vertx();
   private ParallelFileChunkingProcessor fileProcessor;
   private KafkaConfig kafkaConfig;
   private Map<String, JobProfileInfo> jobProfiles;
 
-  @Before
-  public void setUp() {
-    okapiHeaders.put(XOkapiHeaders.URL, OKAPI_URL);
+  @BeforeEach
+  void setUpProcessor() {
+    okapiHeaders.put(XOkapiHeaders.URL, mockServerUrl());
     okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID);
     okapiHeaders.put(XOkapiHeaders.TOKEN, TOKEN);
 
@@ -97,290 +85,224 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       .kafkaHost(System.getProperty(KAFKA_HOST_PROP_NAME))
       .kafkaPort(System.getProperty(KAFKA_PORT_PROP_NAME))
       .envId(KAFKA_ENV)
-      .maxRequestSize(Integer.parseInt(System.getProperty(KAFKA_MAX_REQUEST_SIZE)))
-      .okapiUrl(OKAPI_URL)
+      .maxRequestSize(Integer.parseInt(System.getProperty(KAFKA_MAX_REQUEST_SIZE, "4000000")))
+      .okapiUrl(mockServerUrl())
       .build();
 
     jobProfiles = createJobProfilesMap();
-    fileProcessor = new ParallelFileChunkingProcessor(Vertx.vertx(), kafkaConfig);
+    fileProcessor = new ParallelFileChunkingProcessor(vertx, kafkaConfig);
   }
 
+  @DisplayName("should read MARC bib file and send all chunks to Kafka")
   @Test
-  public void shouldReadMarcBibAndSendAllChunks(TestContext context) {
-    readAndSendAllChunks(context);
-  }
-
-  private void readAndSendAllChunks(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReadMarcBibAndSendAllChunks(VertxTestContext testContext) {
     okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_RAW);
 
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(MARC_TYPE_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_MARC_RAW, RECORDS_NUMBER);
       assertRawChunkDataFromKafka(fileStorageService, CONTENT_TYPE_RAW, TENANT_ID_TEST_MARC_RAW);
-      async.complete();
-    });
+      testContext.completeNow();
+    })));
   }
 
+  @DisplayName("should return error when job profile is null")
   @Test
-  public void shouldErrorOnJobProfileAsNull(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReturnError_whenJobProfileIsNull(VertxTestContext testContext) {
     FileDefinition fileDefinition = createFileDefinition();
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), null,new ConnectionParams(okapiHeaders));
-    // then
-    future.onComplete(ar -> {
-      assertTrue(ar.failed());
-      async.complete();
-    });
+
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      null,
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.failingThenComplete());
   }
 
+  @DisplayName("should return error when job profile has no data type")
   @Test
-  public void shouldErrorIfJobProfileInfoWithoutDataType(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReturnError_whenJobProfileHasNoDataType(VertxTestContext testContext) {
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(EMPTY_TYPE_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      assertTrue(ar.failed());
-      async.complete();
-    });
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(EMPTY_TYPE_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.failingThenComplete());
   }
 
+  @DisplayName("should return error when EDIFACT job profile is used with MARC data type")
   @Test
-  public void shouldErrorIfJobProfileInfoWithoutDataType2(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReturnError_whenEdifactJobProfileUsedWithMarcDataType(VertxTestContext testContext) {
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(EDI_FACT_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      assertTrue(ar.failed());
-      async.complete();
-    });
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(EDI_FACT_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.failingThenComplete());
   }
 
+  @DisplayName("should read JSON array file and send all chunks to Kafka")
   @Test
-  public void shouldReadJsonArrayFileAndSendAllChunks(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReadJsonArrayFileAndSendAllChunks(VertxTestContext testContext) {
     okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_JSON);
 
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_2);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(MARC_TYPE_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_MARC_JSON, RECORDS_NUMBER);
       assertRawChunkDataFromKafka(fileStorageService, CONTENT_TYPE_JSON, TENANT_ID_TEST_MARC_JSON);
-      async.complete();
-    });
+      testContext.completeNow();
+    })));
   }
 
+  @DisplayName("should read XML array file and send all chunks to Kafka")
   @Test
-  public void shouldReadXmlArrayFileAndSendAllChunks(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReadXmlArrayFileAndSendAllChunks(VertxTestContext testContext) {
     okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_XML);
 
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_4);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(MARC_TYPE_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_MARC_XML, RECORDS_NUMBER);
       assertRawChunkDataFromKafka(fileStorageService, CONTENT_TYPE_XML, TENANT_ID_TEST_MARC_XML);
-      async.complete();
-    });
+      testContext.completeNow();
+    })));
   }
 
+  @DisplayName("should return error on malformed JSON file")
   @Test
-  public void shouldReturnErrorOnMalformedFile(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReturnError_onMalformedJsonFile(VertxTestContext testContext) {
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_3);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      assertTrue(ar.failed());
-      async.complete();
-    });
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(MARC_TYPE_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.failingThenComplete());
   }
 
+  @DisplayName("should return error on malformed XML file")
   @Test
-  public void shouldReturnErrorOnMalformedXmlFile(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReturnError_onMalformedXmlFile(VertxTestContext testContext) {
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_5);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      assertTrue(ar.failed());
-      async.complete();
-    });
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(MARC_TYPE_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.failingThenComplete());
   }
 
+  @DisplayName("should return error on invalid MRC file")
   @Test
-  public void shouldReturnErrorOnInvalidMrcFile(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReturnError_onInvalidMrcFile(VertxTestContext testContext) {
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_6);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      assertTrue(ar.failed());
-      async.complete();
-    });
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(MARC_TYPE_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.failingThenComplete());
   }
 
+  @DisplayName("should read TXT EDIFACT file and send all chunks to Kafka")
   @Test
-  public void readTXTfileWithEDIFACTJobProfile(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReadTxtEdifactFileAndSendAllChunks(VertxTestContext testContext) {
     okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_EDI_RAW);
 
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(EDI_FACT_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_7);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(EDI_FACT_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_EDI_RAW, 1);
       assertRawChunkDataFromKafka(fileStorageService, EDI_CONTENT_TYPE_RAW, TENANT_ID_TEST_EDI_RAW, 1);
-      async.complete();
-    });
+      testContext.completeNow();
+    })));
   }
 
+  @DisplayName("should return error when reading EDIFACT TXT file with MARC job profile")
   @Test
-  public void shouldReturnErrorWhenReadEdifactTXTfileWithMARCJobProfile(TestContext context) {
-    // given
-    Async async = context.async();
+  void shouldReturnError_whenReadingEdifactTxtFileWithMarcJobProfile(VertxTestContext testContext) {
     okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_EDI_RAW);
 
     FileDefinition fileDefinition = createFileDefinition();
-    JobProfileInfo jobProfile = jobProfiles.get(MARC_TYPE_JOB_PROFILE);
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_7);
 
-    // when
-    Future<Void> future = fileProcessor
-      .processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(), jobProfile,new ConnectionParams(okapiHeaders));
-
-    // then
-    future.onComplete(ar -> {
-      context.assertFalse(ar.succeeded());
+    fileProcessor.processFile(
+      fileStorageService.getFile(fileDefinition.getSourcePath()),
+      fileDefinition.getJobExecutionId(),
+      jobProfiles.get(MARC_TYPE_JOB_PROFILE),
+      new ConnectionParams(okapiHeaders)
+    ).onComplete(testContext.failing(ar -> testContext.verify(() -> {
       assertErrorFromKafka(fileStorageService, TENANT_ID_TEST_EDI_RAW, "Can not initialize reader");
-      async.complete();
-    });
+      testContext.completeNow();
+    })));
   }
 
+  @DisplayName("should return zero records when file or profile is null")
   @Test
-  public void testCountRecordsNull() {
-    // cases with non-null values are tested as part of above tests and in FileSplitUtilitiesCountTest
-    assertEquals(
-      "Null file = 0 records",
-      0,
-      ParallelFileChunkingProcessor.countTotalRecordsInFile(null, new JobProfileInfo())
-    );
-    assertEquals(
-      "Null profile = 0 records",
-      0,
-      ParallelFileChunkingProcessor.countTotalRecordsInFile(new File(SOURCE_PATH_1), null)
-    );
+  void shouldReturnZeroRecords_whenFileOrProfileIsNull() {
+    assertThat(ParallelFileChunkingProcessor.countTotalRecordsInFile(null, new JobProfileInfo())).isZero();
+    assertThat(ParallelFileChunkingProcessor.countTotalRecordsInFile(new File(SOURCE_PATH_1), null)).isZero();
   }
 
   private FileDefinition createFileDefinition() {
-    String stubSourcePath = StringUtils.EMPTY;
-    String jobExecutionId = UUID.randomUUID().toString();
     return new FileDefinition()
-      .withSourcePath(stubSourcePath)
-      .withJobExecutionId(jobExecutionId);
+      .withSourcePath(StringUtils.EMPTY)
+      .withJobExecutionId(UUID.randomUUID().toString());
   }
 
   private FileStorageService createFileStorageServiceMock(String filePath) {
-    FileStorageService fileStorageService = Mockito.mock(FileStorageService.class);
+    FileStorageService fileStorageService = mock(FileStorageService.class);
     when(fileStorageService.getFile(anyString())).thenReturn(new File(filePath));
     return fileStorageService;
   }
 
   private Map<String, JobProfileInfo> createJobProfilesMap() {
     Map<String, JobProfileInfo> profiles = new HashMap<>();
-
-    JobProfileInfo marcJobProfileValue = new JobProfileInfo()
-      .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.MARC)
-      .withName(JOB_PROFILE_NAME);
-    JobProfileInfo ediFactJobProfileValue = new JobProfileInfo()
-      .withId(UUID.randomUUID().toString())
-      .withDataType(JobProfileInfo.DataType.EDIFACT)
-      .withName(JOB_PROFILE_NAME);
-    JobProfileInfo emptyTypeJobProfileValue = new JobProfileInfo()
-      .withId(UUID.randomUUID().toString())
-      .withName(JOB_PROFILE_NAME);
-    profiles.put(MARC_TYPE_JOB_PROFILE, marcJobProfileValue);
-    profiles.put(EDI_FACT_JOB_PROFILE, ediFactJobProfileValue);
-    profiles.put(EMPTY_TYPE_JOB_PROFILE, emptyTypeJobProfileValue);
-
+    profiles.put(MARC_TYPE_JOB_PROFILE, new JobProfileInfo()
+      .withId(UUID.randomUUID().toString()).withDataType(JobProfileInfo.DataType.MARC).withName(JOB_PROFILE_NAME));
+    profiles.put(EDI_FACT_JOB_PROFILE, new JobProfileInfo()
+      .withId(UUID.randomUUID().toString()).withDataType(JobProfileInfo.DataType.EDIFACT).withName(JOB_PROFILE_NAME));
+    profiles.put(EMPTY_TYPE_JOB_PROFILE, new JobProfileInfo()
+      .withId(UUID.randomUUID().toString()).withName(JOB_PROFILE_NAME));
     return profiles;
   }
 
@@ -413,9 +335,9 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_INITIALIZATION_STARTED.value());
     DataImportInitConfig initConfig = Json.decodeValue(getEventPayload(topicToObserve), DataImportInitConfig.class);
 
-    assertNotNull(initConfig);
-    assertEquals(Integer.valueOf(recordNumber), initConfig.getTotalRecords());
-    assertEquals(jobExecutionId, initConfig.getJobExecutionId());
+    assertThat(initConfig).isNotNull();
+    assertThat(initConfig.getTotalRecords()).isEqualTo(recordNumber);
+    assertThat(initConfig.getJobExecutionId()).isEqualTo(jobExecutionId);
   }
 
   private void assertRawChunkDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId) {
@@ -423,28 +345,29 @@ public class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   }
 
   @SneakyThrows
-  private void assertRawChunkDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId, int recordNumber) {
+  private void assertRawChunkDataFromKafka(FileStorageService fileStorageService, String contentType, String tenantId,
+                                           int recordNumber) {
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_RAW_RECORDS_CHUNK_READ.value());
     RawRecordsDto rawRecordsDto = Json.decodeValue(getEventPayload(topicToObserve), RawRecordsDto.class);
 
     verify(fileStorageService, times(1)).getFile(any());
-    assertNotNull(rawRecordsDto);
-    assertEquals(Integer.valueOf(recordNumber), rawRecordsDto.getRecordsMetadata().getTotal());
-    assertEquals(contentType, rawRecordsDto.getRecordsMetadata().getContentType().value());
+    assertThat(rawRecordsDto).isNotNull();
+    assertThat(rawRecordsDto.getRecordsMetadata().getTotal()).isEqualTo(recordNumber);
+    assertThat(rawRecordsDto.getRecordsMetadata().getContentType().value()).isEqualTo(contentType);
   }
 
   @SneakyThrows
   private void assertErrorFromKafka(FileStorageService fileStorageService, String tenantId, String errorMessage) {
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(),
       KafkaTopicNameHelper.getDefaultNameSpace(), tenantId, DI_ERROR.value());
-    DataImportEventPayload dataImportEventPayload = Json.decodeValue(getEventPayload(topicToObserve), DataImportEventPayload.class);
+    DataImportEventPayload dataImportEventPayload =
+      Json.decodeValue(getEventPayload(topicToObserve), DataImportEventPayload.class);
 
     verify(fileStorageService, times(1)).getFile(any());
-    assertNotNull(dataImportEventPayload);
-    assertEquals(DI_ERROR.value(), dataImportEventPayload.getEventType());
+    assertThat(dataImportEventPayload).isNotNull();
+    assertThat(dataImportEventPayload.getEventType()).isEqualTo(DI_ERROR.value());
     String error = dataImportEventPayload.getContext().get("ERROR");
-    assertNotNull(error);
-    assertTrue(error.contains(errorMessage));
+    assertThat(error).isNotNull().contains(errorMessage);
   }
 }

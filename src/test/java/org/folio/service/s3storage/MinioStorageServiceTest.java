@@ -1,44 +1,40 @@
 package org.folio.service.s3storage;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.isA;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.Vertx;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.List;
 import javax.ws.rs.NotFoundException;
 import org.apache.commons.io.IOUtils;
 import org.folio.s3.client.FolioS3Client;
 import org.folio.s3.exception.S3ClientException;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
-public class MinioStorageServiceTest {
-
-  private final Vertx vertx = Vertx.vertx();
+@ExtendWith({MockitoExtension.class, VertxExtension.class})
+class MinioStorageServiceTest {
 
   private static final String S3_TEST_KEY = "data-import/test-key";
-
+  private final Vertx vertx = Vertx.vertx();
   @Mock
   private FolioS3ClientFactory folioS3ClientFactory;
 
@@ -47,395 +43,357 @@ public class MinioStorageServiceTest {
 
   private MinioStorageService minioStorageService;
 
-  @Before
-  public void setUp(TestContext context) {
-    vertx.exceptionHandler((err -> context.fail(err)));
-
-    MockitoAnnotations.openMocks(this);
-    this.minioStorageService =
-      new MinioStorageServiceImpl(folioS3ClientFactory, vertx);
-
+  @BeforeEach
+  void setUp() {
+    this.minioStorageService = new MinioStorageServiceImpl(folioS3ClientFactory, vertx);
     when(folioS3ClientFactory.getFolioS3Client()).thenReturn(folioS3Client);
   }
 
   @Test
-  public void testFirstPartSuccessful(TestContext context) {
-    when(folioS3Client.initiateMultipartUpload(anyString()))
-      .thenReturn("upload-id");
-    when(
-      folioS3Client.getPresignedMultipartUploadUrl(
-        anyString(),
-        eq("upload-id"),
-        eq(1)
-      )
-    )
+  @DisplayName("should return presigned upload URL and upload ID when initiating first part upload")
+  void shouldReturnPresignedUrlAndUploadId_whenInitiatingFirstPartUpload(VertxTestContext testContext) {
+    when(folioS3Client.initiateMultipartUpload(anyString())).thenReturn("upload-id");
+    when(folioS3Client.getPresignedMultipartUploadUrl(anyString(), eq("upload-id"), eq(1)))
       .thenReturn("upload-url");
 
     minioStorageService
       .getFileUploadFirstPartUrl("test-file", "test-tenant")
       .onComplete(
-        context.asyncAssertSuccess(fileInfo -> {
-          verify(folioS3Client, times(1))
-            .initiateMultipartUpload(fileInfo.getKey());
-          verify(folioS3Client, times(1))
-            .getPresignedMultipartUploadUrl(fileInfo.getKey(), "upload-id", 1);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
+        testContext.succeeding(fileInfo ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).initiateMultipartUpload(fileInfo.getKey());
+            verify(folioS3Client, times(1)).getPresignedMultipartUploadUrl(fileInfo.getKey(), "upload-id", 1);
+            verifyNoMoreInteractions(folioS3Client);
 
-          assertEquals(
-            "Presigned URL is returned",
-            "upload-url",
-            fileInfo.getUrl()
-          );
-          assertEquals(
-            "Upload ID is returned",
-            "upload-id",
-            fileInfo.getUploadId()
-          );
-          assertTrue(
-            "Key format is correct",
-            fileInfo
-              .getKey()
-              .matches("^data-import/test-tenant/\\d+-test-file$")
-          );
-        })
+            assertThat(fileInfo.getUrl()).as("Presigned URL is returned").isEqualTo("upload-url");
+            assertThat(fileInfo.getUploadId()).as("Upload ID is returned").isEqualTo("upload-id");
+            assertThat(fileInfo.getKey()).as("Key format is correct")
+              .matches("^data-import/test-tenant/\\d+-test-file$");
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testFirstPartFailure(TestContext context) {
+  @DisplayName("should fail with S3ClientException when initiateMultipartUpload throws")
+  void shouldFail_withS3ClientException_whenInitiateMultipartUploadThrows(VertxTestContext testContext) {
     S3ClientException exception = new S3ClientException("test exception");
+    when(folioS3Client.initiateMultipartUpload(anyString())).thenThrow(exception);
 
-    when(folioS3Client.initiateMultipartUpload(anyString()))
+    minioStorageService
+      .getFileUploadFirstPartUrl(S3_TEST_KEY, "test-tenant")
+      .onComplete(
+        testContext.failing(err ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).initiateMultipartUpload(anyString());
+            verifyNoMoreInteractions(folioS3Client);
+
+            assertThat(err).as("Fails with correct exception").isSameAs(exception);
+
+            testContext.completeNow();
+          })
+        )
+      );
+  }
+
+  @Test
+  @DisplayName("should fail with S3ClientException when getPresignedMultipartUploadUrl throws")
+  void shouldFail_withS3ClientException_whenGetPresignedUrlThrows(VertxTestContext testContext) {
+    S3ClientException exception = new S3ClientException("test exception");
+    when(folioS3Client.initiateMultipartUpload(anyString())).thenReturn("upload-id");
+    when(folioS3Client.getPresignedMultipartUploadUrl(anyString(), eq("upload-id"), eq(1)))
       .thenThrow(exception);
 
     minioStorageService
       .getFileUploadFirstPartUrl(S3_TEST_KEY, "test-tenant")
       .onComplete(
-        context.asyncAssertFailure(err -> {
-          verify(folioS3Client, times(1)).initiateMultipartUpload(anyString());
-          Mockito.verifyNoMoreInteractions(folioS3Client);
+        testContext.failing(err ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).initiateMultipartUpload(anyString());
+            verify(folioS3Client, times(1)).getPresignedMultipartUploadUrl(anyString(), eq("upload-id"), eq(1));
+            verifyNoMoreInteractions(folioS3Client);
 
-          assertSame("Fails with correct exception", exception, err);
-        })
+            assertThat(err).as("Fails with correct exception").isSameAs(exception);
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testFirstPartNestedFailure(TestContext context) {
-    S3ClientException exception = new S3ClientException("test exception");
-
-    when(folioS3Client.initiateMultipartUpload(anyString()))
-      .thenReturn("upload-id");
-    when(
-      folioS3Client.getPresignedMultipartUploadUrl(
-        anyString(),
-        eq("upload-id"),
-        eq(1)
-      )
-    )
-      .thenThrow(exception);
-
-    minioStorageService
-      .getFileUploadFirstPartUrl(S3_TEST_KEY, "test-tenant")
-      .onComplete(
-        context.asyncAssertFailure(err -> {
-          verify(folioS3Client, times(1)).initiateMultipartUpload(anyString());
-          verify(folioS3Client, times(1))
-            .getPresignedMultipartUploadUrl(
-              anyString(),
-              eq("upload-id"),
-              eq(1)
-            );
-          Mockito.verifyNoMoreInteractions(folioS3Client);
-
-          assertSame("Fails with correct exception", exception, err);
-        })
-      );
-  }
-
-  @Test
-  public void testLaterPartSuccessful(TestContext context) {
-    when(
-      folioS3Client.getPresignedMultipartUploadUrl(
-        S3_TEST_KEY,
-        "upload-id",
-        100
-      )
-    )
+  @DisplayName("should return presigned URL and unchanged key when getting later part upload URL")
+  void shouldReturnPresignedUrl_andUnchangedKey_whenGettingLaterPartUrl(VertxTestContext testContext) {
+    when(folioS3Client.getPresignedMultipartUploadUrl(S3_TEST_KEY, "upload-id", 100))
       .thenReturn("upload-url-100");
 
     minioStorageService
       .getFileUploadPartUrl(S3_TEST_KEY, "upload-id", 100)
       .onComplete(
-        context.asyncAssertSuccess(fileInfo -> {
-          verify(folioS3Client, times(1))
-            .getPresignedMultipartUploadUrl(
-              fileInfo.getKey(),
-              "upload-id",
-              100
-            );
-          Mockito.verifyNoMoreInteractions(folioS3Client);
+        testContext.succeeding(fileInfo ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).getPresignedMultipartUploadUrl(fileInfo.getKey(), "upload-id", 100);
+            verifyNoMoreInteractions(folioS3Client);
 
-          assertEquals(
-            "Presigned URL is returned",
-            "upload-url-100",
-            fileInfo.getUrl()
-          );
-          assertEquals(
-            "Upload ID is returned",
-            "upload-id",
-            fileInfo.getUploadId()
-          );
-          assertEquals("Key did not change", S3_TEST_KEY, fileInfo.getKey());
-        })
+            assertThat(fileInfo.getUrl()).as("Presigned URL is returned").isEqualTo("upload-url-100");
+            assertThat(fileInfo.getUploadId()).as("Upload ID is returned").isEqualTo("upload-id");
+            assertThat(fileInfo.getKey()).as("Key did not change").isEqualTo(S3_TEST_KEY);
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testReadFileSuccessful(TestContext context) {
+  @DisplayName("should return input stream with correct data when reading file successfully")
+  void shouldReturnInputStream_withCorrectData_whenReadingFileSuccessfully(VertxTestContext testContext) {
     String testData = "Testing";
-    InputStream sampleDataStream = new ByteArrayInputStream(
-      testData.getBytes(StandardCharsets.UTF_8)
-    );
-
-    Mockito.doReturn(sampleDataStream).when(folioS3Client).read(S3_TEST_KEY);
+    InputStream sampleDataStream = new ByteArrayInputStream(testData.getBytes(StandardCharsets.UTF_8));
+    doReturn(sampleDataStream).when(folioS3Client).read(S3_TEST_KEY);
 
     minioStorageService
       .readFile(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertSuccess(inStream -> {
-          Mockito.verify(folioS3Client, times(1)).read(S3_TEST_KEY);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
+        testContext.succeeding(inStream ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).read(S3_TEST_KEY);
+            verifyNoMoreInteractions(folioS3Client);
 
-          try {
-            assertEquals(
-              "Proper test data is returned",
-              testData,
-              IOUtils.toString(inStream, StandardCharsets.UTF_8)
-            );
-          } catch (IOException e) {
-            context.fail("testReadFileSuccessful should not fail");
-          }
-        })
+            try {
+              assertThat(IOUtils.toString(inStream, StandardCharsets.UTF_8))
+                .as("Proper test data is returned")
+                .isEqualTo(testData);
+            } catch (IOException e) {
+              testContext.failNow(e);
+              return;
+            }
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testReadFileFailure(TestContext context) {
+  @DisplayName("should fail with S3ClientException when read throws")
+  void shouldFail_withS3ClientException_whenReadThrows(VertxTestContext testContext) {
     S3ClientException exception = new S3ClientException("test exception");
-
-    Mockito.doThrow(exception).when(folioS3Client).read(S3_TEST_KEY);
+    doThrow(exception).when(folioS3Client).read(S3_TEST_KEY);
 
     minioStorageService
       .readFile(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertFailure(err -> {
-          Mockito.verify(folioS3Client, times(1)).read(S3_TEST_KEY);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
-          assertSame("Fails with correct exception", exception, err);
-        })
+        testContext.failing(err ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).read(S3_TEST_KEY);
+            verifyNoMoreInteractions(folioS3Client);
+            assertThat(err).as("Fails with correct exception").isSameAs(exception);
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testWriteFileSuccessful(TestContext context) throws IOException {
+  @DisplayName("should return key when writing file successfully")
+  void shouldReturnKey_whenWritingFileSuccessfully(VertxTestContext testContext) throws IOException {
     String testData = "Testing";
-    InputStream sampleDataStream = new ByteArrayInputStream(
-      testData.getBytes(StandardCharsets.UTF_8)
-    );
-
-    doReturn(S3_TEST_KEY)
-      .when(folioS3Client)
-      .write(S3_TEST_KEY, sampleDataStream);
+    InputStream sampleDataStream = new ByteArrayInputStream(testData.getBytes(StandardCharsets.UTF_8));
+    doReturn(S3_TEST_KEY).when(folioS3Client).write(S3_TEST_KEY, sampleDataStream);
 
     minioStorageService
       .write(S3_TEST_KEY, sampleDataStream)
       .onComplete(
-        context.asyncAssertSuccess(path -> {
-          verify(folioS3Client, times(1)).write(S3_TEST_KEY, sampleDataStream);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
+        testContext.succeeding(path ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).write(S3_TEST_KEY, sampleDataStream);
+            verifyNoMoreInteractions(folioS3Client);
 
-          assertEquals("Correct path is returned", S3_TEST_KEY, path);
-        })
+            assertThat(path).as("Correct path is returned").isEqualTo(S3_TEST_KEY);
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testWriteFileFailure(TestContext context) throws IOException {
+  @DisplayName("should fail with S3ClientException when write throws")
+  void shouldFail_withS3ClientException_whenWriteThrows(VertxTestContext testContext) throws IOException {
     String testData = "Testing";
-    InputStream sampleDataStream = new ByteArrayInputStream(
-      testData.getBytes(StandardCharsets.UTF_8)
-    );
-
+    InputStream sampleDataStream = new ByteArrayInputStream(testData.getBytes(StandardCharsets.UTF_8));
     S3ClientException exception = new S3ClientException("test exception");
-
     doThrow(exception).when(folioS3Client).write(S3_TEST_KEY, sampleDataStream);
 
     minioStorageService
       .write(S3_TEST_KEY, sampleDataStream)
       .onComplete(
-        context.asyncAssertFailure(err -> {
-          verify(folioS3Client, times(1)).write(S3_TEST_KEY, sampleDataStream);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
-          assertSame("Fails with correct exception", exception, err);
-        })
+        testContext.failing(err ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).write(S3_TEST_KEY, sampleDataStream);
+            verifyNoMoreInteractions(folioS3Client);
+            assertThat(err).as("Fails with correct exception").isSameAs(exception);
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testRemoveFileSuccessful(TestContext context) {
-    Mockito.doReturn(S3_TEST_KEY).when(folioS3Client).remove(S3_TEST_KEY);
+  @DisplayName("should succeed when removing file successfully")
+  void shouldSucceed_whenRemovingFileSuccessfully(VertxTestContext testContext) {
+    doReturn(S3_TEST_KEY).when(folioS3Client).remove(S3_TEST_KEY);
 
     minioStorageService
       .remove(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertSuccess(v -> {
-          Mockito.verify(folioS3Client, times(1)).remove(S3_TEST_KEY);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
-        })
+        testContext.succeeding(v ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).remove(S3_TEST_KEY);
+            verifyNoMoreInteractions(folioS3Client);
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testRemoveFileFailure(TestContext context) {
+  @DisplayName("should fail with S3ClientException when remove throws")
+  void shouldFail_withS3ClientException_whenRemoveThrows(VertxTestContext testContext) {
     S3ClientException exception = new S3ClientException("test exception");
-
-    Mockito.doThrow(exception).when(folioS3Client).remove(S3_TEST_KEY);
+    doThrow(exception).when(folioS3Client).remove(S3_TEST_KEY);
 
     minioStorageService
       .remove(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertFailure(err -> {
-          Mockito.verify(folioS3Client, times(1)).remove(S3_TEST_KEY);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
-          assertSame("Fails with correct exception", exception, err);
-        })
+        testContext.failing(err ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).remove(S3_TEST_KEY);
+            verifyNoMoreInteractions(folioS3Client);
+            assertThat(err).as("Fails with correct exception").isSameAs(exception);
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testDownloadPresignedSuccessful(TestContext context) {
+  @DisplayName("should return presigned download URL when file exists")
+  void shouldReturnPresignedDownloadUrl_whenFileExists(VertxTestContext testContext) {
     when(folioS3Client.getPresignedUrl(S3_TEST_KEY)).thenReturn("download-url");
-    when(folioS3Client.list(S3_TEST_KEY))
-      .thenReturn(Arrays.asList(S3_TEST_KEY));
+    when(folioS3Client.list(S3_TEST_KEY)).thenReturn(List.of(S3_TEST_KEY));
 
     minioStorageService
       .getFileDownloadUrl(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertSuccess(fileInfo -> {
-          verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
-          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
+        testContext.succeeding(fileInfo ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
+            verify(folioS3Client, times(1)).list(S3_TEST_KEY);
+            verifyNoMoreInteractions(folioS3Client);
 
-          assertEquals(
-            "Presigned URL is returned",
-            "download-url",
-            fileInfo.getUrl()
-          );
-        })
+            assertThat(fileInfo.getUrl()).as("Presigned URL is returned").isEqualTo("download-url");
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testDownloadPresignedSuccessfulWithSimilarFiles(
-    TestContext context
-  ) {
+  @DisplayName("should return presigned download URL when file exists alongside similar-named files")
+  void shouldReturnPresignedDownloadUrl_whenFileExistsWithSimilarFiles(VertxTestContext testContext) {
     when(folioS3Client.getPresignedUrl(S3_TEST_KEY)).thenReturn("download-url");
     when(folioS3Client.list(S3_TEST_KEY))
-      .thenReturn(
-        Arrays.asList(S3_TEST_KEY + "A", S3_TEST_KEY + "B", S3_TEST_KEY)
-      );
+      .thenReturn(Arrays.asList(S3_TEST_KEY + "A", S3_TEST_KEY + "B", S3_TEST_KEY));
 
     minioStorageService
       .getFileDownloadUrl(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertSuccess(fileInfo -> {
-          verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
-          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
+        testContext.succeeding(fileInfo ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).getPresignedUrl(S3_TEST_KEY);
+            verify(folioS3Client, times(1)).list(S3_TEST_KEY);
+            verifyNoMoreInteractions(folioS3Client);
 
-          assertEquals(
-            "Presigned URL is returned",
-            "download-url",
-            fileInfo.getUrl()
-          );
-        })
+            assertThat(fileInfo.getUrl()).as("Presigned URL is returned").isEqualTo("download-url");
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testDownloadPresignedKeyNotPresentWithSimilarFiles(
-    TestContext context
-  ) {
-    when(folioS3Client.getPresignedUrl(S3_TEST_KEY)).thenReturn("download-url");
+  @DisplayName("should fail with NotFoundException when only similar-named files exist but not the exact key")
+  void shouldFail_withNotFoundException_whenOnlySimilarFilesExist(VertxTestContext testContext) {
     when(folioS3Client.list(S3_TEST_KEY))
       .thenReturn(Arrays.asList(S3_TEST_KEY + "A", S3_TEST_KEY + "B"));
 
     minioStorageService
       .getFileDownloadUrl(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertFailure(err -> {
-          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
+        testContext.failing(err ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).list(S3_TEST_KEY);
+            verifyNoMoreInteractions(folioS3Client);
 
-          assertThat(err, isA(NotFoundException.class));
-        })
+            assertThat(err).isInstanceOf(NotFoundException.class);
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testDownloadPresignedKeyNotPresentWithNoMatch(
-    TestContext context
-  ) {
-    when(folioS3Client.getPresignedUrl(S3_TEST_KEY)).thenReturn("download-url");
-    when(folioS3Client.list(S3_TEST_KEY))
-      .thenReturn(Arrays.asList(S3_TEST_KEY + "A", S3_TEST_KEY + "B"));
+  @DisplayName("should fail with S3ClientException when list throws during download URL retrieval")
+  void shouldFail_withS3ClientException_whenListThrowsDuringDownload(VertxTestContext testContext) {
+    when(folioS3Client.list(S3_TEST_KEY)).thenThrow(new S3ClientException("test exception"));
 
     minioStorageService
       .getFileDownloadUrl(S3_TEST_KEY)
       .onComplete(
-        context.asyncAssertFailure(err -> {
-          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
+        testContext.failing(err ->
+          testContext.verify(() -> {
+            verify(folioS3Client, times(1)).list(S3_TEST_KEY);
+            verifyNoMoreInteractions(folioS3Client);
 
-          assertThat(err, isA(NotFoundException.class));
-        })
+            assertThat(err).isInstanceOf(S3ClientException.class);
+
+            testContext.completeNow();
+          })
+        )
       );
   }
 
   @Test
-  public void testDownloadPresignedS3Failure(TestContext context) {
-    when(folioS3Client.list(S3_TEST_KEY))
-      .thenThrow(new S3ClientException("test exception"));
+  @DisplayName("should fail all operations when key does not have the required prefix")
+  void shouldFailAllOperations_whenKeyDoesNotHaveRequiredPrefix(VertxTestContext testContext)
+    throws IOException {
+    var checkpoint = testContext.checkpoint(4);
 
-    minioStorageService
-      .getFileDownloadUrl(S3_TEST_KEY)
-      .onComplete(
-        context.asyncAssertFailure(err -> {
-          verify(folioS3Client, times(1)).list(S3_TEST_KEY);
-          Mockito.verifyNoMoreInteractions(folioS3Client);
-
-          assertThat(err, isA(S3ClientException.class));
-        })
-      );
-  }
-
-  @Test
-  public void testIncorrectPrefix(TestContext context) throws IOException {
     minioStorageService
       .getFileDownloadUrl("not/prefixed/correctly")
-      .onComplete(context.asyncAssertFailure());
+      .onComplete(testContext.failing(err -> checkpoint.flag()));
 
     minioStorageService
       .getFileUploadPartUrl("not/prefixed/correctly", "upload-id", 2)
-      .onComplete(context.asyncAssertFailure());
+      .onComplete(testContext.failing(err -> checkpoint.flag()));
 
     minioStorageService
       .write("not/prefixed/correctly", new ByteArrayInputStream(new byte[1]))
-      .onComplete(context.asyncAssertFailure());
+      .onComplete(testContext.failing(err -> checkpoint.flag()));
 
     minioStorageService
       .remove("not/prefixed/correctly")
-      .onComplete(context.asyncAssertFailure());
+      .onComplete(testContext.failing(err -> checkpoint.flag()));
   }
 }

@@ -1,238 +1,152 @@
 package org.folio.rest;
 
-import io.restassured.RestAssured;
-import io.restassured.response.Response;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.DataType;
-import org.folio.rest.jaxrs.model.FileExtension;
-import org.hamcrest.MatcherAssert;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-
+import static org.folio.support.TestUtil.DATA_TYPE_PATH;
+import static org.folio.support.TestUtil.FILE_EXTENSION_PATH;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
 
-@RunWith(VertxUnitRunner.class)
-public class FileExtensionAPITest extends AbstractRestTest {
+import io.vertx.core.json.JsonObject;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.DataType;
+import org.folio.rest.jaxrs.model.FileExtension;
+import org.folio.support.AbstractRestTest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-  private static final String FILE_EXTENSION_PATH = "/data-import/fileExtensions";
-  private static final String DATA_TYPE_PATH = "/data-import/dataTypes";
+class FileExtensionAPITest extends AbstractRestTest {
 
-  private static FileExtension fileExtension_1 = new FileExtension()
-    .withExtension(".marc")
-    .withDataTypes(Collections.singletonList(DataType.MARC))
-    .withImportBlocked(false);
-  private static FileExtension fileExtension_2 = new FileExtension()
-    .withExtension(".edi")
-    .withDataTypes(Collections.singletonList(DataType.EDIFACT))
-    .withImportBlocked(false);
-  private static FileExtension fileExtension_3 = new FileExtension()
-    .withExtension(".pdf")
-    .withDataTypes(new ArrayList<>())
-    .withImportBlocked(true);
-  private static FileExtension fileExtension_4 = new FileExtension()
-    .withExtension(".marc")
-    .withDataTypes(new ArrayList<>())
-    .withImportBlocked(true);
-  private static FileExtension fileExtension_5 = new FileExtension()
-    .withExtension("ma rc")
-    .withDataTypes(new ArrayList<>())
-    .withImportBlocked(true);
-  private static FileExtension fileExtension_6 = new FileExtension()
-    .withExtension(".varc")
-    .withDataTypes(new ArrayList<>())
-    .withImportBlocked(false);
-  private static FileExtension fileExtension_7 = new FileExtension()
-    .withExtension(".zarc")
-    .withDataTypes(new ArrayList<>())
-    .withImportBlocked(false);
+  private static final FileExtension FILE_EXTENSION_1 = new FileExtension()
+    .withExtension(".marc").withDataTypes(Collections.singletonList(DataType.MARC)).withImportBlocked(false);
+  private static final FileExtension FILE_EXTENSION_2 = new FileExtension()
+    .withExtension(".edi").withDataTypes(Collections.singletonList(DataType.EDIFACT)).withImportBlocked(false);
+  private static final FileExtension FILE_EXTENSION_3 = new FileExtension()
+    .withExtension(".pdf").withDataTypes(new ArrayList<>()).withImportBlocked(true);
+  private static final FileExtension FILE_EXTENSION_4 = new FileExtension()
+    .withExtension(".marc").withDataTypes(new ArrayList<>()).withImportBlocked(true);
+  private static final FileExtension FILE_EXTENSION_5 = new FileExtension()
+    .withExtension("ma rc").withDataTypes(new ArrayList<>()).withImportBlocked(true);
+  private static final FileExtension FILE_EXTENSION_6 = new FileExtension()
+    .withExtension(".varc").withDataTypes(new ArrayList<>()).withImportBlocked(false);
+  private static final FileExtension FILE_EXTENSION_7 = new FileExtension()
+    .withExtension(".zarc").withDataTypes(new ArrayList<>()).withImportBlocked(false);
 
+  @DisplayName("should return empty list when no file extensions exist")
   @Test
-  public void shouldReturnEmptyListOnGetIfNoFileExtensionsExist() {
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(FILE_EXTENSION_PATH)
-      .then()
+  void shouldReturnEmptyList_whenNoFileExtensionsExist() {
+    getRequest(FILE_EXTENSION_PATH)
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(0))
       .body("fileExtensions", empty());
   }
 
+  @DisplayName("should return all file extensions when no query is specified")
   @Test
-  public void shouldReturnAllFileExtensionsOnGetWhenNoQueryIsSpecified() {
-    List<FileExtension> extensionsToPost = Arrays.asList(fileExtension_1, fileExtension_2, fileExtension_3);
+  void shouldReturnAllFileExtensions_whenNoQueryIsSpecified() {
+    List<FileExtension> extensionsToPost = Arrays.asList(FILE_EXTENSION_1, FILE_EXTENSION_2, FILE_EXTENSION_3);
     for (FileExtension extension : extensionsToPost) {
-      RestAssured.given()
-        .spec(spec)
-        .body(extension)
-        .when()
-        .post(FILE_EXTENSION_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
+      postRequest(FILE_EXTENSION_PATH, extension).statusCode(HttpStatus.SC_CREATED);
     }
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(FILE_EXTENSION_PATH)
-      .then()
+    getRequest(FILE_EXTENSION_PATH)
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(extensionsToPost.size()));
   }
 
+  @DisplayName("should return file extensions with importBlocked=false when queried")
   @Test
-  public void shouldReturnFileExtensionsWithBlockedImportSetToFalse() {
-    List<FileExtension> extensionsToPost = Arrays.asList(fileExtension_1, fileExtension_2, fileExtension_3);
+  void shouldReturnFileExtensionsWithBlockedImportFalse_whenQueried() {
+    List<FileExtension> extensionsToPost = Arrays.asList(FILE_EXTENSION_1, FILE_EXTENSION_2, FILE_EXTENSION_3);
     for (FileExtension extension : extensionsToPost) {
-      RestAssured.given()
-        .spec(spec)
-        .body(extension)
-        .when()
-        .post(FILE_EXTENSION_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
+      postRequest(FILE_EXTENSION_PATH, extension).statusCode(HttpStatus.SC_CREATED);
     }
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(FILE_EXTENSION_PATH + "?query=importBlocked=false")
-      .then()
+    getRequest(FILE_EXTENSION_PATH + "?query=importBlocked=false")
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
       .body("fileExtensions*.importBlocked", everyItem(is(false)));
   }
 
+  @DisplayName("should return limited collection when limit query parameter is used")
   @Test
-  public void shouldReturnLimitedCollectionOnGetWithLimit() {
-    List<FileExtension> extensionsToPost = Arrays.asList(fileExtension_1, fileExtension_2, fileExtension_3);
+  void shouldReturnLimitedCollection_whenLimitQueryIsSpecified() {
+    List<FileExtension> extensionsToPost = Arrays.asList(FILE_EXTENSION_1, FILE_EXTENSION_2, FILE_EXTENSION_3);
     for (FileExtension extension : extensionsToPost) {
-      RestAssured.given()
-        .spec(spec)
-        .body(extension)
-        .when()
-        .post(FILE_EXTENSION_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
+      postRequest(FILE_EXTENSION_PATH, extension).statusCode(HttpStatus.SC_CREATED);
     }
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(FILE_EXTENSION_PATH + "?limit=2")
-      .then()
+    getRequest(FILE_EXTENSION_PATH + "?limit=2")
       .statusCode(HttpStatus.SC_OK)
       .body("fileExtensions.size()", is(2))
       .body("totalRecords", is(extensionsToPost.size()));
   }
 
+  @DisplayName("should return 422 when extension is missing from request body")
   @Test
-  public void shouldReturnBadRequestOnPostWhenNoExtensionPassedInBody() {
-    RestAssured.given()
-      .spec(spec)
-      .body(new JsonObject().toString())
-      .when()
-      .post(FILE_EXTENSION_PATH)
-      .then()
+  void shouldReturn422_whenNoExtensionInBody() {
+    postRequest(FILE_EXTENSION_PATH, new JsonObject().toString())
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
 
+  @DisplayName("should return 422 when an invalid field is present in request body")
   @Test
-  public void shouldReturnBadRequestOnPostWhenInvalidFieldPassedInBody() {
-    JsonObject fileExtension = JsonObject.mapFrom(fileExtension_1)
-      .put("invalidField", "value");
+  void shouldReturn422_whenInvalidFieldInBody() {
+    JsonObject fileExtension = JsonObject.mapFrom(FILE_EXTENSION_1).put("invalidField", "value");
 
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension.encode())
-      .when()
-      .post(FILE_EXTENSION_PATH)
-      .then()
+    postRequest(FILE_EXTENSION_PATH, fileExtension.encode())
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
 
+  @DisplayName("should create file extension when valid body is provided")
   @Test
-  public void shouldCreateFileExtensionOnPost() {
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_2)
-      .when()
-      .post(FILE_EXTENSION_PATH)
-      .then()
+  void shouldCreateFileExtension_whenValidBodyProvided() {
+    postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_2)
       .statusCode(HttpStatus.SC_CREATED)
-      .body("extension", is(fileExtension_2.getExtension()))
-      .body("dataTypes.size()", is(fileExtension_2.getDataTypes().size()))
-      .body("importBlocked", is(fileExtension_2.getImportBlocked()));
+      .body("extension", is(FILE_EXTENSION_2.getExtension()))
+      .body("dataTypes.size()", is(FILE_EXTENSION_2.getDataTypes().size()))
+      .body("importBlocked", is(FILE_EXTENSION_2.getImportBlocked()));
   }
 
+  @DisplayName("should return 422 on PUT when extension is missing from body")
   @Test
-  public void shouldReturnBadRequestOnPutWhenNoExtensionPassedInBody() {
-    RestAssured.given()
-      .spec(spec)
-      .body(new JsonObject().toString())
-      .when()
-      .put(FILE_EXTENSION_PATH + "/" + UUID.randomUUID().toString())
-      .then()
+  void shouldReturn422OnPut_whenNoExtensionInBody() {
+    putRequest(FILE_EXTENSION_PATH + "/" + UUID.randomUUID(), new JsonObject().toString())
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
 
+  @DisplayName("should return 422 on PUT when invalid field is present")
   @Test
-  public void shouldReturnBadRequestOnPutWhenInvalidFieldPassedInBody() {
-    JsonObject invalidFileExtension = JsonObject.mapFrom(fileExtension_1)
-      .put("invalidField", "value");
+  void shouldReturn422OnPut_whenInvalidFieldInBody() {
+    JsonObject invalidFileExtension = JsonObject.mapFrom(FILE_EXTENSION_1).put("invalidField", "value");
 
-    RestAssured.given()
-      .spec(spec)
-      .body(invalidFileExtension.encode())
-      .when()
-      .put(FILE_EXTENSION_PATH + "/" + UUID.randomUUID().toString())
-      .then()
+    putRequest(FILE_EXTENSION_PATH + "/" + UUID.randomUUID(), invalidFileExtension.encode())
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
 
+  @DisplayName("should return 404 on PUT when file extension does not exist")
   @Test
-  public void shouldReturnNotFoundOnPutWhenFileExtensionDoesNotExist() {
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_1)
-      .when()
-      .put(FILE_EXTENSION_PATH + "/" + UUID.randomUUID().toString())
-      .then()
+  void shouldReturn404OnPut_whenFileExtensionDoesNotExist() {
+    putRequest(FILE_EXTENSION_PATH + "/" + UUID.randomUUID(), FILE_EXTENSION_1)
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
+  @DisplayName("should update existing file extension on PUT")
   @Test
-  public void shouldUpdateExistingFileExtensionOnPut() {
-    Response createResponse = RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_1)
-      .when()
-      .post(FILE_EXTENSION_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    FileExtension fileExtension = createResponse.body().as(FileExtension.class);
+  void shouldUpdateFileExtension_whenItExists() {
+    FileExtension fileExtension = postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_1)
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().body().as(FileExtension.class);
 
     fileExtension.setImportBlocked(true);
     fileExtension.setMetadata(null);
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension)
-      .when()
-      .put(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
-      .then()
+
+    putRequest(FILE_EXTENSION_PATH + "/" + fileExtension.getId(), fileExtension)
       .statusCode(HttpStatus.SC_OK)
       .body("id", is(fileExtension.getId()))
       .body("extension", is(fileExtension.getExtension()))
@@ -241,31 +155,21 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .body("importBlocked", is(true));
   }
 
+  @DisplayName("should return 404 on GET by ID when file extension does not exist")
   @Test
-  public void shouldReturnNotFoundOnGetByIdWhenFileExtensionDoesNotExist() {
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(FILE_EXTENSION_PATH + "/" + UUID.randomUUID().toString())
-      .then()
+  void shouldReturn404OnGetById_whenFileExtensionDoesNotExist() {
+    getRequest(FILE_EXTENSION_PATH + "/" + UUID.randomUUID())
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
+  @DisplayName("should return file extension by ID when it exists")
   @Test
-  public void shouldReturnExistingFileExtensionOnGetById() {
-    Response createResponse = RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_3)
-      .when()
-      .post(FILE_EXTENSION_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    FileExtension fileExtension = createResponse.body().as(FileExtension.class);
+  void shouldReturnFileExtensionById_whenItExists() {
+    FileExtension fileExtension = postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_3)
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().body().as(FileExtension.class);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
-      .then()
+    getRequest(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
       .statusCode(HttpStatus.SC_OK)
       .body("id", is(fileExtension.getId()))
       .body("extension", is(fileExtension.getExtension()))
@@ -273,124 +177,76 @@ public class FileExtensionAPITest extends AbstractRestTest {
       .body("importBlocked", is(fileExtension.getImportBlocked()));
   }
 
+  @DisplayName("should return 404 on DELETE when file extension does not exist")
   @Test
-  public void shouldReturnNotFoundOnDeleteWhenFileExtensionDoesNotExist() {
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .delete(FILE_EXTENSION_PATH + "/" + UUID.randomUUID().toString())
-      .then()
+  void shouldReturn404OnDelete_whenFileExtensionDoesNotExist() {
+    deleteRequest(FILE_EXTENSION_PATH + "/" + UUID.randomUUID())
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
+  @DisplayName("should delete existing file extension successfully")
   @Test
-  public void shouldDeleteExistingFileExtensionOnDelete(TestContext testContext) {
-    Async async = testContext.async();
-    Response createResponse = RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_1)
-      .when()
-      .post(FILE_EXTENSION_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    FileExtension fileExtension = createResponse.body().as(FileExtension.class);
-    async.complete();
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .delete(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
-      .then()
+  void shouldDeleteFileExtension_whenItExists() {
+    FileExtension fileExtension = postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_1)
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().body().as(FileExtension.class);
+
+    deleteRequest(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
       .statusCode(HttpStatus.SC_NO_CONTENT);
   }
 
+  @DisplayName("should return 422 when updating extension name to a duplicate")
   @Test
-  public void shouldValidateOnUpdateAndChangeNameOnExisting(TestContext testContext) {
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_6)
-      .when()
-      .post(FILE_EXTENSION_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
-    Async async2 = testContext.async();
-    Response createResponse = RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_7)
-      .when()
-      .post(FILE_EXTENSION_PATH);
-    MatcherAssert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    FileExtension fileExtension = createResponse.body().as(FileExtension.class);
-    async2.complete();
+  void shouldReturn422_whenUpdatingExtensionNameToDuplicate() {
+    postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_6).statusCode(HttpStatus.SC_CREATED);
 
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension.withExtension(fileExtension_6.getExtension()).withMetadata(null))
-      .when()
-      .put(FILE_EXTENSION_PATH + "/" + fileExtension.getId())
-      .then()
+    FileExtension fileExtension = postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_7)
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().body().as(FileExtension.class);
+
+    putRequest(FILE_EXTENSION_PATH + "/" + fileExtension.getId(),
+      fileExtension.withExtension(FILE_EXTENSION_6.getExtension()).withMetadata(null))
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("File extension .varc already exists"));
   }
 
+  @DisplayName("should return 422 when saving a duplicate extension")
   @Test
-  public void shouldReturnErrorOnSavingDuplicateExtension() {
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_1)
-      .when()
-      .post(FILE_EXTENSION_PATH)
-      .then()
+  void shouldReturn422_whenSavingDuplicateExtension() {
+    postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_1)
       .statusCode(HttpStatus.SC_CREATED)
-      .body("extension", is(fileExtension_1.getExtension()))
-      .body("dataTypes.size()", is(fileExtension_1.getDataTypes().size()))
-      .body("importBlocked", is(fileExtension_1.getImportBlocked()));
+      .body("extension", is(FILE_EXTENSION_1.getExtension()))
+      .body("dataTypes.size()", is(FILE_EXTENSION_1.getDataTypes().size()))
+      .body("importBlocked", is(FILE_EXTENSION_1.getImportBlocked()));
 
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_4)
-      .when()
-      .post(FILE_EXTENSION_PATH)
-      .then()
+    postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_4)
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("File extension .marc already exists"));
 
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_4.withExtension(" " + fileExtension_4.getExtension() + " "))
-      .when()
-      .post(FILE_EXTENSION_PATH)
-      .then()
+    postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_4.withExtension(" " + FILE_EXTENSION_4.getExtension() + " "))
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("File extension  .marc  is not a valid format"));
   }
 
+  @DisplayName("should return all data types when GET /dataTypes is called")
   @Test
-  public void shouldReturnAllDataTypesOnGet() {
-    Response response = RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(DATA_TYPE_PATH);
+  void shouldReturnAllDataTypes_whenGetDataTypesIsCalled() {
     String[] dataTypesNames = Arrays.stream(DataType.values()).map(Enum::toString).toArray(String[]::new);
 
-    response.then()
+    getRequest(DATA_TYPE_PATH)
       .log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(DataType.values().length))
       .body("dataTypes", hasItems(dataTypesNames));
   }
 
+  @DisplayName("should return 422 when saving extension with invalid format")
   @Test
-  public void shouldReturnErrorOnSavingInvalidExtension() {
-    RestAssured.given()
-      .spec(spec)
-      .body(fileExtension_5)
-      .when()
-      .post(FILE_EXTENSION_PATH)
-      .then().log().all()
+  void shouldReturn422_whenSavingInvalidExtension() {
+    postRequest(FILE_EXTENSION_PATH, FILE_EXTENSION_5)
+      .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("File extension ma rc is not a valid format"));
   }
-
 }

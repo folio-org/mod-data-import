@@ -1,14 +1,7 @@
 package org.folio.service.file;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.aMapWithSize;
-import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.hasEntry;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertNotNull;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -25,9 +18,8 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -36,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
@@ -44,464 +37,261 @@ import org.folio.rest.jaxrs.model.ProcessFilesRqDto;
 import org.folio.rest.jaxrs.model.StatusDto;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 import org.folio.service.file.SplitFileProcessingService.SplitFileInformation;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
-@RunWith(VertxUnitRunner.class)
-public class SplitFileProcessingServiceStartJobTest
-  extends SplitFileProcessingServiceAbstractTest {
+class SplitFileProcessingServiceStartJobTest extends SplitFileProcessingServiceAbstractTest {
 
   private static final Resource TEST_FILE = new ClassPathResource("10.mrc");
-  private static final Resource TEST_EDIFACT_FILE = new ClassPathResource(
-    "edifact/CornAuxAm.1605541205.edi"
-  );
+  private static final Resource TEST_EDIFACT_FILE = new ClassPathResource("edifact/CornAuxAm.1605541205.edi");
 
-  @Before
-  public void mockDao() {
-    when(this.queueItemDao.addQueueItem(any()))
-      .thenReturn(Future.succeededFuture("new-id"));
-  }
-
+  @DisplayName("should create parent job executions for each file definition")
   @Test
-  public void testCreateParentJobExecutions(TestContext context) {
+  void shouldCreateParentJobExecutions_forEachFileDefinition(VertxTestContext testContext) {
     doAnswer(invocation -> {
-        InitJobExecutionsRqDto request = invocation.getArgument(0);
-        Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(
-          1
-        );
+      InitJobExecutionsRqDto request = invocation.getArgument(0);
+      Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(1);
 
-        assertThat(request.getFiles(), hasSize(1));
-        assertThat(request.getJobProfileInfo(), is(JOB_PROFILE_INFO));
-        assertThat(request.getUserId(), is("created-user-id"));
+      assertThat(request.getFiles()).hasSize(1);
+      assertThat(request.getJobProfileInfo()).isEqualTo(JOB_PROFILE_INFO);
+      assertThat(request.getUserId()).isEqualTo("created-user-id");
 
-        if (request.getFiles().getFirst().getName().contains("1")) {
-          responseHandler.handle(
-            getSuccessArBuffer(
-              new InitJobExecutionsRsDto()
-                .withJobExecutions(List.of(JOB_EXECUTION_1))
-            )
-          );
-        } else if (request.getFiles().getFirst().getName().contains("2")) {
-          responseHandler.handle(
-            getSuccessArBuffer(
-              new InitJobExecutionsRsDto()
-                .withJobExecutions(Arrays.asList(JOB_EXECUTION_2))
-            )
-          );
-        } else if (request.getFiles().getFirst().getName().contains("3")) {
-          responseHandler.handle(
-            getSuccessArBuffer(
-              new InitJobExecutionsRsDto()
-                .withJobExecutions(Arrays.asList(JOB_EXECUTION_3))
-            )
-          );
-        } else {
-          context.fail();
-        }
+      String fileName = request.getFiles().getFirst().getName();
+      if (fileName.contains("1")) {
+        responseHandler.handle(
+          getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(List.of(JOB_EXECUTION_1))));
+      } else if (fileName.contains("2")) {
+        responseHandler.handle(getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(
+          singletonList(JOB_EXECUTION_2))));
+      } else if (fileName.contains("3")) {
+        responseHandler.handle(getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(
+          singletonList(JOB_EXECUTION_3))));
+      } else {
+        responseHandler.handle(Future.failedFuture(new AssertionError("Unexpected file name: " + fileName)));
+      }
+      return null;
+    }).when(changeManagerClient).postChangeManagerJobExecutions(any(), any());
 
-        return null;
-      })
-      .when(changeManagerClient)
-      .postChangeManagerJobExecutions(any(), any());
-
-    service
-      .createParentJobExecutions(
-        new ProcessFilesRqDto()
-          .withJobProfileInfo(JOB_PROFILE_INFO)
-          .withUploadDefinition(
-            new UploadDefinition()
-              .withFileDefinitions(
-                Arrays.asList(
-                  FILE_DEFINITION_1,
-                  FILE_DEFINITION_2,
-                  FILE_DEFINITION_3
-                )
-              )
-              .withMetadata(METADATA)
-          ),
-        changeManagerClient
-      )
-      .onComplete(
-        context.asyncAssertSuccess(result -> {
-          assertThat(
-            result,
-            allOf(
-              aMapWithSize(3),
-              hasEntry("key/file-1-key", JOB_EXECUTION_1),
-              hasEntry("key/file-2-key", JOB_EXECUTION_2),
-              hasEntry("key/file-3-key", JOB_EXECUTION_3)
-            )
-          );
-
-          verify(changeManagerClient, times(3))
-            .postChangeManagerJobExecutions(any(), any());
-        })
-      );
+    service.createParentJobExecutions(
+      new ProcessFilesRqDto()
+        .withJobProfileInfo(JOB_PROFILE_INFO)
+        .withUploadDefinition(new UploadDefinition()
+          .withFileDefinitions(Arrays.asList(FILE_DEFINITION_1, FILE_DEFINITION_2, FILE_DEFINITION_3))
+          .withMetadata(METADATA)),
+      changeManagerClient
+    ).onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+      assertThat(result)
+        .hasSize(3)
+        .containsEntry("key/file-1-key", JOB_EXECUTION_1)
+        .containsEntry("key/file-2-key", JOB_EXECUTION_2)
+        .containsEntry("key/file-3-key", JOB_EXECUTION_3);
+      verify(changeManagerClient, times(3)).postChangeManagerJobExecutions(any(), any());
+      testContext.completeNow();
+    })));
   }
 
+  @DisplayName("should fail when creating parent job executions fails")
   @Test
-  public void testCreateParentJobExecutionsFailure(TestContext context) {
+  void shouldFail_whenCreatingParentJobExecutionsFails(VertxTestContext testContext) {
     doAnswer(invocation -> {
-        invocation
-          .<Handler<AsyncResult<HttpResponse<Buffer>>>>getArgument(1)
-          .handle(Future.failedFuture("test error"));
-        return null;
-      })
-      .when(changeManagerClient)
-      .postChangeManagerJobExecutions(any(), any());
+      invocation.<Handler<AsyncResult<HttpResponse<Buffer>>>>getArgument(1).handle(Future.failedFuture("test error"));
+      return null;
+    }).when(changeManagerClient).postChangeManagerJobExecutions(any(), any());
 
-    service
-      .createParentJobExecutions(
-        new ProcessFilesRqDto()
-          .withJobProfileInfo(JOB_PROFILE_INFO)
-          .withUploadDefinition(
-            new UploadDefinition()
-              .withFileDefinitions(
-                Arrays.asList(
-                  FILE_DEFINITION_1,
-                  FILE_DEFINITION_2,
-                  FILE_DEFINITION_3
-                )
-              )
-              .withMetadata(METADATA)
-          ),
-        changeManagerClient
-      )
-      .onComplete(context.asyncAssertFailure());
+    service.createParentJobExecutions(
+      new ProcessFilesRqDto()
+        .withJobProfileInfo(JOB_PROFILE_INFO)
+        .withUploadDefinition(new UploadDefinition()
+          .withFileDefinitions(Arrays.asList(FILE_DEFINITION_1, FILE_DEFINITION_2, FILE_DEFINITION_3))
+          .withMetadata(METADATA)),
+      changeManagerClient
+    ).onComplete(testContext.failingThenComplete());
   }
 
+  @DisplayName("should split MARC file and return split keys and total records")
   @Test
-  public void testSplitFile(TestContext context) throws IOException {
+  void shouldSplitMarcFile_andReturnSplitKeysAndTotalRecords(VertxTestContext testContext) throws IOException {
     when(minioStorageService.readFile("test-key"))
       .thenReturn(Future.succeededFuture(TEST_FILE.getInputStream()));
-
     when(fileSplitService.splitFileFromS3(any(), any()))
-      .thenReturn(
-        Future.succeededFuture(Arrays.asList("result1", "result2", "result3"))
-      );
+      .thenReturn(Future.succeededFuture(Arrays.asList("result1", "result2", "result3")));
 
-    service
-      .splitFile("test-key", JOB_PROFILE_MARC)
-      .onComplete(
-        context.asyncAssertSuccess(result -> {
-          assertThat(result.getKey(), is("test-key"));
-          assertThat(
-            result.getSplitKeys(),
-            contains("result1", "result2", "result3")
-          );
-          assertThat(result.getTotalRecords(), is(10));
-        })
-      );
+    service.splitFile("test-key", JOB_PROFILE_MARC).onComplete(
+      testContext.succeeding(result -> testContext.verify(() -> {
+        assertThat(result.getKey()).isEqualTo("test-key");
+        assertThat(result.getSplitKeys()).containsExactly("result1", "result2", "result3");
+        assertThat(result.getTotalRecords()).isEqualTo(10);
+        testContext.completeNow();
+      }))
+    );
   }
 
+  @DisplayName("should not split non-MARC file and return original key")
   @Test
-  public void testSplitNonMarcFile(TestContext context) throws IOException {
+  void shouldNotSplitNonMarcFile_andReturnOriginalKey(VertxTestContext testContext) throws IOException {
     when(minioStorageService.readFile("test-key"))
       .thenReturn(Future.succeededFuture(TEST_EDIFACT_FILE.getInputStream()));
 
-    when(fileSplitService.splitFileFromS3(any(), any()))
-      .thenReturn(
-        Future.succeededFuture(Arrays.asList("result1", "result2", "result3"))
-      );
-
-    service
-      .splitFile("test-key", JOB_PROFILE_EDIFACT)
-      .onComplete(
-        context.asyncAssertSuccess(result -> {
-          assertThat(result.getKey(), is("test-key"));
-          assertThat(result.getSplitKeys(), contains("test-key"));
-          assertThat(result.getTotalRecords(), is(1));
-        })
-      );
+    service.splitFile("test-key", JOB_PROFILE_EDIFACT).onComplete(
+      testContext.succeeding(result -> testContext.verify(() -> {
+        assertThat(result.getKey()).isEqualTo("test-key");
+        assertThat(result.getSplitKeys()).containsExactly("test-key");
+        assertThat(result.getTotalRecords()).isEqualTo(1);
+        testContext.completeNow();
+      }))
+    );
   }
 
+  @DisplayName("should fail when file split encounters I/O error")
   @Test
-  public void testSplitFileFailure(TestContext context) {
+  void shouldFail_whenFileSplitEncountersIOError(VertxTestContext testContext) {
     when(minioStorageService.readFile("test-key"))
-      .thenReturn(
-        Future.succeededFuture(
-          new InputStream() {
-            @Override
-            public int read() throws IOException {
-              throw new IOException();
-            }
-          }
-        )
-      );
+      .thenReturn(Future.succeededFuture(new InputStream() {
+        @Override
+        public int read() throws IOException {
+          throw new IOException();
+        }
+      }));
 
-    service
-      .splitFile("test-key", JOB_PROFILE_MARC)
-      .onComplete(context.asyncAssertFailure());
+    service.splitFile("test-key", JOB_PROFILE_MARC).onComplete(testContext.failingThenComplete());
   }
 
+  @DisplayName("should initialize job for all file definitions and return split info map")
   @Test
-  public void testInitializeJob(TestContext context) {
+  void shouldInitializeJob_forAllFileDefinitions(VertxTestContext testContext) {
     doAnswer(invocation ->
-        Future.succeededFuture(
-          SplitFileInformation
-            .builder()
-            .key(invocation.getArgument(0))
-            .splitKeys(Arrays.asList("a1", "a2", "a3"))
-            .totalRecords(10)
-            .build()
-        )
-      )
+      Future.succeededFuture(SplitFileInformation.builder()
+        .key(invocation.getArgument(0)).splitKeys(Arrays.asList("a1", "a2", "a3")).totalRecords(10).build()))
       .doAnswer(invocation ->
-        Future.succeededFuture(
-          SplitFileInformation
-            .builder()
-            .key(invocation.getArgument(0))
-            .splitKeys(Arrays.asList("b1"))
-            .totalRecords(10)
-            .build()
-        )
-      )
+        Future.succeededFuture(SplitFileInformation.builder()
+          .key(invocation.getArgument(0)).splitKeys(List.of("b1")).totalRecords(10).build()))
       .doAnswer(invocation ->
-        Future.succeededFuture(
-          SplitFileInformation
-            .builder()
-            .key(invocation.getArgument(0))
-            .splitKeys(Arrays.asList("c1", "c2"))
-            .totalRecords(10)
-            .build()
-        )
-      )
-      .when(service)
-      .splitFile(any(), any());
+        Future.succeededFuture(SplitFileInformation.builder()
+          .key(invocation.getArgument(0)).splitKeys(Arrays.asList("c1", "c2")).totalRecords(10).build()))
+      .when(service).splitFile(any(), any());
 
     doAnswer(invocation -> {
-        InitJobExecutionsRqDto request = invocation.getArgument(0);
-        Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(
-          1
-        );
+      InitJobExecutionsRqDto request = invocation.getArgument(0);
+      Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(1);
 
-        assertThat(request.getFiles(), hasSize(1));
-        assertThat(request.getJobProfileInfo(), is(JOB_PROFILE_INFO));
+      assertThat(request.getFiles()).hasSize(1);
+      assertThat(request.getJobProfileInfo()).isEqualTo(JOB_PROFILE_INFO);
 
-        if (request.getFiles().getFirst().getName().contains("1")) {
-          responseHandler.handle(
-            getSuccessArBuffer(
-              new InitJobExecutionsRsDto()
-                .withJobExecutions(Arrays.asList(JOB_EXECUTION_1))
-            )
-          );
-        } else if (request.getFiles().getFirst().getName().contains("2")) {
-          responseHandler.handle(
-            getSuccessArBuffer(
-              new InitJobExecutionsRsDto()
-                .withJobExecutions(Arrays.asList(JOB_EXECUTION_2))
-            )
-          );
-        } else if (request.getFiles().getFirst().getName().contains("3")) {
-          responseHandler.handle(
-            getSuccessArBuffer(
-              new InitJobExecutionsRsDto()
-                .withJobExecutions(Arrays.asList(JOB_EXECUTION_3))
-            )
-          );
-        } else {
-          context.fail();
-        }
-
-        return null;
-      })
-      .when(changeManagerClient)
-      .postChangeManagerJobExecutions(any(), any());
+      String fileName = request.getFiles().getFirst().getName();
+      if (fileName.contains("1")) {
+        responseHandler.handle(
+          getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(singletonList(JOB_EXECUTION_1))));
+      } else if (fileName.contains("2")) {
+        responseHandler.handle(
+          getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(singletonList(JOB_EXECUTION_2))));
+      } else if (fileName.contains("3")) {
+        responseHandler.handle(
+          getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(singletonList(JOB_EXECUTION_3))));
+      } else {
+        responseHandler.handle(Future.failedFuture(new AssertionError("Unexpected file name: " + fileName)));
+      }
+      return null;
+    }).when(changeManagerClient).postChangeManagerJobExecutions(any(), any());
 
     when(changeManagerClient.putChangeManagerJobExecutionsById(any(), any()))
       .thenAnswer(invocation -> {
         JobExecution jobExecution = invocation.getArgument(1);
-        assertNotNull(jobExecution);
-        assertThat(jobExecution.getTotalRecordsInFile(), is(10));
-
+        assertThat(jobExecution).isNotNull();
+        assertThat(jobExecution.getTotalRecordsInFile()).isEqualTo(10);
         return getSuccessArBuffer(null);
       });
 
-    service
-      .initializeJob(
-        new ProcessFilesRqDto()
-          .withJobProfileInfo(JOB_PROFILE_INFO)
-          .withUploadDefinition(
-            new UploadDefinition()
-              .withFileDefinitions(
-                Arrays.asList(
-                  FILE_DEFINITION_1,
-                  FILE_DEFINITION_2,
-                  FILE_DEFINITION_3
-                )
-              )
-          ),
-        changeManagerClient
-      )
-      .onComplete(
-        context.asyncAssertSuccess(map -> {
-          assertThat(map, is(aMapWithSize(3)));
+    service.initializeJob(
+      new ProcessFilesRqDto()
+        .withJobProfileInfo(JOB_PROFILE_INFO)
+        .withUploadDefinition(new UploadDefinition()
+          .withFileDefinitions(Arrays.asList(FILE_DEFINITION_1, FILE_DEFINITION_2, FILE_DEFINITION_3))),
+      changeManagerClient
+    ).onComplete(testContext.succeeding(map -> testContext.verify(() -> {
+      assertThat(map).hasSize(3);
 
-          assertThat(map.get("key/file-1-key").getKey(), is("key/file-1-key"));
-          assertThat(
-            map.get("key/file-1-key").getJobExecution(),
-            is(JOB_EXECUTION_1.withTotalRecordsInFile(10))
-          );
-          assertThat(
-            map.get("key/file-1-key").getSplitKeys(),
-            contains("a1", "a2", "a3")
-          );
-          assertThat(map.get("key/file-1-key").getTotalRecords(), is(10));
+      assertThat(map.get("key/file-1-key").getKey()).isEqualTo("key/file-1-key");
+      assertThat(map.get("key/file-1-key").getJobExecution()).isEqualTo(JOB_EXECUTION_1.withTotalRecordsInFile(10));
+      assertThat(map.get("key/file-1-key").getSplitKeys()).containsExactly("a1", "a2", "a3");
+      assertThat(map.get("key/file-1-key").getTotalRecords()).isEqualTo(10);
 
-          assertThat(map.get("key/file-2-key").getKey(), is("key/file-2-key"));
-          assertThat(
-            map.get("key/file-2-key").getJobExecution(),
-            is(JOB_EXECUTION_2.withTotalRecordsInFile(10))
-          );
-          assertThat(map.get("key/file-2-key").getSplitKeys(), contains("b1"));
-          assertThat(map.get("key/file-2-key").getTotalRecords(), is(10));
+      assertThat(map.get("key/file-2-key").getKey()).isEqualTo("key/file-2-key");
+      assertThat(map.get("key/file-2-key").getJobExecution()).isEqualTo(JOB_EXECUTION_2.withTotalRecordsInFile(10));
+      assertThat(map.get("key/file-2-key").getSplitKeys()).containsExactly("b1");
+      assertThat(map.get("key/file-2-key").getTotalRecords()).isEqualTo(10);
 
-          assertThat(map.get("key/file-3-key").getKey(), is("key/file-3-key"));
-          assertThat(
-            map.get("key/file-3-key").getJobExecution(),
-            is(JOB_EXECUTION_3.withTotalRecordsInFile(10))
-          );
-          assertThat(
-            map.get("key/file-3-key").getSplitKeys(),
-            contains("c1", "c2")
-          );
-          assertThat(map.get("key/file-3-key").getTotalRecords(), is(10));
+      assertThat(map.get("key/file-3-key").getKey()).isEqualTo("key/file-3-key");
+      assertThat(map.get("key/file-3-key").getJobExecution()).isEqualTo(JOB_EXECUTION_3.withTotalRecordsInFile(10));
+      assertThat(map.get("key/file-3-key").getSplitKeys()).containsExactly("c1", "c2");
+      assertThat(map.get("key/file-3-key").getTotalRecords()).isEqualTo(10);
 
-          verify(service, times(3)).splitFile(any(), any());
-          verify(changeManagerClient, times(3))
-            .postChangeManagerJobExecutions(any(), any());
-        })
-      );
+      verify(service, times(3)).splitFile(any(), any());
+      verify(changeManagerClient, times(3)).postChangeManagerJobExecutions(any(), any());
+      testContext.completeNow();
+    })));
   }
 
+  @DisplayName("should initialize children and update job profile for each file")
   @Test
-  public void testInitializeChildren(TestContext context) {
-    doReturn(
-      Future.all(
-        Future.succeededFuture(JOB_EXECUTION_2),
-        Future.succeededFuture(JOB_EXECUTION_3)
-      )
-    )
-      .when(service)
-      .registerSplitFileParts(
-        any(),
-        eq(JOB_EXECUTION_1),
-        eq(JOB_PROFILE_INFO),
-        eq(changeManagerClient),
-        eq(10),
-        any(),
-        anyList()
-      );
+  void shouldInitializeChildren_andUpdateJobProfile(VertxTestContext testContext) {
+    doReturn(Future.all(Future.succeededFuture(JOB_EXECUTION_2), Future.succeededFuture(JOB_EXECUTION_3)))
+      .when(service).registerSplitFileParts(any(), eq(JOB_EXECUTION_1), eq(JOB_PROFILE_INFO),
+        eq(changeManagerClient), eq(10), any(), anyList());
 
     when(fileProcessor.updateJobsProfile(any(), eq(JOB_PROFILE_INFO), any()))
-      // child entities
       .thenAnswer(invocation -> {
-        assertThat(
-          invocation
-            .<List<JobExecutionDto>>getArgument(0)
-            .stream()
-            .map(JobExecutionDto::getId)
-            .toList(),
-          containsInAnyOrder(JOB_EXECUTION_2.getId(), JOB_EXECUTION_3.getId())
-        );
+        assertThat(invocation.<List<JobExecutionDto>>getArgument(0).stream()
+          .map(JobExecutionDto::getId).toList())
+          .containsExactlyInAnyOrder(JOB_EXECUTION_2.getId(), JOB_EXECUTION_3.getId());
         return Future.succeededFuture();
       })
-      // parent entity
       .thenAnswer(invocation -> {
-        assertThat(
-          invocation
-            .<List<JobExecutionDto>>getArgument(0)
-            .stream()
-            .map(JobExecutionDto::getId)
-            .toList(),
-          containsInAnyOrder(JOB_EXECUTION_1.getId())
-        );
+        assertThat(invocation.<List<JobExecutionDto>>getArgument(0).stream()
+          .map(JobExecutionDto::getId).toList())
+          .containsExactlyInAnyOrder(JOB_EXECUTION_1.getId());
         return Future.succeededFuture();
       });
 
-    when(
-      uploadDefinitionService.updateJobExecutionStatus(
-        eq(JOB_EXECUTION_1.getId()),
-        eq(new StatusDto().withStatus(StatusDto.Status.COMMIT_IN_PROGRESS)),
-        any()
-      )
-    )
+    when(uploadDefinitionService.updateJobExecutionStatus(
+      eq(JOB_EXECUTION_1.getId()),
+      eq(new StatusDto().withStatus(StatusDto.Status.COMMIT_IN_PROGRESS)), any()))
       .thenReturn(Future.succeededFuture(true));
 
-    service
-      .initializeChildren(
-        new ProcessFilesRqDto()
-          .withJobProfileInfo(JOB_PROFILE_INFO)
-          .withUploadDefinition(
-            new UploadDefinition()
-              .withFileDefinitions(
-                Arrays.asList(
-                  FILE_DEFINITION_1,
-                  FILE_DEFINITION_2,
-                  FILE_DEFINITION_3
-                )
-              )
-              .withMetadata(METADATA)
-          ),
-        changeManagerClient,
-        new ConnectionParams(Map.of("x-okapi-tenant", "tenant"), null),
-        SplitFileInformation
-          .builder()
-          .key("key/file-1-key")
-          .jobExecution(JOB_EXECUTION_1)
-          .totalRecords(10)
-          .splitKeys(Arrays.asList("a1", "a2"))
-          .build()
-      )
-      .onComplete(
-        context.asyncAssertSuccess(v -> {
-          verify(service, times(1))
-            .registerSplitFileParts(
-              any(),
-              eq(JOB_EXECUTION_1),
-              eq(JOB_PROFILE_INFO),
-              eq(changeManagerClient),
-              eq(10),
-              any(),
-              anyList()
-            );
-          verify(fileProcessor, times(2))
-            .updateJobsProfile(any(), eq(JOB_PROFILE_INFO), any());
-          verify(uploadDefinitionService, times(1))
-            .updateJobExecutionStatus(
-              eq(JOB_EXECUTION_1.getId()),
-              eq(
-                new StatusDto().withStatus(StatusDto.Status.COMMIT_IN_PROGRESS)
-              ),
-              any()
-            );
+    when(this.queueItemDao.addQueueItem(any())).thenReturn(Future.succeededFuture("new-id"));
 
-          verifyNoMoreInteractions(fileProcessor);
-          verifyNoMoreInteractions(uploadDefinitionService);
-
-          verify(queueItemDao, times(2)).addQueueItem(any());
-
-          verifyNoMoreInteractions(queueItemDao);
-        })
-      );
+    service.initializeChildren(
+      new ProcessFilesRqDto()
+        .withJobProfileInfo(JOB_PROFILE_INFO)
+        .withUploadDefinition(new UploadDefinition()
+          .withFileDefinitions(Arrays.asList(FILE_DEFINITION_1, FILE_DEFINITION_2, FILE_DEFINITION_3))
+          .withMetadata(METADATA)),
+      changeManagerClient,
+      new ConnectionParams(Map.of(XOkapiHeaders.TENANT, "tenant"), null),
+      SplitFileInformation.builder()
+        .key("key/file-1-key").jobExecution(JOB_EXECUTION_1).totalRecords(10)
+        .splitKeys(Arrays.asList("a1", "a2")).build()
+    ).onComplete(testContext.succeeding(v -> testContext.verify(() -> {
+      verify(service, times(1)).registerSplitFileParts(
+        any(), eq(JOB_EXECUTION_1), eq(JOB_PROFILE_INFO), eq(changeManagerClient), eq(10), any(), anyList());
+      verify(fileProcessor, times(2)).updateJobsProfile(any(), eq(JOB_PROFILE_INFO), any());
+      verify(uploadDefinitionService, times(1)).updateJobExecutionStatus(
+        eq(JOB_EXECUTION_1.getId()),
+        eq(new StatusDto().withStatus(StatusDto.Status.COMMIT_IN_PROGRESS)), any());
+      verifyNoMoreInteractions(fileProcessor);
+      verifyNoMoreInteractions(uploadDefinitionService);
+      verify(queueItemDao, times(2)).addQueueItem(any());
+      verifyNoMoreInteractions(queueItemDao);
+      testContext.completeNow();
+    })));
   }
 
+  @DisplayName("should fail to initialize children when update job execution status returns false")
   @Test
-  public void testInitializeChildrenFailure(TestContext context) {
-    doReturn(Future.all(new ArrayList<>()))
-      .when(service)
-      .registerSplitFileParts(
-        any(),
-        any(),
-        any(),
-        any(),
-        anyInt(),
-        any(),
-        anyList()
-      );
+  void shouldFailInitializeChildren_whenUpdateJobExecutionStatusReturnsFalse(VertxTestContext testContext) {
+    doReturn(Future.all(new ArrayList<>())).when(service)
+      .registerSplitFileParts(any(), any(), any(), any(), anyInt(), any(), anyList());
 
     when(fileProcessor.updateJobsProfile(any(), eq(JOB_PROFILE_INFO), any()))
       .thenReturn(Future.succeededFuture());
@@ -509,95 +299,52 @@ public class SplitFileProcessingServiceStartJobTest
     when(uploadDefinitionService.updateJobExecutionStatus(any(), any(), any()))
       .thenReturn(Future.succeededFuture(false));
 
-    service
-      .initializeChildren(
-        new ProcessFilesRqDto()
-          .withJobProfileInfo(JOB_PROFILE_INFO)
-          .withUploadDefinition(
-            new UploadDefinition()
-              .withFileDefinitions(
-                Arrays.asList(
-                  FILE_DEFINITION_1,
-                  FILE_DEFINITION_2,
-                  FILE_DEFINITION_3
-                )
-              )
-              .withMetadata(METADATA)
-          ),
-        changeManagerClient,
-        new ConnectionParams(Map.of("x-okapi-tenant", "tenant"), null),
-        SplitFileInformation
-          .builder()
-          .key("key/file-1-key")
-          .jobExecution(JOB_EXECUTION_1)
-          .totalRecords(10)
-          .splitKeys(Arrays.asList("a1", "a2"))
-          .build()
-      )
-      .onComplete(
-        context.asyncAssertFailure(v -> verifyNoInteractions(queueItemDao))
-      );
+    service.initializeChildren(
+      new ProcessFilesRqDto()
+        .withJobProfileInfo(JOB_PROFILE_INFO)
+        .withUploadDefinition(new UploadDefinition()
+          .withFileDefinitions(Arrays.asList(FILE_DEFINITION_1, FILE_DEFINITION_2, FILE_DEFINITION_3))
+          .withMetadata(METADATA)),
+      changeManagerClient,
+      new ConnectionParams(Map.of(XOkapiHeaders.TENANT, "tenant"), null),
+      SplitFileInformation.builder()
+        .key("key/file-1-key").jobExecution(JOB_EXECUTION_1).totalRecords(10)
+        .splitKeys(Arrays.asList("a1", "a2")).build()
+    ).onComplete(testContext.failing(v -> testContext.verify(() -> {
+      verifyNoInteractions(queueItemDao);
+      testContext.completeNow();
+    })));
   }
 
+  @DisplayName("should start job and update upload definition status to COMPLETED")
   @Test
-  public void testStartJob() {
-    doReturn(
-      Future.succeededFuture(
-        Map.of(
-          "key/file-1-key",
-          SplitFileInformation
-            .builder()
-            .key("key/file-1-key")
-            .splitKeys(Arrays.asList("a1", "a2", "a3"))
-            .totalRecords(10)
-            .jobExecution(JOB_EXECUTION_1)
-            .build(),
-          "key/file-2-key",
-          SplitFileInformation
-            .builder()
-            .key("key/file-2-key")
-            .splitKeys(Arrays.asList("b1"))
-            .totalRecords(10)
-            .jobExecution(JOB_EXECUTION_2)
-            .build()
-        )
-      )
-    )
-      .when(service)
-      .initializeJob(any(), eq(changeManagerClient));
+  void shouldStartJob_andUpdateUploadDefinitionStatusToCompleted() {
+    doReturn(Future.succeededFuture(Map.of(
+      "key/file-1-key", SplitFileInformation.builder()
+        .key("key/file-1-key").splitKeys(Arrays.asList("a1", "a2", "a3")).totalRecords(10)
+        .jobExecution(JOB_EXECUTION_1).build(),
+      "key/file-2-key", SplitFileInformation.builder()
+        .key("key/file-2-key").splitKeys(List.of("b1")).totalRecords(10)
+        .jobExecution(JOB_EXECUTION_2).build()
+    ))).when(service).initializeJob(any(), eq(changeManagerClient));
 
-    doReturn(Future.succeededFuture())
-      .when(service)
-      .initializeChildren(any(), eq(changeManagerClient), any(), any());
+    doReturn(Future.succeededFuture()).when(service).initializeChildren(any(), eq(changeManagerClient), any(), any());
 
     when(uploadDefinitionService.updateBlocking(any(), any(), any()))
       .thenAnswer(v -> {
-        assertThat(
-          v
-            .<Function<UploadDefinition, UploadDefinition>>getArgument(1)
-            .apply(new UploadDefinition())
-            .getStatus(),
-          is(UploadDefinition.Status.COMPLETED)
-        );
-
+        assertThat(v.<Function<UploadDefinition, UploadDefinition>>getArgument(1)
+          .apply(new UploadDefinition()).getStatus())
+          .isEqualTo(UploadDefinition.Status.COMPLETED);
         return Future.succeededFuture();
       });
 
     service.startJob(
       new ProcessFilesRqDto()
         .withJobProfileInfo(JOB_PROFILE_INFO)
-        .withUploadDefinition(
-          new UploadDefinition()
-            .withFileDefinitions(
-              Arrays.asList(
-                FILE_DEFINITION_1,
-                FILE_DEFINITION_2,
-                FILE_DEFINITION_3
-              )
-            )
-        ),
+        .withUploadDefinition(new UploadDefinition()
+          .withFileDefinitions(Arrays.asList(FILE_DEFINITION_1, FILE_DEFINITION_2, FILE_DEFINITION_3))),
       changeManagerClient,
-      new ConnectionParams(Map.of("x-okapi-tenant", "tenant"), null)
+      new ConnectionParams(Map.of(XOkapiHeaders.TENANT, "tenant"), null)
     );
   }
 }

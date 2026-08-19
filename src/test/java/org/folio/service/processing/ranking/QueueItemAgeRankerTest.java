@@ -1,17 +1,17 @@
 package org.folio.service.processing.ranking;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.closeTo;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
-import org.junit.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-public class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
+class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
 
   QueueItemAgeRanker ranker;
 
@@ -24,12 +24,13 @@ public class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
       .withTimestamp(Date.from(Instant.now().minus(age, ChronoUnit.MINUTES)));
   }
 
+  @DisplayName("should return correct score based on item age")
   @Test
-  public void testScoring() {
-    assertThat(ranker.score(ofAge(0), Map.of()), is(closeTo(10, EPSILON)));
-    assertThat(ranker.score(ofAge(15), Map.of()), is(closeTo(70, EPSILON)));
-    assertThat(ranker.score(ofAge(63), Map.of()), is(closeTo(100, EPSILON)));
-    assertThat(ranker.score(ofAge(64), Map.of()), is(closeTo(-1, EPSILON)));
-    assertThat(ranker.score(ofAge(600), Map.of()), is(closeTo(-1, EPSILON)));
+  void shouldReturnCorrectScore_whenItemAgeVaries() {
+    assertThat(ranker.score(ofAge(0), Map.of())).isCloseTo(10, within(EPSILON));
+    assertThat(ranker.score(ofAge(15), Map.of())).isCloseTo(70, within(EPSILON));
+    assertThat(ranker.score(ofAge(63), Map.of())).isCloseTo(100, within(EPSILON));
+    assertThat(ranker.score(ofAge(64), Map.of())).isCloseTo(-1, within(EPSILON));
+    assertThat(ranker.score(ofAge(600), Map.of())).isCloseTo(-1, within(EPSILON));
   }
 }

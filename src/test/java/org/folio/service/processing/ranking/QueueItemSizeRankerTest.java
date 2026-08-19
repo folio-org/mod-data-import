@@ -1,14 +1,14 @@
 package org.folio.service.processing.ranking;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.closeTo;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.util.Map;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
-import org.junit.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-public class QueueItemSizeRankerTest extends AbstractQueueItemRankerTest {
+class QueueItemSizeRankerTest extends AbstractQueueItemRankerTest {
 
   QueueItemSizeRanker ranker;
 
@@ -20,11 +20,12 @@ public class QueueItemSizeRankerTest extends AbstractQueueItemRankerTest {
     return new DataImportQueueItem().withOriginalSize(size);
   }
 
+  @DisplayName("should return correct score based on item size")
   @Test
-  public void testScoring() {
-    assertThat(ranker.score(ofSize(0), Map.of()), is(closeTo(100, EPSILON)));
-    assertThat(ranker.score(ofSize(15), Map.of()), is(closeTo(40, EPSILON)));
-    assertThat(ranker.score(ofSize(63), Map.of()), is(closeTo(10, EPSILON)));
-    assertThat(ranker.score(ofSize(127), Map.of()), is(closeTo(-5, EPSILON)));
+  void shouldReturnCorrectScore_whenItemSizeVaries() {
+    assertThat(ranker.score(ofSize(0), Map.of())).isCloseTo(100, within(EPSILON));
+    assertThat(ranker.score(ofSize(15), Map.of())).isCloseTo(40, within(EPSILON));
+    assertThat(ranker.score(ofSize(63), Map.of())).isCloseTo(10, within(EPSILON));
+    assertThat(ranker.score(ofSize(127), Map.of())).isCloseTo(-5, within(EPSILON));
   }
 }

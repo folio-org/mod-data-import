@@ -8,67 +8,59 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.OpenOptions;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.folio.s3.exception.S3ClientException;
 import org.folio.service.s3storage.MinioStorageService;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
-public class FileSplitWriterS3ExceptionalTest {
+@ExtendWith({MockitoExtension.class, VertxExtension.class})
+class FileSplitWriterS3ExceptionalTest {
 
+  protected static Vertx vertx = Vertx.vertx();
   private static final String TEST_FILE = "src/test/resources/10.mrc";
   private static final String TEST_KEY = "10.mrc";
 
-  protected static Vertx vertx = Vertx.vertx();
-
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @TempDir
+  Path tempDir;
 
   Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
 
   @Mock
   private MinioStorageService minioStorageService;
 
-  @Captor
-  private ArgumentCaptor<InputStream> captor;
-
   private FileSplitWriter writer;
 
-  @Before
-  public void setUp() throws IOException {
-    MockitoAnnotations.openMocks(this);
-
-    writer =
-      new FileSplitWriter(
-        FileSplitWriterOptions
-          .builder()
-          .minioStorageService(minioStorageService)
-          .chunkUploadingCompositeFuturePromise(
-            chunkUploadingCompositeFuturePromise
-          )
-          .outputKey(TEST_KEY)
-          .chunkFolder(temporaryFolder.newFolder().toString())
-          .maxRecordsPerChunk(3)
-          .uploadFilesToS3(true)
-          .deleteLocalFiles(false)
-          .build()
-      );
+  @BeforeEach
+  void setUp() throws IOException {
+    writer = new FileSplitWriter(
+      FileSplitWriterOptions
+        .builder()
+        .minioStorageService(minioStorageService)
+        .chunkUploadingCompositeFuturePromise(chunkUploadingCompositeFuturePromise)
+        .outputKey(TEST_KEY)
+        .chunkFolder(Files.createTempDirectory(tempDir, "s3writer").toString())
+        .maxRecordsPerChunk(3)
+        .uploadFilesToS3(true)
+        .deleteLocalFiles(false)
+        .build()
+    );
   }
 
   @Test
-  public void testExceptionBeforeUpload(TestContext context)
-    throws IOException {
+  @DisplayName("should fail composite future when write throws IOException before upload")
+  void shouldFailCompositeFuture_whenWriteThrowsBeforeUpload(
+    VertxTestContext testContext
+  ) throws IOException {
     when(minioStorageService.write(any(), any())).thenThrow(new IOException());
 
     vertx
@@ -77,13 +69,13 @@ public class FileSplitWriterS3ExceptionalTest {
       .fileSystem()
       .open(TEST_FILE, new OpenOptions().setRead(true))
       .onComplete(
-        context.asyncAssertSuccess(file -> {
-          file.pipeTo(writer).onComplete(context.asyncAssertSuccess());
+        testContext.succeeding(file -> {
+          file.pipeTo(writer).onComplete(testContext.succeeding(v -> { }));
           chunkUploadingCompositeFuturePromise
             .future()
             .onComplete(
-              context.asyncAssertSuccess(cf ->
-                cf.onComplete(context.asyncAssertFailure())
+              testContext.succeeding(cf ->
+                cf.onComplete(testContext.failingThenComplete())
               )
             );
         })
@@ -91,8 +83,10 @@ public class FileSplitWriterS3ExceptionalTest {
   }
 
   @Test
-  public void testExceptionDuringUpload(TestContext context)
-    throws IOException {
+  @DisplayName("should fail composite future when S3 upload returns failed future")
+  void shouldFailCompositeFuture_whenS3UploadReturnsFailed(
+    VertxTestContext testContext
+  ) throws IOException {
     when(minioStorageService.write(any(), any()))
       .thenReturn(Future.failedFuture(new S3ClientException("wrong bucket")));
 
@@ -102,13 +96,13 @@ public class FileSplitWriterS3ExceptionalTest {
       .fileSystem()
       .open(TEST_FILE, new OpenOptions().setRead(true))
       .onComplete(
-        context.asyncAssertSuccess(file -> {
-          file.pipeTo(writer).onComplete(context.asyncAssertSuccess());
+        testContext.succeeding(file -> {
+          file.pipeTo(writer).onComplete(testContext.succeeding(v -> { }));
           chunkUploadingCompositeFuturePromise
             .future()
             .onComplete(
-              context.asyncAssertSuccess(cf ->
-                cf.onComplete(context.asyncAssertFailure())
+              testContext.succeeding(cf ->
+                cf.onComplete(testContext.failingThenComplete())
               )
             );
         })

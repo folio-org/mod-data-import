@@ -99,8 +99,8 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       .withUploadDefinitionId(uploadDefinition.getId()));
     return createJobExecutions(uploadDefinition, params)
       .map(this::checkUploadDefinitionBeforeSave).compose(defCheck -> defCheck)
-      .map(def -> uploadDefinitionDao.addUploadDefinition(def, params.getTenantId()))
-      .map(uploadDefinition);
+      .compose(def -> uploadDefinitionDao.addUploadDefinition(def, params.getTenantId()))
+      .map(id -> uploadDefinition);
   }
 
   @Override

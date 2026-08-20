@@ -10,15 +10,7 @@ import org.junit.jupiter.api.Test;
 
 class QueueItemPartNumberRankerTest extends AbstractQueueItemRankerTest {
 
-  QueueItemPartNumberRanker ranker;
-
-  public QueueItemPartNumberRankerTest() {
-    this.ranker = new QueueItemPartNumberRanker(1, 0, 31);
-  }
-
-  private DataImportQueueItem ofPart(int partNumber) {
-    return new DataImportQueueItem().withPartNumber(partNumber);
-  }
+  private final QueueItemPartNumberRanker ranker = new QueueItemPartNumberRanker(1, 0, 31);
 
   @DisplayName("should return correct score based on part number")
   @Test
@@ -30,5 +22,9 @@ class QueueItemPartNumberRankerTest extends AbstractQueueItemRankerTest {
     assertThat(ranker.score(ofPart(16), Map.of())).isCloseTo(0.2, within(EPSILON));
     assertThat(ranker.score(ofPart(32), Map.of())).isCloseTo(0, within(EPSILON));
     assertThat(ranker.score(ofPart(64), Map.of())).isCloseTo(-0.2, within(EPSILON));
+  }
+
+  private DataImportQueueItem ofPart(int partNumber) {
+    return new DataImportQueueItem().withPartNumber(partNumber);
   }
 }

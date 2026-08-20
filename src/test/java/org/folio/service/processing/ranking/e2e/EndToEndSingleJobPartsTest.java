@@ -1,7 +1,7 @@
 package org.folio.service.processing.ranking.e2e;
 
 /**
- * Combines all rankers with realistic values and properties
+ * Combines all rankers with realistic values and properties.
  */
 public class EndToEndSingleJobPartsTest extends AbstractEndToEndRankingTest {
 

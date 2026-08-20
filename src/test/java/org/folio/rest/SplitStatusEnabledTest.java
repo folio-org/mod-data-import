@@ -10,13 +10,13 @@ import org.junit.jupiter.api.Test;
 
 class SplitStatusEnabledTest extends AbstractRestTest {
 
+  private static final String SPLIT_STATUS_PATH = "/data-import/splitStatus";
+
   // static initializer runs before BaseRestTest.deployRestVerticle() @BeforeAll,
   // so the verticle picks up SPLIT_FILES_ENABLED=true at startup
   static {
     System.setProperty("SPLIT_FILES_ENABLED", "true");
   }
-
-  private static final String SPLIT_STATUS_PATH = "/data-import/splitStatus";
 
   @AfterAll
   static void resetEnv() {

@@ -1,15 +1,12 @@
 package org.folio.service.processing.reader;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import io.xlate.edi.internal.stream.tokenization.EDIException;
 import io.xlate.edi.stream.EDIInputFactory;
 import io.xlate.edi.stream.EDIStreamException;
 import io.xlate.edi.stream.EDIStreamReader;
-import org.folio.rest.jaxrs.model.InitialRecord;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -19,12 +16,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.folio.rest.jaxrs.model.InitialRecord;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class EdifactReaderUnitTest {
+class EdifactReaderTest {
 
   private static final String PATH_TO_EDIFACT = "src/test/resources/edifact/";
   private static final String SOURCE_FR = "CornAuxAm.1605541205.edi";
@@ -54,7 +53,7 @@ class EdifactReaderUnitTest {
     for (String fileName : filesAndRecordsNumber.keySet()) {
       SourceReader reader = new EdifactReader(new File(PATH_TO_EDIFACT + fileName), 2);
 
-      List<String> expValidation = validateFile(factory, new FileInputStream(PATH_TO_EDIFACT + fileName));
+      final var expValidation = validateFile(factory, new FileInputStream(PATH_TO_EDIFACT + fileName));
 
       List<InitialRecord> actualRecords = new ArrayList<>();
       while (reader.hasNext()) {
@@ -87,12 +86,11 @@ class EdifactReaderUnitTest {
     try {
       while (ediStreamReader.hasNext()) {
         switch (ediStreamReader.next()) {
-          case ELEMENT_DATA_ERROR:
-          case SEGMENT_ERROR:
-          case ELEMENT_OCCURRENCE_ERROR:
+          case ELEMENT_DATA_ERROR, SEGMENT_ERROR, ELEMENT_OCCURRENCE_ERROR:
             if (!ediStreamReader.getText().equals("ZZ")) {
               validationResults.add(ediStreamReader.getErrorType() + ":" + ediStreamReader.getText());
             }
+            break;
           default:
             break;
         }
@@ -102,5 +100,4 @@ class EdifactReaderUnitTest {
     }
     return validationResults;
   }
-
 }

@@ -12,12 +12,8 @@ class QueueItemSizeRankerTest extends AbstractQueueItemRankerTest {
 
   QueueItemSizeRanker ranker;
 
-  public QueueItemSizeRankerTest() {
+  QueueItemSizeRankerTest() {
     this.ranker = new QueueItemSizeRanker(100, 10, 63);
-  }
-
-  private DataImportQueueItem ofSize(int size) {
-    return new DataImportQueueItem().withOriginalSize(size);
   }
 
   @DisplayName("should return correct score based on item size")
@@ -27,5 +23,9 @@ class QueueItemSizeRankerTest extends AbstractQueueItemRankerTest {
     assertThat(ranker.score(ofSize(15), Map.of())).isCloseTo(40, within(EPSILON));
     assertThat(ranker.score(ofSize(63), Map.of())).isCloseTo(10, within(EPSILON));
     assertThat(ranker.score(ofSize(127), Map.of())).isCloseTo(-5, within(EPSILON));
+  }
+
+  private DataImportQueueItem ofSize(int size) {
+    return new DataImportQueueItem().withOriginalSize(size);
   }
 }

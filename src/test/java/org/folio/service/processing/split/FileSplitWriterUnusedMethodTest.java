@@ -16,7 +16,8 @@ class FileSplitWriterUnusedMethodTest {
   Path tempDir;
 
   @Test
-  @DisplayName("should return self from setWriteQueueMaxSize, return false from writeQueueFull, and return self from drainHandler")
+  @DisplayName(
+    "should return self from setWriteQueueMaxSize, return false from writeQueueFull, and return self from drainHandler")
   void shouldReturnSelfFromQueueMethods() throws IOException {
     FileSplitWriter writer = new FileSplitWriter(
       FileSplitWriterOptions

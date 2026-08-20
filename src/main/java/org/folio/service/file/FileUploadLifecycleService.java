@@ -5,13 +5,10 @@ import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.UploadDefinition;
 
-/**
- * File service
- */
 public interface FileUploadLifecycleService {
 
   /**
-   * Contains business logic that runs once before saving the file when uploading
+   * Contains business logic that runs once before saving the file when uploading.
    *
    * @param fileId             - UUID for uploading {@link FileDefinition}
    * @param uploadDefinitionId - UUID for {@link UploadDefinition}
@@ -21,7 +18,7 @@ public interface FileUploadLifecycleService {
   Future<UploadDefinition> beforeFileSave(String fileId, String uploadDefinitionId, ConnectionParams params);
 
   /**
-   * Contains business logic that runs once after successfully saving the file to the  storage
+   * Contains business logic that runs once after successfully saving the file to the storage.
    *
    * @param fileDefinition - UUID for uploading {@link FileDefinition}
    * @param params         - {@link ConnectionParams} object with connection params
@@ -39,10 +36,11 @@ public interface FileUploadLifecycleService {
    * @param params           - {@link ConnectionParams} object with connection params
    * @return - Future with completed {@link FileDefinition} for successfully saved file
    */
-  Future<FileDefinition> saveFileChunk(String fileId, UploadDefinition uploadDefinition, byte[] data, ConnectionParams params);
+  Future<FileDefinition> saveFileChunk(String fileId, UploadDefinition uploadDefinition, byte[] data,
+                                       ConnectionParams params);
 
   /**
-   * Deletes File by id and Upload Definition Id
+   * Deletes File by id and Upload Definition Id.
    *
    * @param id                 File id
    * @param uploadDefinitionId Upload Definition id
@@ -50,5 +48,4 @@ public interface FileUploadLifecycleService {
    * @return future with true is succeeded
    */
   Future<Boolean> deleteFile(String id, String uploadDefinitionId, ConnectionParams params);
-
 }

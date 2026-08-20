@@ -64,7 +64,7 @@ class FileSplitWriterDeleteLocalTest {
                     assertThat(result.list()).hasSize(4);
                     vertx.setTimer(
                       100,
-                      _v ->
+                      l ->
                         testContext.verify(() -> {
                           assertThat(folder).isEmptyDirectory();
                           testContext.completeNow();

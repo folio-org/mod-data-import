@@ -5,10 +5,16 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import javax.ws.rs.NotFoundException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dao.FileExtensionDao;
 import org.folio.dao.FileExtensionDaoImpl;
 import org.folio.dataimport.util.ConnectionParams;
@@ -20,13 +26,6 @@ import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.UserInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import javax.ws.rs.NotFoundException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class FileExtensionServiceImpl implements FileExtensionService {
@@ -42,8 +41,6 @@ public class FileExtensionServiceImpl implements FileExtensionService {
   /**
    * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
    * will be rewritten with DI support.
-   *
-   * @param vertx
    */
   public FileExtensionServiceImpl(Vertx vertx) {
     this.fileExtensionDao = new FileExtensionDaoImpl(vertx);
@@ -79,11 +76,15 @@ public class FileExtensionServiceImpl implements FileExtensionService {
   public Future<FileExtension> updateFileExtension(FileExtension fileExtension, ConnectionParams params) {
     String userId = fileExtension.getMetadata().getUpdatedByUserId();
     return getFileExtensionById(fileExtension.getId(), params.getTenantId())
-      .compose(optionalFileExtension -> optionalFileExtension.map(fileExt -> lookupUser(userId, params).compose(userInfo -> {
-          fileExtension.setUserInfo(userInfo);
-          return fileExtensionDao.updateFileExtension(fileExtension.withDataTypes(sortDataTypes(fileExtension.getDataTypes())), params.getTenantId());
-        })
-      ).orElse(Future.failedFuture(new NotFoundException(String.format("FileExtension with id '%s' was not found", fileExtension.getId())))));
+      .compose(optionalFileExtension -> optionalFileExtension
+        .map(fileExt -> lookupUser(userId, params)
+          .compose(userInfo -> {
+            fileExtension.setUserInfo(userInfo);
+            return fileExtensionDao.updateFileExtension(
+              fileExtension.withDataTypes(sortDataTypes(fileExtension.getDataTypes())), params.getTenantId());
+          })
+        ).orElse(Future.failedFuture(
+          new NotFoundException(String.format("FileExtension with id '%s' was not found", fileExtension.getId())))));
   }
 
   @Override
@@ -101,6 +102,27 @@ public class FileExtensionServiceImpl implements FileExtensionService {
     return fileExtensionDao.copyExtensionsFromDefault(tenantId);
   }
 
+  @Override
+  public Future<DataTypeCollection> getDataTypes() {
+    Promise<DataTypeCollection> promise = Promise.promise();
+    DataTypeCollection dataTypeCollection = new DataTypeCollection();
+    dataTypeCollection.setDataTypes(Arrays.asList(DataType.values()));
+    dataTypeCollection.setTotalRecords(DataType.values().length);
+    promise.complete(dataTypeCollection);
+    return promise.future();
+  }
+
+  @Override
+  public Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension, String tenantId) {
+    StringBuilder query = new StringBuilder("extension==" + fileExtension.getExtension().trim());
+    if (fileExtension.getId() != null) {
+      query.append(" AND id <> ")
+        .append(fileExtension.getId());
+    }
+    return fileExtensionDao.getFileExtensions(query.toString(), 0, 1, tenantId)
+      .compose(collection -> Future.succeededFuture(collection.getTotalRecords() != 0));
+  }
+
   private List<DataType> sortDataTypes(List<DataType> list) {
     if (list == null) {
       return Collections.emptyList();
@@ -110,7 +132,7 @@ public class FileExtensionServiceImpl implements FileExtensionService {
   }
 
   /**
-   * Finds user by user id and returns UserInfo
+   * Finds user by user id and returns UserInfo.
    *
    * @param userId user id
    * @param params Okapi connection params
@@ -148,26 +170,5 @@ public class FileExtensionServiceImpl implements FileExtensionService {
         }
       });
     return promise.future();
-  }
-
-  @Override
-  public Future<DataTypeCollection> getDataTypes() {
-    Promise<DataTypeCollection> promise = Promise.promise();
-    DataTypeCollection dataTypeCollection = new DataTypeCollection();
-    dataTypeCollection.setDataTypes(Arrays.asList(DataType.values()));
-    dataTypeCollection.setTotalRecords(DataType.values().length);
-    promise.complete(dataTypeCollection);
-    return promise.future();
-  }
-
-  @Override
-  public Future<Boolean> isFileExtensionExistByName(FileExtension fileExtension, String tenantId) {
-    StringBuilder query = new StringBuilder("extension==" + fileExtension.getExtension().trim());
-    if (fileExtension.getId() != null) {
-      query.append(" AND id <> ")
-        .append(fileExtension.getId());
-    }
-    return fileExtensionDao.getFileExtensions(query.toString(), 0, 1, tenantId)
-      .compose(collection -> Future.succeededFuture(collection.getTotalRecords() != 0));
   }
 }

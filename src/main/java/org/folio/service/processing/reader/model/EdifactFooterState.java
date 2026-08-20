@@ -1,8 +1,7 @@
 package org.folio.service.processing.reader.model;
 
-import org.folio.service.processing.reader.EdifactParser;
-
 import java.util.Map;
+import org.folio.service.processing.reader.EdifactParser;
 
 /**
  * EdifactFooterState is a class for return EDIFACT footer segment.
@@ -10,7 +9,7 @@ import java.util.Map;
  */
 public class EdifactFooterState extends EdifactState {
 
-  private StringBuilder content = new StringBuilder(getFooterTemplate());
+  private final StringBuilder content = new StringBuilder(getFooterTemplate());
 
   public EdifactFooterState(EdifactParser edifactParser, Map<String, Character> delimiters) {
     super(edifactParser, delimiters);
@@ -40,5 +39,4 @@ public class EdifactFooterState extends EdifactState {
       }
     });
   }
-
 }

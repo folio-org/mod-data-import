@@ -1,10 +1,17 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
+import static org.folio.dataimport.util.DaoUtil.constructCriteria;
+import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import java.util.Optional;
+import javax.ws.rs.InternalServerErrorException;
+import javax.ws.rs.NotFoundException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.PostgresClientFactory;
@@ -18,14 +25,6 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-
-import javax.ws.rs.InternalServerErrorException;
-import javax.ws.rs.NotFoundException;
-import java.util.Optional;
-
-import static java.lang.String.format;
-import static org.folio.dataimport.util.DaoUtil.constructCriteria;
-import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
 @Repository
 public class FileExtensionDaoImpl implements FileExtensionDao {
@@ -45,8 +44,6 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   /**
    * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
    * will be rewritten with DI support.
-   *
-   * @param vertx
    */
   public FileExtensionDaoImpl(Vertx vertx) {
     pgClientFactory = new PostgresClientFactory(vertx);
@@ -70,6 +67,20 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   }
 
   @Override
+  public Future<Optional<FileExtension>> getFileExtensionById(String id, String tenantId) {
+    return getFileExtensionByField(ID_FIELD, id, tenantId);
+  }
+
+  @Override
+  public Future<Optional<FileExtension>> getFileExtensionByExtension(String extension, String tenantId) {
+    String caseInsensitiveExtensionQuery = format("extension == %s", extension);
+
+    return getFileExtensions(caseInsensitiveExtensionQuery, 0, 1, tenantId)
+      .map(fileExtensions -> fileExtensions.getFileExtensions().isEmpty()
+                             ? Optional.empty() : Optional.of(fileExtensions.getFileExtensions().getFirst()));
+  }
+
+  @Override
   public Future<FileExtensionCollection> getAllFileExtensionsFromTable(String tableName, String tenantId) {
     try {
       return pgClientFactory.createInstance(tenantId).get(tableName, FileExtension.class, new Criterion(), true)
@@ -83,33 +94,6 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
   }
 
   @Override
-  public Future<Optional<FileExtension>> getFileExtensionById(String id, String tenantId) {
-    return getFileExtensionByField(ID_FIELD, id, tenantId);
-  }
-
-  private Future<Optional<FileExtension>> getFileExtensionByField(String fieldName, String fieldValue, String tenantId) {
-    try {
-      Criteria crit = constructCriteria(fieldName, fieldValue);
-      return pgClientFactory.createInstance(tenantId)
-        .get(FILE_EXTENSIONS_TABLE, FileExtension.class, new Criterion(crit), true)
-        .map(Results::getResults)
-        .map(fileExtensions -> fileExtensions.isEmpty() ? Optional.empty() : Optional.of(fileExtensions.getFirst()));
-    } catch (Exception e) {
-      LOGGER.warn("getFileExtensionByField:: Error querying FileExtensions by {}", fieldName, e);
-      return Future.failedFuture(e);
-    }
-  }
-
-  @Override
-  public Future<Optional<FileExtension>> getFileExtensionByExtension(String extension, String tenantId) {
-    String caseInsensitiveExtensionQuery = format("extension == %s", extension);
-
-    return getFileExtensions(caseInsensitiveExtensionQuery, 0, 1, tenantId)
-      .map(fileExtensions -> fileExtensions.getFileExtensions().isEmpty()
-        ? Optional.empty() : Optional.of(fileExtensions.getFileExtensions().getFirst()));
-  }
-
-  @Override
   public Future<String> addFileExtension(FileExtension fileExtension, String tenantId) {
     LOGGER.debug("addFileExtension:: adding file extension {} for tenant {}", fileExtension.getId(), tenantId);
     return pgClientFactory.createInstance(tenantId).save(FILE_EXTENSIONS_TABLE, fileExtension.getId(), fileExtension);
@@ -117,22 +101,26 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
 
   @Override
   public Future<FileExtension> updateFileExtension(FileExtension fileExtension, String tenantId) {
-    LOGGER.debug("updateFileExtension:: update file extension with id {} for tenant {}", fileExtension.getId(), tenantId);
+    LOGGER.debug("updateFileExtension:: update file extension with id {} for tenant {}", fileExtension.getId(),
+      tenantId);
     Promise<FileExtension> promise = Promise.promise();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, fileExtension.getId());
-      pgClientFactory.createInstance(tenantId).update(FILE_EXTENSIONS_TABLE, fileExtension, new Criterion(idCrit), true, updateResult -> {
-        if (updateResult.failed()) {
-          LOGGER.warn("updateFileExtension:: Could not update fileExtension with id {}", fileExtension.getId(), updateResult.cause());
-          promise.fail(updateResult.cause());
-        } else if (updateResult.result().rowCount() != 1) {
-          String errorMessage = format("updateFileExtension:: FileExtension with id '%s' was not found", fileExtension.getId());
-          LOGGER.warn(errorMessage);
-          promise.fail(new NotFoundException(errorMessage));
-        } else {
-          promise.complete(fileExtension);
-        }
-      });
+      pgClientFactory.createInstance(tenantId)
+        .update(FILE_EXTENSIONS_TABLE, fileExtension, new Criterion(idCrit), true, updateResult -> {
+          if (updateResult.failed()) {
+            LOGGER.warn("updateFileExtension:: Could not update fileExtension with id {}", fileExtension.getId(),
+              updateResult.cause());
+            promise.fail(updateResult.cause());
+          } else if (updateResult.result().rowCount() != 1) {
+            String errorMessage =
+              format("updateFileExtension:: FileExtension with id '%s' was not found", fileExtension.getId());
+            LOGGER.warn(errorMessage);
+            promise.fail(new NotFoundException(errorMessage));
+          } else {
+            promise.complete(fileExtension);
+          }
+        });
     } catch (Exception e) {
       LOGGER.warn("updateFileExtension:: Error updating fileExtension", e);
       promise.fail(e);
@@ -152,7 +140,7 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
     LOGGER.debug("restoreFileExtensions:: restore file extension for tenant {}", tenantId);
     return pgClientFactory.createInstance(tenantId).withTrans(connection -> connection
       .delete(FILE_EXTENSIONS_TABLE, new Criterion())
-      .compose(v -> copyExtensionsFromDefault(connection, tenantId))
+      .compose(v -> doCopyExtensionsFromDefault(connection, tenantId))
       .compose(rowSet -> {
         if (rowSet.rowCount() < 1) {
           throw new InternalServerErrorException();
@@ -162,7 +150,29 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
     ).compose(v -> getAllFileExtensionsFromTable(FILE_EXTENSIONS_TABLE, tenantId));
   }
 
-  private Future<RowSet<Row>> copyExtensionsFromDefault(Conn connection, String tenantId) {
+  @Override
+  public Future<RowSet<Row>> copyExtensionsFromDefault(String tenantId) {
+    PostgresClient client = pgClientFactory.createInstance(tenantId);
+    return client.withTrans(connection -> doCopyExtensionsFromDefault(connection, tenantId))
+      .onFailure(e -> LOGGER.warn(
+        "copyExtensionsFromDefault:: Error during coping file extensions from default table to the main", e));
+  }
+
+  private Future<Optional<FileExtension>> getFileExtensionByField(String fieldName, String fieldValue,
+                                                                  String tenantId) {
+    try {
+      Criteria crit = constructCriteria(fieldName, fieldValue);
+      return pgClientFactory.createInstance(tenantId)
+        .get(FILE_EXTENSIONS_TABLE, FileExtension.class, new Criterion(crit), true)
+        .map(Results::getResults)
+        .map(fileExtensions -> fileExtensions.isEmpty() ? Optional.empty() : Optional.of(fileExtensions.getFirst()));
+    } catch (Exception e) {
+      LOGGER.warn("getFileExtensionByField:: Error querying FileExtensions by {}", fieldName, e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  private Future<RowSet<Row>> doCopyExtensionsFromDefault(Conn connection, String tenantId) {
     LOGGER.debug("copyExtensionsFromDefault:: copy extensions from default for tenant {}", tenantId);
     String moduleName = PostgresClient.getModuleName();
     StringBuilder sqlScript = new StringBuilder("INSERT INTO ")
@@ -170,13 +180,6 @@ public class FileExtensionDaoImpl implements FileExtensionDao {
       .append(" SELECT * FROM ")
       .append(tenantId).append("_").append(moduleName).append(".").append(DEFAULT_FILE_EXTENSIONS_TABLE).append(";");
     return connection.execute(sqlScript.toString());
-  }
-
-  @Override
-  public Future<RowSet<Row>> copyExtensionsFromDefault(String tenantId) {
-    PostgresClient client = pgClientFactory.createInstance(tenantId);
-    return client.withTrans(connection -> copyExtensionsFromDefault(connection, tenantId))
-      .onFailure(e -> LOGGER.warn("copyExtensionsFromDefault:: Error during coping file extensions from default table to the main", e));
   }
 }
 

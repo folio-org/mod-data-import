@@ -74,27 +74,19 @@ public abstract class SplitFileProcessingServiceAbstractTest extends AbstractRes
   protected static final JobProfileInfo JOB_PROFILE_EDIFACT = new JobProfileInfo()
     .withDataType(JobProfileInfo.DataType.EDIFACT);
 
-  @Mock protected FileSplitService fileSplitService;
-  @Mock protected MinioStorageService minioStorageService;
-  @Mock protected DataImportQueueItemDao queueItemDao;
-  @Mock protected UploadDefinitionService uploadDefinitionService;
-  @Mock protected ParallelFileChunkingProcessor fileProcessor;
+  @Mock
+  protected FileSplitService fileSplitService;
+  @Mock
+  protected MinioStorageService minioStorageService;
+  @Mock
+  protected DataImportQueueItemDao queueItemDao;
+  @Mock
+  protected UploadDefinitionService uploadDefinitionService;
+  @Mock
+  protected ParallelFileChunkingProcessor fileProcessor;
 
   protected ChangeManagerClient changeManagerClient;
   protected SplitFileProcessingServiceProxy service;
-
-  @BeforeEach
-  void setUpService() {
-    this.changeManagerClient = spy(
-      new ChangeManagerClient(mockServerUrl(), TENANT_ID, TOKEN, vertx.createHttpClient())
-    );
-
-    this.service = spy(
-      new SplitFileProcessingServiceProxy(
-        vertx, fileSplitService, minioStorageService, queueItemDao, uploadDefinitionService, fileProcessor
-      )
-    );
-  }
 
   @SuppressWarnings("unchecked")
   protected AsyncResult<HttpResponse<Buffer>> getSuccessArBuffer(Object obj) {
@@ -109,8 +101,21 @@ public abstract class SplitFileProcessingServiceAbstractTest extends AbstractRes
     return Future.succeededFuture(response);
   }
 
+  @BeforeEach
+  void setUpService() {
+    this.changeManagerClient = spy(
+      new ChangeManagerClient(mockServerUrl(), TENANT_ID, TOKEN, vertx.createHttpClient())
+    );
+
+    this.service = spy(
+      new SplitFileProcessingServiceProxy(
+        vertx, fileSplitService, minioStorageService, queueItemDao, uploadDefinitionService, fileProcessor
+      )
+    );
+  }
+
   // allow access to protected members for more targeted testing
-  protected class SplitFileProcessingServiceProxy extends SplitFileProcessingService {
+  protected static class SplitFileProcessingServiceProxy extends SplitFileProcessingService {
 
     public SplitFileProcessingServiceProxy(
       Vertx vertx,
@@ -124,27 +129,8 @@ public abstract class SplitFileProcessingServiceAbstractTest extends AbstractRes
     }
 
     @Override
-    public Future<Map<String, JobExecution>> createParentJobExecutions(ProcessFilesRqDto entity, ChangeManagerClient client) {
-      return super.createParentJobExecutions(entity, client);
-    }
-
-    @Override
-    public Future<SplitFileInformation> splitFile(String key, JobProfileInfo profile) {
-      return super.splitFile(key, profile);
-    }
-
-    @Override
-    public Buffer verifyOkStatus(HttpResponse<Buffer> response) {
-      return super.verifyOkStatus(response);
-    }
-
-    @Override
-    public String getUserIdFromMetadata(Metadata metadata) {
-      return super.getUserIdFromMetadata(metadata);
-    }
-
-    @Override
-    public Future<Map<String, SplitFileInformation>> initializeJob(ProcessFilesRqDto entity, ChangeManagerClient client) {
+    public Future<Map<String, SplitFileInformation>> initializeJob(ProcessFilesRqDto entity,
+                                                                   ChangeManagerClient client) {
       return super.initializeJob(entity, client);
     }
 
@@ -171,6 +157,27 @@ public abstract class SplitFileProcessingServiceAbstractTest extends AbstractRes
       return super.registerSplitFileParts(
         parentUploadDefinition, parentJobExecution, jobProfileInfo, client, parentJobSize, params, keys
       );
+    }
+
+    @Override
+    public Future<Map<String, JobExecution>> createParentJobExecutions(ProcessFilesRqDto entity,
+                                                                       ChangeManagerClient client) {
+      return super.createParentJobExecutions(entity, client);
+    }
+
+    @Override
+    public Future<SplitFileInformation> splitFile(String key, JobProfileInfo profile) {
+      return super.splitFile(key, profile);
+    }
+
+    @Override
+    public Buffer verifyOkStatus(HttpResponse<Buffer> response) {
+      return super.verifyOkStatus(response);
+    }
+
+    @Override
+    public String getUserIdFromMetadata(Metadata metadata) {
+      return super.getUserIdFromMetadata(metadata);
     }
   }
 }

@@ -29,17 +29,13 @@ public class FileSplitWriter implements WriteStream<Buffer> {
   private final MinioStorageService minioStorageService;
   private final Promise<CompositeFuture> chunkUploadingCompositeFuturePromise;
   private final List<Future<String>> chunkProcessingFutures;
-  private Handler<Throwable> exceptionHandler;
-
-  private String chunkFolder;
-  private String outputKey;
-  private boolean uploadFilesToS3;
-  private boolean deleteLocalFiles;
-
+  private final String chunkFolder;
+  private final String outputKey;
+  private final boolean uploadFilesToS3;
+  private final boolean deleteLocalFiles;
   private final byte recordTerminator;
-
-  private int maxRecordsPerChunk;
-
+  private final int maxRecordsPerChunk;
+  private Handler<Throwable> exceptionHandler;
   private ByteArrayOutputStream currentChunkStream;
   private String currentChunkPath;
   private String currentChunkKey;
@@ -91,7 +87,7 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     int len = 0;
 
     for (int i = 0; i < bytes.length; i++) {
-      if (bytes[i] == recordTerminator && (++recordCount == maxRecordsPerChunk)) {
+      if (bytes[i] == recordTerminator && ++recordCount == maxRecordsPerChunk) {
         len = i + 1 - start;
 
         try {
@@ -118,16 +114,6 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     }
 
     return Future.succeededFuture();
-  }
-
-  private Future<Void> handleWriteException(Exception e) {
-    LOGGER.error("handleWriteException:: Error writing file chunk: ", e);
-
-    if (exceptionHandler != null) {
-      exceptionHandler.handle(e);
-    }
-    chunkUploadingCompositeFuturePromise.fail(e);
-    return Future.failedFuture(e);
   }
 
   @Override
@@ -162,7 +148,19 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     return this;
   }
 
-  /** Start processing a new chunk */
+  private Future<Void> handleWriteException(Exception e) {
+    LOGGER.error("handleWriteException:: Error writing file chunk: ", e);
+
+    if (exceptionHandler != null) {
+      exceptionHandler.handle(e);
+    }
+    chunkUploadingCompositeFuturePromise.fail(e);
+    return Future.failedFuture(e);
+  }
+
+  /**
+   * Start processing a new chunk.
+   */
   private void startChunk() {
     String fileName = FileSplitUtilities.buildChunkKey(outputKey, chunkIndex++);
     if (!deleteLocalFiles) {
@@ -176,7 +174,9 @@ public class FileSplitWriter implements WriteStream<Buffer> {
     LOGGER.debug("startChunk:: starting chunk {}", currentChunkKey);
   }
 
-  /** Finalize the current chunk */
+  /**
+   * Finalize the current chunk.
+   */
   private void endChunk() throws IOException {
     if (currentChunkStream != null) {
       currentChunkStream.close();

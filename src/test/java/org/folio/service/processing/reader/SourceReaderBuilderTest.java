@@ -1,5 +1,8 @@
 package org.folio.service.processing.reader;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.File;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -7,21 +10,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.File;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 @ExtendWith(MockitoExtension.class)
 class SourceReaderBuilderTest {
   private static final String SOURCE_XML_PATH = "src/test/resources/UChicago_SampleBibs.xml";
   private static final String SOURCE_JSON_PATH = "src/test/resources/ChalmersFOLIOExamples.json";
   private static final String SOURCE_MARC_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
-  private static final String SOURCE_EDIFACT_PATH_LOW_CASE_EDI_EXTENSION = "src/test/resources/edifact/CornHein1604419006.edi";
-  private static final String SOURCE_EDIFACT_PATH_UPPER_CASE_EDI_EXTENSION = "src/test/resources/edifact/CornHein1604419007.EDI";
-  private static final String SOURCE_EDIFACT_PATH_MIXED_CASE_EDI_EXTENSION = "src/test/resources/edifact/CornHein1604419008.eDI";
-  private static final String SOURCE_EDIFACT_PATH_LOW_CASE_INV_EXTENSION = "src/test/resources/edifact/AnneC-EBSCO-Subns1.inv";
-  private static final String SOURCE_EDIFACT_PATH_UPPER_CASE_INV_EXTENSION = "src/test/resources/edifact/AnneC-EBSCO-Subns.INV";
-  private static final String SOURCE_EDIFACT_PATH_MIXED_CASE_INV_EXTENSION = "src/test/resources/edifact/AnneC-EBSCO-Subns2.InV";
+  private static final String SOURCE_EDIFACT_PATH_LOW_CASE_EDI_EXTENSION =
+    "src/test/resources/edifact/CornHein1604419006.edi";
+  private static final String SOURCE_EDIFACT_PATH_UPPER_CASE_EDI_EXTENSION =
+    "src/test/resources/edifact/CornHein1604419007.EDI";
+  private static final String SOURCE_EDIFACT_PATH_MIXED_CASE_EDI_EXTENSION =
+    "src/test/resources/edifact/CornHein1604419008.eDI";
+  private static final String SOURCE_EDIFACT_PATH_LOW_CASE_INV_EXTENSION =
+    "src/test/resources/edifact/AnneC-EBSCO-Subns1.inv";
+  private static final String SOURCE_EDIFACT_PATH_UPPER_CASE_INV_EXTENSION =
+    "src/test/resources/edifact/AnneC-EBSCO-Subns.INV";
+  private static final String SOURCE_EDIFACT_PATH_MIXED_CASE_INV_EXTENSION =
+    "src/test/resources/edifact/AnneC-EBSCO-Subns2.InV";
   private static final String EXPECTED_EDIFACT_TYPE = "EDIFACT_RAW";
   private JobProfileInfo marcJobProfile;
   private JobProfileInfo edifactJobProfile;
@@ -77,7 +82,8 @@ class SourceReaderBuilderTest {
   @Test
   void shouldBuildEdifactReaderForFileWithEdiUpperCaseExtension() {
     // act
-    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_EDI_EXTENSION), edifactJobProfile);
+    SourceReader reader =
+      SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_EDI_EXTENSION), edifactJobProfile);
 
     // assert
     assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
@@ -87,7 +93,8 @@ class SourceReaderBuilderTest {
   @Test
   void shouldBuildEdifactReaderForFileWithEdiLowerCaseExtension() {
     // act
-    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_EDI_EXTENSION), edifactJobProfile);
+    SourceReader reader =
+      SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_EDI_EXTENSION), edifactJobProfile);
 
     // assert
     assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
@@ -97,7 +104,8 @@ class SourceReaderBuilderTest {
   @Test
   void shouldBuildEdifactReaderForFileWithEdiMixedCaseExtension() {
     // act
-    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_EDI_EXTENSION), edifactJobProfile);
+    SourceReader reader =
+      SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_EDI_EXTENSION), edifactJobProfile);
 
     // assert
     assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
@@ -107,7 +115,8 @@ class SourceReaderBuilderTest {
   @Test
   void shouldBuildEdifactReaderForFileWithInvLowerCaseExtension() {
     // act
-    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_INV_EXTENSION), edifactJobProfile);
+    SourceReader reader =
+      SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_LOW_CASE_INV_EXTENSION), edifactJobProfile);
 
     // assert
     assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
@@ -117,7 +126,8 @@ class SourceReaderBuilderTest {
   @Test
   void shouldBuildEdifactReaderForFileWithInvUpperCaseExtension() {
     // act
-    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_INV_EXTENSION), edifactJobProfile);
+    SourceReader reader =
+      SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_UPPER_CASE_INV_EXTENSION), edifactJobProfile);
 
     // assert
     assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);
@@ -127,7 +137,8 @@ class SourceReaderBuilderTest {
   @Test
   void shouldBuildEdifactReaderForFileWithInvMixedCaseExtension() {
     // act
-    SourceReader reader = SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_INV_EXTENSION), edifactJobProfile);
+    SourceReader reader =
+      SourceReaderBuilder.build(new File(SOURCE_EDIFACT_PATH_MIXED_CASE_INV_EXTENSION), edifactJobProfile);
 
     // assert
     assertThat(reader.getContentType()).hasToString(EXPECTED_EDIFACT_TYPE);

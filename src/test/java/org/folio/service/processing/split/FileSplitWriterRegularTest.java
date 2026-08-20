@@ -11,13 +11,12 @@ import io.vertx.core.file.OpenOptions;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
@@ -85,6 +84,7 @@ class FileSplitWriterRegularTest {
   void shouldSplitFile_intoExpectedChunks_andPreserveContent(
     String sourceFile, String key, int chunkSize, String[] expectedChunkFiles,
     VertxTestContext testContext) throws IOException {
+    // arrange
     Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
     FileSplitWriter writer = new FileSplitWriter(
       FileSplitWriterOptions.builder()
@@ -97,92 +97,96 @@ class FileSplitWriterRegularTest {
         .build()
     );
 
+    // act
     vertx.getOrCreateContext().owner().fileSystem()
       .open(sourceFile, new OpenOptions().setRead(true))
       .onComplete(testContext.succeeding(file -> file.pipeTo(writer)
         .onComplete(testContext.succeeding(v -> chunkUploadingCompositeFuturePromise.future()
-          .onComplete(
-            testContext.succeeding(cf ->
-              cf.onComplete(testContext.succeeding(internalFuture -> {
-                List<Path> paths = internalFuture.list().stream()
-                  .map(obj -> Path.of((String) obj))
-                  .toList();
-                List<String> fileNames = paths.stream()
-                  .map(path -> path.getFileName().toString())
-                  .toList();
+          .onComplete(testContext.succeeding(cf -> cf
+            .onComplete(testContext.succeeding(result -> {
+              // assert
+              List<Path> paths = toPaths(result.list());
+              List<byte[]> contents = readAllFiles(paths);
+              byte[] actual = concatenate(contents);
 
-                assertThat(fileNames).containsExactly(expectedChunkFiles);
+              assertThat(toFileNames(paths)).containsExactly(expectedChunkFiles);
+              assertTerminators(contents);
 
-                int totalSize = 0;
-                List<byte[]> fileContents = new ArrayList<>();
-
-                for (Path path : paths) {
-                  File actualFile = path.toFile();
-                  totalSize += actualFile.length();
-                  try (FileInputStream fileStream = new FileInputStream(actualFile)) {
-                    fileContents.add(fileStream.readAllBytes());
-                  } catch (IOException err) {
-                    testContext.failNow(err);
-                    return;
-                  }
-                }
-
-                byte[] actual = new byte[totalSize];
-                int pos = 0;
-                for (byte[] content : fileContents) {
-                  System.arraycopy(content, 0, actual, pos, content.length);
-                  pos += content.length;
-                }
-
-                for (byte[] content : fileContents) {
-                  if (content.length > 0) {
-                    assertThat(content[content.length - 1])
-                      .isEqualTo(FileSplitUtilities.MARC_RECORD_TERMINATOR);
-                  }
-                }
-
-                file.read(Buffer.buffer(), 0, 0, totalSize + 1)
-                  .onComplete(testContext.succeeding(expectedBuffer -> {
-                    byte[] expected = expectedBuffer.getBytes();
-                    assertThat(actual).isEqualTo(expected);
-
-                    int[] totalRecords = {0};
-                    try {
-                      totalRecords[0] = countRecordsInMarcFile(new ByteArrayInputStream(actual));
-                    } catch (IOException err) {
-                      testContext.failNow(err);
-                      return;
-                    }
-
-                    for (int i = 0; i < fileContents.size(); i++) {
-                      try {
-                        if (i == fileContents.size() - 1) {
-                          assertThat(countRecordsInMarcFile(new ByteArrayInputStream(fileContents.get(i))))
-                            .isEqualTo(totalRecords[0]);
-                        } else {
-                          assertThat(countRecordsInMarcFile(new ByteArrayInputStream(fileContents.get(i))))
-                            .isEqualTo(chunkSize);
-                          totalRecords[0] -= chunkSize;
-                        }
-                      } catch (IOException err) {
-                        testContext.failNow(err);
-                        return;
-                      }
-                    }
-
-                    verifyNoInteractions(minioStorageService);
-                    testContext.completeNow();
-                  }));
-              }))
-            )
-          )))));
+              file.read(Buffer.buffer(), 0, 0, actual.length + 1)
+                .onComplete(testContext.succeeding(expectedBuffer -> {
+                  assertThat(actual).isEqualTo(expectedBuffer.getBytes());
+                  assertChunkRecordCounts(contents, actual, chunkSize);
+                  verifyNoInteractions(minioStorageService);
+                  testContext.completeNow();
+                }));
+            }))
+          ))
+        ))
+      ));
   }
 
-  private int countRecordsInMarcFile(InputStream stream) throws IOException {
-    return FileSplitUtilities.countRecordsInFile(
-      "placeholder.mrc",
-      stream,
-      new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC)
-    );
+  private static List<Path> toPaths(List<?> objList) {
+    return objList.stream().map(obj -> Path.of((String) obj)).toList();
+  }
+
+  private static List<String> toFileNames(List<Path> paths) {
+    return paths.stream().map(path -> path.getFileName().toString()).toList();
+  }
+
+  private static List<byte[]> readAllFiles(List<Path> paths) {
+    return paths.stream()
+      .map(path -> {
+        try (FileInputStream fis = new FileInputStream(path.toFile())) {
+          return fis.readAllBytes();
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      })
+      .toList();
+  }
+
+  private static byte[] concatenate(List<byte[]> arrays) {
+    int totalSize = arrays.stream().mapToInt(a -> a.length).sum();
+    byte[] result = new byte[totalSize];
+    int pos = 0;
+    for (byte[] arr : arrays) {
+      System.arraycopy(arr, 0, result, pos, arr.length);
+      pos += arr.length;
+    }
+    return result;
+  }
+
+  private static void assertTerminators(List<byte[]> contents) {
+    assertThat(contents)
+      .filteredOn(content -> content.length > 0)
+      .allSatisfy(content ->
+        assertThat(content[content.length - 1])
+          .isEqualTo(FileSplitUtilities.MARC_RECORD_TERMINATOR));
+  }
+
+  private void assertChunkRecordCounts(List<byte[]> contents, byte[] concatenated, int chunkSize) {
+    int remaining = countRecordsInMarcFile(concatenated);
+    for (int i = 0; i < contents.size(); i++) {
+      int count = countRecordsInMarcFile(contents.get(i));
+      int expected = (i == contents.size() - 1) ? remaining : chunkSize;
+      assertThat(count).isEqualTo(expected);
+      remaining -= count;
+    }
+  }
+
+  private int countRecordsInMarcFile(byte[] content) {
+    return countRecordsInMarcFile(new ByteArrayInputStream(content));
+  }
+
+  private int countRecordsInMarcFile(InputStream stream) {
+    try {
+      return FileSplitUtilities.countRecordsInFile(
+        "placeholder.mrc",
+        stream,
+        new JobProfileInfo().withDataType(JobProfileInfo.DataType.MARC)
+      );
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }

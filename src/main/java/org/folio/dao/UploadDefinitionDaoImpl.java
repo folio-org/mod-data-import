@@ -1,18 +1,26 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
+import static org.folio.dataimport.util.DaoUtil.constructCriteria;
+import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
+import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-
-import io.vertx.sqlclient.Tuple;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
-
+import io.vertx.sqlclient.Tuple;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Optional;
+import java.util.TimeZone;
+import java.util.UUID;
+import javax.ws.rs.NotFoundException;
 import org.apache.commons.lang3.time.TimeZones;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.dao.util.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.DefinitionCollection;
@@ -25,20 +33,6 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-
-import javax.ws.rs.NotFoundException;
-
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Optional;
-import java.util.TimeZone;
-import java.util.UUID;
-
-import static java.lang.String.format;
-import static org.folio.dataimport.util.DaoUtil.constructCriteria;
-import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
-import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
-import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 
 @Repository
 public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
@@ -64,47 +58,10 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   /**
    * This constructor is used till {@link org.folio.service.processing.ParallelFileChunkingProcessor}
    * will be rewritten with DI support.
-   *
-   * @param vertx
    */
   public UploadDefinitionDaoImpl(Vertx vertx) {
     super();
     pgClientFactory = new PostgresClientFactory(vertx);
-  }
-
-  /**
-   * Functional interface for change UploadDefinition in blocking update statement
-   */
-  @FunctionalInterface
-  public interface UploadDefinitionMutator {
-    /**
-     * @param definition - Loaded from DB UploadDefinition
-     * @return - changed Upload Definition ready for save into database
-     */
-    Future<UploadDefinition> mutate(UploadDefinition definition);
-  }
-
-  public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator, String tenantId) {
-    String rollbackMessage = "updateBlocking:: Rollback transaction. Error during upload definition update. uploadDefinitionId: " + uploadDefinitionId;
-
-    return pgClientFactory.createInstance(tenantId).withTrans(connection -> {
-      StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ")
-        .append(formatFullTableName(tenantId, UPLOAD_DEFINITION_TABLE))
-        .append(" WHERE id ='")
-        .append(uploadDefinitionId)
-        .append("' LIMIT 1 FOR UPDATE;");
-
-      return connection.execute(selectUploadDefinitionQuery.toString())
-        .compose(resultSet -> {
-          if (resultSet.rowCount() != 1) {
-            throw new NotFoundException("Upload Definition was not found. ID: " + uploadDefinitionId);
-          }
-          UploadDefinition definition = mapRowToUploadDefinition(resultSet);
-          return mutator.mutate(definition);
-        })
-        .compose(mutatedObject -> updateUploadDefinition(connection, mutatedObject, tenantId))
-        .onFailure(e -> LOGGER.warn(rollbackMessage, e));
-    });
   }
 
   @Override
@@ -136,7 +93,8 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       promise.fail(e);
     }
 
-    return promise.future().map(rowSet -> rowSet.rowCount() == 0 ? Optional.empty() : Optional.of(mapRowToUploadDefinition(rowSet)));
+    return promise.future()
+      .map(rowSet -> rowSet.rowCount() == 0 ? Optional.empty() : Optional.of(mapRowToUploadDefinition(rowSet)));
   }
 
   @Override
@@ -147,16 +105,45 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   @Override
-  public Future<UploadDefinition> updateUploadDefinition(Conn connection, UploadDefinition uploadDefinition, String tenantId) {
-    LOGGER.debug("updateUploadDefinition:: updating upload definition with id {} for tenant {}", uploadDefinition.getId(), tenantId);
+  public Future<UploadDefinition> updateUploadDefinition(Conn connection, UploadDefinition uploadDefinition,
+                                                         String tenantId) {
+    LOGGER.debug("updateUploadDefinition:: updating upload definition with id {} for tenant {}",
+      uploadDefinition.getId(), tenantId);
     try {
-      CQLWrapper filter = new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + uploadDefinition.getId());
+      CQLWrapper filter =
+        new CQLWrapper(new CQL2PgJSON(UPLOAD_DEFINITION_TABLE + ".jsonb"), "id==" + uploadDefinition.getId());
       return connection.update(UPLOAD_DEFINITION_TABLE, uploadDefinition, filter, true)
         .map(uploadDefinition);
     } catch (Exception e) {
       LOGGER.warn("updateUploadDefinition:: Error during updating UploadDefinition by ID", e);
       return Future.failedFuture(e);
     }
+  }
+
+  public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionMutator mutator,
+                                                 String tenantId) {
+    String rollbackMessage =
+      "updateBlocking:: Rollback transaction. Error during upload definition update. uploadDefinitionId: "
+      + uploadDefinitionId;
+
+    return pgClientFactory.createInstance(tenantId).withTrans(connection -> {
+      StringBuilder selectUploadDefinitionQuery = new StringBuilder("SELECT jsonb FROM ")
+        .append(formatFullTableName(tenantId, UPLOAD_DEFINITION_TABLE))
+        .append(" WHERE id ='")
+        .append(uploadDefinitionId)
+        .append("' LIMIT 1 FOR UPDATE;");
+
+      return connection.execute(selectUploadDefinitionQuery.toString())
+        .compose(resultSet -> {
+          if (resultSet.rowCount() != 1) {
+            throw new NotFoundException("Upload Definition was not found. ID: " + uploadDefinitionId);
+          }
+          UploadDefinition definition = mapRowToUploadDefinition(resultSet);
+          return mutator.mutate(definition);
+        })
+        .compose(mutatedObject -> updateUploadDefinition(connection, mutatedObject, tenantId))
+        .onFailure(e -> LOGGER.warn(rollbackMessage, e));
+    });
   }
 
   @Override
@@ -167,7 +154,10 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
   }
 
   @Override
-  public Future<DefinitionCollection> getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(Status status, Date lastUpdateDate, int offset, int limit, String tenantId) {
+  public Future<DefinitionCollection> getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(Status status,
+                                                                                              Date lastUpdateDate,
+                                                                                              int offset, int limit,
+                                                                                              String tenantId) {
     try {
       Criterion filter = getFilterByStatus(status, lastUpdateDate);
       return pgClientFactory.createInstance(tenantId).get(UPLOAD_DEFINITION_TABLE, UploadDefinition.class, filter, true)
@@ -175,7 +165,8 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
           .withUploadDefinitions(uploadDefinitionResults.getResults())
           .withTotalRecords(uploadDefinitionResults.getResultInfo().getTotalRecords()));
     } catch (Exception e) {
-      LOGGER.warn("getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen:: Error during getting UploadDefinitions by status and date", e);
+      LOGGER.warn("getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen:: Error during getting "
+                  + "UploadDefinitions by status and date",        e);
       return Future.failedFuture(e);
     }
   }
@@ -187,7 +178,7 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
       .setOperation("<=")
       .setVal(dateFormatter.format(date));
 
-    return new Criterion(constructCriteria(STATUS_FIELD, COMPLETED.value()))
+    return new Criterion(constructCriteria(STATUS_FIELD, status.value()))
       .addCriterion(updatedDateCriteria, "OR");
   }
 
@@ -198,5 +189,20 @@ public class UploadDefinitionDaoImpl implements UploadDefinitionDao {
 
   private String formatFullTableName(String tenantId, String table) {
     return format("%s.%s", convertToPsqlStandard(tenantId), table);
+  }
+
+  /**
+   * Functional interface for change UploadDefinition in blocking update statement.
+   */
+  @FunctionalInterface
+  public interface UploadDefinitionMutator {
+
+    /**
+     * Mutate UploadDefinition in blocking update statement.
+     *
+     * @param definition - Loaded from DB UploadDefinition
+     * @return - changed Upload Definition ready for save into database
+     */
+    Future<UploadDefinition> mutate(UploadDefinition definition);
   }
 }

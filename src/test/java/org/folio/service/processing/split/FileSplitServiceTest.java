@@ -32,25 +32,25 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith({MockitoExtension.class, VertxExtension.class})
 class FileSplitServiceTest {
 
-  protected static final Vertx vertx = Vertx.vertx();
+  private static final Vertx VERTX = Vertx.vertx();
 
   @Mock
-  MinioStorageService minioStorageService;
+  private MinioStorageService minioStorageService;
 
   @TempDir
-  Path tempDir;
+  private Path tempDir;
 
-  FileSplitService fileSplitService;
+  private FileSplitService fileSplitService;
 
   @BeforeEach
   void setUp() {
-    this.fileSplitService = new FileSplitService(vertx, minioStorageService, 1000);
+    this.fileSplitService = new FileSplitService(VERTX, minioStorageService, 1000);
   }
 
   @Test
   @DisplayName("should split file from S3 into 10 chunks and verify interactions when source has 10000 records")
   void shouldSplitFileFromS3_into10Chunks_andVerifyInteractions(VertxTestContext testContext)
-      throws IOException {
+    throws IOException {
     when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture());
     when(minioStorageService.readFile("test-key"))
       .thenReturn(
@@ -61,7 +61,7 @@ class FileSplitServiceTest {
     when(minioStorageService.remove("test-key")).thenReturn(Future.succeededFuture());
 
     fileSplitService
-      .splitFileFromS3(vertx.getOrCreateContext(), "test-key")
+      .splitFileFromS3(VERTX.getOrCreateContext(), "test-key")
       .onComplete(
         testContext.succeeding(result ->
           testContext.verify(() -> {
@@ -89,7 +89,7 @@ class FileSplitServiceTest {
       .thenReturn(Future.succeededFuture(new ByteArrayInputStream(new byte[1])));
 
     fileSplitService
-      .splitFileFromS3(vertx.getOrCreateContext(), key)
+      .splitFileFromS3(VERTX.getOrCreateContext(), key)
       .onComplete(
         testContext.failing(result ->
           testContext.verify(() -> {
@@ -110,7 +110,7 @@ class FileSplitServiceTest {
     when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture());
     fileSplitService
       .splitStream(
-        vertx.getOrCreateContext(),
+        VERTX.getOrCreateContext(),
         new ByteArrayInputStream(new byte[1]),
         "test-key"
       )
@@ -127,7 +127,7 @@ class FileSplitServiceTest {
   @Test
   @DisplayName("should succeed when temporary directory cannot be deleted after split")
   void shouldSucceed_whenTempDirCannotBeDeletedAfterSplit(VertxTestContext testContext)
-      throws IOException {
+    throws IOException {
     when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture());
     File test = Files.createTempDirectory(tempDir, "split-service").toFile();
 
@@ -145,7 +145,7 @@ class FileSplitServiceTest {
 
       fileSplitService
         .splitStream(
-          vertx.getOrCreateContext(),
+          VERTX.getOrCreateContext(),
           new ByteArrayInputStream(new byte[1]),
           "test-key"
         )

@@ -5,18 +5,16 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.mutable.MutableInt;
-import org.folio.rest.jaxrs.model.InitialRecord;
-import org.folio.rest.jaxrs.model.RecordsMetadata;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.rest.jaxrs.model.InitialRecord;
+import org.folio.rest.jaxrs.model.RecordsMetadata;
 
 /**
  * Implementation reads source records in json format from the local file system in fixed-size buffer.
@@ -24,16 +22,15 @@ import java.util.List;
  */
 public class MarcJsonReader implements SourceReader {
 
-  private static final Logger LOGGER = LogManager.getLogger();
-
   public static final String JSON_EXTENSION = "json";
-  private JsonReader reader;
-  private int chunkSize;
-  private MutableInt recordsCounter;
+  private static final Logger LOGGER = LogManager.getLogger();
+  private final JsonReader reader;
+  private final int chunkSize;
+  private final MutableInt recordsCounter;
 
   public MarcJsonReader(File file, int chunkSize) {
     this.chunkSize = chunkSize;
-    recordsCounter = new MutableInt(0);
+    this.recordsCounter = new MutableInt(0);
     try {
       this.reader = new JsonReader(new InputStreamReader(FileUtils.openInputStream(file)));
     } catch (IOException e) {
@@ -52,7 +49,8 @@ public class MarcJsonReader implements SourceReader {
       }
       while (reader.hasNext()) {
         JsonObject currentRecord = gson.fromJson(reader, JsonObject.class);
-        recordsBuffer.add(new InitialRecord().withRecord(currentRecord.toString()).withOrder(recordsCounter.getAndIncrement()));
+        recordsBuffer.add(
+          new InitialRecord().withRecord(currentRecord.toString()).withOrder(recordsCounter.getAndIncrement()));
         if (recordsBuffer.isFull()) {
           return recordsBuffer.getRecords();
         }

@@ -66,8 +66,8 @@ class FileSplitWriterS3Test {
   @MethodSource("getCases")
   @DisplayName("should upload each chunk to S3 with correct name and content")
   void shouldUploadEachChunk_toS3_withCorrectNameAndContent(
-      String sourceFile, String key, int chunkSize,
-      VertxTestContext testContext) throws IOException {
+    String sourceFile, String key, int chunkSize,
+    VertxTestContext testContext) throws IOException {
     when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture("result"));
 
     File chunkDir = Files.createTempDirectory(tempDir, "s3writer").toFile();
@@ -87,7 +87,7 @@ class FileSplitWriterS3Test {
     vertx.getOrCreateContext().owner().fileSystem()
       .open(sourceFile, new OpenOptions().setRead(true))
       .onComplete(testContext.succeeding(file -> {
-        file.pipeTo(writer).onComplete(testContext.succeeding(v -> {}));
+        file.pipeTo(writer).onComplete(testContext.succeeding(v -> { }));
         chunkUploadingCompositeFuturePromise.future().onComplete(
           testContext.succeeding(cf ->
             cf.onComplete(testContext.succeeding(result -> {

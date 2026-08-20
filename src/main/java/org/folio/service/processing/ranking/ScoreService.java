@@ -22,16 +22,30 @@ public class ScoreService {
 
   private static final int SCORE_LOGGING_MAX_JOBS = 100;
 
-  private QueueItemHolisticRanker ranker;
-  private DataImportQueueItemDao queueItemDao;
+  private final QueueItemHolisticRanker ranker;
+  private final DataImportQueueItemDao queueItemDao;
 
   @Autowired
-  public ScoreService(
-    QueueItemHolisticRanker ranker,
-    DataImportQueueItemDao queueItemDao
-  ) {
+  public ScoreService(QueueItemHolisticRanker ranker, DataImportQueueItemDao queueItemDao) {
     this.ranker = ranker;
     this.queueItemDao = queueItemDao;
+  }
+
+  /**
+   * Creates a map of tenant -> number of chunks in progress.
+   */
+  public static Map<String, Long> getTenantUsageMap(
+    DataImportQueueItemCollection queueItems
+  ) {
+    return queueItems
+      .getDataImportQueueItems()
+      .stream()
+      .collect(
+        Collectors.groupingBy(
+          DataImportQueueItem::getTenant,
+          Collectors.counting()
+        )
+      );
   }
 
   /**
@@ -61,12 +75,10 @@ public class ScoreService {
 
   /**
    * Get a list of all WAITING queue items, sorted by score, with the highest
-   * score coming first
+   * score coming first.
    */
-  public NavigableSet<DataImportQueueItem> getRankedQueueItems(
-    DataImportQueueItemCollection inProgress,
-    DataImportQueueItemCollection waiting
-  ) {
+  public NavigableSet<DataImportQueueItem> getRankedQueueItems(DataImportQueueItemCollection inProgress,
+                                                               DataImportQueueItemCollection waiting) {
     // we create a temporary map to store these, since the sorting comparator may
     // require multiple calls to `calculateScore`.
     // this is local to this method, since we don't want to cache these any longer
@@ -121,37 +133,15 @@ public class ScoreService {
   }
 
   /**
-   * Calculate the score for a single chunk
+   * Calculate the score for a single chunk.
    */
-  public double calculateScore(
-    DataImportQueueItem item,
-    Map<String, Long> tenantUsageMap
-  ) {
+  public double calculateScore(DataImportQueueItem item, Map<String, Long> tenantUsageMap) {
     return ranker.score(item, tenantUsageMap);
   }
 
-  /**
-   * Creates a map of tenant -> number of chunks in progress
-   */
-  public static Map<String, Long> getTenantUsageMap(
-    DataImportQueueItemCollection queueItems
-  ) {
-    return queueItems
-      .getDataImportQueueItems()
-      .stream()
-      .collect(
-        Collectors.groupingBy(
-          DataImportQueueItem::getTenant,
-          Collectors.counting()
-        )
-      );
-  }
-
-  private double calculateScoreCached(
-    Map<DataImportQueueItem, Double> cache,
-    DataImportQueueItem item,
-    Map<String, Long> tenantUsageMap
-  ) {
+  private double calculateScoreCached(Map<DataImportQueueItem, Double> cache,
+                                      DataImportQueueItem item,
+                                      Map<String, Long> tenantUsageMap) {
     return cache.computeIfAbsent(
       item,
       el -> calculateScore(item, tenantUsageMap)

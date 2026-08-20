@@ -27,7 +27,7 @@ import org.folio.support.AbstractRestTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class DownloadUrlAPITest extends AbstractRestTest {
+class DownloadUrlRestTest extends AbstractRestTest {
 
   private static final String TEST_KEY = "data-import/test-key-response";
 

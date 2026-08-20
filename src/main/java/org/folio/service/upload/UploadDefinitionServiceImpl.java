@@ -7,25 +7,6 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.handler.HttpException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.HttpStatus;
-import org.folio.dao.UploadDefinitionDao;
-import org.folio.dao.UploadDefinitionDaoImpl;
-import org.folio.dataimport.util.ConnectionParams;
-import org.folio.rest.client.ChangeManagerClient;
-import org.folio.rest.impl.util.BufferMapper;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.*;
-import org.folio.service.fileextension.FileExtensionService;
-import org.folio.service.fileextension.FileExtensionServiceImpl;
-import org.folio.service.storage.FileStorageServiceBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.InternalServerErrorException;
-import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
@@ -38,6 +19,34 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.InternalServerErrorException;
+import javax.ws.rs.NotFoundException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.HttpStatus;
+import org.folio.dao.UploadDefinitionDao;
+import org.folio.dao.UploadDefinitionDaoImpl;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.rest.client.ChangeManagerClient;
+import org.folio.rest.impl.util.BufferMapper;
+import org.folio.rest.jaxrs.model.DefinitionCollection;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.File;
+import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
+import org.folio.rest.jaxrs.model.JobExecution;
+import org.folio.rest.jaxrs.model.JobExecutionDto;
+import org.folio.rest.jaxrs.model.JobExecutionDtoCollection;
+import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.jaxrs.model.StatusDto;
+import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.service.fileextension.FileExtensionService;
+import org.folio.service.fileextension.FileExtensionServiceImpl;
+import org.folio.service.storage.FileStorageServiceBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Service
 public class UploadDefinitionServiceImpl implements UploadDefinitionService {
@@ -45,9 +54,10 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   private static final Logger LOGGER = LogManager.getLogger();
 
   private static final String FILE_UPLOAD_ERROR_MESSAGE = "upload.fileSize.invalid";
-  private static final String UPLOAD_FILE_EXTENSION_BLOCKED_ERROR_MESSAGE = "validation.uploadDefinition.fileExtension.blocked";
+  private static final String UPLOAD_FILE_EXTENSION_BLOCKED_ERROR_MESSAGE =
+    "validation.uploadDefinition.fileExtension.blocked";
 
-  private Vertx vertx;
+  private final Vertx vertx;
 
   @Autowired
   private UploadDefinitionDao uploadDefinitionDao;
@@ -94,7 +104,9 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   @Override
-  public Future<UploadDefinition> updateBlocking(String uploadDefinitionId, UploadDefinitionDaoImpl.UploadDefinitionMutator mutator, String tenantId) {
+  public Future<UploadDefinition> updateBlocking(String uploadDefinitionId,
+                                                 UploadDefinitionDaoImpl.UploadDefinitionMutator mutator,
+                                                 String tenantId) {
     return uploadDefinitionDao.updateBlocking(uploadDefinitionId, mutator, tenantId);
   }
 
@@ -108,9 +120,11 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
               return deleteFiles(uploadDefinition.getFileDefinitions(), params)
                 .compose(deleted -> uploadDefinitionDao.deleteUploadDefinition(id, params.getTenantId()))
                 .compose(result -> {
-                  updateJobExecutionStatuses(jobExecutionList, new StatusDto().withStatus(StatusDto.Status.DISCARDED), params)
+                  updateJobExecutionStatuses(jobExecutionList, new StatusDto().withStatus(StatusDto.Status.DISCARDED),
+                    params)
                     .otherwise(throwable -> {
-                      LOGGER.warn("deleteUploadDefinition:: Couldn't update JobExecution status to DISCARDED after UploadDefinition {} was deleted", id, throwable);
+                      LOGGER.warn("deleteUploadDefinition:: Couldn't update JobExecution status "
+                                  + "to DISCARDED after UploadDefinition {} was deleted", id, throwable);
                       return result;
                     });
                   return Future.succeededFuture(result);
@@ -138,13 +152,16 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   @Override
   public Future<Boolean> updateJobExecutionStatus(String jobExecutionId, StatusDto status, ConnectionParams params) {
     Promise<Boolean> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
+    ChangeManagerClient client =
+      new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(),
+        vertx.createHttpClient());
     try {
       client.putChangeManagerJobExecutionsStatusById(jobExecutionId, status, response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           promise.complete(true);
         } else {
-          LOGGER.warn("updateJobExecutionStatus:: Error updating status of JobExecution with id {}. Status message: {}", jobExecutionId, response.result().statusMessage());
+          LOGGER.warn("updateJobExecutionStatus:: Error updating status of JobExecution with id {}. Status message: {}",
+            jobExecutionId, response.result().statusMessage());
           promise.fail(new HttpException(response.result().statusCode(), "Error updating status of JobExecution"));
         }
       });
@@ -169,14 +186,81 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
       .compose(errorsReply -> validateFilesExtensionName(definition, errors, tenantId));
   }
 
+  @Override
+  public Future<List<JobExecutionDto>> getJobExecutions(UploadDefinition uploadDefinition, ConnectionParams params) {
+    if (!uploadDefinition.getFileDefinitions().isEmpty()) {
+      String metaJobExecutionId = uploadDefinition.getMetaJobExecutionId();
+      LOGGER.info("getJobExecutions:: MetaJobExecutionId : {}, status: {} in the UploadDefinition", metaJobExecutionId,
+        uploadDefinition.getStatus());
+      return getJobExecutionById(metaJobExecutionId, params)
+        .compose(jobExecution -> {
+          if (JobExecution.SubordinationType.PARENT_MULTIPLE.equals(jobExecution.getSubordinationType())) {
+            return getChildrenJobExecutions(jobExecution.getId(), params)
+              .map(JobExecutionDtoCollection::getJobExecutions);
+          } else {
+            return Future.succeededFuture(Collections.singletonList(convertToJobExecutionDto(jobExecution)));
+          }
+        });
+    } else {
+      return Future.succeededFuture(Collections.emptyList());
+    }
+  }
+
+  @Override
+  public Future<UploadDefinition> updateFileDefinitionStatus(String uploadDefinitionId, String fileDefinitionId,
+                                                             FileDefinition.Status status, String tenantId) {
+    return uploadDefinitionDao.updateBlocking(uploadDefinitionId, uploadDefinition -> {
+      uploadDefinition.getFileDefinitions()
+        .stream()
+        .filter(fileDefinition -> fileDefinition.getId().equals(fileDefinitionId))
+        .findFirst()
+        .orElseThrow(
+          () -> new NotFoundException(String.format("FileDefinition with id '%s' was not found", fileDefinitionId)))
+        .withStatus(status);
+      return Future.succeededFuture(uploadDefinition);
+    }, tenantId);
+  }
+
+  @Override
+  public Future<UploadDefinition> updateUploadDefinitionStatus(String uploadDefinitionId,
+                                                               UploadDefinition.Status status, String tenantId) {
+    return uploadDefinitionDao
+      .updateBlocking(uploadDefinitionId, definition -> Future.succeededFuture(definition.withStatus(status)),
+        tenantId);
+  }
+
+  @Override
+  public Future<JobExecution> getJobExecutionById(String jobExecutionId, ConnectionParams params) {
+    Promise<JobExecution> promise = Promise.promise();
+    ChangeManagerClient client =
+      new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(),
+        vertx.createHttpClient());
+    try {
+      client.getChangeManagerJobExecutionsById(jobExecutionId, response -> {
+        if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
+          Buffer responseAsBuffer = response.result().bodyAsBuffer();
+          promise.handle(BufferMapper.mapBufferContentToEntityAsync(responseAsBuffer, JobExecution.class));
+        } else {
+          String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
+          LOGGER.warn(errorMessage);
+          promise.fail(errorMessage);
+        }
+      });
+    } catch (Exception e) {
+      promise.fail(e);
+    }
+    return promise.future();
+  }
+
   private Future<Errors> validateFilesExtensionName(UploadDefinition definition, Errors errors, String tenantId) {
     List<Future<Errors>> listOfValidations = new ArrayList<>(definition.getFileDefinitions().size());
     for (FileDefinition fileDefinition : definition.getFileDefinitions()) {
       String fileExtension = getFileExtensionFromString(fileDefinition.getName());
       listOfValidations.add(fileExtensionService.getFileExtensionByExtenstion(fileExtension, tenantId)
         .map(extension -> {
-          if (extension.isPresent() && extension.get().getImportBlocked()) {
-            errors.getErrors().add(new Error().withMessage(UPLOAD_FILE_EXTENSION_BLOCKED_ERROR_MESSAGE).withCode(fileDefinition.getName()));
+          if (extension.isPresent() && Boolean.TRUE.equals(extension.get().getImportBlocked())) {
+            errors.getErrors().add(
+              new Error().withMessage(UPLOAD_FILE_EXTENSION_BLOCKED_ERROR_MESSAGE).withCode(fileDefinition.getName()));
             errors.setTotalRecords(errors.getTotalRecords() + 1);
           }
           return errors;
@@ -196,7 +280,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
   }
 
   /**
-   * Calculate free disk space
+   * Calculate free disk space.
    *
    * @return - free disck space in kbytes
    */
@@ -245,11 +329,15 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
         .withSourceType(InitJobExecutionsRqDto.SourceType.FILES);
 
     Promise<UploadDefinition> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
+    ChangeManagerClient client =
+      new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(),
+        vertx.createHttpClient());
     try {
       client.postChangeManagerJobExecutions(initJobExecutionsRqDto, response -> {
         if (response.result().statusCode() != HttpStatus.HTTP_CREATED.toInt()) {
-          LOGGER.warn("createJobExecutions:: Error creating new JobExecution for UploadDefinition with id {}. Status message: {}", definition.getId(), response.result().statusMessage());
+          LOGGER.warn(
+            "createJobExecutions:: Error creating new JobExecution for UploadDefinition with id {}. Status message: {}",
+            definition.getId(), response.result().statusMessage());
           promise.fail(new HttpException(response.result().statusCode(), "Error creating new JobExecution"));
         } else {
           JsonObject responseBody = response.result().bodyAsJsonObject();
@@ -303,30 +391,14 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return promise.future();
   }
 
-  @Override
-  public Future<List<JobExecutionDto>> getJobExecutions(UploadDefinition uploadDefinition, ConnectionParams params) {
-    if (!uploadDefinition.getFileDefinitions().isEmpty()) {
-      String metaJobExecutionId = uploadDefinition.getMetaJobExecutionId();
-      LOGGER.info("getJobExecutions:: MetaJobExecutionId : {}, status: {} in the UploadDefinition", metaJobExecutionId, uploadDefinition.getStatus());
-      return getJobExecutionById(metaJobExecutionId, params)
-        .compose(jobExecution -> {
-          if (JobExecution.SubordinationType.PARENT_MULTIPLE.equals(jobExecution.getSubordinationType())) {
-            return getChildrenJobExecutions(jobExecution.getId(), params)
-              .map(JobExecutionDtoCollection::getJobExecutions);
-          } else {
-            return Future.succeededFuture(Collections.singletonList(convertToJobExecutionDto(jobExecution)));
-          }
-        });
-    } else {
-      return Future.succeededFuture(Collections.emptyList());
-    }
-  }
-
-  private Future<JobExecutionDtoCollection> getChildrenJobExecutions(String jobExecutionParentId, ConnectionParams params) {
+  private Future<JobExecutionDtoCollection> getChildrenJobExecutions(String jobExecutionParentId,
+                                                                     ConnectionParams params) {
     Promise<JobExecutionDtoCollection> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
+    ChangeManagerClient client =
+      new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(),
+        vertx.createHttpClient());
     try {
-      client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, null,0, response -> {
+      client.getChangeManagerJobExecutionsChildrenById(jobExecutionParentId, Integer.MAX_VALUE, null, 0, response -> {
         if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           Buffer responseAsBuffer = response.result().bodyAsBuffer();
           promise.handle(BufferMapper.mapBufferContentToEntityAsync(responseAsBuffer, JobExecutionDtoCollection.class));
@@ -342,54 +414,15 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     return promise.future();
   }
 
-  @Override
-  public Future<JobExecution> getJobExecutionById(String jobExecutionId, ConnectionParams params) {
-    Promise<JobExecution> promise = Promise.promise();
-    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertx.createHttpClient());
-    try {
-      client.getChangeManagerJobExecutionsById(jobExecutionId,response -> {
-        if (response.result().statusCode() == HttpStatus.HTTP_OK.toInt()) {
-          Buffer responseAsBuffer = response.result().bodyAsBuffer();
-          promise.handle(BufferMapper.mapBufferContentToEntityAsync(responseAsBuffer, JobExecution.class));
-        } else {
-          String errorMessage = "Error getting JobExecution by id " + jobExecutionId;
-          LOGGER.warn(errorMessage);
-          promise.fail(errorMessage);
-        }
-      });
-    } catch (Exception e) {
-      promise.fail(e);
-    }
-    return promise.future();
-  }
-
-  @Override
-  public Future<UploadDefinition> updateFileDefinitionStatus(String uploadDefinitionId, String fileDefinitionId, FileDefinition.Status status, String tenantId) {
-    return uploadDefinitionDao.updateBlocking(uploadDefinitionId, uploadDefinition -> {
-      uploadDefinition.getFileDefinitions()
-        .stream()
-        .filter(fileDefinition -> fileDefinition.getId().equals(fileDefinitionId))
-        .findFirst()
-        .orElseThrow(() -> new NotFoundException(String.format("FileDefinition with id '%s' was not found", fileDefinitionId)))
-        .withStatus(status);
-      return Future.succeededFuture(uploadDefinition);
-    }, tenantId);
-  }
-
-  @Override
-  public Future<UploadDefinition> updateUploadDefinitionStatus(String uploadDefinitionId, UploadDefinition.Status status, String tenantId) {
-    return uploadDefinitionDao
-      .updateBlocking(uploadDefinitionId, definition -> Future.succeededFuture(definition.withStatus(status)), tenantId);
-  }
-
   private boolean canDeleteUploadDefinition(List<JobExecutionDto> jobExecutions) {
     return jobExecutions.stream().filter(jobExecution ->
-      JobExecutionDto.Status.NEW.equals(jobExecution.getStatus()) ||
-        JobExecutionDto.Status.FILE_UPLOADED.equals(jobExecution.getStatus()) ||
-        JobExecutionDto.Status.DISCARDED.equals(jobExecution.getStatus())).count() == jobExecutions.size();
+      JobExecutionDto.Status.NEW.equals(jobExecution.getStatus())
+      || JobExecutionDto.Status.FILE_UPLOADED.equals(jobExecution.getStatus())
+      || JobExecutionDto.Status.DISCARDED.equals(jobExecution.getStatus())).count() == jobExecutions.size();
   }
 
-  private Future<Boolean> updateJobExecutionStatuses(List<JobExecutionDto> jobExecutions, StatusDto status, ConnectionParams params) {
+  private Future<Boolean> updateJobExecutionStatuses(List<JobExecutionDto> jobExecutions, StatusDto status,
+                                                     ConnectionParams params) {
     List<Future<Boolean>> futures = new ArrayList<>();
     for (JobExecutionDto jobExecution : jobExecutions) {
       futures.add(updateJobExecutionStatus(jobExecution.getId(), status, params));
@@ -411,7 +444,7 @@ public class UploadDefinitionServiceImpl implements UploadDefinitionService {
     result.setHrId(jobExecution.getHrId());
     result.setParentJobId(jobExecution.getParentJobId());
     result.setSubordinationType(Optional.ofNullable(jobExecution.getSubordinationType())
-     .map(type -> JobExecutionDto.SubordinationType.fromValue(type.value())).orElse(null));
+      .map(type -> JobExecutionDto.SubordinationType.fromValue(type.value())).orElse(null));
     result.setJobProfileInfo(jobExecution.getJobProfileInfo());
     result.setSourcePath(jobExecution.getSourcePath());
     result.setFileName(jobExecution.getFileName());

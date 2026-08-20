@@ -1,19 +1,18 @@
 package org.folio.service.processing.reader;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 @ExtendWith(MockitoExtension.class)
-class MarcSourceReaderUnitTest {
+class MarcSourceReaderTest {
 
   private static final String SOURCE_PATH = "src/test/resources/CornellFOLIOExemplars.mrc";
   private static final String SOURCE_WITH_WRONG_ENCODING_PATH = "src/test/resources/61PRINT160129.mrc";

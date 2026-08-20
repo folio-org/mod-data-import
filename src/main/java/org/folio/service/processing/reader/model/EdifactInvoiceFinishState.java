@@ -1,9 +1,8 @@
 package org.folio.service.processing.reader.model;
 
+import java.util.Map;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.service.processing.reader.EdifactParser;
-
-import java.util.Map;
 
 /**
  * EdifactInvoiceFinishState is a class for preparing {@link InitialRecord InitialRecord.class} collection.
@@ -17,7 +16,7 @@ public class EdifactInvoiceFinishState extends EdifactState {
   @Override
   public void handle(String data) {
     String content = parser.getHeader() + parser.getInvoiceBody() + data + getSegmentSeparator()
-      + getFooterTemplate() + parser.getControlReferenceValue() + getSegmentSeparator();
+                     + getFooterTemplate() + parser.getControlReferenceValue() + getSegmentSeparator();
     parser.getInitialRecords().add(initInitialRecord(content).withOrder(parser.getInitialRecords().size()));
     parser.cleanInvoiceBody();
   }
@@ -37,5 +36,4 @@ public class EdifactInvoiceFinishState extends EdifactState {
     initialRecord.setRecord(content);
     return initialRecord;
   }
-
 }

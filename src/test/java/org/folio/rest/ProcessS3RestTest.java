@@ -36,7 +36,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
-class ProcessS3APITest extends AbstractRestTest {
+class ProcessS3RestTest extends AbstractRestTest {
 
   // set before BaseRestTest.deployRestVerticle() @BeforeAll so the verticle picks it up
   static {
@@ -48,6 +48,7 @@ class ProcessS3APITest extends AbstractRestTest {
     System.clearProperty("SPLIT_FILES_ENABLED");
   }
 
+  @SuppressWarnings("checkstyle:MethodLength")
   @DisplayName("should complete processing and reach COMPLETED status")
   @Test
   @SneakyThrows
@@ -81,13 +82,13 @@ class ProcessS3APITest extends AbstractRestTest {
         ).toURI()
       ))
     );
-    String eTag = con.getHeaderField("eTag");
+    String etag = con.getHeaderField("eTag");
 
     given()
       .body(new AssembleFileDto()
         .withKey(uploadInfo.getKey())
         .withUploadId(uploadInfo.getUploadId())
-        .withTags(List.of(eTag)))
+        .withTags(List.of(etag)))
       .pathParam("uploadDefinitionId", uploadDefinition.getId())
       .pathParam("fileDefinitionId", uploadDefinition.getFileDefinitions().getFirst().getId())
       .post("/data-import/uploadDefinitions/{uploadDefinitionId}/files/{fileDefinitionId}/assembleStorageFile")

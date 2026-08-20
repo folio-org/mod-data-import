@@ -63,15 +63,11 @@ public abstract class AbstractRestTest extends BaseRestTest {
 
   @RegisterExtension
   protected static final S3Extension S3 = new S3Extension(MINIO_BUCKET, SUB_PATH);
-
-  protected static FolioS3Client s3Client;
-  protected RequestSpecification specUpload;
-
   protected static final String TOKEN = "token";
-
+  protected static FolioS3Client s3Client;
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String GET_USER_URL = "/users\\?query=id==" + USER_ID;
-
+  protected RequestSpecification specUpload;
   private final JsonObject userResponse = new JsonObject()
     .put("users",
       new JsonArray().add(new JsonObject()
@@ -141,21 +137,6 @@ public abstract class AbstractRestTest extends BaseRestTest {
     }
   }
 
-  @BeforeAll
-  void setUpClass() {
-    s3Client = S3.buildS3Client();
-    s3Client.createBucketIfNotExists();
-    specUpload = new RequestSpecBuilder()
-      .setContentType("application/octet-stream")
-      .setBaseUri(connectionUrl)
-      .addHeader(XOkapiHeaders.TENANT, TENANT_ID)
-      .addHeader(XOkapiHeaders.USER_ID, USER_ID)
-      .addHeader(XOkapiHeaders.URL, mockServerUrl())
-      .addHeader("Accept", "text/plain, application/json")
-      .build();
-    SpringContextUtil.autowireDependenciesFromFirstContext(this, vertx);
-  }
-
   @BeforeEach
   protected void setUp(VertxTestContext testContext) {
     WIRE_MOCK.resetAll();
@@ -184,6 +165,21 @@ public abstract class AbstractRestTest extends BaseRestTest {
     if (!keys.isEmpty()) {
       s3Client.remove(keys.toArray(new String[0]));
     }
+  }
+
+  @BeforeAll
+  void setUpClass() {
+    s3Client = S3.buildS3Client();
+    s3Client.createBucketIfNotExists();
+    specUpload = new RequestSpecBuilder()
+      .setContentType("application/octet-stream")
+      .setBaseUri(connectionUrl)
+      .addHeader(XOkapiHeaders.TENANT, TENANT_ID)
+      .addHeader(XOkapiHeaders.USER_ID, USER_ID)
+      .addHeader(XOkapiHeaders.URL, mockServerUrl())
+      .addHeader("Accept", "text/plain, application/json")
+      .build();
+    SpringContextUtil.autowireDependenciesFromFirstContext(this, vertx);
   }
 
   private void stubCommonEndpoints() {

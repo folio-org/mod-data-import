@@ -32,7 +32,7 @@ class ScoreUtilsBoundedTest {
   @ParameterizedTest(name = "[{index}] i in [{0},{1}] → score in [{2},{3}]")
   @MethodSource("getExpectedValues")
   @DisplayName("should score within bounds for all i in range")
-  void shouldScoreWithinBounds_forAllIInRange(
+  void shouldScoreWithinBounds_forAllInRange(
     int lowerRange,
     int upperRange,
     int lowerScore,

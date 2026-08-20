@@ -5,9 +5,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Async file storage service builder builder
+ * Async file storage service builder builder.
  */
-public class FileStorageServiceBuilder {
+public final class FileStorageServiceBuilder {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
@@ -15,7 +15,7 @@ public class FileStorageServiceBuilder {
   }
 
   /**
-   * build a default LocalStorage Service
+   * build a default LocalStorage Service.
    *
    * @param vertx    - vertx object
    * @param tenantId - current tenant id
@@ -25,5 +25,4 @@ public class FileStorageServiceBuilder {
     LOGGER.info("build:: building LocalFileStorageService");
     return new LocalFileStorageService(vertx, tenantId);
   }
-
 }

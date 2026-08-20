@@ -6,7 +6,7 @@ import static org.folio.dataimport.testsupport.postgres.PostgresTestSupport.getC
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
-public class TestUtil {
+public final class TestUtil {
 
   public static final String FILE_EXTENSIONS_TABLE = "file_extensions";
   public static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
@@ -25,12 +25,15 @@ public class TestUtil {
   public static final String JOB_EXECUTION_CANCEL_PATH =
     "/data-import/jobExecutions/{jobExecutionId}/cancel";
   public static final String DOWNLOAD_URL_PATH =
-      "/data-import/jobExecutions/{jobExecutionId}/downloadUrl";
+    "/data-import/jobExecutions/{jobExecutionId}/downloadUrl";
   public static final String DEFINITION_PATH = "/data-import/uploadDefinitions";
   public static final String FILE_EXTENSION_PATH = "/data-import/fileExtensions";
   public static final String DATA_TYPE_PATH = "/data-import/dataTypes";
   public static final String FILE_PATH = "/files";
   public static final String PROCESS_FILE_IMPORT_PATH = "/processFiles";
+
+  private TestUtil() {
+  }
 
   public static Future<Void> clearAllTables(Vertx vertx) {
     return clearTable(FILE_EXTENSIONS_TABLE, vertx, TENANT_ID)
@@ -42,8 +45,5 @@ public class TestUtil {
     return getClient(vertx)
       .execute(QUEUE_ITEMS_GLOBAL_SQL)
       .mapEmpty();
-  }
-
-  private TestUtil() {
   }
 }

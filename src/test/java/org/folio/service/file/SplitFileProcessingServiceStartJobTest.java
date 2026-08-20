@@ -52,12 +52,12 @@ class SplitFileProcessingServiceStartJobTest extends SplitFileProcessingServiceA
   void shouldCreateParentJobExecutions_forEachFileDefinition(VertxTestContext testContext) {
     doAnswer(invocation -> {
       InitJobExecutionsRqDto request = invocation.getArgument(0);
-      Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(1);
 
       assertThat(request.getFiles()).hasSize(1);
       assertThat(request.getJobProfileInfo()).isEqualTo(JOB_PROFILE_INFO);
       assertThat(request.getUserId()).isEqualTo("created-user-id");
 
+      Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(1);
       String fileName = request.getFiles().getFirst().getName();
       if (fileName.contains("1")) {
         responseHandler.handle(
@@ -146,7 +146,7 @@ class SplitFileProcessingServiceStartJobTest extends SplitFileProcessingServiceA
 
   @DisplayName("should fail when file split encounters I/O error")
   @Test
-  void shouldFail_whenFileSplitEncountersIOError(VertxTestContext testContext) {
+  void shouldFail_whenFileSplitEncountersIoError(VertxTestContext testContext) {
     when(minioStorageService.readFile("test-key"))
       .thenReturn(Future.succeededFuture(new InputStream() {
         @Override
@@ -158,6 +158,7 @@ class SplitFileProcessingServiceStartJobTest extends SplitFileProcessingServiceA
     service.splitFile("test-key", JOB_PROFILE_MARC).onComplete(testContext.failingThenComplete());
   }
 
+  @SuppressWarnings("checkstyle:MethodLength")
   @DisplayName("should initialize job for all file definitions and return split info map")
   @Test
   void shouldInitializeJob_forAllFileDefinitions(VertxTestContext testContext) {

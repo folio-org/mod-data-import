@@ -52,7 +52,7 @@ class SplitFileProcessingServiceRegistrationTest extends SplitFileProcessingServ
       WireMock.post("/change-manager/jobExecutions")
         .willReturn(WireMock.created().withBody(
           JsonObject.mapFrom(new InitJobExecutionsRsDto()
-            .withJobExecutions(Collections.singletonList(new JobExecution().withId("test-execution-id"))))
+              .withJobExecutions(Collections.singletonList(new JobExecution().withId("test-execution-id"))))
             .encode()))
     );
 
@@ -85,7 +85,7 @@ class SplitFileProcessingServiceRegistrationTest extends SplitFileProcessingServ
       WireMock.post("/change-manager/jobExecutions")
         .willReturn(WireMock.created().withBody(
           JsonObject.mapFrom(new InitJobExecutionsRsDto()
-            .withJobExecutions(Collections.singletonList(new JobExecution().withId("test-execution-id"))))
+              .withJobExecutions(Collections.singletonList(new JobExecution().withId("test-execution-id"))))
             .encode()))
     );
 

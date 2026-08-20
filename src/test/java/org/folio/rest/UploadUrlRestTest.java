@@ -15,7 +15,7 @@ import org.folio.support.AbstractRestTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class UploadUrlAPITest extends AbstractRestTest {
+class UploadUrlRestTest extends AbstractRestTest {
 
   @DisplayName("should return upload URL with part 1 and a key when fileName is provided")
   @Test

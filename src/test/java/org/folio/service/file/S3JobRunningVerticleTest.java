@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -14,7 +15,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
@@ -36,6 +36,7 @@ import java.util.Optional;
 import org.apache.commons.io.FileUtils;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.JobExecution;
 import org.folio.rest.jaxrs.model.StatusDto;
@@ -55,10 +56,10 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith({MockitoExtension.class, VertxExtension.class})
-class S3JobRunningVerticleUnitTest {
+class S3JobRunningVerticleTest {
 
   private static final int POLL_INTERVAL = 100;
-  private static final Vertx vertx = Vertx.vertx();
+  private static final Vertx VERTX = Vertx.vertx();
 
   private @Mock Vertx mockVertx;
   private @Mock FileSystem fileSystem;
@@ -75,7 +76,7 @@ class S3JobRunningVerticleUnitTest {
 
   @BeforeEach
   void setUp() {
-    S3JobRunningVerticle.workersInUse.set(0);
+    S3JobRunningVerticle.WORKERS_IN_USE.set(0);
 
     lenient().when(mockVertx.fileSystem()).thenReturn(fileSystem);
     lenient().doAnswer(invocation -> {
@@ -110,8 +111,8 @@ class S3JobRunningVerticleUnitTest {
     assertThat(params.getTenantId()).isEqualTo("tenant");
     assertThat(params.getConnectionUrl()).isEqualTo("okapi-url");
     assertThat(params.getToken()).isEqualTo("token");
-    assertThat(params.getHeaders().get("x-okapi-permissions")).isEqualTo("permissions");
-    assertThat(params.getHeaders().get("x-okapi-request-id")).isEqualTo("request-id");
+    assertThat(params.getHeaders()).containsEntry(XOkapiHeaders.PERMISSIONS, "permissions");
+    assertThat(params.getHeaders()).containsEntry(XOkapiHeaders.REQUEST_ID, "request-id");
   }
 
   @Test
@@ -130,9 +131,9 @@ class S3JobRunningVerticleUnitTest {
     assertThat(params.getTenantId()).isEqualTo("tenant");
     assertThat(params.getConnectionUrl()).isEqualTo("okapi-url");
     assertThat(params.getToken()).isEqualTo("token");
-    assertThat(params.getHeaders().get("x-okapi-permissions")).isEqualTo("permissions");
-    assertThat(params.getHeaders().get("x-okapi-request-id")).isEqualTo("request-id");
-    assertThat(params.getHeaders().get("x-okapi-user-id")).isEqualTo("user-id");
+    assertThat(params.getHeaders()).containsEntry(XOkapiHeaders.PERMISSIONS, "permissions");
+    assertThat(params.getHeaders()).containsEntry(XOkapiHeaders.REQUEST_ID, "request-id");
+    assertThat(params.getHeaders()).containsEntry(XOkapiHeaders.USER_ID, "user-id");
   }
 
   @Test
@@ -152,7 +153,7 @@ class S3JobRunningVerticleUnitTest {
       .onComplete(
         testContext.succeeding(result -> {
           try (InputStream reader = new FileInputStream(destFile)) {
-            assertThat(reader.readAllBytes().length).isEqualTo(5);
+            assertThat(reader.readAllBytes()).hasSize(5);
 
             verify(inputStream, times(1)).close();
             verify(inputStream, times(1)).transferTo(any());
@@ -170,7 +171,7 @@ class S3JobRunningVerticleUnitTest {
 
   @Test
   @DisplayName("should fail download when S3 stream transferTo throws IOException")
-  void shouldFailDownload_whenS3StreamTransferToThrowsIOException(VertxTestContext testContext)
+  void shouldFailDownload_whenS3StreamTransferToThrowsIoException(VertxTestContext testContext)
     throws IOException {
     InputStream inputStream = mock(ByteArrayInputStream.class);
     when(inputStream.transferTo(any())).thenThrow(new IOException("test error"));
@@ -209,7 +210,7 @@ class S3JobRunningVerticleUnitTest {
       .onComplete(
         testContext.succeeding(r ->
           testContext.verify(() -> {
-            assertThat(r.toString()).isEqualTo(testResult.toString());
+            assertThat(r).hasToString(testResult.toString());
             testContext.completeNow();
           })
         )
@@ -257,7 +258,7 @@ class S3JobRunningVerticleUnitTest {
   @Test
   @DisplayName("should not request queue items when worker pool is at capacity")
   void shouldNotRequestQueueItems_whenWorkerPoolIsAtCapacity() {
-    S3JobRunningVerticle.workersInUse.set(10);
+    S3JobRunningVerticle.WORKERS_IN_USE.set(10);
 
     verticle.pollForJobs();
 
@@ -267,7 +268,7 @@ class S3JobRunningVerticleUnitTest {
   @Test
   @DisplayName("should request one item and not request more when worker pool is almost at capacity")
   void shouldRequestOneItem_andNotRequestMore_whenWorkerPoolIsAlmostAtCapacity(VertxTestContext testContext) {
-    S3JobRunningVerticle.workersInUse.set(9);
+    S3JobRunningVerticle.WORKERS_IN_USE.set(9);
 
     when(scoreService.getBestQueueItemAndMarkInProgress())
       .thenReturn(Future.succeededFuture(Optional.of(new DataImportQueueItem())));
@@ -279,14 +280,14 @@ class S3JobRunningVerticleUnitTest {
 
     verticle.pollForJobs();
 
-    vertx.setTimer(
+    VERTX.setTimer(
       50L,
       v ->
         testContext.verify(() -> {
           verify(scoreService, times(1)).getBestQueueItemAndMarkInProgress();
           verifyNoMoreInteractions(scoreService);
           verify(verticle, times(1)).pollForJobs();
-          assertThat(S3JobRunningVerticle.workersInUse.get()).isEqualTo(10);
+          assertThat(S3JobRunningVerticle.WORKERS_IN_USE.get()).isEqualTo(10);
           testContext.completeNow();
         })
     );
@@ -295,14 +296,14 @@ class S3JobRunningVerticleUnitTest {
   @Test
   @DisplayName("should not process any item when no queue items are available")
   void shouldNotProcessAnyItem_whenNoQueueItemsAvailable(VertxTestContext testContext) {
-    S3JobRunningVerticle.workersInUse.set(0);
+    S3JobRunningVerticle.WORKERS_IN_USE.set(0);
 
     when(scoreService.getBestQueueItemAndMarkInProgress())
       .thenReturn(Future.succeededFuture(Optional.empty()));
 
     verticle.pollForJobs();
 
-    vertx.setTimer(
+    VERTX.setTimer(
       50L,
       v ->
         testContext.verify(() -> {
@@ -310,7 +311,7 @@ class S3JobRunningVerticleUnitTest {
           verifyNoMoreInteractions(scoreService);
           verify(verticle, times(1)).pollForJobs();
           verify(verticle, never()).processQueueItem(any());
-          assertThat(S3JobRunningVerticle.workersInUse.get()).isEqualTo(0);
+          assertThat(S3JobRunningVerticle.WORKERS_IN_USE.get()).isZero();
           testContext.completeNow();
         })
     );
@@ -319,7 +320,7 @@ class S3JobRunningVerticleUnitTest {
   @Test
   @DisplayName("should process multiple queue items and poll three times when two items are available")
   void shouldProcessMultipleQueueItems_andPollThreeTimes_whenTwoItemsAvailable(VertxTestContext testContext) {
-    S3JobRunningVerticle.workersInUse.set(0);
+    S3JobRunningVerticle.WORKERS_IN_USE.set(0);
 
     when(scoreService.getBestQueueItemAndMarkInProgress())
       .thenReturn(Future.succeededFuture(Optional.of(new DataImportQueueItem())))
@@ -330,14 +331,14 @@ class S3JobRunningVerticleUnitTest {
 
     verticle.pollForJobs();
 
-    vertx.setTimer(
+    VERTX.setTimer(
       50L,
       v ->
         testContext.verify(() -> {
           verify(scoreService, times(3)).getBestQueueItemAndMarkInProgress();
           verifyNoMoreInteractions(scoreService);
           verify(verticle, times(3)).pollForJobs();
-          assertThat(S3JobRunningVerticle.workersInUse.get()).isEqualTo(0);
+          assertThat(S3JobRunningVerticle.WORKERS_IN_USE.get()).isZero();
           testContext.completeNow();
         })
     );
@@ -381,11 +382,11 @@ class S3JobRunningVerticleUnitTest {
           verifyNoMoreInteractions(uploadDefinitionService);
           verifyNoMoreInteractions(fileProcessor);
 
-          vertx.setTimer(
+          VERTX.setTimer(
             50L,
             vv ->
               testContext.verify(() -> {
-                assertThat(tempFile.exists()).isFalse();
+                assertThat(tempFile).doesNotExist();
                 testContext.completeNow();
               })
           );
@@ -431,11 +432,11 @@ class S3JobRunningVerticleUnitTest {
           verifyNoMoreInteractions(uploadDefinitionService);
           verifyNoMoreInteractions(fileProcessor);
 
-          vertx.setTimer(
+          VERTX.setTimer(
             50L,
             vv ->
               testContext.verify(() -> {
-                assertThat(tempFile.exists()).isFalse();
+                assertThat(tempFile).doesNotExist();
                 testContext.completeNow();
               })
           );

@@ -2,6 +2,8 @@ package org.folio.service.processing.split;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -283,7 +285,7 @@ class AsyncInputStreamTest {
 
   @Test
   @DisplayName("should call both end handler and exception handler when close throws IOException")
-  void shouldCallEndAndExceptionHandlers_whenCloseThrowsIOException(VertxTestContext testContext) {
+  void shouldCallEndAndExceptionHandlers_whenCloseThrowsIoException(VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(smallBuff) {
@@ -294,18 +296,22 @@ class AsyncInputStreamTest {
       }
     );
 
-    var checkpoint = testContext.checkpoint(2);
+    var endHandled = Promise.<Void>promise();
+    var exceptionHandled = Promise.<Void>promise();
 
-    stream.endHandler(v -> checkpoint.flag());
-    stream.exceptionHandler(t -> checkpoint.flag());
+    stream.endHandler(v -> endHandled.tryComplete());
+    stream.exceptionHandler(t -> exceptionHandled.tryComplete());
     stream.handler(buff -> testContext.failNow(new AssertionError("Should not have received data")));
 
     stream.close();
+
+    Future.all(endHandled.future(), exceptionHandled.future())
+      .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
   @DisplayName("should call both end handler and exception handler when read throws IOException")
-  void shouldCallEndAndExceptionHandlers_whenReadThrowsIOException(VertxTestContext testContext) {
+  void shouldCallEndAndExceptionHandlers_whenReadThrowsIoException(VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new InputStream() {
@@ -316,12 +322,16 @@ class AsyncInputStreamTest {
       }
     );
 
-    var checkpoint = testContext.checkpoint(2);
+    var endHandled = Promise.<Void>promise();
+    var exceptionHandled = Promise.<Void>promise();
 
-    stream.endHandler(v -> checkpoint.flag());
-    stream.exceptionHandler(t -> checkpoint.flag());
+    stream.endHandler(v -> endHandled.tryComplete());
+    stream.exceptionHandler(t -> exceptionHandled.tryComplete());
     stream.handler(buff -> testContext.failNow(new AssertionError("Should not have received data")));
 
     stream.read();
+
+    Future.all(endHandled.future(), exceptionHandled.future())
+      .onComplete(testContext.succeedingThenComplete());
   }
 }

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -378,22 +379,19 @@ class MinioStorageServiceTest {
   @DisplayName("should fail all operations when key does not have the required prefix")
   void shouldFailAllOperations_whenKeyDoesNotHaveRequiredPrefix(VertxTestContext testContext)
     throws IOException {
-    var checkpoint = testContext.checkpoint(4);
-
-    minioStorageService
-      .getFileDownloadUrl("not/prefixed/correctly")
-      .onComplete(testContext.failing(err -> checkpoint.flag()));
-
-    minioStorageService
-      .getFileUploadPartUrl("not/prefixed/correctly", "upload-id", 2)
-      .onComplete(testContext.failing(err -> checkpoint.flag()));
-
-    minioStorageService
-      .write("not/prefixed/correctly", new ByteArrayInputStream(new byte[1]))
-      .onComplete(testContext.failing(err -> checkpoint.flag()));
-
-    minioStorageService
-      .remove("not/prefixed/correctly")
-      .onComplete(testContext.failing(err -> checkpoint.flag()));
+    Future.all(
+      minioStorageService.getFileDownloadUrl("not/prefixed/correctly")
+        .transform(ar -> ar.failed() ? Future.<Void>succeededFuture()
+                                     : Future.failedFuture(new AssertionError("Expected getFileDownloadUrl to fail"))),
+      minioStorageService.getFileUploadPartUrl("not/prefixed/correctly", "upload-id", 2)
+        .transform(ar -> ar.failed() ? Future.<Void>succeededFuture() : Future.failedFuture(
+          new AssertionError("Expected getFileUploadPartUrl to fail"))),
+      minioStorageService.write("not/prefixed/correctly", new ByteArrayInputStream(new byte[1]))
+        .transform(ar -> ar.failed() ? Future.<Void>succeededFuture()
+                                     : Future.failedFuture(new AssertionError("Expected write to fail"))),
+      minioStorageService.remove("not/prefixed/correctly")
+        .transform(ar -> ar.failed() ? Future.<Void>succeededFuture()
+                                     : Future.failedFuture(new AssertionError("Expected remove to fail")))
+    ).onComplete(testContext.succeedingThenComplete());
   }
 }

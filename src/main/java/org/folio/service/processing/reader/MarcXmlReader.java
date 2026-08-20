@@ -1,8 +1,11 @@
 package org.folio.service.processing.reader;
 
+import java.io.File;
+import java.util.Iterator;
+import java.util.List;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
@@ -10,25 +13,20 @@ import org.dom4j.io.SAXReader;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 
-import java.io.File;
-import java.util.Iterator;
-import java.util.List;
-
 /**
  * It reads marc records from an xml file by specified size of chunk.
  */
 public class MarcXmlReader implements SourceReader {
 
-  private static final Logger LOGGER = LogManager.getLogger();
-
   public static final String XML_EXTENSION = "xml";
+  private static final Logger LOGGER = LogManager.getLogger();
   private final int chunkSize;
   private final Iterator<Element> iterator;
   private final MutableInt recordsCounter;
 
   public MarcXmlReader(File file, int chunkSize) {
     this.chunkSize = chunkSize;
-    recordsCounter = new MutableInt(0);
+    this.recordsCounter = new MutableInt(0);
     Document document;
     try {
       // SAXReader.createDefault() prevents XXE attacks by

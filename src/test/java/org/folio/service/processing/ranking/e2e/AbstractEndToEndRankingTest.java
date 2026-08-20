@@ -30,44 +30,28 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Combines all rankers with realistic values and properties
+ * Combines all rankers with realistic values and properties.
  */
 @ExtendWith(MockitoExtension.class)
 @TestInstance(Lifecycle.PER_CLASS)
-public abstract class AbstractEndToEndRankingTest
-  extends AbstractQueueItemRankerTest {
-
-  @Mock
-  DataImportQueueItemDao queueItemDao;
-
-  QueueItemAgeRanker ageRanker;
-  QueueItemPartNumberRanker partNumberRanker;
-  QueueItemSizeRanker sizeRanker;
-  QueueItemTenantUsageRanker tenantUsageRanker;
-  QueueItemHolisticRanker ranker;
-
-  ScoreService service;
+public abstract class AbstractEndToEndRankingTest extends AbstractQueueItemRankerTest {
 
   protected List<DataImportQueueItem> waiting = new ArrayList<>();
   protected List<DataImportQueueItem> inProgress = new ArrayList<>();
   protected List<DataImportQueueItem> expected = new ArrayList<>();
 
-  long lastIdBit = 0;
+  @Mock
+  private DataImportQueueItemDao queueItemDao;
+  private ScoreService service;
+  private long lastIdBit = 0;
 
   @BeforeEach
   public void setUpRanking() {
-    ageRanker = new QueueItemAgeRanker(0, 150, 4320, 10000);
-    partNumberRanker = new QueueItemPartNumberRanker(1, 0, 100);
-    sizeRanker = new QueueItemSizeRanker(40, -40, 100000);
-    tenantUsageRanker = new QueueItemTenantUsageRanker(100, -200);
-
-    ranker =
-      new QueueItemHolisticRanker(
-        ageRanker,
-        partNumberRanker,
-        sizeRanker,
-        tenantUsageRanker
-      );
+    var ageRanker = new QueueItemAgeRanker(0, 150, 4320, 10000);
+    var partNumberRanker = new QueueItemPartNumberRanker(1, 0, 100);
+    var sizeRanker = new QueueItemSizeRanker(40, -40, 100000);
+    var tenantUsageRanker = new QueueItemTenantUsageRanker(100, -200);
+    var ranker = new QueueItemHolisticRanker(ageRanker, partNumberRanker, sizeRanker, tenantUsageRanker);
 
     service = new ScoreService(ranker, queueItemDao);
 

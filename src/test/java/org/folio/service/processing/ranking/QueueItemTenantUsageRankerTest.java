@@ -13,7 +13,7 @@ class QueueItemTenantUsageRankerTest
 
   QueueItemTenantUsageRanker ranker;
 
-  public QueueItemTenantUsageRankerTest() {
+  QueueItemTenantUsageRankerTest() {
     this.ranker = new QueueItemTenantUsageRanker(100, -100);
   }
 

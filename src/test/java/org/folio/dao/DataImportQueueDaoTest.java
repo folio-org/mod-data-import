@@ -1,6 +1,7 @@
 package org.folio.dao;
 
-import static java.time.Month.*;
+import static java.time.Month.FEBRUARY;
+import static java.time.Month.JANUARY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -95,11 +96,11 @@ class DataImportQueueDaoTest extends AbstractRestTest {
   @Test
   void shouldReturnAllQueueItems_whenItemsHaveBeenAdded(VertxTestContext testContext) {
     Future.all(
-      queueItemDao.addQueueItem(waiting1),
-      queueItemDao.addQueueItem(waiting2),
-      queueItemDao.addQueueItem(inProgress1),
-      queueItemDao.addQueueItem(inProgress2)
-    ).compose(v -> queueItemDao.getAllQueueItems())
+        queueItemDao.addQueueItem(waiting1),
+        queueItemDao.addQueueItem(waiting2),
+        queueItemDao.addQueueItem(inProgress1),
+        queueItemDao.addQueueItem(inProgress2)
+      ).compose(v -> queueItemDao.getAllQueueItems())
       .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
         assertThat(result.getTotalRecords()).isEqualTo(4);
         assertThat(result.getDataImportQueueItems())
@@ -112,11 +113,11 @@ class DataImportQueueDaoTest extends AbstractRestTest {
   @Test
   void shouldReturnWaitingAndInProgressItemsSeparately(VertxTestContext testContext) {
     Future.all(
-      queueItemDao.addQueueItem(waiting1),
-      queueItemDao.addQueueItem(waiting2),
-      queueItemDao.addQueueItem(inProgress1),
-      queueItemDao.addQueueItem(inProgress2)
-    ).compose(v -> PostgresClient.getInstance(vertx).getConnection())
+        queueItemDao.addQueueItem(waiting1),
+        queueItemDao.addQueueItem(waiting2),
+        queueItemDao.addQueueItem(inProgress1),
+        queueItemDao.addQueueItem(inProgress2)
+      ).compose(v -> PostgresClient.getInstance(vertx).getConnection())
       .compose(connection -> Future.all(
         queueItemDao.getAllWaitingQueueItems(connection),
         queueItemDao.getAllInProgressQueueItems(connection)
@@ -306,7 +307,7 @@ class DataImportQueueDaoTest extends AbstractRestTest {
 
   private static <T> Future<Void> expectedFail(Future<T> f) {
     return f.transform(ar -> ar.failed()
-      ? Future.succeededFuture()
-      : Future.failedFuture("Expected future to fail but it succeeded with: " + ar.result()));
+                             ? Future.succeededFuture()
+                             : Future.failedFuture("Expected future to fail but it succeeded with: " + ar.result()));
   }
 }

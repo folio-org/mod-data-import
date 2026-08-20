@@ -13,16 +13,7 @@ import org.junit.jupiter.api.Test;
 
 class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
 
-  QueueItemAgeRanker ranker;
-
-  public QueueItemAgeRankerTest() {
-    this.ranker = new QueueItemAgeRanker(10, 100, 64, -1);
-  }
-
-  private DataImportQueueItem ofAge(int age) {
-    return new DataImportQueueItem()
-      .withTimestamp(Date.from(Instant.now().minus(age, ChronoUnit.MINUTES)));
-  }
+  private final QueueItemAgeRanker ranker = new QueueItemAgeRanker(10, 100, 64, -1);
 
   @DisplayName("should return correct score based on item age")
   @Test
@@ -32,5 +23,10 @@ class QueueItemAgeRankerTest extends AbstractQueueItemRankerTest {
     assertThat(ranker.score(ofAge(63), Map.of())).isCloseTo(100, within(EPSILON));
     assertThat(ranker.score(ofAge(64), Map.of())).isCloseTo(-1, within(EPSILON));
     assertThat(ranker.score(ofAge(600), Map.of())).isCloseTo(-1, within(EPSILON));
+  }
+
+  private DataImportQueueItem ofAge(int age) {
+    return new DataImportQueueItem()
+      .withTimestamp(Date.from(Instant.now().minus(age, ChronoUnit.MINUTES)));
   }
 }

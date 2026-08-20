@@ -4,7 +4,7 @@ import org.folio.support.AbstractRestTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class OkapiHealthAPITest extends AbstractRestTest {
+class OkapiHealthRestTest extends AbstractRestTest {
 
   private static final String HEALTH_URL = "/admin/health";
 

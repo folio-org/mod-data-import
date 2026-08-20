@@ -1,7 +1,7 @@
 package org.folio.rest;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static org.folio.rest.DefaultFileExtensionAPITest.FILE_EXTENSION_DEFAULT;
+import static org.folio.rest.DefaultFileExtensionRestTest.FILE_EXTENSION_DEFAULT;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.ERROR;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.NEW;
@@ -50,40 +50,40 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
-class UploadDefinitionAPITest extends AbstractRestTest {
+class UploadDefinitionRestTest extends AbstractRestTest {
 
-  private static final FileDefinition file1 = new FileDefinition()
+  private static final FileDefinition FILE_1 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars_Bibs(1).mrc.md1547160916680")
     .withName("CornellFOLIOExemplars_Bibs(1).mrc").withSize(209);
-  private static final FileDefinition file2 = new FileDefinition()
+  private static final FileDefinition FILE_2 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars.mrc.md1547160916680")
     .withName("CornellFOLIOExemplars.mrc").withSize(209);
-  private static final FileDefinition file3 = new FileDefinition()
+  private static final FileDefinition FILE_3 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars.mrc.md1547160916680")
     .withName("CornellFOLIOExemplars.mrc").withSize(Integer.MAX_VALUE);
-  private static final FileDefinition file4 = new FileDefinition()
+  private static final FileDefinition FILE_4 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars1.mrc.md1547160916681")
     .withName("CornellFOLIOExemplars1.mrc").withSize(Integer.MAX_VALUE);
-  private static final FileDefinition file5 = new FileDefinition()
+  private static final FileDefinition FILE_5 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars.GIF.md1547160916680")
     .withName("CornellFOLIOExemplars.GIF").withSize(209);
-  private static final FileDefinition file6 = new FileDefinition()
+  private static final FileDefinition FILE_6 = new FileDefinition()
     .withUiKey("CornellFOLIOExemplars.jpg.md1547160916680")
     .withName("CornellFOLIOExemplars.jpg").withSize(209);
-  private static final UploadDefinition uploadDef1 = new UploadDefinition()
-    .withFileDefinitions(Collections.singletonList(file1));
-  private static final UploadDefinition uploadDef2 = new UploadDefinition()
-    .withFileDefinitions(Collections.singletonList(file1));
-  private static final UploadDefinition uploadDef3 = new UploadDefinition()
-    .withFileDefinitions(Collections.singletonList(file1));
-  private static final UploadDefinition uploadDef4 = new UploadDefinition()
-    .withFileDefinitions(Arrays.asList(file1, file2));
-  private static final UploadDefinition uploadDef5 = new UploadDefinition()
-    .withFileDefinitions(Arrays.asList(file3, file4));
-  private static final UploadDefinition uploadDef6 = new UploadDefinition()
-    .withFileDefinitions(Collections.singletonList(file5));
-  private static final UploadDefinition uploadDef7 = new UploadDefinition()
-    .withFileDefinitions(Arrays.asList(file5, file6));
+  private static final UploadDefinition UPLOAD_DEF_1 = new UploadDefinition()
+    .withFileDefinitions(Collections.singletonList(FILE_1));
+  private static final UploadDefinition UPLOAD_DEF_2 = new UploadDefinition()
+    .withFileDefinitions(Collections.singletonList(FILE_1));
+  private static final UploadDefinition UPLOAD_DEF_3 = new UploadDefinition()
+    .withFileDefinitions(Collections.singletonList(FILE_1));
+  private static final UploadDefinition UPLOAD_DEF_4 = new UploadDefinition()
+    .withFileDefinitions(Arrays.asList(FILE_1, FILE_2));
+  private static final UploadDefinition UPLOAD_DEF_5 = new UploadDefinition()
+    .withFileDefinitions(Arrays.asList(FILE_3, FILE_4));
+  private static final UploadDefinition UPLOAD_DEF_6 = new UploadDefinition()
+    .withFileDefinitions(Collections.singletonList(FILE_5));
+  private static final UploadDefinition UPLOAD_DEF_7 = new UploadDefinition()
+    .withFileDefinitions(Arrays.asList(FILE_5, FILE_6));
   private String uploadDefIdForTest1;
   private String uploadDefIdForTest2;
   private String uploadDefIdForTest3;
@@ -95,10 +95,10 @@ class UploadDefinitionAPITest extends AbstractRestTest {
 
   @BeforeEach
   void before() {
-    uploadDefIdForTest1 = postRequest(DEFINITION_PATH, uploadDef1)
+    uploadDefIdForTest1 = postRequest(DEFINITION_PATH, UPLOAD_DEF_1)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
-    uploadDefIdForTest2 = postRequest(DEFINITION_PATH, uploadDef2)
+    uploadDefIdForTest2 = postRequest(DEFINITION_PATH, UPLOAD_DEF_2)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     JobExecution jobExecution = new JobExecution()
@@ -112,14 +112,14 @@ class UploadDefinitionAPITest extends AbstractRestTest {
     WIRE_MOCK.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
       .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).encode())));
 
-    uploadDefIdForTest3 = postRequest(DEFINITION_PATH, uploadDef1)
+    uploadDefIdForTest3 = postRequest(DEFINITION_PATH, UPLOAD_DEF_1)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
   }
 
   @DisplayName("should create upload definition and return 201 with status NEW")
   @Test
   void shouldCreateUploadDefinition() {
-    postRequest(DEFINITION_PATH, uploadDef1)
+    postRequest(DEFINITION_PATH, UPLOAD_DEF_1)
       .log().all()
       .statusCode(HttpStatus.SC_CREATED)
       .body("metaJobExecutionId", notNullValue())
@@ -131,7 +131,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should return upload definition matching query")
   @Test
   void shouldReturnUploadDefinition_whenQueryById() {
-    String id = postRequest(DEFINITION_PATH, uploadDef1)
+    String id = postRequest(DEFINITION_PATH, UPLOAD_DEF_1)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     getRequest(DEFINITION_PATH + "?query=id==" + id)
@@ -150,7 +150,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
     };
 
     String id = given()
-      .header(XOkapiHeaders.TOKEN, token).filter(requestFilter).body(JsonObject.mapFrom(uploadDef1).encode())
+      .header(XOkapiHeaders.TOKEN, token).filter(requestFilter).body(JsonObject.mapFrom(UPLOAD_DEF_1).encode())
       .post(DEFINITION_PATH).then().statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     given()
@@ -205,7 +205,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should update upload definition status")
   @Test
   void shouldUpdateUploadDefinitionStatus() {
-    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, uploadDef3)
+    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().as(UploadDefinition.class);
 
     uploadDefinition.setStatus(UploadDefinition.Status.LOADED);
@@ -218,7 +218,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should return 404 when updating non-existent upload definition")
   @Test
   void shouldReturn404_whenUpdatingNonExistentUploadDefinition() {
-    putRequest(DEFINITION_PATH + "/" + UUID.randomUUID(), uploadDef3)
+    putRequest(DEFINITION_PATH + "/" + UUID.randomUUID(), UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_NOT_FOUND).log().all();
   }
 
@@ -226,7 +226,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @Test
   @SneakyThrows
   void shouldUploadFile_andReturnLoadedStatus() {
-    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, uploadDef3)
+    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().as(UploadDefinition.class);
 
     String uploadDefId = uploadDefinition.getId();
@@ -252,7 +252,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @Test
   @SneakyThrows
   void shouldReturn400_whenSrmReturnedException() {
-    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, uploadDef3)
+    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().as(UploadDefinition.class);
 
     String uploadDefId = uploadDefinition.getId();
@@ -276,23 +276,10 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @Test
   @SneakyThrows
   void shouldReturnErrorStatus_whenFileUploadStreamInterrupted() {
-    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, uploadDef3)
+    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().as(UploadDefinition.class);
 
-    String uploadDefId = uploadDefinition.getId();
-    String fileId = uploadDefinition.getFileDefinitions().getFirst().getId();
-
-    try (var socket = new Socket("localhost", port);
-         var writer = new PrintWriter(socket.getOutputStream())) {
-      int falseDataSize = 10;
-      writer.print("POST " + DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId + " HTTP/1.0\r\n"
-                   + "Content-Type: application/octet-stream\r\n"
-                   + "Accept: application/json,text/plain\r\n"
-                   + "x-okapi-tenant: " + TENANT_ID + "\r\n"
-                   + "Content-Length: " + falseDataSize + "\r\n"
-                   + "\r\n"
-                   + "123\r\n");
-    }
+    var uploadDefId = getUploadDefId(uploadDefinition);
 
     Awaitility.await().untilAsserted(() ->
       getRequest(DEFINITION_PATH + "/" + uploadDefId)
@@ -319,7 +306,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should delete file definition successfully")
   @Test
   void shouldDeleteFileDefinition() {
-    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, uploadDef3)
+    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().as(UploadDefinition.class);
 
     deleteRequest(DEFINITION_PATH + "/" + uploadDefinition.getId()
@@ -344,7 +331,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should delete upload definition successfully")
   @Test
   void shouldDeleteUploadDefinition_successfully() {
-    String id = postRequest(DEFINITION_PATH, uploadDef3)
+    String id = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     deleteRequest(DEFINITION_PATH + "/" + id)
@@ -354,7 +341,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should delete upload definition even when job execution status update fails")
   @Test
   void shouldDeleteUploadDefinition_whenJobExecutionStatusUpdateFails() {
-    UploadDefinition def = postRequest(DEFINITION_PATH, uploadDef3)
+    UploadDefinition def = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().as(UploadDefinition.class);
 
     String jobId = def.getFileDefinitions().getFirst().getJobExecutionId();
@@ -372,7 +359,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should return 204 when deleting upload definition with bad request on job execution status update")
   @Test
   void shouldReturn204_whenJobExecutionStatusUpdateBadRequest() {
-    String id = postRequest(DEFINITION_PATH, uploadDef3)
+    String id = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     WIRE_MOCK.stubFor(
@@ -400,7 +387,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
     WIRE_MOCK.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
       .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(jobExecution).toString())));
 
-    String id = postRequest(DEFINITION_PATH, uploadDef3)
+    String id = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     deleteRequest(DEFINITION_PATH + "/" + id)
@@ -410,7 +397,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should delete upload definition with multiple files successfully")
   @Test
   void shouldDeleteUploadDefinitionWithMultipleFiles() {
-    String id = postRequest(DEFINITION_PATH, uploadDef4)
+    String id = postRequest(DEFINITION_PATH, UPLOAD_DEF_4)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     deleteRequest(DEFINITION_PATH + "/" + id)
@@ -420,7 +407,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should delete upload definition when a file has been discarded")
   @Test
   void shouldDeleteUploadDefinition_whenFileIsDiscarded() {
-    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, uploadDef4)
+    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, UPLOAD_DEF_4)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().as(UploadDefinition.class);
 
     deleteRequest(DEFINITION_PATH + "/" + uploadDefinition.getId()
@@ -434,7 +421,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should return 422 when upload definition has validation errors")
   @Test
   void shouldReturn422_whenUploadDefinitionHasValidationErrors() {
-    postRequest(DEFINITION_PATH, uploadDef5)
+    postRequest(DEFINITION_PATH, UPLOAD_DEF_5)
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("total_records", is(2));
@@ -465,7 +452,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
       .withJobProfileInfo(new JobProfileInfo().withId(UUID.randomUUID().toString())
         .withName(StringUtils.EMPTY).withDataType(JobProfileInfo.DataType.MARC))), paramsJson);
 
-    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, uploadDef1)
+    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, UPLOAD_DEF_1)
       .log().all().statusCode(HttpStatus.SC_CREATED).extract().body().as(UploadDefinition.class);
 
     ProcessFilesRqDto processFilesRqDto = new ProcessFilesRqDto()
@@ -527,7 +514,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
   @DisplayName("should return 204 when processing files with PARENT_SINGLE job execution")
   @Test
   void shouldReturn204_whenProcessingFilesWithParentSingleExecution() {
-    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, uploadDef1)
+    UploadDefinition uploadDefinition = postRequest(DEFINITION_PATH, UPLOAD_DEF_1)
       .log().all().statusCode(HttpStatus.SC_CREATED).extract().body().as(UploadDefinition.class);
 
     JobExecution jobExecution = new JobExecution()
@@ -611,7 +598,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
     WIRE_MOCK.stubFor(WireMock.post("/change-manager/jobExecutions")
       .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionsRespDto).encode())));
 
-    postRequest(DEFINITION_PATH, uploadDef1).log().all().statusCode(HttpStatus.SC_BAD_REQUEST);
+    postRequest(DEFINITION_PATH, UPLOAD_DEF_1).log().all().statusCode(HttpStatus.SC_BAD_REQUEST);
   }
 
   @DisplayName("should return 400 when received children job execution without ID")
@@ -630,7 +617,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
     WIRE_MOCK.stubFor(WireMock.post("/change-manager/jobExecutions")
       .willReturn(WireMock.created().withBody(JsonObject.mapFrom(jobExecutionsRespDto).encode())));
 
-    postRequest(DEFINITION_PATH, uploadDef1).log().all().statusCode(HttpStatus.SC_BAD_REQUEST);
+    postRequest(DEFINITION_PATH, UPLOAD_DEF_1).log().all().statusCode(HttpStatus.SC_BAD_REQUEST);
   }
 
   @DisplayName("should return 500 when job executions creation fails")
@@ -640,7 +627,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
       .withRequestBody(matchingJsonPath("$[?(@.files.size() == 1)]"))
       .willReturn(WireMock.serverError()));
 
-    postRequest(DEFINITION_PATH, uploadDef1).log().all().statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+    postRequest(DEFINITION_PATH, UPLOAD_DEF_1).log().all().statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
   }
 
   @DisplayName("should return 500 when getting children job executions fails")
@@ -659,7 +646,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
       WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))
         .willReturn(WireMock.serverError()));
 
-    String id = postRequest(DEFINITION_PATH, uploadDef3)
+    String id = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     deleteRequest(DEFINITION_PATH + "/" + id)
@@ -672,7 +659,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
     WIRE_MOCK.stubFor(WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}"), true))
       .willReturn(WireMock.serverError()));
 
-    String id = postRequest(DEFINITION_PATH, uploadDef3)
+    String id = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     deleteRequest(DEFINITION_PATH + "/" + id)
@@ -686,7 +673,7 @@ class UploadDefinitionAPITest extends AbstractRestTest {
       WireMock.get(new UrlPathPattern(new RegexPattern("/change-manager/jobExecutions/.{36}/children"), true))
         .willReturn(WireMock.ok().withBody(JsonObject.mapFrom(new JsonObject().put("test", "test")).toString())));
 
-    String id = postRequest(DEFINITION_PATH, uploadDef3)
+    String id = postRequest(DEFINITION_PATH, UPLOAD_DEF_3)
       .statusCode(HttpStatus.SC_CREATED).log().all().extract().body().jsonPath().get("id");
 
     deleteRequest(DEFINITION_PATH + "/" + id)
@@ -699,15 +686,33 @@ class UploadDefinitionAPITest extends AbstractRestTest {
     postRequest(FILE_EXTENSION_DEFAULT, "").log().all()
       .statusCode(HttpStatus.SC_OK).body("totalRecords", is(13));
 
-    postRequest(DEFINITION_PATH, uploadDef6).log().all()
+    postRequest(DEFINITION_PATH, UPLOAD_DEF_6).log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("validation.uploadDefinition.fileExtension.blocked"))
-      .body("errors[0].code", is(uploadDef6.getFileDefinitions().getFirst().getName()))
+      .body("errors[0].code", is(UPLOAD_DEF_6.getFileDefinitions().getFirst().getName()))
       .body("total_records", is(1));
 
-    postRequest(DEFINITION_PATH, uploadDef7).log().all()
+    postRequest(DEFINITION_PATH, UPLOAD_DEF_7).log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("total_records", is(2));
+  }
+
+  private String getUploadDefId(UploadDefinition uploadDefinition) throws IOException {
+    String uploadDefId = uploadDefinition.getId();
+    String fileId = uploadDefinition.getFileDefinitions().getFirst().getId();
+
+    try (var socket = new Socket("localhost", port);
+         var writer = new PrintWriter(socket.getOutputStream())) {
+      int falseDataSize = 10;
+      writer.print("POST " + DEFINITION_PATH + "/" + uploadDefId + FILE_PATH + "/" + fileId + " HTTP/1.0\r\n"
+                   + "Content-Type: application/octet-stream\r\n"
+                   + "Accept: application/json,text/plain\r\n"
+                   + "x-okapi-tenant: " + TENANT_ID + "\r\n"
+                   + "Content-Length: " + falseDataSize + "\r\n"
+                   + "\r\n"
+                   + "123\r\n");
+    }
+    return uploadDefId;
   }
 
   private String getUnsecuredJwtWithUserId(String userId) {

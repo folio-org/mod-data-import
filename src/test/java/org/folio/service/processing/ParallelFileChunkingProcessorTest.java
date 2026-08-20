@@ -41,7 +41,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
+class ParallelFileChunkingProcessorTest extends AbstractRestTest {
 
   private static final String KAFKA_ENV = "test-env";
   private static final String TENANT_ID_TEST_MARC_RAW = "diku_marc_raw";
@@ -70,16 +70,16 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
 
   private static final int RECORDS_NUMBER = 62;
 
-  private final Map<String, String> okapiHeaders = new HashMap<>();
+  private final Map<String, String> headers = new HashMap<>();
   private ParallelFileChunkingProcessor fileProcessor;
   private KafkaConfig kafkaConfig;
   private Map<String, JobProfileInfo> jobProfiles;
 
   @BeforeEach
   void setUpProcessor() {
-    okapiHeaders.put(XOkapiHeaders.URL, mockServerUrl());
-    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID);
-    okapiHeaders.put(XOkapiHeaders.TOKEN, TOKEN);
+    headers.put(XOkapiHeaders.URL, mockServerUrl());
+    headers.put(XOkapiHeaders.TENANT, TENANT_ID);
+    headers.put(XOkapiHeaders.TOKEN, TOKEN);
 
     kafkaConfig = KafkaConfig.builder()
       .kafkaHost(System.getProperty(KAFKA_HOST_PROP_NAME))
@@ -96,7 +96,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   @DisplayName("should read MARC bib file and send all chunks to Kafka")
   @Test
   void shouldReadMarcBibAndSendAllChunks(VertxTestContext testContext) {
-    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_RAW);
+    headers.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_RAW);
 
     FileDefinition fileDefinition = createFileDefinition();
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_1);
@@ -105,7 +105,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(MARC_TYPE_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_MARC_RAW, RECORDS_NUMBER);
       assertRawChunkDataFromKafka(fileStorageService, CONTENT_TYPE_RAW, TENANT_ID_TEST_MARC_RAW);
@@ -123,7 +123,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       null,
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.failingThenComplete());
   }
 
@@ -137,7 +137,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(EMPTY_TYPE_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.failingThenComplete());
   }
 
@@ -151,14 +151,14 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(EDI_FACT_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.failingThenComplete());
   }
 
   @DisplayName("should read JSON array file and send all chunks to Kafka")
   @Test
   void shouldReadJsonArrayFileAndSendAllChunks(VertxTestContext testContext) {
-    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_JSON);
+    headers.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_JSON);
 
     FileDefinition fileDefinition = createFileDefinition();
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_2);
@@ -167,7 +167,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(MARC_TYPE_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_MARC_JSON, RECORDS_NUMBER);
       assertRawChunkDataFromKafka(fileStorageService, CONTENT_TYPE_JSON, TENANT_ID_TEST_MARC_JSON);
@@ -178,7 +178,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   @DisplayName("should read XML array file and send all chunks to Kafka")
   @Test
   void shouldReadXmlArrayFileAndSendAllChunks(VertxTestContext testContext) {
-    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_XML);
+    headers.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_MARC_XML);
 
     FileDefinition fileDefinition = createFileDefinition();
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_4);
@@ -187,7 +187,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(MARC_TYPE_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_MARC_XML, RECORDS_NUMBER);
       assertRawChunkDataFromKafka(fileStorageService, CONTENT_TYPE_XML, TENANT_ID_TEST_MARC_XML);
@@ -205,7 +205,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(MARC_TYPE_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.failingThenComplete());
   }
 
@@ -219,7 +219,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(MARC_TYPE_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.failingThenComplete());
   }
 
@@ -233,14 +233,14 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(MARC_TYPE_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.failingThenComplete());
   }
 
   @DisplayName("should read TXT EDIFACT file and send all chunks to Kafka")
   @Test
   void shouldReadTxtEdifactFileAndSendAllChunks(VertxTestContext testContext) {
-    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_EDI_RAW);
+    headers.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_EDI_RAW);
 
     FileDefinition fileDefinition = createFileDefinition();
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_7);
@@ -249,7 +249,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(EDI_FACT_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       assertInitializationDataFromKafka(fileDefinition.getJobExecutionId(), TENANT_ID_TEST_EDI_RAW, 1);
       assertRawChunkDataFromKafka(fileStorageService, EDI_CONTENT_TYPE_RAW, TENANT_ID_TEST_EDI_RAW, 1);
@@ -260,7 +260,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
   @DisplayName("should return error when reading EDIFACT TXT file with MARC job profile")
   @Test
   void shouldReturnError_whenReadingEdifactTxtFileWithMarcJobProfile(VertxTestContext testContext) {
-    okapiHeaders.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_EDI_RAW);
+    headers.put(XOkapiHeaders.TENANT, TENANT_ID_TEST_EDI_RAW);
 
     FileDefinition fileDefinition = createFileDefinition();
     FileStorageService fileStorageService = createFileStorageServiceMock(SOURCE_PATH_7);
@@ -269,7 +269,7 @@ class ParallelFileChunkingProcessorUnitTest extends AbstractRestTest {
       fileStorageService.getFile(fileDefinition.getSourcePath()),
       fileDefinition.getJobExecutionId(),
       jobProfiles.get(MARC_TYPE_JOB_PROFILE),
-      new ConnectionParams(okapiHeaders)
+      new ConnectionParams(headers)
     ).onComplete(testContext.failing(ar -> testContext.verify(() -> {
       assertErrorFromKafka(fileStorageService, TENANT_ID_TEST_EDI_RAW, "Can not initialize reader");
       testContext.completeNow();

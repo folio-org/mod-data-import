@@ -8,7 +8,7 @@ import org.folio.support.AbstractRestTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class DefaultFileExtensionAPITest extends AbstractRestTest {
+class DefaultFileExtensionRestTest extends AbstractRestTest {
 
   static final String FILE_EXTENSION_DEFAULT = FILE_EXTENSIONS_PATH + "/restore/default";
 

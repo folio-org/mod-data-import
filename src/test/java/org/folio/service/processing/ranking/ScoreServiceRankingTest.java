@@ -34,28 +34,6 @@ class ScoreServiceRankingTest {
   @InjectMocks
   ScoreService service;
 
-  private DataImportQueueItem ofTenant(String tenant) {
-    return new DataImportQueueItem()
-      .withId(new UUID(0, 0).toString())
-      .withTenant(tenant);
-  }
-
-  private DataImportQueueItemCollection collection(
-    DataImportQueueItem... items
-  ) {
-    return new DataImportQueueItemCollection()
-      .withDataImportQueueItems(Arrays.asList(items));
-  }
-
-  private DataImportQueueItemCollection collectionOfTenant(String... items) {
-    return collection(
-      Arrays
-        .stream(items)
-        .map(this::ofTenant)
-        .toArray(DataImportQueueItem[]::new)
-    );
-  }
-
   @DisplayName("should return empty set when waiting queue is empty")
   @Test
   void shouldReturnEmptySet_whenWaitingQueueIsEmpty() {
@@ -136,6 +114,7 @@ class ScoreServiceRankingTest {
     verifyNoMoreInteractions(ranker);
   }
 
+  @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
   @DisplayName("should rank items by score descending when tenants are A, B, C with A and B in progress")
   @Test
   void shouldRankItemsByScoreDescending_whenTenantsAreABCWithABInProgress() {
@@ -169,6 +148,7 @@ class ScoreServiceRankingTest {
     verifyNoMoreInteractions(ranker);
   }
 
+  @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
   @DisplayName("should rank items by score descending when tenants are C, B, A with D and B in progress")
   @Test
   void shouldRankItemsByScoreDescending_whenTenantsAreCBAWithDBInProgress() {
@@ -202,6 +182,7 @@ class ScoreServiceRankingTest {
     verifyNoMoreInteractions(ranker);
   }
 
+  @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
   @DisplayName("should rank items by score descending when tenants are A, C, B with D and B in progress")
   @Test
   void shouldRankItemsByScoreDescending_whenTenantsAreACBWithDBInProgress() {
@@ -233,5 +214,27 @@ class ScoreServiceRankingTest {
       .getDataImportQueueItems()
       .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
     verifyNoMoreInteractions(ranker);
+  }
+
+  private DataImportQueueItem ofTenant(String tenant) {
+    return new DataImportQueueItem()
+      .withId(new UUID(0, 0).toString())
+      .withTenant(tenant);
+  }
+
+  private DataImportQueueItemCollection collection(
+    DataImportQueueItem... items
+  ) {
+    return new DataImportQueueItemCollection()
+      .withDataImportQueueItems(Arrays.asList(items));
+  }
+
+  private DataImportQueueItemCollection collectionOfTenant(String... items) {
+    return collection(
+      Arrays
+        .stream(items)
+        .map(this::ofTenant)
+        .toArray(DataImportQueueItem[]::new)
+    );
   }
 }

@@ -33,7 +33,7 @@ class StorageCleanupServiceImplTest extends AbstractRestTest {
   private static final String STORAGE_PATH = "./storage";
   private static final long ONE_HOUR_MILLIS = 3600000;
 
-  private static final File testFile = new File(STORAGE_PATH + "/marc.mrc");
+  private static final File TEST_FILE = new File(STORAGE_PATH + "/marc.mrc");
 
   @Autowired
   private UploadDefinitionDao uploadDefinitionDao;
@@ -52,7 +52,7 @@ class StorageCleanupServiceImplTest extends AbstractRestTest {
 
     var fileDefinition = new FileDefinition()
       .withId("776c7413-7ad9-467b-a686-775a434d2505")
-      .withSourcePath(testFile.getPath())
+      .withSourcePath(TEST_FILE.getPath())
       .withUiKey("marc.mrc.md1547160916680")
       .withName("marc.mrc")
       .withStatus(FileDefinition.Status.UPLOADED)
@@ -66,8 +66,8 @@ class StorageCleanupServiceImplTest extends AbstractRestTest {
       .withFileDefinitions(Collections.singletonList(fileDefinition))
       .withMetadata(new Metadata().withCreatedDate(new Date()).withUpdatedDate(new Date()));
 
-    Files.createDirectories(Paths.get(testFile.getParent()));
-    Files.createFile(Paths.get(testFile.getPath()));
+    Files.createDirectories(Paths.get(TEST_FILE.getParent()));
+    Files.createFile(Paths.get(TEST_FILE.getPath()));
   }
 
   @AfterEach
@@ -83,7 +83,7 @@ class StorageCleanupServiceImplTest extends AbstractRestTest {
       .compose(v -> storageCleanupService.cleanStorage(connectionParams))
       .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
         assertThat(result).isTrue();
-        assertThat(testFile).doesNotExist();
+        assertThat(TEST_FILE).doesNotExist();
         testContext.completeNow();
       })));
   }
@@ -99,7 +99,7 @@ class StorageCleanupServiceImplTest extends AbstractRestTest {
       .compose(v -> storageCleanupService.cleanStorage(connectionParams))
       .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
         assertThat(result).isTrue();
-        assertThat(testFile).doesNotExist();
+        assertThat(TEST_FILE).doesNotExist();
         testContext.completeNow();
       })));
   }
@@ -111,7 +111,7 @@ class StorageCleanupServiceImplTest extends AbstractRestTest {
       .compose(v -> storageCleanupService.cleanStorage(connectionParams))
       .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
         assertThat(result).isFalse();
-        assertThat(testFile).exists();
+        assertThat(TEST_FILE).exists();
         testContext.completeNow();
       })));
   }
@@ -119,7 +119,7 @@ class StorageCleanupServiceImplTest extends AbstractRestTest {
   @DisplayName("should return false when file linked to completed upload definition does not exist")
   @Test
   void shouldReturnFalse_whenFileLinkedToCompletedUploadDefinitionDoesNotExist(VertxTestContext testContext) {
-    assertThat(testFile.delete()).isTrue();
+    assertThat(TEST_FILE.delete()).isTrue();
     uploadDefinition.setStatus(COMPLETED);
 
     uploadDefinitionDao.addUploadDefinition(uploadDefinition, TENANT_ID)

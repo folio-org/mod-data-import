@@ -20,7 +20,7 @@ import org.folio.support.AbstractRestTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class FileExtensionAPITest extends AbstractRestTest {
+class FileExtensionRestTest extends AbstractRestTest {
 
   private static final FileExtension FILE_EXTENSION_1 = new FileExtension()
     .withExtension(".marc").withDataTypes(Collections.singletonList(DataType.MARC)).withImportBlocked(false);

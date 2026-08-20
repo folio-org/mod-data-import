@@ -37,38 +37,6 @@ class ScoreServiceGetBestTest {
   @InjectMocks
   ScoreService service;
 
-  private DataImportQueueItem ofTenant(String tenant) {
-    return new DataImportQueueItem()
-      .withId(new UUID(0, 0).toString())
-      .withTenant(tenant);
-  }
-
-  private DataImportQueueItemCollection collection(DataImportQueueItem... items) {
-    return new DataImportQueueItemCollection()
-      .withDataImportQueueItems(Arrays.asList(items));
-  }
-
-  private DataImportQueueItemCollection collectionOfTenant(String... tenants) {
-    return collection(
-      Arrays.stream(tenants)
-        .map(this::ofTenant)
-        .toArray(DataImportQueueItem[]::new)
-    );
-  }
-
-  // casting with generics makes it sad :(
-  private void mockDatabaseContents(
-    DataImportQueueItemCollection waiting,
-    DataImportQueueItemCollection inProgress
-  ) {
-    when(queueItemDao.getAllQueueItemsAndProcessAtomic(any()))
-      .thenAnswer(invocation -> {
-        BiFunction<DataImportQueueItemCollection, DataImportQueueItemCollection, Optional<DataImportQueueItem>> processor =
-          invocation.getArgument(0);
-        return Future.succeededFuture(processor.apply(inProgress, waiting));
-      });
-  }
-
   @DisplayName("should return item with highest score when multiple items are waiting")
   @Test
   void shouldReturnItemWithHighestScore_whenMultipleItemsAreWaiting(VertxTestContext testContext) {
@@ -112,5 +80,38 @@ class ScoreServiceGetBestTest {
 
         testContext.completeNow();
       })));
+  }
+
+  private DataImportQueueItem ofTenant(String tenant) {
+    return new DataImportQueueItem()
+      .withId(new UUID(0, 0).toString())
+      .withTenant(tenant);
+  }
+
+  private DataImportQueueItemCollection collection(DataImportQueueItem... items) {
+    return new DataImportQueueItemCollection()
+      .withDataImportQueueItems(Arrays.asList(items));
+  }
+
+  private DataImportQueueItemCollection collectionOfTenant(String... tenants) {
+    return collection(
+      Arrays.stream(tenants)
+        .map(this::ofTenant)
+        .toArray(DataImportQueueItem[]::new)
+    );
+  }
+
+  // casting with generics makes it sad :(
+  private void mockDatabaseContents(
+    DataImportQueueItemCollection waiting,
+    DataImportQueueItemCollection inProgress
+  ) {
+    when(queueItemDao.getAllQueueItemsAndProcessAtomic(any()))
+      .thenAnswer(invocation -> {
+        BiFunction<DataImportQueueItemCollection, DataImportQueueItemCollection, Optional<DataImportQueueItem>>
+          processor =
+          invocation.getArgument(0);
+        return Future.succeededFuture(processor.apply(inProgress, waiting));
+      });
   }
 }

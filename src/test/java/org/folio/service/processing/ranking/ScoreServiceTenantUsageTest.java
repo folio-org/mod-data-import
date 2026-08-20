@@ -10,26 +10,6 @@ import org.junit.jupiter.api.Test;
 
 class ScoreServiceTenantUsageTest {
 
-  private DataImportQueueItem ofTenant(String tenant) {
-    return new DataImportQueueItem().withTenant(tenant);
-  }
-
-  private DataImportQueueItemCollection collection(
-    DataImportQueueItem... items
-  ) {
-    return new DataImportQueueItemCollection()
-      .withDataImportQueueItems(Arrays.asList(items));
-  }
-
-  private DataImportQueueItemCollection collectionOfTenant(String... items) {
-    return collection(
-      Arrays
-        .stream(items)
-        .map(this::ofTenant)
-        .toArray(DataImportQueueItem[]::new)
-    );
-  }
-
   @DisplayName("should build tenant usage map with correct counts per tenant")
   @Test
   void shouldBuildTenantUsageMap_whenCollectionHasVariousTenants() {
@@ -51,5 +31,25 @@ class ScoreServiceTenantUsageTest {
       .hasSize(2)
       .containsEntry("A", 4L)
       .containsEntry("B", 1L);
+  }
+
+  private DataImportQueueItem ofTenant(String tenant) {
+    return new DataImportQueueItem().withTenant(tenant);
+  }
+
+  private DataImportQueueItemCollection collection(
+    DataImportQueueItem... items
+  ) {
+    return new DataImportQueueItemCollection()
+      .withDataImportQueueItems(Arrays.asList(items));
+  }
+
+  private DataImportQueueItemCollection collectionOfTenant(String... items) {
+    return collection(
+      Arrays
+        .stream(items)
+        .map(this::ofTenant)
+        .toArray(DataImportQueueItem[]::new)
+    );
   }
 }

@@ -30,7 +30,7 @@ class AssembleFileTest extends AbstractRestTest {
   @DisplayName("should assemble file from multiple uploaded parts")
   @Test
   void shouldAssembleFile_whenAllPartsUploaded() {
-    UploadDefinition definition = createUploadDefinition();
+    final var definition = createUploadDefinition();
 
     FileUploadInfo firstPartUploadInfo = getFirstPart("test-name1");
     FileUploadInfo secondPartUploadInfo = getLaterPart(

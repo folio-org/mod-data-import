@@ -47,7 +47,7 @@ class KafkaAdminClientServiceTest {
   private KafkaAdminClient mockClient;
   private Vertx vertx;
   @Mock
-  private DIKafkaTopicService diKafkaTopicService;
+  private KafkaTopicConfiguration kafkaTopicConfiguration;
 
   @BeforeEach
   void setUp() {
@@ -58,7 +58,7 @@ class KafkaAdminClientServiceTest {
       new DataImportKafkaTopic("DI_INITIALIZATION_STARTED", 10),
       new DataImportKafkaTopic("DI_RAW_RECORDS_CHUNK_READ", 10),
       };
-    when(diKafkaTopicService.createTopicObjects()).thenReturn(topicObjects);
+    when(kafkaTopicConfiguration.createTopicObjects()).thenReturn(topicObjects);
   }
 
   @Test
@@ -175,7 +175,7 @@ class KafkaAdminClientServiceTest {
         .thenReturn(ENV_VARIABLE);
 
       return new KafkaAdminClientService(vertx)
-        .createKafkaTopics(diKafkaTopicService.createTopicObjects(), STUB_TENANT);
+        .createKafkaTopics(kafkaTopicConfiguration.createTopicObjects(), STUB_TENANT);
     }
   }
 }

@@ -31,12 +31,7 @@ class ScoreUtilsUnboundedTest {
   @ParameterizedTest(name = "[{index}] i in [{0},{1}] → score in [{2},{3}]")
   @MethodSource("getExpectedValues")
   @DisplayName("should score within bounds for all i in range")
-  void shouldScoreWithinBounds_forAllIInRange(
-    int lowerRange,
-    int upperRange,
-    int lowerScore,
-    int upperScore
-  ) {
+  void shouldScoreWithinBounds_forAllInRange(int lowerRange, int upperRange, int lowerScore, int upperScore) {
     for (int i = lowerRange; i <= upperRange; i++) {
       assertThat(
         ScoreUtils.calculateUnboundedLogarithmicScore(

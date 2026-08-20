@@ -38,6 +38,7 @@ class CancelJobExecutionTest extends AbstractRestTest {
     queueItemDao = new DataImportQueueItemDaoImpl(new PostgresClientFactory(vertx));
   }
 
+  @SuppressWarnings("checkstyle:MethodLength")
   @DisplayName("should cancel job execution and clean queue when parent is COMPOSITE_PARENT")
   @Test
   void shouldCancelJobExecutionAndCleanQueue_whenParentIsCompositeParent() {
@@ -102,7 +103,6 @@ class CancelJobExecutionTest extends AbstractRestTest {
       .then().log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("ok", is(true));
-
 
     WIRE_MOCK.verify(exactly(2), getRequestedFor(urlPathMatching("/change-manager/jobExecutions/.*")));
     WIRE_MOCK.verify(exactly(1), getRequestedFor(urlPathMatching("/change-manager/jobExecutions/.*/children")));

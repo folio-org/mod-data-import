@@ -1,6 +1,7 @@
 package org.folio.service.processing.split;
 
 import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -20,17 +21,15 @@ import org.junit.jupiter.api.io.TempDir;
 class FileSplitWriterExceptionalTest {
 
   protected static Vertx vertx = Vertx.vertx();
-
+  private static final String TEST_FILE = "src/test/resources/10.mrc";
+  private static final String TEST_KEY = "10.mrc";
   @TempDir
   Path tempDir;
 
-  private static final String TEST_FILE = "src/test/resources/10.mrc";
-  private static final String TEST_KEY = "10.mrc";
-
   @Test
   @DisplayName("should fail to pipe and call exception handler when directory is deleted")
-  void shouldFailToPipe_andCallExceptionHandler_whenDirectoryDeleted(    VertxTestContext testContext  ) {
-    var checkpoint = testContext.checkpoint(2);
+  void shouldFailToPipe_andCallExceptionHandler_whenDirectoryDeleted(VertxTestContext testContext) {
+    var exceptionHandled = Promise.<Void>promise();
 
     vertx
       .getOrCreateContext()
@@ -60,14 +59,20 @@ class FileSplitWriterExceptionalTest {
                 .build()
             );
 
-            writer.exceptionHandler(err -> checkpoint.flag());
+            writer.exceptionHandler(err -> exceptionHandled.tryComplete());
 
             for (File f : folder.listFiles()) {
               Files.delete(Path.of(f.getPath()));
             }
             Files.delete(Path.of(folder.getPath()));
 
-            file.pipeTo(writer).onComplete(testContext.failing(err -> checkpoint.flag()));
+            var pipeFuture = file.pipeTo(writer)
+              .transform(ar -> ar.failed()
+                               ? Future.<Void>succeededFuture()
+                               : Future.failedFuture(new AssertionError("Expected pipeTo to fail")));
+
+            Future.all(exceptionHandled.future(), pipeFuture)
+              .onComplete(testContext.succeedingThenComplete());
           } catch (IOException err) {
             testContext.failNow(err);
           }
@@ -108,7 +113,7 @@ class FileSplitWriterExceptionalTest {
           FileSplitUtilities.MARC_RECORD_TERMINATOR,
           FileSplitUtilities.MARC_RECORD_TERMINATOR,
           FileSplitUtilities.MARC_RECORD_TERMINATOR,
-        }
+          }
       )
     );
 

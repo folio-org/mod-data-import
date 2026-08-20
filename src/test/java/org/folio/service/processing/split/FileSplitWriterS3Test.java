@@ -36,8 +36,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith({MockitoExtension.class, VertxExtension.class})
 class FileSplitWriterS3Test {
 
-  protected static Vertx vertx = Vertx.vertx();
-
   @TempDir
   Path tempDir;
 
@@ -62,12 +60,12 @@ class FileSplitWriterS3Test {
     );
   }
 
+  @DisplayName("should upload each chunk to S3 with correct name and content")
   @ParameterizedTest(name = "[{index}] {0} chunkSize={2}")
   @MethodSource("getCases")
-  @DisplayName("should upload each chunk to S3 with correct name and content")
   void shouldUploadEachChunk_toS3_withCorrectNameAndContent(
     String sourceFile, String key, int chunkSize,
-    VertxTestContext testContext) throws IOException {
+    Vertx vertx, VertxTestContext testContext) throws IOException {
     when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture("result"));
 
     File chunkDir = Files.createTempDirectory(tempDir, "s3writer").toFile();
@@ -84,7 +82,7 @@ class FileSplitWriterS3Test {
         .build()
     );
 
-    vertx.getOrCreateContext().owner().fileSystem()
+    vertx.fileSystem()
       .open(sourceFile, new OpenOptions().setRead(true))
       .onComplete(testContext.succeeding(file -> {
         file.pipeTo(writer).onComplete(testContext.succeeding(v -> { }));

@@ -2,6 +2,7 @@ package org.folio.service.processing.ranking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -32,15 +33,9 @@ class ScoreUtilsUnboundedTest {
   @MethodSource("getExpectedValues")
   @DisplayName("should score within bounds for all i in range")
   void shouldScoreWithinBounds_forAllInRange(int lowerRange, int upperRange, int lowerScore, int upperScore) {
-    for (int i = lowerRange; i <= upperRange; i++) {
-      assertThat(
-        ScoreUtils.calculateUnboundedLogarithmicScore(
-          i,
-          LOWER_SCORE,
-          UPPER_SCORE,
-          UPPER_REFERENCE
-        )
-      ).isBetween(lowerScore - EPSILON, upperScore + EPSILON);
-    }
+    assertThat(IntStream.rangeClosed(lowerRange, upperRange).asDoubleStream()
+        .map(i -> ScoreUtils.calculateUnboundedLogarithmicScore((int) i, LOWER_SCORE, UPPER_SCORE, UPPER_REFERENCE)))
+      .isNotEmpty()
+      .allSatisfy(score -> assertThat(score).isBetween(lowerScore - EPSILON, upperScore + EPSILON));
   }
 }

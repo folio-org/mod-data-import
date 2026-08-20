@@ -26,8 +26,8 @@ class FileSplitWriterExceptionalTest {
   @TempDir
   Path tempDir;
 
-  @Test
   @DisplayName("should fail to pipe and call exception handler when directory is deleted")
+  @Test
   void shouldFailToPipe_andCallExceptionHandler_whenDirectoryDeleted(VertxTestContext testContext) {
     var exceptionHandled = Promise.<Void>promise();
 
@@ -80,8 +80,8 @@ class FileSplitWriterExceptionalTest {
       );
   }
 
-  @Test
   @DisplayName("should fail promise when directory is deleted and no exception handler set")
+  @Test
   void shouldFailPromise_whenDirectoryDeletedAndNoExceptionHandlerSet(
     VertxTestContext testContext
   ) throws IOException {

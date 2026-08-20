@@ -85,8 +85,8 @@ public abstract class AbstractEndToEndRankingTest extends AbstractQueueItemRanke
     return new DataImportQueueItemCollection().withDataImportQueueItems(items);
   }
 
-  @Test
   @DisplayName("should return items in expected order when all ranking factors are applied")
+  @Test
   void shouldReturnItemsInExpectedOrder() {
     // arrange
     NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(

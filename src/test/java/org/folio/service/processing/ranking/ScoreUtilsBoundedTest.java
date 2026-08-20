@@ -2,6 +2,7 @@ package org.folio.service.processing.ranking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -32,22 +33,11 @@ class ScoreUtilsBoundedTest {
   @ParameterizedTest(name = "[{index}] i in [{0},{1}] → score in [{2},{3}]")
   @MethodSource("getExpectedValues")
   @DisplayName("should score within bounds for all i in range")
-  void shouldScoreWithinBounds_forAllInRange(
-    int lowerRange,
-    int upperRange,
-    int lowerScore,
-    int upperScore
-  ) {
-    for (int i = lowerRange; i <= upperRange; i++) {
-      assertThat(
-        ScoreUtils.calculateBoundedLogarithmicScore(
-          i,
-          LOWER_SCORE,
-          UPPER_SCORE,
-          THRESHOLD,
-          THRESHOLD_SCORE
-        )
-      ).isBetween(lowerScore - EPSILON, upperScore + EPSILON);
-    }
+  void shouldScoreWithinBounds_forAllInRange(int lowerRange, int upperRange, int lowerScore, int upperScore) {
+    assertThat(IntStream.rangeClosed(lowerRange, upperRange).asDoubleStream()
+      .map(i -> ScoreUtils.calculateBoundedLogarithmicScore((int) i,
+        LOWER_SCORE, UPPER_SCORE, THRESHOLD, THRESHOLD_SCORE)))
+      .isNotEmpty()
+      .allSatisfy(score -> assertThat(score).isBetween(lowerScore - EPSILON, upperScore + EPSILON));
   }
 }

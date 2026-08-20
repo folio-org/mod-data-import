@@ -1,6 +1,7 @@
 package org.folio.rest;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.folio.rest.DefaultFileExtensionRestTest.FILE_EXTENSION_DEFAULT;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 import static org.folio.rest.jaxrs.model.UploadDefinition.Status.ERROR;
@@ -11,7 +12,6 @@ import static org.folio.support.TestUtil.PROCESS_FILE_IMPORT_PATH;
 import static org.folio.support.TestUtil.TENANT_ID;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
@@ -245,7 +245,7 @@ class UploadDefinitionRestTest extends AbstractRestTest {
       .extract().body().as(UploadDefinition.class);
 
     String path = uploadDefinition1.getFileDefinitions().getFirst().getSourcePath();
-    assertTrue(FileUtils.contentEquals(file, new File(path)));
+    assertThat(FileUtils.contentEquals(file, new File(path))).isTrue();
   }
 
   @DisplayName("should return 400 when SRM returns an exception during file upload")

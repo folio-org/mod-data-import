@@ -47,8 +47,8 @@ class FileSplitServiceTest {
     this.fileSplitService = new FileSplitService(VERTX, minioStorageService, 1000);
   }
 
-  @Test
   @DisplayName("should split file from S3 into 10 chunks and verify interactions when source has 10000 records")
+  @Test
   void shouldSplitFileFromS3_into10Chunks_andVerifyInteractions(VertxTestContext testContext)
     throws IOException {
     when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture());
@@ -81,8 +81,8 @@ class FileSplitServiceTest {
       );
   }
 
-  @Test
   @DisplayName("should fail with InvalidPathException when key contains NUL character")
+  @Test
   void shouldFail_withInvalidPathException_whenKeyContainsNulCharacter(VertxTestContext testContext) {
     String key = "test-key" + '\0';
     when(minioStorageService.readFile(key))
@@ -104,8 +104,8 @@ class FileSplitServiceTest {
       );
   }
 
-  @Test
   @DisplayName("should split stream and return one chunk key when source has one byte")
+  @Test
   void shouldSplitStream_andReturnOneChunkKey_whenSourceHasOneByte(VertxTestContext testContext) throws IOException {
     when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture());
     fileSplitService
@@ -124,8 +124,8 @@ class FileSplitServiceTest {
       );
   }
 
-  @Test
   @DisplayName("should succeed when temporary directory cannot be deleted after split")
+  @Test
   void shouldSucceed_whenTempDirCannotBeDeletedAfterSplit(VertxTestContext testContext)
     throws IOException {
     when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture());

@@ -56,8 +56,8 @@ class FileSplitWriterS3ExceptionalTest {
     );
   }
 
-  @Test
   @DisplayName("should fail composite future when write throws IOException before upload")
+  @Test
   void shouldFailCompositeFuture_whenWriteThrowsBeforeUpload(
     VertxTestContext testContext
   ) throws IOException {
@@ -82,8 +82,8 @@ class FileSplitWriterS3ExceptionalTest {
       );
   }
 
-  @Test
   @DisplayName("should fail composite future when S3 upload returns failed future")
+  @Test
   void shouldFailCompositeFuture_whenS3UploadReturnsFailed(
     VertxTestContext testContext
   ) throws IOException {

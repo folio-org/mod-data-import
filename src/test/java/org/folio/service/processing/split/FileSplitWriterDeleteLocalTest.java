@@ -26,8 +26,8 @@ class FileSplitWriterDeleteLocalTest {
   @TempDir
   Path tempDir;
 
-  @Test
   @DisplayName("should delete local chunk files after splitting when deleteLocalFiles is enabled")
+  @Test
   void shouldDeleteLocalChunkFiles_whenDeleteLocalFilesEnabled(VertxTestContext testContext) {
     vertx
       .getOrCreateContext()

@@ -1,6 +1,5 @@
 package org.folio.service.file;
 
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -50,27 +49,21 @@ class SplitFileProcessingServiceStartJobTest extends SplitFileProcessingServiceA
   @DisplayName("should create parent job executions for each file definition")
   @Test
   void shouldCreateParentJobExecutions_forEachFileDefinition(VertxTestContext testContext) {
+    Map<String, JobExecution> executionByFileName = Map.of(
+      FILE_DEFINITION_1.getSourcePath(), JOB_EXECUTION_1,
+      FILE_DEFINITION_2.getSourcePath(), JOB_EXECUTION_2,
+      FILE_DEFINITION_3.getSourcePath(), JOB_EXECUTION_3
+    );
     doAnswer(invocation -> {
       InitJobExecutionsRqDto request = invocation.getArgument(0);
-
       assertThat(request.getFiles()).hasSize(1);
       assertThat(request.getJobProfileInfo()).isEqualTo(JOB_PROFILE_INFO);
       assertThat(request.getUserId()).isEqualTo("created-user-id");
-
-      Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(1);
       String fileName = request.getFiles().getFirst().getName();
-      if (fileName.contains("1")) {
-        responseHandler.handle(
-          getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(List.of(JOB_EXECUTION_1))));
-      } else if (fileName.contains("2")) {
-        responseHandler.handle(getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(
-          singletonList(JOB_EXECUTION_2))));
-      } else if (fileName.contains("3")) {
-        responseHandler.handle(getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(
-          singletonList(JOB_EXECUTION_3))));
-      } else {
-        responseHandler.handle(Future.failedFuture(new AssertionError("Unexpected file name: " + fileName)));
-      }
+      JobExecution jobExecution = executionByFileName.get(fileName);
+      assertThat(jobExecution).as("Unexpected file name: %s", fileName).isNotNull();
+      Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(1);
+      responseHandler.handle(getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(List.of(jobExecution))));
       return null;
     }).when(changeManagerClient).postChangeManagerJobExecutions(any(), any());
 
@@ -158,51 +151,12 @@ class SplitFileProcessingServiceStartJobTest extends SplitFileProcessingServiceA
     service.splitFile("test-key", JOB_PROFILE_MARC).onComplete(testContext.failingThenComplete());
   }
 
-  @SuppressWarnings("checkstyle:MethodLength")
   @DisplayName("should initialize job for all file definitions and return split info map")
   @Test
   void shouldInitializeJob_forAllFileDefinitions(VertxTestContext testContext) {
-    doAnswer(invocation ->
-      Future.succeededFuture(SplitFileInformation.builder()
-        .key(invocation.getArgument(0)).splitKeys(Arrays.asList("a1", "a2", "a3")).totalRecords(10).build()))
-      .doAnswer(invocation ->
-        Future.succeededFuture(SplitFileInformation.builder()
-          .key(invocation.getArgument(0)).splitKeys(List.of("b1")).totalRecords(10).build()))
-      .doAnswer(invocation ->
-        Future.succeededFuture(SplitFileInformation.builder()
-          .key(invocation.getArgument(0)).splitKeys(Arrays.asList("c1", "c2")).totalRecords(10).build()))
-      .when(service).splitFile(any(), any());
-
-    doAnswer(invocation -> {
-      InitJobExecutionsRqDto request = invocation.getArgument(0);
-      Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(1);
-
-      assertThat(request.getFiles()).hasSize(1);
-      assertThat(request.getJobProfileInfo()).isEqualTo(JOB_PROFILE_INFO);
-
-      String fileName = request.getFiles().getFirst().getName();
-      if (fileName.contains("1")) {
-        responseHandler.handle(
-          getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(singletonList(JOB_EXECUTION_1))));
-      } else if (fileName.contains("2")) {
-        responseHandler.handle(
-          getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(singletonList(JOB_EXECUTION_2))));
-      } else if (fileName.contains("3")) {
-        responseHandler.handle(
-          getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(singletonList(JOB_EXECUTION_3))));
-      } else {
-        responseHandler.handle(Future.failedFuture(new AssertionError("Unexpected file name: " + fileName)));
-      }
-      return null;
-    }).when(changeManagerClient).postChangeManagerJobExecutions(any(), any());
-
-    when(changeManagerClient.putChangeManagerJobExecutionsById(any(), any()))
-      .thenAnswer(invocation -> {
-        JobExecution jobExecution = invocation.getArgument(1);
-        assertThat(jobExecution).isNotNull();
-        assertThat(jobExecution.getTotalRecordsInFile()).isEqualTo(10);
-        return getSuccessArBuffer(null);
-      });
+    stubSplitFileSequence();
+    stubJobExecutionCreation();
+    stubRecordCountUpdate();
 
     service.initializeJob(
       new ProcessFilesRqDto()
@@ -315,6 +269,48 @@ class SplitFileProcessingServiceStartJobTest extends SplitFileProcessingServiceA
       verifyNoInteractions(queueItemDao);
       testContext.completeNow();
     })));
+  }
+
+  private void stubSplitFileSequence() {
+    doAnswer(invocation ->
+      Future.succeededFuture(SplitFileInformation.builder()
+        .key(invocation.getArgument(0)).splitKeys(Arrays.asList("a1", "a2", "a3")).totalRecords(10).build()))
+      .doAnswer(invocation ->
+        Future.succeededFuture(SplitFileInformation.builder()
+          .key(invocation.getArgument(0)).splitKeys(List.of("b1")).totalRecords(10).build()))
+      .doAnswer(invocation ->
+        Future.succeededFuture(SplitFileInformation.builder()
+          .key(invocation.getArgument(0)).splitKeys(Arrays.asList("c1", "c2")).totalRecords(10).build()))
+      .when(service).splitFile(any(), any());
+  }
+
+  private void stubJobExecutionCreation() {
+    Map<String, JobExecution> executionByFileName = Map.of(
+      FILE_DEFINITION_1.getSourcePath(), JOB_EXECUTION_1,
+      FILE_DEFINITION_2.getSourcePath(), JOB_EXECUTION_2,
+      FILE_DEFINITION_3.getSourcePath(), JOB_EXECUTION_3
+    );
+    doAnswer(invocation -> {
+      InitJobExecutionsRqDto request = invocation.getArgument(0);
+      assertThat(request.getFiles()).hasSize(1);
+      assertThat(request.getJobProfileInfo()).isEqualTo(JOB_PROFILE_INFO);
+      String fileName = request.getFiles().getFirst().getName();
+      JobExecution jobExecution = executionByFileName.get(fileName);
+      assertThat(jobExecution).as("Unexpected file name: %s", fileName).isNotNull();
+      Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler = invocation.getArgument(1);
+      responseHandler.handle(getSuccessArBuffer(new InitJobExecutionsRsDto().withJobExecutions(List.of(jobExecution))));
+      return null;
+    }).when(changeManagerClient).postChangeManagerJobExecutions(any(), any());
+  }
+
+  private void stubRecordCountUpdate() {
+    when(changeManagerClient.putChangeManagerJobExecutionsById(any(), any()))
+      .thenAnswer(invocation -> {
+        JobExecution jobExecution = invocation.getArgument(1);
+        assertThat(jobExecution).isNotNull();
+        assertThat(jobExecution.getTotalRecordsInFile()).isEqualTo(10);
+        return getSuccessArBuffer(null);
+      });
   }
 
   @DisplayName("should start job and update upload definition status to COMPLETED")

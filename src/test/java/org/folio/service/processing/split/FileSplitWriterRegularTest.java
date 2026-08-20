@@ -18,6 +18,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.service.s3storage.MinioStorageService;
@@ -32,8 +33,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith({MockitoExtension.class, VertxExtension.class})
 class FileSplitWriterRegularTest {
-
-  protected static Vertx vertx = Vertx.vertx();
 
   @TempDir
   Path tempDir;
@@ -78,12 +77,12 @@ class FileSplitWriterRegularTest {
     );
   }
 
+  @DisplayName("should split file into expected chunks and preserve content")
   @ParameterizedTest(name = "[{index}] {0} chunkSize={2}")
   @MethodSource("getCases")
-  @DisplayName("should split file into expected chunks and preserve content")
   void shouldSplitFile_intoExpectedChunks_andPreserveContent(
-    String sourceFile, String key, int chunkSize, String[] expectedChunkFiles,
-    VertxTestContext testContext) throws IOException {
+      String sourceFile, String key, int chunkSize, String[] expectedChunkFiles,
+      Vertx vertx, VertxTestContext testContext) throws IOException {
     // arrange
     Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
     FileSplitWriter writer = new FileSplitWriter(
@@ -97,32 +96,31 @@ class FileSplitWriterRegularTest {
         .build()
     );
 
+    var pathsRef = new AtomicReference<List<Path>>();
+    var contentsRef = new AtomicReference<List<byte[]>>();
+    var actualRef = new AtomicReference<byte[]>();
+
     // act
-    vertx.getOrCreateContext().owner().fileSystem()
+    vertx.fileSystem()
       .open(sourceFile, new OpenOptions().setRead(true))
-      .onComplete(testContext.succeeding(file -> file.pipeTo(writer)
-        .onComplete(testContext.succeeding(v -> chunkUploadingCompositeFuturePromise.future()
-          .onComplete(testContext.succeeding(cf -> cf
-            .onComplete(testContext.succeeding(result -> {
-              // assert
-              List<Path> paths = toPaths(result.list());
-              List<byte[]> contents = readAllFiles(paths);
-              byte[] actual = concatenate(contents);
-
-              assertThat(toFileNames(paths)).containsExactly(expectedChunkFiles);
-              assertTerminators(contents);
-
-              file.read(Buffer.buffer(), 0, 0, actual.length + 1)
-                .onComplete(testContext.succeeding(expectedBuffer -> {
-                  assertThat(actual).isEqualTo(expectedBuffer.getBytes());
-                  assertChunkRecordCounts(contents, actual, chunkSize);
-                  verifyNoInteractions(minioStorageService);
-                  testContext.completeNow();
-                }));
-            }))
-          ))
-        ))
-      ));
+      .compose(file -> file.pipeTo(writer)
+        .compose(v -> chunkUploadingCompositeFuturePromise.future())
+        .compose(cf -> cf)
+        .compose(result -> {
+          pathsRef.set(toPaths(result.list()));
+          contentsRef.set(readAllFiles(pathsRef.get()));
+          actualRef.set(concatenate(contentsRef.get()));
+          return file.read(Buffer.buffer(), 0, 0, actualRef.get().length + 1);
+        }))
+      .onComplete(testContext.succeeding(expectedBuffer -> testContext.verify(() -> {
+        // assert
+        assertThat(toFileNames(pathsRef.get())).containsExactly(expectedChunkFiles);
+        assertTerminators(contentsRef.get());
+        assertThat(actualRef.get()).isEqualTo(expectedBuffer.getBytes());
+        assertChunkRecordCounts(contentsRef.get(), actualRef.get(), chunkSize);
+        verifyNoInteractions(minioStorageService);
+        testContext.completeNow();
+      })));
   }
 
   private static List<Path> toPaths(List<?> objList) {
@@ -165,13 +163,13 @@ class FileSplitWriterRegularTest {
   }
 
   private void assertChunkRecordCounts(List<byte[]> contents, byte[] concatenated, int chunkSize) {
-    int remaining = countRecordsInMarcFile(concatenated);
-    for (int i = 0; i < contents.size(); i++) {
-      int count = countRecordsInMarcFile(contents.get(i));
-      int expected = (i == contents.size() - 1) ? remaining : chunkSize;
-      assertThat(count).isEqualTo(expected);
-      remaining -= count;
-    }
+    int totalRecords = countRecordsInMarcFile(concatenated);
+    int lastExpected = totalRecords - chunkSize * (contents.size() - 1);
+    List<Integer> actualCounts = contents.stream().map(this::countRecordsInMarcFile).toList();
+    // all chunks except the last should have exactly chunkSize records
+    assertThat(actualCounts.subList(0, contents.size() - 1))
+      .allSatisfy(count -> assertThat(count).isEqualTo(chunkSize));
+    assertThat(actualCounts.getLast()).isEqualTo(lastExpected);
   }
 
   private int countRecordsInMarcFile(byte[] content) {

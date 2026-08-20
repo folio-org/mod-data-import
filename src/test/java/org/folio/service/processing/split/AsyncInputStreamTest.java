@@ -21,8 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(VertxExtension.class)
 class AsyncInputStreamTest {
 
-  protected static Vertx vertx = Vertx.vertx();
-
   protected static byte[] emptyBuff = new byte[0];
   protected static byte[] smallBuff = new byte[8192 / 2];
   protected static byte[] mediumBuff = new byte[8192];
@@ -40,9 +38,9 @@ class AsyncInputStreamTest {
     }
   }
 
-  @Test
   @DisplayName("should call end handler and mark stream closed when stream is empty")
-  void shouldCallEndHandler_andMarkClosed_whenStreamIsEmpty(VertxTestContext testContext) {
+  @Test
+  void shouldCallEndHandler_andMarkClosed_whenStreamIsEmpty(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(emptyBuff)
@@ -60,9 +58,9 @@ class AsyncInputStreamTest {
     stream.read();
   }
 
-  @Test
   @DisplayName("should not call end or exception handler when handlers are set after stream is consumed")
-  void shouldNotCallHandlers_whenSetAfterStreamConsumed(VertxTestContext testContext) {
+  @Test
+  void shouldNotCallHandlers_whenSetAfterStreamConsumed(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(emptyBuff)
@@ -90,7 +88,7 @@ class AsyncInputStreamTest {
   @Test
   @SuppressWarnings("java:S2699")
   @DisplayName("should deliver one chunk when stream has less than one buffer worth of data")
-  void shouldDeliverOneChunk_whenStreamIsSmall(VertxTestContext testContext) {
+  void shouldDeliverOneChunk_whenStreamIsSmall(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(smallBuff)
@@ -114,7 +112,7 @@ class AsyncInputStreamTest {
   @Test
   @SuppressWarnings("java:S2699")
   @DisplayName("should deliver one chunk when stream size is exactly one buffer")
-  void shouldDeliverOneChunk_whenStreamSizeIsOneBuffer(VertxTestContext testContext) {
+  void shouldDeliverOneChunk_whenStreamSizeIsOneBuffer(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(mediumBuff)
@@ -138,7 +136,7 @@ class AsyncInputStreamTest {
   @Test
   @SuppressWarnings("java:S2699")
   @DisplayName("should deliver three chunks when stream has more than two buffers worth of data")
-  void shouldDeliverThreeChunks_whenStreamIsLarge(VertxTestContext testContext) {
+  void shouldDeliverThreeChunks_whenStreamIsLarge(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
@@ -161,9 +159,9 @@ class AsyncInputStreamTest {
     stream.read();
   }
 
-  @Test
   @DisplayName("should toggle active state when paused and resumed")
-  void shouldToggleActiveState_whenPausedAndResumed(VertxTestContext testContext) {
+  @Test
+  void shouldToggleActiveState_whenPausedAndResumed(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
@@ -182,15 +180,14 @@ class AsyncInputStreamTest {
     stream.read();
   }
 
-  @Test
   @DisplayName("should not deliver data while paused and mark stream inactive when consumed after pause")
-  void shouldNotDeliverData_whilePaused_andMarkInactiveWhenConsumed(VertxTestContext testContext) {
+  @Test
+  void shouldNotDeliverData_whilePaused_andMarkInactiveWhenConsumed(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(smallBuff)
     );
 
-    List<byte[]> receivedData = new ArrayList<>();
     AtomicBoolean isPaused = new AtomicBoolean(false);
 
     stream.handler(buff -> {
@@ -198,8 +195,6 @@ class AsyncInputStreamTest {
         testContext.failNow(new AssertionError("Should not have received data while paused"));
         return;
       }
-
-      receivedData.add(buff.getBytes());
 
       stream.pause();
       isPaused.set(true);
@@ -217,9 +212,9 @@ class AsyncInputStreamTest {
     stream.read();
   }
 
-  @Test
   @DisplayName("should stop delivering data when stream is closed after pause")
-  void shouldStopDeliveringData_whenStreamIsClosedAfterPause(VertxTestContext testContext) {
+  @Test
+  void shouldStopDeliveringData_whenStreamIsClosedAfterPause(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
@@ -259,7 +254,7 @@ class AsyncInputStreamTest {
   @Test
   @SuppressWarnings("java:S2699")
   @DisplayName("should deliver only the first chunk when handler is removed after first chunk")
-  void shouldDeliverOnlyFirstChunk_whenHandlerRemovedAfterFirstChunk(VertxTestContext testContext) {
+  void shouldDeliverOnlyFirstChunk_whenHandlerRemovedAfterFirstChunk(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
@@ -283,9 +278,9 @@ class AsyncInputStreamTest {
     stream.read();
   }
 
-  @Test
   @DisplayName("should call both end handler and exception handler when close throws IOException")
-  void shouldCallEndAndExceptionHandlers_whenCloseThrowsIoException(VertxTestContext testContext) {
+  @Test
+  void shouldCallEndAndExceptionHandlers_whenCloseThrowsIoException(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(smallBuff) {
@@ -309,9 +304,9 @@ class AsyncInputStreamTest {
       .onComplete(testContext.succeedingThenComplete());
   }
 
-  @Test
   @DisplayName("should call both end handler and exception handler when read throws IOException")
-  void shouldCallEndAndExceptionHandlers_whenReadThrowsIoException(VertxTestContext testContext) {
+  @Test
+  void shouldCallEndAndExceptionHandlers_whenReadThrowsIoException(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new InputStream() {

@@ -33,8 +33,8 @@ class FolioS3ClientFactoryTest {
     this.folioS3ClientFactory = new FolioS3ClientFactory();
   }
 
-  @Test
   @DisplayName("should create client on first call and reuse it on subsequent calls")
+  @Test
   void shouldCreateClientOnFirstCall_andReuseOnSubsequent() {
     try (MockedStatic<S3ClientFactory> mock = Mockito.mockStatic(S3ClientFactory.class)) {
       mock

@@ -3,11 +3,9 @@ package org.folio.service.kafka;
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -31,6 +29,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,16 +43,18 @@ class KafkaAdminClientServiceTest {
     "folio.Default.foo-tenant.DI_INITIALIZATION_STARTED",
     "folio.Default.foo-tenant.DI_RAW_RECORDS_CHUNK_READ"
   );
+  @Mock
   private KafkaAdminClient mockClient;
+  @Mock
   private Vertx vertx;
   @Mock
   private KafkaTopicConfiguration kafkaTopicConfiguration;
+  @SuppressWarnings("unchecked")
+  @Captor
+  private ArgumentCaptor<List<NewTopic>> createTopicsCaptor;
 
   @BeforeEach
   void setUp() {
-    vertx = mock(Vertx.class);
-    mockClient = mock(KafkaAdminClient.class);
-
     KafkaTopic[] topicObjects = {
       new DataImportKafkaTopic("DI_INITIALIZATION_STARTED", 10),
       new DataImportKafkaTopic("DI_RAW_RECORDS_CHUNK_READ", 10),
@@ -61,8 +62,8 @@ class KafkaAdminClientServiceTest {
     when(kafkaTopicConfiguration.createTopicObjects()).thenReturn(topicObjects);
   }
 
-  @Test
   @DisplayName("should retry until topics are created when TopicExistsException is transient")
+  @Test
   void shouldRetry_untilTopicsCreated_whenTopicExistsExceptionIsTransient(VertxTestContext testContext) {
     when(mockClient.createTopics(anyList()))
       .thenReturn(failedFuture(new TopicExistsException("x")))
@@ -85,8 +86,8 @@ class KafkaAdminClientServiceTest {
       );
   }
 
-  @Test
   @DisplayName("should fail when TopicExistsException is permanent")
+  @Test
   void shouldFail_whenTopicExistsExceptionIsPermanent(VertxTestContext testContext) {
     when(mockClient.createTopics(anyList()))
       .thenReturn(failedFuture(new TopicExistsException("x")));
@@ -105,8 +106,8 @@ class KafkaAdminClientServiceTest {
       );
   }
 
-  @Test
   @DisplayName("should fail immediately when a non-TopicExistsException occurs")
+  @Test
   void shouldFailImmediately_whenNonTopicExistsExceptionOccurs(VertxTestContext testContext) {
     when(mockClient.createTopics(anyList()))
       .thenReturn(failedFuture(new RuntimeException("err msg")));
@@ -125,8 +126,8 @@ class KafkaAdminClientServiceTest {
       );
   }
 
-  @Test
   @DisplayName("should create topics with correct names when topics do not exist")
+  @Test
   void shouldCreateTopicsWithCorrectNames_whenTopicsDoNotExist(VertxTestContext testContext) {
     when(mockClient.createTopics(anyList())).thenReturn(succeededFuture());
     when(mockClient.listTopics()).thenReturn(succeededFuture(Set.of("old")));
@@ -136,9 +137,6 @@ class KafkaAdminClientServiceTest {
       .onComplete(
         testContext.succeeding(notUsed ->
           testContext.verify(() -> {
-            @SuppressWarnings("unchecked") final ArgumentCaptor<List<NewTopic>> createTopicsCaptor =
-              forClass(List.class);
-
             verify(mockClient, times(1)).createTopics(createTopicsCaptor.capture());
             verify(mockClient, times(1)).close();
 

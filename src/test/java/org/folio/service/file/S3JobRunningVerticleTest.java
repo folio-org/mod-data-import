@@ -96,8 +96,8 @@ class S3JobRunningVerticleTest {
     );
   }
 
-  @Test
   @DisplayName("should build connection params from queue item fields")
+  @Test
   void shouldBuildConnectionParams_fromQueueItemFields() {
     ConnectionParams params = verticle.getConnectionParams(
       new DataImportQueueItem()
@@ -115,8 +115,8 @@ class S3JobRunningVerticleTest {
     assertThat(params.getHeaders()).containsEntry(XOkapiHeaders.REQUEST_ID, "request-id");
   }
 
-  @Test
   @DisplayName("should include user ID header when building connection params with user ID")
+  @Test
   void shouldIncludeUserIdHeader_whenBuildingConnectionParamsWithUserId() {
     ConnectionParams params = verticle.getConnectionParams(
       new DataImportQueueItem()
@@ -136,8 +136,8 @@ class S3JobRunningVerticleTest {
     assertThat(params.getHeaders()).containsEntry(XOkapiHeaders.USER_ID, "user-id");
   }
 
-  @Test
   @DisplayName("should download 5 bytes from S3 and verify S3 client interactions")
+  @Test
   void shouldDownload5Bytes_andVerifyS3Interactions(VertxTestContext testContext) throws IOException {
     InputStream inputStream = spy(new ByteArrayInputStream(new byte[5]));
     when(minioStorageService.readFile("test-key")).thenReturn(Future.succeededFuture(inputStream));
@@ -169,8 +169,8 @@ class S3JobRunningVerticleTest {
       );
   }
 
-  @Test
   @DisplayName("should fail download when S3 stream transferTo throws IOException")
+  @Test
   void shouldFailDownload_whenS3StreamTransferToThrowsIoException(VertxTestContext testContext)
     throws IOException {
     InputStream inputStream = mock(ByteArrayInputStream.class);
@@ -197,8 +197,8 @@ class S3JobRunningVerticleTest {
       );
   }
 
-  @Test
   @DisplayName("should create local temp file for queue item file path")
+  @Test
   void shouldCreateLocalTempFile_forQueueItemFilePath(VertxTestContext testContext) {
     File testResult = new File("result");
 
@@ -217,8 +217,8 @@ class S3JobRunningVerticleTest {
       );
   }
 
-  @Test
   @DisplayName("should update job execution status successfully and verify service interaction")
+  @Test
   void shouldUpdateJobExecutionStatus_successfully(VertxTestContext testContext) {
     when(uploadDefinitionService.updateJobExecutionStatus(eq("exec-id"), any(), any()))
       .thenReturn(Future.succeededFuture(true));
@@ -236,8 +236,8 @@ class S3JobRunningVerticleTest {
       );
   }
 
-  @Test
   @DisplayName("should fail when updateJobExecutionStatus returns false")
+  @Test
   void shouldFail_whenUpdateJobExecutionStatusReturnsFalse(VertxTestContext testContext) {
     when(uploadDefinitionService.updateJobExecutionStatus(eq("exec-id"), any(), any()))
       .thenReturn(Future.succeededFuture(false));
@@ -255,8 +255,8 @@ class S3JobRunningVerticleTest {
       );
   }
 
-  @Test
   @DisplayName("should not request queue items when worker pool is at capacity")
+  @Test
   void shouldNotRequestQueueItems_whenWorkerPoolIsAtCapacity() {
     S3JobRunningVerticle.WORKERS_IN_USE.set(10);
 
@@ -265,8 +265,8 @@ class S3JobRunningVerticleTest {
     verifyNoInteractions(scoreService);
   }
 
-  @Test
   @DisplayName("should request one item and not request more when worker pool is almost at capacity")
+  @Test
   void shouldRequestOneItem_andNotRequestMore_whenWorkerPoolIsAlmostAtCapacity(VertxTestContext testContext) {
     S3JobRunningVerticle.WORKERS_IN_USE.set(9);
 
@@ -293,8 +293,8 @@ class S3JobRunningVerticleTest {
     );
   }
 
-  @Test
   @DisplayName("should not process any item when no queue items are available")
+  @Test
   void shouldNotProcessAnyItem_whenNoQueueItemsAvailable(VertxTestContext testContext) {
     S3JobRunningVerticle.WORKERS_IN_USE.set(0);
 
@@ -317,8 +317,8 @@ class S3JobRunningVerticleTest {
     );
   }
 
-  @Test
   @DisplayName("should process multiple queue items and poll three times when two items are available")
+  @Test
   void shouldProcessMultipleQueueItems_andPollThreeTimes_whenTwoItemsAvailable(VertxTestContext testContext) {
     S3JobRunningVerticle.WORKERS_IN_USE.set(0);
 
@@ -344,8 +344,8 @@ class S3JobRunningVerticleTest {
     );
   }
 
-  @Test
   @DisplayName("should process queue item successfully and delete temp file asynchronously")
+  @Test
   void shouldProcessQueueItem_successfully_andDeleteTempFileAsync(VertxTestContext testContext)
     throws IOException {
     File tempFile = Files.createTempFile(tempDir, "", "").toFile();
@@ -394,8 +394,8 @@ class S3JobRunningVerticleTest {
       );
   }
 
-  @Test
   @DisplayName("should fail and mark failure status then delete temp file when processFile throws")
+  @Test
   void shouldFail_andMarkFailureStatus_thenDeleteTempFile_whenProcessFileThrows(VertxTestContext testContext)
     throws IOException {
     File tempFile = Files.createTempFile(tempDir, "", "").toFile();
@@ -444,8 +444,8 @@ class S3JobRunningVerticleTest {
       );
   }
 
-  @Test
   @DisplayName("should fail early and clean up queue item when createLocalFile throws UncheckedIOException")
+  @Test
   void shouldFailEarly_andCleanUpQueueItem_whenCreateLocalFileThrows(VertxTestContext testContext) {
     try (
       MockedStatic<FileUtils> mock = Mockito.mockStatic(FileUtils.class, Mockito.CALLS_REAL_METHODS)

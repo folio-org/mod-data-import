@@ -15,62 +15,56 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Stream;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class EdifactReaderTest {
 
   private static final String PATH_TO_EDIFACT = "src/test/resources/edifact/";
-  private static final String SOURCE_FR = "CornAuxAm.1605541205.edi";
-  private static final String SOURCE_IT = "CornCasalini.1606151339.edi";
-  private static final String SOURCE_US_UK = "A-MGOBIe-orders565750us20200903.edi";
-  private static final String SOURCE_CORN_HEIN = "CornHein1604419006.edi";
-  private static final String SOURCE_EBSCO_1 = "AnneC-EBSCO-Access Only.INV";
-  private static final String SOURCE_EBSCO_2 = "AnneC-EBSCO-Pkg & Item prices.INV";
-  private static final String SOURCE_EBSCO_3 = "AnneC-EBSCO-Subns.INV";
-  private static final String SOURCE_EBSCO_4 = "DukeEBSCOSubns.INV";
-  private static final String SOURCE_TAMU = "TAMU-HRSW20200808072013.EDI";
-
   private static final String SOURCE_EMPTY = "empty.edi";
 
-  private final Map<String, Integer> filesAndRecordsNumber = Map.of(
-    SOURCE_FR, 1, SOURCE_IT, 1,
-    SOURCE_US_UK, 3, SOURCE_CORN_HEIN, 2,
-    SOURCE_EBSCO_1, 1, SOURCE_EBSCO_2, 1,
-    SOURCE_EBSCO_3, 1, SOURCE_EBSCO_4, 1,
-    SOURCE_TAMU, 7);
+  static Stream<Arguments> edifactFiles() {
+    return Stream.of(
+      Arguments.of("CornAuxAm.1605541205.edi", 1),
+      Arguments.of("CornCasalini.1606151339.edi", 1),
+      Arguments.of("A-MGOBIe-orders565750us20200903.edi", 3),
+      Arguments.of("CornHein1604419006.edi", 2),
+      Arguments.of("AnneC-EBSCO-Access Only.INV", 1),
+      Arguments.of("AnneC-EBSCO-Pkg & Item prices.INV", 1),
+      Arguments.of("AnneC-EBSCO-Subns.INV", 1),
+      Arguments.of("DukeEBSCOSubns.INV", 1),
+      Arguments.of("TAMU-HRSW20200808072013.EDI", 7)
+    );
+  }
 
   @DisplayName("should return the expected number of records for each EDIFACT source file")
-  @Test
-  void shouldReturnAllRecords() throws EDIStreamException, FileNotFoundException {
+  @ParameterizedTest(name = "[{index}] {0} → {1} record(s)")
+  @MethodSource("edifactFiles")
+  void shouldReturnExpectedRecords_forEachEdifactFile(String fileName, int expectedRecordCount)
+      throws EDIStreamException, FileNotFoundException {
+    // arrange
     EDIInputFactory factory = EDIInputFactory.newFactory();
+    List<String> expectedValidation = validateFile(factory, new FileInputStream(PATH_TO_EDIFACT + fileName));
+    SourceReader reader = new EdifactReader(new File(PATH_TO_EDIFACT + fileName), 2);
 
-    for (String fileName : filesAndRecordsNumber.keySet()) {
-      SourceReader reader = new EdifactReader(new File(PATH_TO_EDIFACT + fileName), 2);
+    // act
+    List<InitialRecord> actualRecords = readAllRecords(reader);
 
-      final var expValidation = validateFile(factory, new FileInputStream(PATH_TO_EDIFACT + fileName));
-
-      List<InitialRecord> actualRecords = new ArrayList<>();
-      while (reader.hasNext()) {
-        actualRecords.addAll(reader.next());
-      }
-
-      assertThat(actualRecords).as("File: " + fileName)
-        .hasSize(filesAndRecordsNumber.get(fileName));
-
-      List<String> actValidation = new ArrayList<>();
-      for (InitialRecord initialRecord : actualRecords) {
-        actValidation = validateFile(factory,
-          new ByteArrayInputStream(initialRecord.getRecord().getBytes(StandardCharsets.UTF_8)));
-        assertThat(initialRecord.getOrder()).as("Order is null").isNotNull();
-      }
-      assertThat(actValidation).as("File: " + fileName).isEqualTo(expValidation);
-    }
+    // assert
+    assertThat(actualRecords)
+      .hasSize(expectedRecordCount)
+      .allSatisfy(initialRecord -> assertThat(initialRecord.getOrder()).isNotNull());
+    assertThat(validateFile(factory, new ByteArrayInputStream(
+        actualRecords.getLast().getRecord().getBytes(StandardCharsets.UTF_8))))
+      .isEqualTo(expectedValidation);
   }
 
   @DisplayName("should throw RecordsReaderException when reading an empty EDIFACT file")
@@ -78,6 +72,14 @@ class EdifactReaderTest {
   void shouldThrowExceptionOnEmptyFile() {
     var file = new File(PATH_TO_EDIFACT + SOURCE_EMPTY);
     assertThatThrownBy(() -> new EdifactReader(file, 2)).isInstanceOf(RecordsReaderException.class);
+  }
+
+  private static List<InitialRecord> readAllRecords(SourceReader reader) {
+    List<InitialRecord> records = new ArrayList<>();
+    while (reader.hasNext()) {
+      records.addAll(reader.next());
+    }
+    return records;
   }
 
   private List<String> validateFile(EDIInputFactory factory, InputStream fileContent) throws EDIStreamException {

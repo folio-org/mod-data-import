@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test;
 
 class FileSplitUtilitiesTempDirTest {
 
-  @Test
   @DisplayName("should create temporary directory containing the key name")
+  @Test
   void shouldCreateTempDir_containingKeyName() throws IOException {
     File tempDir = FileSplitUtilities.createTemporaryDir("test-key").toFile();
     tempDir.deleteOnExit();

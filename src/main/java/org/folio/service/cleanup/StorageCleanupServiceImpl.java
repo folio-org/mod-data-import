@@ -1,9 +1,14 @@
 package org.folio.service.cleanup;
 
+import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
+
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.UploadDefinitionDao;
@@ -15,12 +20,6 @@ import org.folio.service.storage.FileStorageServiceBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
 
 @Service
 public class StorageCleanupServiceImpl implements StorageCleanupService {
@@ -43,7 +42,8 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
     FileStorageService fileStorageService = FileStorageServiceBuilder.build(vertx, params.getTenantId());
 
     Date lastChangesDate = new Date(new Date().getTime() - timeWithoutChangesDefaultValueMillis);
-    return uploadDefinitionDao.getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(COMPLETED, lastChangesDate, 0, 0, params.getTenantId())
+    return uploadDefinitionDao.getUploadDefinitionsByStatusOrUpdatedDateNotGreaterThen(COMPLETED, lastChangesDate, 0, 0,
+        params.getTenantId())
       .map(DefinitionCollection::getUploadDefinitions)
       .compose(uploadDefinitions -> deleteFilesByUploadDefinitions(fileStorageService, uploadDefinitions))
       .compose(compositeFuture -> {
@@ -62,7 +62,8 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
       });
   }
 
-  private Future<CompositeFuture> deleteFilesByUploadDefinitions(FileStorageService fileStorageService, List<UploadDefinition> uploadDefinitions) {
+  private Future<CompositeFuture> deleteFilesByUploadDefinitions(FileStorageService fileStorageService,
+                                                                 List<UploadDefinition> uploadDefinitions) {
     LOGGER.debug("deleteFilesByUploadDefinitions:: delete files");
     List<Future<Boolean>> deleteFilesFutures = new ArrayList<>();
     uploadDefinitions.stream()
@@ -70,5 +71,4 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
       .forEach(fileDefinition -> deleteFilesFutures.add(fileStorageService.deleteFile(fileDefinition)));
     return Future.all(deleteFilesFutures);
   }
-
 }

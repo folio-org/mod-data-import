@@ -1,13 +1,12 @@
 package org.folio.service.processing.split;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,21 +14,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-@RunWith(VertxUnitRunner.class)
-public class AsyncInputStreamTest {
+@ExtendWith(VertxExtension.class)
+class AsyncInputStreamTest {
 
-  protected static Vertx vertx = Vertx.vertx();
-
-  // 0 chunks
   protected static byte[] emptyBuff = new byte[0];
-  // 0.5 chunks
   protected static byte[] smallBuff = new byte[8192 / 2];
-  // 1.0 chunks
   protected static byte[] mediumBuff = new byte[8192];
-  // 2.5 chunks
   protected static byte[] largeBuff = new byte[8192 * 2 + 8192 / 2];
 
   static {
@@ -44,58 +38,57 @@ public class AsyncInputStreamTest {
     }
   }
 
+  @DisplayName("should call end handler and mark stream closed when stream is empty")
   @Test
-  public void testHandlerEmpty(TestContext context) {
-    Async async = context.async();
+  void shouldCallEndHandler_andMarkClosed_whenStreamIsEmpty(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(emptyBuff)
     );
 
     stream.endHandler(v ->
-      context.verify(vv -> {
-        async.complete();
-        assertThat(stream.closed(), is(true));
+      testContext.verify(() -> {
+        assertThat(stream.closed()).isTrue();
+        testContext.completeNow();
       })
     );
-    stream.exceptionHandler(err -> context.fail(err));
-    stream.handler(buff -> context.fail("No data should have been read"));
+    stream.exceptionHandler(testContext::failNow);
+    stream.handler(buff -> testContext.failNow(new AssertionError("No data should have been read")));
 
     stream.read();
   }
 
+  @DisplayName("should not call end or exception handler when handlers are set after stream is consumed")
   @Test
-  public void testHandlerOutOfOrder(TestContext context) {
-    Async async = context.async();
+  void shouldNotCallHandlers_whenSetAfterStreamConsumed(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(emptyBuff)
     );
 
-    stream.handler(buff -> context.fail("No data should have been read"));
+    stream.handler(buff -> testContext.failNow(new AssertionError("No data should have been read")));
 
     stream.read();
 
     vertx.setTimer(
       100,
-      _v -> {
+      l -> {
         stream.endHandler(v ->
-          context.fail(
-            "End handler should not be called after stream is consumed"
+          testContext.failNow(
+            new AssertionError("End handler should not be called after stream is consumed")
           )
         );
-        stream.exceptionHandler(err -> context.fail(err));
+        stream.exceptionHandler(testContext::failNow);
 
-        // make sure neither are called, then complete
-        vertx.setTimer(100, __v -> async.complete());
+        vertx.setTimer(100, lng -> testContext.completeNow());
       }
     );
   }
 
   @Test
   @SuppressWarnings("java:S2699")
-  public void testHandlerSmall(TestContext context) {
-    Async async = context.async();
+  @DisplayName("should deliver one chunk when stream has less than one buffer worth of data")
+  void shouldDeliverOneChunk_whenStreamIsSmall(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(smallBuff)
@@ -104,15 +97,13 @@ public class AsyncInputStreamTest {
     List<byte[]> receivedData = new ArrayList<>();
 
     stream.endHandler(v ->
-      context.verify(_v -> {
-        assertThat(receivedData, hasSize(1));
-        assertThat(receivedData, hasSize(1));
-        assertThat(receivedData.getFirst(), is(smallBuff));
-        assertThat(receivedData.getFirst(), is(smallBuff));
-        async.complete();
+      testContext.verify(() -> {
+        assertThat(receivedData).hasSize(1);
+        assertThat(receivedData.getFirst()).isEqualTo(smallBuff);
+        testContext.completeNow();
       })
     );
-    stream.exceptionHandler(err -> context.fail(err));
+    stream.exceptionHandler(testContext::failNow);
     stream.handler(buff -> receivedData.add(buff.getBytes()));
 
     stream.read();
@@ -120,8 +111,8 @@ public class AsyncInputStreamTest {
 
   @Test
   @SuppressWarnings("java:S2699")
-  public void testHandlerMedium(TestContext context) {
-    Async async = context.async();
+  @DisplayName("should deliver one chunk when stream size is exactly one buffer")
+  void shouldDeliverOneChunk_whenStreamSizeIsOneBuffer(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(mediumBuff)
@@ -129,14 +120,12 @@ public class AsyncInputStreamTest {
 
     List<byte[]> receivedData = new ArrayList<>();
 
-    stream.exceptionHandler(err -> context.fail(err));
+    stream.exceptionHandler(testContext::failNow);
     stream.endHandler(v ->
-      context.verify(_v -> {
-        assertThat(receivedData, hasSize(1));
-        assertThat(receivedData, hasSize(1));
-        assertThat(receivedData.getFirst(), is(mediumBuff));
-        assertThat(receivedData.getFirst(), is(mediumBuff));
-        async.complete();
+      testContext.verify(() -> {
+        assertThat(receivedData).hasSize(1);
+        assertThat(receivedData.getFirst()).isEqualTo(mediumBuff);
+        testContext.completeNow();
       })
     );
     stream.handler(buff -> receivedData.add(buff.getBytes()));
@@ -146,8 +135,8 @@ public class AsyncInputStreamTest {
 
   @Test
   @SuppressWarnings("java:S2699")
-  public void testHandlerLarge(TestContext context) {
-    Async async = context.async();
+  @DisplayName("should deliver three chunks when stream has more than two buffers worth of data")
+  void shouldDeliverThreeChunks_whenStreamIsLarge(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
@@ -155,24 +144,14 @@ public class AsyncInputStreamTest {
 
     List<byte[]> receivedData = new ArrayList<>();
 
-    stream.exceptionHandler(err -> context.fail(err));
+    stream.exceptionHandler(testContext::failNow);
     stream.endHandler(v ->
-      context.verify(_v -> {
-        assertThat(receivedData, hasSize(3));
-        assertThat(receivedData, hasSize(3));
-        assertThat(
-          receivedData.getFirst(),
-          is(Arrays.copyOfRange(largeBuff, 0, 8192))
-        );
-        assertThat(
-          receivedData.get(1),
-          is(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2))
-        );
-        assertThat(
-          receivedData.get(2),
-          is(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096))
-        );
-        async.complete();
+      testContext.verify(() -> {
+        assertThat(receivedData).hasSize(3);
+        assertThat(receivedData.getFirst()).isEqualTo(Arrays.copyOfRange(largeBuff, 0, 8192));
+        assertThat(receivedData.get(1)).isEqualTo(Arrays.copyOfRange(largeBuff, 8192, 8192 * 2));
+        assertThat(receivedData.get(2)).isEqualTo(Arrays.copyOfRange(largeBuff, 8192 * 2, 8192 * 2 + 4096));
+        testContext.completeNow();
       })
     );
     stream.handler(buff -> receivedData.add(buff.getBytes()));
@@ -180,9 +159,9 @@ public class AsyncInputStreamTest {
     stream.read();
   }
 
+  @DisplayName("should toggle active state when paused and resumed")
   @Test
-  public void testPauseResume(TestContext context) {
-    Async async = context.async();
+  void shouldToggleActiveState_whenPausedAndResumed(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
@@ -190,34 +169,32 @@ public class AsyncInputStreamTest {
 
     stream.handler(buff -> {
       stream.pause();
-      assertThat(stream.active(), is(false));
+      assertThat(stream.active()).isFalse();
 
       stream.resume();
-      assertThat(stream.active(), is(true));
+      assertThat(stream.active()).isTrue();
 
-      async.complete();
+      testContext.completeNow();
     });
 
     stream.read();
   }
 
+  @DisplayName("should not deliver data while paused and mark stream inactive when consumed after pause")
   @Test
-  public void testPauseFetchResumeForConsumed(TestContext context) {
-    Async async = context.async();
+  void shouldNotDeliverData_whilePaused_andMarkInactiveWhenConsumed(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(smallBuff)
     );
 
-    List<byte[]> receivedData = new ArrayList<>();
     AtomicBoolean isPaused = new AtomicBoolean(false);
 
     stream.handler(buff -> {
       if (isPaused.get()) {
-        context.fail("Should not have received data while paused");
+        testContext.failNow(new AssertionError("Should not have received data while paused"));
+        return;
       }
-
-      receivedData.add(buff.getBytes());
 
       stream.pause();
       isPaused.set(true);
@@ -225,11 +202,9 @@ public class AsyncInputStreamTest {
       vertx.setTimer(
         100,
         v -> {
-          // consumed
           stream.resume();
-          assertThat(stream.active(), is(false));
-
-          async.complete();
+          assertThat(stream.active()).isFalse();
+          testContext.completeNow();
         }
       );
     });
@@ -237,9 +212,9 @@ public class AsyncInputStreamTest {
     stream.read();
   }
 
+  @DisplayName("should stop delivering data when stream is closed after pause")
   @Test
-  public void testResumeClosed(TestContext context) {
-    Async async = context.async();
+  void shouldStopDeliveringData_whenStreamIsClosedAfterPause(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
@@ -248,30 +223,28 @@ public class AsyncInputStreamTest {
     AtomicBoolean isPaused = new AtomicBoolean(false);
 
     stream.handler(buff ->
-      context.verify(v -> {
+      testContext.verify(() -> {
         if (isPaused.get()) {
-          context.fail("Should not have received data while paused");
+          testContext.failNow(new AssertionError("Should not have received data while paused"));
+          return;
         }
 
-        assertThat(stream.active(), is(true));
+        assertThat(stream.active()).isTrue();
 
         stream.pause();
-        assertThat(stream.active(), is(false));
+        assertThat(stream.active()).isFalse();
 
         isPaused.set(true);
 
-        assertThat(stream.closed(), is(false));
+        assertThat(stream.closed()).isFalse();
         stream.close();
-        assertThat(stream.closed(), is(true));
+        assertThat(stream.closed()).isTrue();
 
-        // stays paused after closure
         stream.resume();
         stream.read();
-        assertThat(stream.active(), is(false));
+        assertThat(stream.active()).isFalse();
 
-        // give time for additional chunks to be read,
-        // to ensure no more are
-        vertx.setTimer(100L, vv -> async.complete());
+        vertx.setTimer(100L, vv -> testContext.completeNow());
       })
     );
 
@@ -280,8 +253,8 @@ public class AsyncInputStreamTest {
 
   @Test
   @SuppressWarnings("java:S2699")
-  public void testHandlerRemoval(TestContext context) {
-    Async async = context.async();
+  @DisplayName("should deliver only the first chunk when handler is removed after first chunk")
+  void shouldDeliverOnlyFirstChunk_whenHandlerRemovedAfterFirstChunk(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(largeBuff)
@@ -290,29 +263,24 @@ public class AsyncInputStreamTest {
     List<byte[]> receivedData = new ArrayList<>();
 
     stream.endHandler(v ->
-      context.verify(_v -> {
-        assertThat(receivedData, hasSize(1));
-        assertThat(receivedData, hasSize(1));
-        assertThat(
-          receivedData.getFirst(),
-          is(Arrays.copyOfRange(largeBuff, 0, 8192))
-        );
-        async.complete();
+      testContext.verify(() -> {
+        assertThat(receivedData).hasSize(1);
+        assertThat(receivedData.getFirst()).isEqualTo(Arrays.copyOfRange(largeBuff, 0, 8192));
+        testContext.completeNow();
       })
     );
 
     stream.handler(buff -> {
       receivedData.add(buff.getBytes());
-
-      // deregister handler; no more chunks should be sent and it should end
       stream.handler(null);
     });
 
     stream.read();
   }
 
+  @DisplayName("should call both end handler and exception handler when close throws IOException")
   @Test
-  public void testCloseFailure(TestContext context) {
+  void shouldCallEndAndExceptionHandlers_whenCloseThrowsIoException(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new ByteArrayInputStream(smallBuff) {
@@ -323,17 +291,22 @@ public class AsyncInputStreamTest {
       }
     );
 
-    Async async = context.strictAsync(2);
+    var endHandled = Promise.<Void>promise();
+    var exceptionHandled = Promise.<Void>promise();
 
-    stream.endHandler(v -> async.countDown());
-    stream.exceptionHandler(t -> async.countDown());
-    stream.handler(buff -> context.fail("Should not have received data"));
+    stream.endHandler(v -> endHandled.tryComplete());
+    stream.exceptionHandler(t -> exceptionHandled.tryComplete());
+    stream.handler(buff -> testContext.failNow(new AssertionError("Should not have received data")));
 
     stream.close();
+
+    Future.all(endHandled.future(), exceptionHandled.future())
+      .onComplete(testContext.succeedingThenComplete());
   }
 
+  @DisplayName("should call both end handler and exception handler when read throws IOException")
   @Test
-  public void testReadFailure(TestContext context) {
+  void shouldCallEndAndExceptionHandlers_whenReadThrowsIoException(Vertx vertx, VertxTestContext testContext) {
     AsyncInputStream stream = new AsyncInputStream(
       vertx.getOrCreateContext(),
       new InputStream() {
@@ -344,12 +317,16 @@ public class AsyncInputStreamTest {
       }
     );
 
-    Async async = context.strictAsync(2);
+    var endHandled = Promise.<Void>promise();
+    var exceptionHandled = Promise.<Void>promise();
 
-    stream.endHandler(v -> async.countDown());
-    stream.exceptionHandler(t -> async.countDown());
-    stream.handler(buff -> context.fail("Should not have received data"));
+    stream.endHandler(v -> endHandled.tryComplete());
+    stream.exceptionHandler(t -> exceptionHandled.tryComplete());
+    stream.handler(buff -> testContext.failNow(new AssertionError("Should not have received data")));
 
     stream.read();
+
+    Future.all(endHandled.future(), exceptionHandled.future())
+      .onComplete(testContext.succeedingThenComplete());
   }
 }

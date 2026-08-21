@@ -1,11 +1,7 @@
 package org.folio.service.processing.ranking.e2e;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -24,52 +20,38 @@ import org.folio.service.processing.ranking.QueueItemPartNumberRanker;
 import org.folio.service.processing.ranking.QueueItemSizeRanker;
 import org.folio.service.processing.ranking.QueueItemTenantUsageRanker;
 import org.folio.service.processing.ranking.ScoreService;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Combines all rankers with realistic values and properties
+ * Combines all rankers with realistic values and properties.
  */
-@RunWith(VertxUnitRunner.class)
-public abstract class AbstractEndToEndRankingTest
-  extends AbstractQueueItemRankerTest {
-
-  @Mock
-  DataImportQueueItemDao queueItemDao;
-
-  QueueItemAgeRanker ageRanker;
-  QueueItemPartNumberRanker partNumberRanker;
-  QueueItemSizeRanker sizeRanker;
-  QueueItemTenantUsageRanker tenantUsageRanker;
-  QueueItemHolisticRanker ranker;
-
-  ScoreService service;
+@ExtendWith(MockitoExtension.class)
+@TestInstance(Lifecycle.PER_CLASS)
+public abstract class AbstractEndToEndRankingTest extends AbstractQueueItemRankerTest {
 
   protected List<DataImportQueueItem> waiting = new ArrayList<>();
   protected List<DataImportQueueItem> inProgress = new ArrayList<>();
   protected List<DataImportQueueItem> expected = new ArrayList<>();
 
-  long lastIdBit = 0;
+  @Mock
+  private DataImportQueueItemDao queueItemDao;
+  private ScoreService service;
+  private long lastIdBit = 0;
 
-  @Before
-  public void setUp() {
-    MockitoAnnotations.openMocks(this);
-
-    ageRanker = new QueueItemAgeRanker(0, 150, 4320, 10000);
-    partNumberRanker = new QueueItemPartNumberRanker(1, 0, 100);
-    sizeRanker = new QueueItemSizeRanker(40, -40, 100000);
-    tenantUsageRanker = new QueueItemTenantUsageRanker(100, -200);
-
-    ranker =
-      new QueueItemHolisticRanker(
-        ageRanker,
-        partNumberRanker,
-        sizeRanker,
-        tenantUsageRanker
-      );
+  @BeforeEach
+  public void setUpRanking() {
+    var ageRanker = new QueueItemAgeRanker(0, 150, 4320, 10000);
+    var partNumberRanker = new QueueItemPartNumberRanker(1, 0, 100);
+    var sizeRanker = new QueueItemSizeRanker(40, -40, 100000);
+    var tenantUsageRanker = new QueueItemTenantUsageRanker(100, -200);
+    var ranker = new QueueItemHolisticRanker(ageRanker, partNumberRanker, sizeRanker, tenantUsageRanker);
 
     service = new ScoreService(ranker, queueItemDao);
 
@@ -103,18 +85,21 @@ public abstract class AbstractEndToEndRankingTest
     return new DataImportQueueItemCollection().withDataImportQueueItems(items);
   }
 
+  @DisplayName("should return items in expected order when all ranking factors are applied")
   @Test
-  public void testRanking() {
+  void shouldReturnItemsInExpectedOrder() {
+    // arrange
     NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
       collection(inProgress),
       collection(waiting)
     );
 
-    assertThat(result, hasSize(expected.size()));
+    // assert
+    assertThat(result).hasSize(expected.size());
 
     Iterator<DataImportQueueItem> actualIt = result.iterator();
     for (int i = 0; i < expected.size() && actualIt.hasNext(); i++) {
-      assertThat(actualIt.next(), is(equalTo(expected.get(i))));
+      assertThat(actualIt.next()).isEqualTo(expected.get(i));
     }
   }
 }

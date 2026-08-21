@@ -6,6 +6,8 @@ import io.vertx.core.Vertx;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import java.util.List;
+import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,14 +20,11 @@ import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.tools.utils.ModuleName;
 
-import java.util.List;
-import java.util.UUID;
-
 public final class EventHandlingUtil {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private EventHandlingUtil(){}
+  private EventHandlingUtil() { }
 
   public static String constructModuleName() {
     return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
@@ -33,23 +32,23 @@ public final class EventHandlingUtil {
   }
 
   /**
-   * Prepares and sends event with payload to kafka
+   * Prepares and sends event with payload to kafka.
    *
-   * @param tenantId tenant id
+   * @param tenantId     tenant id
    * @param eventPayload eventPayload in String representation
-   * @param eventType eventType
+   * @param eventType    eventType
    * @param kafkaHeaders kafka headers
-   * @param kafkaConfig kafka config
+   * @param kafkaConfig  kafka config
    * @return completed future with true if event was sent successfully
    */
   public static Future<Boolean> sendEventToKafka(
-      String tenantId,
-      String eventPayload,
-      String eventType,
-      List<KafkaHeader> kafkaHeaders,
-      KafkaConfig kafkaConfig,
-      String key,
-      Vertx vertx) {
+    String tenantId,
+    String eventPayload,
+    String eventType,
+    List<KafkaHeader> kafkaHeaders,
+    KafkaConfig kafkaConfig,
+    String key,
+    Vertx vertx) {
     LOGGER.debug("sendEventToKafka:: Starting to send event to Kafka for eventType: {}", eventType);
     Event event = createEvent(eventPayload, eventType, tenantId);
 
@@ -80,23 +79,8 @@ public final class EventHandlingUtil {
     return promise.future();
   }
 
-  private static void logSendingSucceeded(String eventType, String chunkId, String recordId) {
-    if (StringUtils.isBlank(recordId)) {
-      LOGGER.info("logSendingSucceeded:: Event with type: {} and chunkId: {} was sent to kafka", eventType, chunkId);
-    } else {
-      LOGGER.info("logSendingSucceeded:: Event with type: {} and recordId: {} was sent to kafka", eventType, recordId);
-    }
-  }
-
-  private static String extractHeader(List<KafkaHeader> kafkaHeaders, String headerName) {
-    return kafkaHeaders.stream()
-      .filter(header -> header.key().equals(headerName))
-      .findFirst()
-      .map(header -> header.value().toString())
-      .orElse(null);
-  }
-
-  public static KafkaProducerRecord<String, String> createProducerRecord(Event event, String key, String topicName, List<KafkaHeader> kafkaHeaders) {
+  public static KafkaProducerRecord<String, String> createProducerRecord(Event event, String key, String topicName,
+                                                                         List<KafkaHeader> kafkaHeaders) {
     var producerRecord = new KafkaProducerRecordBuilder<String, Object>(event.getEventMetadata().getTenantId())
       .key(key)
       .value(event)
@@ -121,5 +105,21 @@ public final class EventHandlingUtil {
         .withTenantId(tenantId)
         .withEventTTL(1)
         .withPublishedBy(constructModuleName()));
+  }
+
+  private static void logSendingSucceeded(String eventType, String chunkId, String recordId) {
+    if (StringUtils.isBlank(recordId)) {
+      LOGGER.info("logSendingSucceeded:: Event with type: {} and chunkId: {} was sent to kafka", eventType, chunkId);
+    } else {
+      LOGGER.info("logSendingSucceeded:: Event with type: {} and recordId: {} was sent to kafka", eventType, recordId);
+    }
+  }
+
+  private static String extractHeader(List<KafkaHeader> kafkaHeaders, String headerName) {
+    return kafkaHeaders.stream()
+      .filter(header -> header.key().equals(headerName))
+      .findFirst()
+      .map(header -> header.value().toString())
+      .orElse(null);
   }
 }

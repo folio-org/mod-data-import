@@ -23,11 +23,10 @@ public interface FileProcessor { //NOSONAR
 
   /**
    * Performs processing files related to given request,
-   * sets JobExecution status to ERROR in case file processing failed
+   * sets JobExecution status to ERROR in case file processing failed.
    *
    * @param request request for processing
    * @param params  parameters necessary for connection to the OKAPI
    */
   void process(JsonObject request, JsonObject params);
-
 }

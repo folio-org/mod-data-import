@@ -1,18 +1,28 @@
 package org.folio.rest.impl;
 
+import static org.folio.rest.RestVerticle.STREAM_ABORT;
+import static org.folio.rest.jaxrs.model.FileDefinition.Status.ERROR;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.Map;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.folio.dataimport.util.ExceptionHelper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ConnectionParams;
-import org.folio.rest.RestVerticle;
+import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.client.ChangeManagerClient;
 import org.folio.rest.jaxrs.model.AssembleFileDto;
@@ -36,18 +46,7 @@ import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.Response;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.Map;
-
-import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
-import static org.folio.rest.RestVerticle.STREAM_ABORT;
-import static org.folio.rest.jaxrs.model.FileDefinition.Status.ERROR;
-
+@SuppressWarnings("java:S6813")
 public class DataImportImpl implements DataImport {
 
   private static final Logger LOGGER = LogManager.getLogger();
@@ -57,6 +56,8 @@ public class DataImportImpl implements DataImport {
   private static final String FILE_EXTENSION_VALIDATE_ERROR_MESSAGE = "Failed to validate file extension";
   private static final String UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE = "Failed to validate Upload Definition";
   private static final String FILE_EXTENSION_VALID_REGEXP = "^\\.(\\w+)$";
+  private final FileProcessor fileProcessor;
+  private final String tenantId;
 
   @Autowired
   private UploadDefinitionService uploadDefinitionService;
@@ -68,13 +69,9 @@ public class DataImportImpl implements DataImport {
   private MinioStorageService minioStorageService;
   @Autowired
   private SplitFileProcessingService splitFileProcessingService;
-
   @Value("${SPLIT_FILES_ENABLED:false}")
   private boolean fileSplittingEnabled;
-
-  private final FileProcessor fileProcessor;
   private Future<UploadDefinition> fileUploadStateFuture;
-  private final String tenantId;
 
   public DataImportImpl(Vertx vertx, String tenantId) {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -93,7 +90,8 @@ public class DataImportImpl implements DataImport {
             LOGGER.warn(UPLOAD_DEFINITION_VALIDATE_ERROR_MESSAGE, errors.cause());
             asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
           } else if (errors.result().getTotalRecords() > 0) {
-            asyncResultHandler.handle(Future.succeededFuture(PostDataImportUploadDefinitionsResponse.respond422WithApplicationJson(errors.result())));
+            asyncResultHandler.handle(Future.succeededFuture(
+              PostDataImportUploadDefinitionsResponse.respond422WithApplicationJson(errors.result())));
           } else {
             ConnectionParams params = new ConnectionParams(okapiHeaders);
             uploadDefinitionService.addUploadDefinition(entity, params)
@@ -111,7 +109,8 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportUploadDefinitions(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders,
+  public void getDataImportUploadDefinitions(String query, String totalRecords, int offset, int limit,
+                                             Map<String, String> okapiHeaders,
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
@@ -131,49 +130,57 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void putDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, UploadDefinition entity,
-                                                                 Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+                                                                 Map<String, String> okapiHeaders,
+                                                                 Handler<AsyncResult<Response>> asyncResultHandler,
                                                                  Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         entity.setId(uploadDefinitionId);
         LOGGER.debug("putDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
         uploadDefinitionService.updateBlocking(uploadDefinitionId, uploadDef ->
-          // just update UploadDefinition without FileDefinition changes
-          Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
+            // just update UploadDefinition without FileDefinition changes
+            Future.succeededFuture(entity.withFileDefinitions(uploadDef.getFileDefinitions())), tenantId)
           .map(PutDataImportUploadDefinitionsByUploadDefinitionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOGGER.warn("putDataImportUploadDefinitionsByUploadDefinitionId:: Cannot update upload definition by id {}", uploadDefinitionId, e);
+        LOGGER.warn("putDataImportUploadDefinitionsByUploadDefinitionId:: Cannot update upload definition by id {}",
+          uploadDefinitionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
 
   @Override
-  public void deleteDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, Map<String, String> okapiHeaders,
-                                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void deleteDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId,
+                                                                    Map<String, String> okapiHeaders,
+                                                                    Handler<AsyncResult<Response>> asyncResultHandler,
+                                                                    Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        LOGGER.debug("deleteDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
+        LOGGER.debug("deleteDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}",
+          uploadDefinitionId);
         ConnectionParams params = new ConnectionParams(okapiHeaders);
         uploadDefinitionService.deleteUploadDefinition(uploadDefinitionId, params)
           .map(deleted -> (Response) DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.respond204())
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOGGER.warn("deleteDataImportUploadDefinitionsByUploadDefinitionId:: Error while deleting upload definition", e);
+        LOGGER.warn("deleteDataImportUploadDefinitionsByUploadDefinitionId:: Error while deleting upload definition",
+          e);
         asyncResultHandler.handle(Future.succeededFuture(
-          DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse.
-            respond500WithTextPlain(Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase())));
+          DeleteDataImportUploadDefinitionsByUploadDefinitionIdResponse
+            .respond500WithTextPlain(Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase())));
       }
     });
   }
 
   @Override
-  public void getDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId, Map<String, String> okapiHeaders,
-                                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getDataImportUploadDefinitionsByUploadDefinitionId(String uploadDefinitionId,
+                                                                 Map<String, String> okapiHeaders,
+                                                                 Handler<AsyncResult<Response>> asyncResultHandler,
+                                                                 Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         LOGGER.debug("getDataImportUploadDefinitionsByUploadDefinitionId:: uploadDefinitionId {}", uploadDefinitionId);
@@ -185,7 +192,8 @@ public class DataImportImpl implements DataImport {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOGGER.warn("getDataImportUploadDefinitionsByUploadDefinitionId:: Cannot get upload definitions by id {}", uploadDefinitionId, e);
+        LOGGER.warn("getDataImportUploadDefinitionsByUploadDefinitionId:: Cannot get upload definitions by id {}",
+          uploadDefinitionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -193,48 +201,62 @@ public class DataImportImpl implements DataImport {
 
   @Override
   public void postDataImportUploadDefinitionsFilesByUploadDefinitionId(String uploadDefinitionId, FileDefinition entity,
-                                                                       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+                                                                       Map<String, String> okapiHeaders,
+                                                                       Handler<AsyncResult<Response>> handler,
                                                                        Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        LOGGER.debug("postDataImportUploadDefinitionsFilesByUploadDefinitionId:: uploadDefinitionId {}, fileDefinitionId {}", uploadDefinitionId, entity.getId());
+        LOGGER.debug(
+          "postDataImportUploadDefinitionsFilesByUploadDefinitionId:: uploadDefinitionId {}, fileDefinitionId {}",
+          uploadDefinitionId, entity.getId());
         uploadDefinitionService.addFileDefinitionToUpload(entity, tenantId)
           .map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdResponse::respond201WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .onComplete(asyncResultHandler);
+          .onComplete(handler);
       } catch (Exception e) {
-        LOGGER.warn("postDataImportUploadDefinitionsFilesByUploadDefinitionId:: Cannot create upload definitions files by uploadDefinitionId {}", uploadDefinitionId, e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+        LOGGER.warn("postDataImportUploadDefinitionsFilesByUploadDefinitionId:: "
+                    + "Cannot create upload definitions files by uploadDefinitionId {}", uploadDefinitionId, e);
+        handler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
 
   @Override
-  public void deleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId(String uploadDefinitionId, String fileId, Map<String, String> okapiHeaders,
-                                                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void deleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId(
+    String uploadDefinitionId, String fileId,
+    Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler,
+    Context vertxContext) {
     try {
-      LOGGER.debug("deleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: fileId {}, uploadDefinitionId {}", fileId, uploadDefinitionId);
+      LOGGER.debug(
+        "deleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: fileId {}, uploadDefinitionId {}",
+        fileId, uploadDefinitionId);
       ConnectionParams params = new ConnectionParams(okapiHeaders);
       vertxContext.runOnContext(c -> fileService.deleteFile(fileId, uploadDefinitionId, params)
-        .map(deleted -> (Response) DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204())
+        .map(deleted ->
+          (Response) DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.respond204())
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler));
     } catch (Exception e) {
       LOGGER.warn("deleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: Error during file delete", e);
       asyncResultHandler.handle(Future.succeededFuture(
-        DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse.
-          respond500WithTextPlain(Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase())));
+        DeleteDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse
+          .respond500WithTextPlain(Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase())));
     }
   }
 
   @Stream
   @Override
-  public void postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId(String uploadDefinitionId, String fileId,
-                                                                                InputStream entity, Map<String, String> okapiHeaders,
-                                                                                Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId(
+    String uploadDefinitionId, String fileId, InputStream entity,
+    Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler,
+    Context vertxContext) {
     try {
-      LOGGER.debug("postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: uploadDefinitionId {}, fileId {}", uploadDefinitionId, fileId);
+      LOGGER.debug(
+        "postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: uploadDefinitionId {}, fileId {}",
+        uploadDefinitionId, fileId);
       Future<Response> responseFuture;
       ConnectionParams params = new ConnectionParams(okapiHeaders);
       if (okapiHeaders.get(STREAM_ABORT) == null) {
@@ -244,40 +266,73 @@ public class DataImportImpl implements DataImport {
         }
         fileUploadStateFuture = fileUploadStateFuture.compose(def ->
           fileService.saveFileChunk(fileId, def, data, params)
-            .compose(fileDefinition -> data.length == 0 ?
-              fileService.afterFileSave(fileDefinition, params)
-              : Future.succeededFuture(def)));
-        responseFuture = fileUploadStateFuture.map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond200WithApplicationJson);
+            .compose(fileDefinition -> data.length == 0
+                                       ? fileService.afterFileSave(fileDefinition, params)
+                                       : Future.succeededFuture(def)));
+        responseFuture = fileUploadStateFuture.map(
+          PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond200WithApplicationJson);
       } else {
         responseFuture = uploadDefinitionService.updateFileDefinitionStatus(uploadDefinitionId, fileId, ERROR, tenantId)
           .map(this::areAllFileDefinitionsFailed)
-          .compose(filesFailed -> filesFailed
-            ? uploadDefinitionService.updateUploadDefinitionStatus(uploadDefinitionId, UploadDefinition.Status.ERROR, tenantId)
-            : Future.succeededFuture())
+          .compose(filesFailed -> Boolean.TRUE.equals(filesFailed)
+                                  ? uploadDefinitionService.updateUploadDefinitionStatus(uploadDefinitionId,
+            UploadDefinition.Status.ERROR, tenantId)
+                                  : Future.succeededFuture())
           .map(String.format("Upload stream for file with id '%s' has been interrupted", fileId))
           .map(PostDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileIdResponse::respond400WithTextPlain);
       }
-      responseFuture.map(Response.class::cast)
+      responseFuture
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler);
     } catch (Exception e) {
-      LOGGER.warn("postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: Cannot create upload definitions files by uploadDefinitionId {} and fileId {}", uploadDefinitionId, fileId);
+      LOGGER.warn("postDataImportUploadDefinitionsFilesByUploadDefinitionIdAndFileId:: "
+                  + "Cannot create upload definitions files by uploadDefinitionId {} and fileId {}",
+        uploadDefinitionId, fileId);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
     }
   }
 
-  private boolean areAllFileDefinitionsFailed(UploadDefinition uploadDefinition) {
-    return uploadDefinition.getFileDefinitions().stream()
-      .allMatch(fileDefinition -> fileDefinition.getStatus().equals(ERROR));
+  @Override
+  public void postDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileId(
+    String uploadDefinitionId,
+    String fileId, AssembleFileDto entity, Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      LOGGER.debug("postDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileId:: "
+                   + "Assemble Storage File to complete upload def={} file={} key={}",
+        uploadDefinitionId, fileId, entity.getKey());
+      ConnectionParams params = new ConnectionParams(okapiHeaders);
+      fileService.beforeFileSave(fileId, uploadDefinitionId, params)
+        .map(uploadDefinition ->
+          uploadDefinition
+            .getFileDefinitions()
+            .stream()
+            .filter(f -> f.getId().equals(fileId))
+            .findFirst()
+            .orElseThrow()
+        )
+        .compose(fileDefinition ->
+          minioStorageService.completeMultipartFileUpload(entity.getKey(), entity.getUploadId(), entity.getTags())
+            .map(fileDefinition)
+        )
+        .compose(fileDefinition -> fileService.afterFileSave(fileDefinition.withSourcePath(entity.getKey()), params))
+        .map(PostDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileIdResponse.respond204())
+        .map(Response.class::cast)
+        .otherwise(ExceptionHelper::mapExceptionToResponse)
+        .onComplete(asyncResultHandler);
+    });
   }
 
   @Override
-  public void postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId(String uploadDefinitionId, ProcessFilesRqDto entity,
-                                                                              Map<String, String> okapiHeaders,
-                                                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId(
+    String uploadDefinitionId, ProcessFilesRqDto entity,
+    Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler,
+    Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
-        LOGGER.info("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Starting file processing for upload definition {}", uploadDefinitionId);
+        LOGGER.info("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: "
+                    + "Starting file processing for upload definition {}", uploadDefinitionId);
 
         ensureProcessFilesRqDtoWithFileDefinitionSourcePath(entity)
           .compose(v -> {
@@ -296,18 +351,60 @@ public class DataImportImpl implements DataImport {
             return Future.succeededFuture();
           })
           .onFailure(e -> {
-            LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Error during file processing for uploadDefinitionId: {}", uploadDefinitionId, e);
+            LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: "
+                        + "Error during file processing for uploadDefinitionId: {}", uploadDefinitionId, e);
             asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
           });
       } catch (Exception e) {
-        LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: Cannot upload definitions process files by uploadDefinitionId {}", uploadDefinitionId, e);
+        LOGGER.warn("postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId:: "
+                    + "Cannot upload definitions process files by uploadDefinitionId {}", uploadDefinitionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
 
   @Override
-  public void getDataImportFileExtensions(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders,
+  public void deleteDataImportJobExecutionsCancelByJobExecutionId(String jobExecutionId,
+                                                                  Map<String, String> okapiHeaders,
+                                                                  Handler<AsyncResult<Response>> asyncResultHandler,
+                                                                  Context vertxContext) {
+    ConnectionParams params = new ConnectionParams(okapiHeaders);
+    ChangeManagerClient client =
+      new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(),
+        vertxContext.owner().createHttpClient());
+
+    vertxContext.runOnContext(v ->
+      splitFileProcessingService.cancelJob(jobExecutionId, params, client)
+        .map(DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson(
+          new CancelResponse().withOk(true)
+        ))
+        .map(Response.class::cast)
+        .onComplete(asyncResultHandler)
+    );
+  }
+
+  @Override
+  public void getDataImportJobExecutionsDownloadUrlByJobExecutionId(String jobExecutionId,
+                                                                    Map<String, String> okapiHeaders,
+                                                                    Handler<AsyncResult<Response>> asyncResultHandler,
+                                                                    Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      LOGGER.debug("getDataImportJobExecutionsDownloadUrlByJobExecutionId:: getting download URL for job execution {}",
+        jobExecutionId);
+      splitFileProcessingService
+        .getKey(jobExecutionId, new ConnectionParams(okapiHeaders))
+        .compose(key -> minioStorageService.getFileDownloadUrl(key))
+        .map(GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse::respond200WithApplicationJson)
+        .map(Response.class::cast)
+        .otherwise(
+          vv -> GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse.respond404WithTextPlain("Not found"))
+        .onComplete(asyncResultHandler);
+    });
+  }
+
+  @Override
+  public void getDataImportFileExtensions(String query, String totalRecords, int offset, int limit,
+                                          Map<String, String> okapiHeaders,
                                           Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -335,7 +432,8 @@ public class DataImportImpl implements DataImport {
             LOGGER.warn(FILE_EXTENSION_VALIDATE_ERROR_MESSAGE, errors.cause());
             asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
           } else if (errors.result().getTotalRecords() > 0) {
-            asyncResultHandler.handle(Future.succeededFuture(PostDataImportFileExtensionsResponse.respond422WithApplicationJson(errors.result())));
+            asyncResultHandler.handle(Future.succeededFuture(
+              PostDataImportFileExtensionsResponse.respond422WithApplicationJson(errors.result())));
           } else {
             fileExtensionService.addFileExtension(entity, new ConnectionParams(okapiHeaders))
               .map((Response) PostDataImportFileExtensionsResponse
@@ -346,6 +444,57 @@ public class DataImportImpl implements DataImport {
         });
       } catch (Exception e) {
         LOGGER.warn("postDataImportFileExtensions:: Failed to create file extension", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void putDataImportFileExtensionsById(String id, FileExtension entity, Map<String, String> okapiHeaders,
+                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        LOGGER.debug("putDataImportFileExtensionsById:: fileExtensionId {}", id);
+        validateFileExtension(entity).onComplete(errors -> {
+          entity.setId(id);
+          if (errors.failed()) {
+            LOGGER.warn(FILE_EXTENSION_VALIDATE_ERROR_MESSAGE, errors.cause());
+            asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
+          } else if (errors.result().getTotalRecords() > 0) {
+            asyncResultHandler.handle(Future.succeededFuture(
+              PutDataImportFileExtensionsByIdResponse.respond422WithApplicationJson(errors.result())));
+          } else {
+            fileExtensionService.updateFileExtension(entity, new ConnectionParams(okapiHeaders))
+              .map(updatedEntity -> (Response) PutDataImportFileExtensionsByIdResponse.respond200WithApplicationJson(
+                updatedEntity))
+              .otherwise(ExceptionHelper::mapExceptionToResponse)
+              .onComplete(asyncResultHandler);
+          }
+        });
+      } catch (Exception e) {
+        LOGGER.warn("putDataImportFileExtensionsById:: Failed to update file extension", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void deleteDataImportFileExtensionsById(String id, Map<String, String> okapiHeaders,
+                                                 Handler<AsyncResult<Response>> asyncResultHandler,
+                                                 Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        LOGGER.debug("deleteDataImportFileExtensionsById:: fileExtensionId {}", id);
+        fileExtensionService.deleteFileExtension(id, tenantId)
+          .map(deleted -> Boolean.TRUE.equals(deleted)
+                          ? DeleteDataImportFileExtensionsByIdResponse.respond204()
+                          : DeleteDataImportFileExtensionsByIdResponse.respond404WithTextPlain(
+                            String.format("FileExtension with id '%s' was not found", id)))
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOGGER.warn("deleteDataImportFileExtensionsById:: Failed to delete file extension", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -372,56 +521,9 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void putDataImportFileExtensionsById(String id, FileExtension entity, Map<String, String> okapiHeaders,
-                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        LOGGER.debug("putDataImportFileExtensionsById:: fileExtensionId {}", id);
-        validateFileExtension(entity).onComplete(errors -> {
-          entity.setId(id);
-          if (errors.failed()) {
-            LOGGER.warn(FILE_EXTENSION_VALIDATE_ERROR_MESSAGE, errors.cause());
-            asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
-          } else if (errors.result().getTotalRecords() > 0) {
-            asyncResultHandler.handle(Future.succeededFuture(PutDataImportFileExtensionsByIdResponse.respond422WithApplicationJson(errors.result())));
-          } else {
-            fileExtensionService.updateFileExtension(entity, new ConnectionParams(okapiHeaders))
-              .map(updatedEntity -> (Response) PutDataImportFileExtensionsByIdResponse.respond200WithApplicationJson(updatedEntity))
-              .otherwise(ExceptionHelper::mapExceptionToResponse)
-              .onComplete(asyncResultHandler);
-          }
-        });
-      } catch (Exception e) {
-        LOGGER.warn("putDataImportFileExtensionsById:: Failed to update file extension", e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
-      }
-    });
-  }
-
-  @Override
-  public void deleteDataImportFileExtensionsById(String id, Map<String, String> okapiHeaders,
-                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        LOGGER.debug("deleteDataImportFileExtensionsById:: fileExtensionId {}", id);
-        fileExtensionService.deleteFileExtension(id, tenantId)
-          .map(deleted -> deleted ?
-            DeleteDataImportFileExtensionsByIdResponse.respond204() :
-            DeleteDataImportFileExtensionsByIdResponse.respond404WithTextPlain(
-              String.format("FileExtension with id '%s' was not found", id)))
-          .map(Response.class::cast)
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .onComplete(asyncResultHandler);
-      } catch (Exception e) {
-        LOGGER.warn("deleteDataImportFileExtensionsById:: Failed to delete file extension", e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
-      }
-    });
-  }
-
-  @Override
   public void postDataImportFileExtensionsRestoreDefault(Map<String, String> okapiHeaders,
-                                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                         Handler<AsyncResult<Response>> asyncResultHandler,
+                                                         Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         LOGGER.debug("postDataImportFileExtensionsRestoreDefault:: tenantId {}", tenantId);
@@ -438,7 +540,8 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportDataTypes(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+  public void getDataImportDataTypes(Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler,
                                      Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -456,7 +559,20 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportUploadUrl(String fileName, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getDataImportSplitStatus(Map<String, String> okapiHeaders,
+                                       Handler<AsyncResult<Response>> asyncResultHandler,
+                                       Context vertxContext) {
+    vertxContext.runOnContext(v ->
+      Future.succeededFuture(new SplitStatus().withSplitStatus(this.fileSplittingEnabled))
+        .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
+        .map(Response.class::cast)
+        .onComplete(asyncResultHandler)
+    );
+  }
+
+  @Override
+  public void getDataImportUploadUrl(String fileName, Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       LOGGER.debug("getDataImportUploadUrl:: getting upload url for filename {}", fileName);
       minioStorageService.getFileUploadFirstPartUrl(fileName, tenantId)
@@ -468,130 +584,19 @@ public class DataImportImpl implements DataImport {
   }
 
   @Override
-  public void getDataImportUploadUrlSubsequent(String key, String uploadId, int partNumber, Map<String, String> okapiHeaders,
-                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getDataImportUploadUrlSubsequent(String key, String uploadId, int partNumber,
+                                               Map<String, String> okapiHeaders,
+                                               Handler<AsyncResult<Response>> asyncResultHandler,
+                                               Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      LOGGER.debug(
-        "getDataImportUploadUrlSubsequent:: getting subsequent upload url, part #{} of key {} (upload ID {})",
-        partNumber,
-        key,
-        uploadId
-      );
+      LOGGER.debug("getDataImportUploadUrlSubsequent:: "
+                   + "getting subsequent upload url, part #{} of key {} (upload ID {})", partNumber, key, uploadId);
       minioStorageService.getFileUploadPartUrl(key, uploadId, partNumber)
         .map(GetDataImportUploadUrlSubsequentResponse::respond200WithApplicationJson)
         .map(Response.class::cast)
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler);
     });
-  }
-
-  @Override
-  public void getDataImportJobExecutionsDownloadUrlByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
-                                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      LOGGER.debug(
-        "getDataImportJobExecutionsDownloadUrlByJobExecutionId:: getting download URL for job execution {}",
-        jobExecutionId
-      );
-      splitFileProcessingService
-        .getKey(jobExecutionId, new ConnectionParams(okapiHeaders))
-        .compose(key -> minioStorageService.getFileDownloadUrl(key))
-        .map(GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse::respond200WithApplicationJson)
-        .map(Response.class::cast)
-        .otherwise(vv -> GetDataImportJobExecutionsDownloadUrlByJobExecutionIdResponse.respond404WithTextPlain("Not found"))
-        .onComplete(asyncResultHandler);
-    });
-  }
-
-  @Override
-  public void getDataImportSplitStatus(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-                                       Context vertxContext) {
-    vertxContext.runOnContext(v ->
-      Future.succeededFuture(new SplitStatus().withSplitStatus(this.fileSplittingEnabled))
-        .map(GetDataImportSplitStatusResponse::respond200WithApplicationJson)
-        .map(Response.class::cast)
-        .onComplete(asyncResultHandler)
-    );
-  }
-
-  @Override
-  public void postDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileId(String uploadDefinitionId,
-                              String fileId, AssembleFileDto entity, Map<String, String> okapiHeaders,
-                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      LOGGER.debug(
-        "postDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileId:: Assemble Storage File to complete upload def={} file={} key={}",
-        uploadDefinitionId,
-        fileId,
-        entity.getKey()
-      );
-      ConnectionParams params = new ConnectionParams(okapiHeaders);
-      fileService.beforeFileSave(fileId, uploadDefinitionId, params)
-        .map(uploadDefinition ->
-          uploadDefinition
-            .getFileDefinitions()
-            .stream()
-            .filter(f -> f.getId().equals(fileId))
-            .findFirst()
-            .orElseThrow()
-        )
-        .compose(fileDefinition ->
-          minioStorageService.completeMultipartFileUpload(entity.getKey(), entity.getUploadId(), entity.getTags())
-            .map(fileDefinition)
-        )
-        .compose(fileDefinition -> fileService.afterFileSave(fileDefinition.withSourcePath(entity.getKey()), params))
-        .map(PostDataImportUploadDefinitionsFilesAssembleStorageFileByUploadDefinitionIdAndFileIdResponse.respond204())
-        .map(Response.class::cast)
-        .otherwise(ExceptionHelper::mapExceptionToResponse)
-        .onComplete(asyncResultHandler);
-    });
-  }
-
-  @Override
-  public void deleteDataImportJobExecutionsCancelByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
-                                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    ConnectionParams params = new ConnectionParams(okapiHeaders);
-    ChangeManagerClient client = new ChangeManagerClient(params.getConnectionUrl(), params.getTenantId(), params.getToken(), vertxContext.owner().createHttpClient());
-
-    vertxContext.runOnContext(v ->
-      splitFileProcessingService.cancelJob(jobExecutionId, params, client)
-        .map(DeleteDataImportJobExecutionsCancelByJobExecutionIdResponse.respond200WithApplicationJson(
-          new CancelResponse().withOk(true)
-        ))
-        .map(Response.class::cast)
-        .onComplete(asyncResultHandler)
-    );
-  }
-
-  /**
-   * Validate {@link FileExtension} before save or update
-   *
-   * @param extension - {@link FileExtension} object to create or update
-   * @return - Future {@link Errors} object with list of validation errors
-   */
-  private Future<Errors> validateFileExtension(FileExtension extension) {
-    Errors errors = new Errors()
-      .withTotalRecords(0);
-    return Future.succeededFuture()
-      .map(v -> !extension.getExtension().matches(FILE_EXTENSION_VALID_REGEXP)
-        ? errors.withErrors(Collections.singletonList(new Error().withMessage(String.format(FILE_EXTENSION_INVALID_ERROR_MESSAGE, extension.getExtension())))).withTotalRecords(errors.getErrors().size() + 1)
-        : errors)
-      .compose(errorsReply -> fileExtensionService.isFileExtensionExistByName(extension, tenantId))
-      .map(exist -> exist && errors.getTotalRecords() == 0
-        ? errors.withErrors(Collections.singletonList(new Error().withMessage(String.format(FILE_EXTENSION_DUPLICATE_ERROR_MESSAGE, extension.getExtension())))).withTotalRecords(errors.getErrors().size() + 1)
-        : errors);
-  }
-
-  private static String addCreatedByConditionToCqlQuery(String cqlQuery, Map<String, String> okapiHeaders) {
-    String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
-    String token = okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN);
-    if (userId == null && token != null) {
-      userId = getUserIdFromToken(token);
-    }
-    if (StringUtils.isNotBlank(cqlQuery)) {
-      return String.format("metadata.createdByUserId == %s and %s", userId, cqlQuery);
-    }
-    return cqlQuery;
   }
 
   protected static String getUserIdFromToken(String token) {
@@ -606,14 +611,55 @@ public class DataImportImpl implements DataImport {
     }
   }
 
+  private boolean areAllFileDefinitionsFailed(UploadDefinition uploadDefinition) {
+    return uploadDefinition.getFileDefinitions().stream()
+      .allMatch(fileDefinition -> fileDefinition.getStatus().equals(ERROR));
+  }
+
+  /**
+   * Validate {@link FileExtension} before save or update.
+   *
+   * @param extension - {@link FileExtension} object to create or update
+   * @return - Future {@link Errors} object with list of validation errors
+   */
+  private Future<Errors> validateFileExtension(FileExtension extension) {
+    Errors errors = new Errors()
+      .withTotalRecords(0);
+    return Future.succeededFuture()
+      .map(v -> !extension.getExtension().matches(FILE_EXTENSION_VALID_REGEXP)
+                ? errors.withErrors(Collections.singletonList(new Error()
+          .withMessage(String.format(FILE_EXTENSION_INVALID_ERROR_MESSAGE, extension.getExtension()))))
+                  .withTotalRecords(errors.getErrors().size() + 1)
+                : errors)
+      .compose(errorsReply -> fileExtensionService.isFileExtensionExistByName(extension, tenantId))
+      .map(exist -> Boolean.TRUE.equals(exist) && errors.getTotalRecords() == 0
+                    ? errors.withErrors(Collections.singletonList(new Error()
+          .withMessage(String.format(FILE_EXTENSION_DUPLICATE_ERROR_MESSAGE, extension.getExtension()))))
+                      .withTotalRecords(errors.getErrors().size() + 1)
+                    : errors);
+  }
+
+  private static String addCreatedByConditionToCqlQuery(String cqlQuery, Map<String, String> okapiHeaders) {
+    String userId = okapiHeaders.get(XOkapiHeaders.USER_ID);
+    String token = okapiHeaders.get(XOkapiHeaders.TOKEN);
+    if (userId == null && token != null) {
+      userId = getUserIdFromToken(token);
+    }
+    if (StringUtils.isNotBlank(cqlQuery)) {
+      return String.format("metadata.createdByUserId == %s and %s", userId, cqlQuery);
+    }
+    return cqlQuery;
+  }
+
   private static String getJson(String strEncoded) {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
   }
 
   /**
-   * Populates {@code processFilesRqDto} with uploadDefinition from DB to ensure fileDefinition.sourcePath field value presence
-   * because since RMB v36.0.0, the fileDefinition.sourcePath field, defined as a read-only field, is passed as null
+   * Populates {@code processFilesRqDto} with uploadDefinition from DB to ensure fileDefinition.sourcePath
+   * field value presence because since RMB v36.0.0, the fileDefinition.sourcePath field,
+   * defined as a read-only field, is passed as null
    * to the {@link DataImportImpl#postDataImportUploadDefinitionsProcessFilesByUploadDefinitionId} method during the
    * endpoint call.
    *
@@ -624,10 +670,13 @@ public class DataImportImpl implements DataImport {
     String uploadDefinitionId = processFilesRqDto.getUploadDefinition().getId();
     return uploadDefinitionService.getUploadDefinitionById(uploadDefinitionId, tenantId)
       .compose(uploadDefinitionOptional -> uploadDefinitionOptional.isPresent()
-        ? Future.succeededFuture(processFilesRqDto.withUploadDefinition(uploadDefinitionOptional.get()))
-        : Future.failedFuture(new NotFoundException("Upload definition not found by id: " + uploadDefinitionId)))
+                                           ? Future.succeededFuture(
+        processFilesRqDto.withUploadDefinition(uploadDefinitionOptional.get()))
+                                           : Future.failedFuture(new NotFoundException(
+                                             "Upload definition not found by id: " + uploadDefinitionId)))
       .onFailure(e ->
-        LOGGER.warn("ensureProcessFilesRqDtoWithFileDefinitionSourcePath:: Failed to get upload definition by id: {}", uploadDefinitionId, e))
+        LOGGER.warn("ensureProcessFilesRqDtoWithFileDefinitionSourcePath:: Failed to get upload definition by id: {}",
+          uploadDefinitionId, e))
       .mapEmpty();
   }
 }

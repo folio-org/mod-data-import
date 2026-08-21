@@ -1,31 +1,11 @@
 package org.folio.service.cleanup;
 
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
+import static org.folio.rest.jaxrs.model.UploadDefinition.Status.LOADED;
+import static org.folio.support.TestUtil.TENANT_ID;
 
-import org.apache.commons.collections4.map.HashedMap;
-import org.apache.commons.io.FileUtils;
-import org.folio.dao.UploadDefinitionDao;
-import org.folio.dataimport.util.ConnectionParams;
-import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.AbstractRestTest;
-import org.folio.rest.jaxrs.model.FileDefinition;
-import org.folio.rest.jaxrs.model.Metadata;
-import org.folio.rest.jaxrs.model.UploadDefinition;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.PostgresClient;
-import org.folio.service.config.ApplicationTestConfig;
-import org.folio.spring.SpringContextUtil;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-
+import io.vertx.junit5.VertxTestContext;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,159 +13,120 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
+import org.apache.commons.collections4.map.HashedMap;
+import org.apache.commons.io.FileUtils;
+import org.folio.dao.UploadDefinitionDao;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.jaxrs.model.FileDefinition;
+import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.jaxrs.model.UploadDefinition;
+import org.folio.support.AbstractRestTest;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import static org.folio.rest.jaxrs.model.UploadDefinition.Status.COMPLETED;
-import static org.folio.rest.jaxrs.model.UploadDefinition.Status.LOADED;
+class StorageCleanupServiceImplTest extends AbstractRestTest {
 
-@RunWith(VertxUnitRunner.class)
-public class StorageCleanupServiceImplTest extends AbstractRestTest {
-
-  private static final String UPLOAD_DEFINITIONS_TABLE = "upload_definitions";
   private static final String STORAGE_PATH = "./storage";
   private static final long ONE_HOUR_MILLIS = 3600000;
 
-  private static Vertx vertx = Vertx.vertx();
-  private static File testFile = new File(STORAGE_PATH + "/" + "marc.mrc");
+  private static final File TEST_FILE = new File(STORAGE_PATH + "/marc.mrc");
 
   @Autowired
   private UploadDefinitionDao uploadDefinitionDao;
   @Autowired
   private StorageCleanupService storageCleanupService;
-  private ConnectionParams okapiParams;
+
+  private ConnectionParams connectionParams;
   private UploadDefinition uploadDefinition;
 
-  private FileDefinition fileDefinition = new FileDefinition()
-    .withId("776c7413-7ad9-467b-a686-775a434d2505")
-    .withSourcePath(testFile.getPath())
-    .withUiKey("marc.mrc.md1547160916680")
-    .withName("marc.mrc")
-    .withStatus(FileDefinition.Status.UPLOADED)
-    .withUploadDefinitionId("71a43ec9-d923-4c44-8405-979af23b7cc9")
-    .withSize(209);
-
-  public StorageCleanupServiceImplTest() {
-    Context vertxContext = vertx.getOrCreateContext();
-    SpringContextUtil.init(vertx, vertxContext, ApplicationTestConfig.class);
-    SpringContextUtil.autowireDependencies(this, vertxContext);
-  }
-
-  @Override
-  @Before
-  public void setUp(TestContext context) throws IOException {
-    super.setUp(context);
-
+  @BeforeEach
+  void setUpStorage() throws IOException {
     Map<String, String> headers = new HashedMap<>();
     headers.put(XOkapiHeaders.TENANT, TENANT_ID);
-    headers.put(XOkapiHeaders.URL, "http://localhost:" + mockServer.port());
-    okapiParams = new ConnectionParams(headers);
+    headers.put(XOkapiHeaders.URL, mockServerUrl());
+    connectionParams = new ConnectionParams(headers);
 
+    var fileDefinition = new FileDefinition()
+      .withId("776c7413-7ad9-467b-a686-775a434d2505")
+      .withSourcePath(TEST_FILE.getPath())
+      .withUiKey("marc.mrc.md1547160916680")
+      .withName("marc.mrc")
+      .withStatus(FileDefinition.Status.UPLOADED)
+      .withUploadDefinitionId("71a43ec9-d923-4c44-8405-979af23b7cc9")
+      .withSize(209);
 
     uploadDefinition = new UploadDefinition()
       .withId("71a43ec9-d923-4c44-8405-979af23b7cc9")
       .withMetaJobExecutionId("4044bf4d-fb53-4b01-81e9-fafff1024dde")
       .withStatus(LOADED)
       .withFileDefinitions(Collections.singletonList(fileDefinition))
-      .withMetadata(new Metadata()
-        .withCreatedDate(new Date())
-        .withUpdatedDate(new Date()));
+      .withMetadata(new Metadata().withCreatedDate(new Date()).withUpdatedDate(new Date()));
 
-    Files.createDirectory(Paths.get(testFile.getParent()));
-    Files.createFile(Paths.get(testFile.getPath()));
+    Files.createDirectories(Paths.get(TEST_FILE.getParent()));
+    Files.createFile(Paths.get(TEST_FILE.getPath()));
   }
 
-  @Override
-  protected void clearTable(TestContext context) {
-    Async async = context.async();
-    PostgresClient.getInstance(vertx, TENANT_ID).delete(UPLOAD_DEFINITIONS_TABLE, new Criterion(), event -> {
-      if (event.failed()) {
-        context.fail(event.cause());
-      }
-      async.complete();
-    });
-  }
-
-  @After
-  @Override
-  public void resetWiremock() {
-    // no-op
-  }
-
-  @After
-  public void tearDownFileSystem() throws IOException {
+  @AfterEach
+  void tearDownFileSystem() throws IOException {
     FileUtils.deleteDirectory(new File(STORAGE_PATH));
   }
 
+  @DisplayName("should remove file and return true when upload definition has COMPLETED status")
   @Test
-  public void shouldRemoveFileAndReturnSucceededFutureWithTrueWhenUploadDefinitionHasStatusCompleted(TestContext context) {
-    Async async = context.async();
+  void shouldRemoveFileAndReturnTrue_whenUploadDefinitionIsCompleted(VertxTestContext testContext) {
     uploadDefinition.setStatus(COMPLETED);
-    uploadDefinitionDao.addUploadDefinition(uploadDefinition, TENANT_ID).compose(saveAr -> {
-
-      Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
-
-      future.onComplete(ar -> {
-        context.assertTrue(ar.succeeded());
-        context.assertTrue(ar.result());
-        context.assertFalse(testFile.exists());
-        async.complete();
-      });
-      return future;
-    });
+    uploadDefinitionDao.addUploadDefinition(uploadDefinition, TENANT_ID)
+      .compose(v -> storageCleanupService.cleanStorage(connectionParams))
+      .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+        assertThat(result).isTrue();
+        assertThat(TEST_FILE).doesNotExist();
+        testContext.completeNow();
+      })));
   }
 
+  @DisplayName("should remove file and return true when upload definition was updated over one hour ago")
   @Test
-  public void shouldRemoveFileAndReturnSucceededFutureWhenUploadDefinitionHasBeenUpdatedOneHourAgo(TestContext context) {
-    Async async = context.async();
+  void shouldRemoveFileAndReturnTrue_whenUploadDefinitionIsOlderThanOneHour(VertxTestContext testContext) {
     uploadDefinition.getMetadata()
       .withCreatedDate(new Date(new Date().getTime() - ONE_HOUR_MILLIS))
       .withUpdatedDate(new Date(new Date().getTime() - ONE_HOUR_MILLIS));
-    uploadDefinitionDao.addUploadDefinition(uploadDefinition, TENANT_ID).compose(saveAr -> {
 
-      Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
-
-      future.onComplete(ar -> {
-        context.assertTrue(ar.succeeded());
-        context.assertTrue(ar.result());
-        context.assertFalse(testFile.exists());
-        async.complete();
-      });
-      return future;
-    });
+    uploadDefinitionDao.addUploadDefinition(uploadDefinition, TENANT_ID)
+      .compose(v -> storageCleanupService.cleanStorage(connectionParams))
+      .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+        assertThat(result).isTrue();
+        assertThat(TEST_FILE).doesNotExist();
+        testContext.completeNow();
+      })));
   }
 
+  @DisplayName("should return false and keep file when upload definition is recent and not completed")
   @Test
-  public void shouldReturnSucceededFutureWithFalseWhenUploadDefinitionNotCompletedAndHasNotBeenUpdatedOneHourAgoAndShouldNotRemoveFile(TestContext context) {
-    Async async = context.async();
-    uploadDefinitionDao.addUploadDefinition(uploadDefinition, TENANT_ID).compose(saveAr -> {
-
-      Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
-
-      future.onComplete(ar -> {
-        context.assertTrue(ar.succeeded());
-        context.assertFalse(ar.result());
-        context.assertTrue(testFile.exists());
-        async.complete();
-      });
-      return future;
-    });
+  void shouldReturnFalseAndKeepFile_whenUploadDefinitionIsRecentAndNotCompleted(VertxTestContext testContext) {
+    uploadDefinitionDao.addUploadDefinition(uploadDefinition, TENANT_ID)
+      .compose(v -> storageCleanupService.cleanStorage(connectionParams))
+      .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+        assertThat(result).isFalse();
+        assertThat(TEST_FILE).exists();
+        testContext.completeNow();
+      })));
   }
 
+  @DisplayName("should return false when file linked to completed upload definition does not exist")
   @Test
-  public void shouldReturnSucceededFutureWithFalseWhenFileLinkedToCompletedUploadDefinitionDoesNotExist(TestContext context) {
-    context.assertTrue(testFile.delete());
-    Async async = context.async();
+  void shouldReturnFalse_whenFileLinkedToCompletedUploadDefinitionDoesNotExist(VertxTestContext testContext) {
+    assertThat(TEST_FILE.delete()).isTrue();
     uploadDefinition.setStatus(COMPLETED);
-    uploadDefinitionDao.addUploadDefinition(uploadDefinition, TENANT_ID).compose(saveAr -> {
 
-      Future<Boolean> future = storageCleanupService.cleanStorage(okapiParams);
-
-      future.onComplete(ar -> {
-        context.assertTrue(ar.succeeded());
-        context.assertFalse(ar.result());
-        async.complete();
-      });
-      return future;
-    });
+    uploadDefinitionDao.addUploadDefinition(uploadDefinition, TENANT_ID)
+      .compose(v -> storageCleanupService.cleanStorage(connectionParams))
+      .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+        assertThat(result).isFalse();
+        testContext.completeNow();
+      })));
   }
-
 }

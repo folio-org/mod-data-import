@@ -1,29 +1,18 @@
-package org.folio.service.config;
+package org.folio.support;
 
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.config.ApplicationConfig;
 import org.folio.kafka.KafkaConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 
 @Configuration
-@ComponentScan(
-  basePackages = {
-    "org.folio.dao",
-    "org.folio.rest.impl",
-    "org.folio.service.auth",
-    "org.folio.service.cleanup",
-    "org.folio.service.file",
-    "org.folio.service.fileextension",
-    "org.folio.service.processing",
-    "org.folio.service.processing.ranking",
-    "org.folio.service.processing.split",
-    "org.folio.service.s3storage",
-    "org.folio.service.upload",
-  }
-)
+@Import(ApplicationConfig.class)
 public class ApplicationTestConfig {
 
   private static final Logger LOGGER = LogManager.getLogger();
@@ -48,8 +37,20 @@ public class ApplicationTestConfig {
       .okapiUrl(okapiUrl)
       .replicationFactor(replicationFactor)
       .build();
-    LOGGER.debug("kafkaConfigBean:: kafkaConfig: " + kafkaConfig);
+    LOGGER.debug("kafkaConfigBean:: kafkaConfig: {}", kafkaConfig);
 
     return kafkaConfig;
+  }
+
+  @Bean
+  public Vertx vertx() {
+    //Initialize empty vertx object to be used by ApplicationConfig
+    return Vertx.vertx();
+  }
+
+  @Bean
+  public Context context() {
+    //Initialize empty context
+    return Vertx.vertx().getOrCreateContext();
   }
 }

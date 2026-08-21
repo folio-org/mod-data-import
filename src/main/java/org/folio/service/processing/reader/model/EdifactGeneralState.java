@@ -1,8 +1,7 @@
 package org.folio.service.processing.reader.model;
 
-import org.folio.service.processing.reader.EdifactParser;
-
 import java.util.Map;
+import org.folio.service.processing.reader.EdifactParser;
 
 /**
  * EdifactFooterState is a class for return EDIFACT invoice and for receiving ControlReference from UNB tag.
@@ -10,8 +9,8 @@ import java.util.Map;
  */
 public class EdifactGeneralState extends EdifactState {
 
+  private final StringBuilder content = new StringBuilder();
   private String controlReference = "";
-  private StringBuilder content = new StringBuilder();
 
   public EdifactGeneralState(EdifactParser edifactParser, Map<String, Character> delimiters) {
     super(edifactParser, delimiters);

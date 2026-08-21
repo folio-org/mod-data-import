@@ -2,27 +2,19 @@ package org.folio.rest;
 
 import static org.hamcrest.Matchers.is;
 
-import io.restassured.RestAssured;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.folio.support.AbstractRestTest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-@RunWith(VertxUnitRunner.class)
-public class SplitStatusDefaultTest extends AbstractRestTest {
+class SplitStatusDefaultTest extends AbstractRestTest {
 
   private static final String SPLIT_STATUS_PATH = "/data-import/splitStatus";
 
+  @DisplayName("should return splitStatus=false when SPLIT_FILES_ENABLED is not set")
   @Test
-  public void testDefaultSplit() {
-    RestAssured
-      .given()
-      .spec(spec)
-      .when()
-      .get(SPLIT_STATUS_PATH)
-      .then()
-      .log()
-      .all()
+  void shouldReturnFalse_whenSplitFilesEnabledNotSet() {
+    getRequest(SPLIT_STATUS_PATH)
       .statusCode(HttpStatus.SC_OK)
       .body("splitStatus", is(false));
   }

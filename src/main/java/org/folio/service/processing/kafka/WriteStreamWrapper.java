@@ -4,16 +4,13 @@ import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import io.vertx.core.streams.WriteStream;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
-
 import java.util.List;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<String, String>> {
 
@@ -70,9 +67,11 @@ public class WriteStreamWrapper implements WriteStream<KafkaProducerRecord<Strin
       }
     }
     if (ar.succeeded()) {
-      LOGGER.debug("logChunkProcessingResult:: Next chunk has been written: chunkId: {} chunkNumber: {}", chunkId, chunkNumber);
+      LOGGER.debug("logChunkProcessingResult:: Next chunk has been written: chunkId: {} chunkNumber: {}", chunkId,
+        chunkNumber);
     } else {
-      LOGGER.warn("logChunkProcessingResult:: Next chunk has failed with errors chunkId: {} chunkNumber: {}", chunkId, chunkNumber, ar.cause());
+      LOGGER.warn("logChunkProcessingResult:: Next chunk has failed with errors chunkId: {} chunkNumber: {}", chunkId,
+        chunkNumber, ar.cause());
     }
   }
 }

@@ -1,9 +1,6 @@
 package org.folio.service.processing.ranking;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -12,22 +9,21 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Arrays;
 import java.util.NavigableSet;
 import java.util.UUID;
 import org.folio.dao.DataImportQueueItemDao;
 import org.folio.rest.jaxrs.model.DataImportQueueItem;
 import org.folio.rest.jaxrs.model.DataImportQueueItemCollection;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
-public class ScoreServiceRankingTest {
+@ExtendWith(MockitoExtension.class)
+class ScoreServiceRankingTest {
 
   @Mock
   DataImportQueueItemDao queueItemDao;
@@ -38,9 +34,186 @@ public class ScoreServiceRankingTest {
   @InjectMocks
   ScoreService service;
 
-  @Before
-  public void setUp() {
-    MockitoAnnotations.openMocks(this);
+  @DisplayName("should return empty set when waiting queue is empty")
+  @Test
+  void shouldReturnEmptySet_whenWaitingQueueIsEmpty() {
+    // arrange
+    DataImportQueueItemCollection waiting = collectionOfTenant();
+    DataImportQueueItemCollection inProgress = collectionOfTenant();
+
+    // act
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
+
+    // assert
+    assertThat(result).isEmpty();
+    verifyNoInteractions(ranker);
+  }
+
+  @DisplayName("should return empty set when waiting queue is empty and items are in progress")
+  @Test
+  void shouldReturnEmptySet_whenWaitingQueueIsEmptyWithInProgress() {
+    // arrange
+    DataImportQueueItemCollection waiting = collectionOfTenant();
+    DataImportQueueItemCollection inProgress = collectionOfTenant("A", "B");
+
+    // act
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
+
+    // assert
+    assertThat(result).isEmpty();
+    verifyNoInteractions(ranker);
+  }
+
+  @DisplayName("should return single item when waiting queue has one item")
+  @Test
+  void shouldReturnSingleItem_whenWaitingQueueHasSingleItem() {
+    // arrange
+    DataImportQueueItemCollection waiting = collectionOfTenant("A");
+    DataImportQueueItemCollection inProgress = collectionOfTenant();
+
+    // act
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
+
+    // assert
+    assertThat(result).containsExactly(waiting.getDataImportQueueItems().getFirst());
+
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
+  }
+
+  @DisplayName("should return single item when waiting queue has one item and others are in progress")
+  @Test
+  void shouldReturnSingleItem_whenWaitingQueueHasSingleItemWithInProgress() {
+    // arrange
+    DataImportQueueItemCollection waiting = collectionOfTenant("A");
+    DataImportQueueItemCollection inProgress = collectionOfTenant("B", "C");
+
+    // act
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
+
+    // assert
+    assertThat(result).containsExactly(waiting.getDataImportQueueItems().getFirst());
+
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
+  }
+
+  @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
+  @DisplayName("should rank items by score descending when tenants are A, B, C with A and B in progress")
+  @Test
+  void shouldRankItemsByScoreDescending_whenTenantsAreABCWithABInProgress() {
+    // arrange
+    DataImportQueueItemCollection waiting = collectionOfTenant("A", "B", "C");
+    DataImportQueueItemCollection inProgress = collectionOfTenant("A", "B");
+
+    when(ranker.score(any(), any()))
+      .thenAnswer(invocation -> {
+        DataImportQueueItem item = invocation.getArgument(0);
+        return (double) item.getTenant().charAt(0);
+      });
+
+    // act
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
+
+    // assert
+    assertThat(result).containsExactly(
+      // C should come first because it has the highest char code
+      waiting.getDataImportQueueItems().get(2),
+      waiting.getDataImportQueueItems().get(1),
+      waiting.getDataImportQueueItems().get(0)
+    );
+
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
+  }
+
+  @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
+  @DisplayName("should rank items by score descending when tenants are C, B, A with D and B in progress")
+  @Test
+  void shouldRankItemsByScoreDescending_whenTenantsAreCBAWithDBInProgress() {
+    // arrange
+    DataImportQueueItemCollection waiting = collectionOfTenant("C", "B", "A");
+    DataImportQueueItemCollection inProgress = collectionOfTenant("D", "B");
+
+    when(ranker.score(any(), any()))
+      .thenAnswer(invocation -> {
+        DataImportQueueItem item = invocation.getArgument(0);
+        return (double) item.getTenant().charAt(0);
+      });
+
+    // act
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
+
+    // assert
+    assertThat(result).containsExactly(
+      // C should come first because it has the highest char code
+      waiting.getDataImportQueueItems().get(0),
+      waiting.getDataImportQueueItems().get(1),
+      waiting.getDataImportQueueItems().get(2)
+    );
+
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
+  }
+
+  @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
+  @DisplayName("should rank items by score descending when tenants are A, C, B with D and B in progress")
+  @Test
+  void shouldRankItemsByScoreDescending_whenTenantsAreACBWithDBInProgress() {
+    // arrange
+    DataImportQueueItemCollection waiting = collectionOfTenant("A", "C", "B");
+    DataImportQueueItemCollection inProgress = collectionOfTenant("D", "B");
+
+    when(ranker.score(any(), any()))
+      .thenAnswer(invocation -> {
+        DataImportQueueItem item = invocation.getArgument(0);
+        return (double) item.getTenant().charAt(0);
+      });
+
+    // act
+    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
+      inProgress,
+      waiting
+    );
+
+    // assert
+    assertThat(result).containsExactly(
+      // C should come first because it has the highest char code
+      waiting.getDataImportQueueItems().get(1),
+      waiting.getDataImportQueueItems().get(2),
+      waiting.getDataImportQueueItems().get(0)
+    );
+
+    waiting
+      .getDataImportQueueItems()
+      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
+    verifyNoMoreInteractions(ranker);
   }
 
   private DataImportQueueItem ofTenant(String tenant) {
@@ -63,167 +236,5 @@ public class ScoreServiceRankingTest {
         .map(this::ofTenant)
         .toArray(DataImportQueueItem[]::new)
     );
-  }
-
-  @Test
-  public void testEmpty() {
-    DataImportQueueItemCollection waiting = collectionOfTenant();
-    DataImportQueueItemCollection inProgress = collectionOfTenant();
-
-    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
-      inProgress,
-      waiting
-    );
-
-    assertThat(result, is(empty()));
-
-    verifyNoInteractions(ranker);
-  }
-
-  @Test
-  public void testEmptyWithInProgress() {
-    DataImportQueueItemCollection waiting = collectionOfTenant();
-    DataImportQueueItemCollection inProgress = collectionOfTenant("A", "B");
-
-    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
-      inProgress,
-      waiting
-    );
-
-    assertThat(result, is(empty()));
-
-    verifyNoInteractions(ranker);
-  }
-
-  @Test
-  public void testSingleton() {
-    DataImportQueueItemCollection waiting = collectionOfTenant("A");
-    DataImportQueueItemCollection inProgress = collectionOfTenant();
-
-    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
-      inProgress,
-      waiting
-    );
-
-    assertThat(result, contains(waiting.getDataImportQueueItems().getFirst()));
-
-    waiting
-      .getDataImportQueueItems()
-      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-    verifyNoMoreInteractions(ranker);
-  }
-
-  @Test
-  public void testSingletonWithInProgress() {
-    DataImportQueueItemCollection waiting = collectionOfTenant("A");
-    DataImportQueueItemCollection inProgress = collectionOfTenant("B", "C");
-
-    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
-      inProgress,
-      waiting
-    );
-
-    assertThat(result, contains(waiting.getDataImportQueueItems().getFirst()));
-
-    waiting
-      .getDataImportQueueItems()
-      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-    verifyNoMoreInteractions(ranker);
-  }
-
-  @Test
-  public void testManyCase1() {
-    DataImportQueueItemCollection waiting = collectionOfTenant("A", "B", "C");
-    DataImportQueueItemCollection inProgress = collectionOfTenant("A", "B");
-
-    when(ranker.score(any(), any()))
-      .thenAnswer(invocation -> {
-        DataImportQueueItem item = invocation.getArgument(0);
-        return Double.valueOf(item.getTenant().charAt(0));
-      });
-
-    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
-      inProgress,
-      waiting
-    );
-
-    assertThat(
-      result,
-      contains(
-        // C should come first because it has the highest car code
-        waiting.getDataImportQueueItems().get(2),
-        waiting.getDataImportQueueItems().get(1),
-        waiting.getDataImportQueueItems().get(0)
-      )
-    );
-
-    waiting
-      .getDataImportQueueItems()
-      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-    verifyNoMoreInteractions(ranker);
-  }
-
-  @Test
-  public void testManyCase2() {
-    DataImportQueueItemCollection waiting = collectionOfTenant("C", "B", "A");
-    DataImportQueueItemCollection inProgress = collectionOfTenant("D", "B");
-
-    when(ranker.score(any(), any()))
-      .thenAnswer(invocation -> {
-        DataImportQueueItem item = invocation.getArgument(0);
-        return Double.valueOf(item.getTenant().charAt(0));
-      });
-
-    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
-      inProgress,
-      waiting
-    );
-
-    assertThat(
-      result,
-      contains(
-        // C should come first because it has the highest car code
-        waiting.getDataImportQueueItems().get(0),
-        waiting.getDataImportQueueItems().get(1),
-        waiting.getDataImportQueueItems().get(2)
-      )
-    );
-
-    waiting
-      .getDataImportQueueItems()
-      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-    verifyNoMoreInteractions(ranker);
-  }
-
-  @Test
-  public void testManyCase3() {
-    DataImportQueueItemCollection waiting = collectionOfTenant("A", "C", "B");
-    DataImportQueueItemCollection inProgress = collectionOfTenant("D", "B");
-
-    when(ranker.score(any(), any()))
-      .thenAnswer(invocation -> {
-        DataImportQueueItem item = invocation.getArgument(0);
-        return Double.valueOf(item.getTenant().charAt(0));
-      });
-
-    NavigableSet<DataImportQueueItem> result = service.getRankedQueueItems(
-      inProgress,
-      waiting
-    );
-
-    assertThat(
-      result,
-      contains(
-        // C should come first because it has the highest car code
-        waiting.getDataImportQueueItems().get(1),
-        waiting.getDataImportQueueItems().get(2),
-        waiting.getDataImportQueueItems().get(0)
-      )
-    );
-
-    waiting
-      .getDataImportQueueItems()
-      .forEach(item -> verify(ranker, times(1)).score(eq(item), any()));
-    verifyNoMoreInteractions(ranker);
   }
 }

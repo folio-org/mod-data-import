@@ -1,46 +1,45 @@
 package org.folio.service.processing.split;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.OpenOptions;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.io.File;
 import java.io.IOException;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 
-@RunWith(VertxUnitRunner.class)
-public class FileSplitWriterDeleteLocalTest {
+@ExtendWith(VertxExtension.class)
+class FileSplitWriterDeleteLocalTest {
 
   protected static Vertx vertx = Vertx.vertx();
-
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
   private static final String TEST_FILE = "src/test/resources/10.mrc";
   private static final String TEST_KEY = "10.mrc";
+  @TempDir
+  Path tempDir;
 
+  @DisplayName("should delete local chunk files after splitting when deleteLocalFiles is enabled")
   @Test
-  public void testCleanup(TestContext context) {
+  void shouldDeleteLocalChunkFiles_whenDeleteLocalFilesEnabled(VertxTestContext testContext) {
     vertx
       .getOrCreateContext()
       .owner()
       .fileSystem()
       .open(TEST_FILE, new OpenOptions().setRead(true))
       .onComplete(
-        context.asyncAssertSuccess(file -> {
+        testContext.succeeding(file -> {
           Promise<CompositeFuture> chunkUploadingCompositeFuturePromise = Promise.promise();
 
           try {
-            File folder = temporaryFolder.newFolder();
+            File folder = Files.createTempDirectory(tempDir, "delete-local").toFile();
 
             FileSplitWriter writer = new FileSplitWriter(
               FileSplitWriterOptions
@@ -56,25 +55,26 @@ public class FileSplitWriterDeleteLocalTest {
                 .build()
             );
 
-            file.pipeTo(writer).onComplete(context.asyncAssertSuccess());
+            file.pipeTo(writer).onComplete(testContext.succeeding(v -> { }));
             chunkUploadingCompositeFuturePromise
               .future()
               .onComplete(
-                context.asyncAssertSuccess(result -> {
-                  assertThat(result.list(), hasSize(4));
-                  // need to add a small delay since the actual deletion of files can be async
-                  // depending on OS implementations
-                  vertx.setTimer(
-                    100,
-                    _v ->
-                      context.verify(__v ->
-                        assertThat(folder.listFiles().length, is(0))
-                      )
-                  );
-                })
+                testContext.succeeding(result ->
+                  testContext.verify(() -> {
+                    assertThat(result.list()).hasSize(4);
+                    vertx.setTimer(
+                      100,
+                      l ->
+                        testContext.verify(() -> {
+                          assertThat(folder).isEmptyDirectory();
+                          testContext.completeNow();
+                        })
+                    );
+                  })
+                )
               );
           } catch (IOException err) {
-            context.fail(err);
+            testContext.failNow(err);
           }
         })
       );

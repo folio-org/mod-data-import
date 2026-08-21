@@ -25,7 +25,7 @@ public class PostgresClientFactory {
   }
 
   /**
-   * Creates instance of Postgres Client
+   * Creates instance of Postgres Client.
    *
    * @param tenantId tenant id
    * @return Postgres Client
@@ -37,5 +37,4 @@ public class PostgresClientFactory {
   public PostgresClient getInstance() {
     return PostgresClient.getInstance(vertx);
   }
-
 }

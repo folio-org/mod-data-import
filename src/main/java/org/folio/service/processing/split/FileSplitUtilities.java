@@ -22,7 +22,7 @@ public class FileSplitUtilities {
   public static final byte MARC_RECORD_TERMINATOR = (byte) 0x1d;
 
   /**
-   * Creates the S3 key for a split chunk within a larger file
+   * Creates the S3 key for a split chunk within a larger file.
    */
   public static String buildChunkKey(String baseKey, int partNumber) {
     String[] keyNameParts = baseKey.split("\\.");
@@ -114,8 +114,6 @@ public class FileSplitUtilities {
 
     String extension = FilenameUtils.getExtension(path);
 
-    return (
-      !JSON_EXTENSION.equals(extension) && !XML_EXTENSION.equals(extension)
-    );
+    return !JSON_EXTENSION.equals(extension) && !XML_EXTENSION.equals(extension);
   }
 }

@@ -40,14 +40,15 @@ import org.springframework.stereotype.Component;
 /**
  * Worker verticle to handle running jobs from S3 storage.
  *
+ * <p>
  * This is configured as a verticle to enable asynchronous processing apart from all normal HTTP/API threads
  */
 @Component
 public class S3JobRunningVerticle extends AbstractVerticle {
 
-  private static final Logger LOGGER = LogManager.getLogger();
+  protected static final AtomicInteger WORKERS_IN_USE = new AtomicInteger(0);
 
-  protected static final AtomicInteger workersInUse = new AtomicInteger(0);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private final DataImportQueueItemDao queueItemDao;
   private final MinioStorageService minioStorageService;
@@ -90,11 +91,16 @@ public class S3JobRunningVerticle extends AbstractVerticle {
     vertx.setPeriodic(this.pollInterval, v -> this.pollForJobs());
   }
 
+  @Override
+  public void stop() {
+    LOGGER.info("Stopping S3JobRunningVerticle");
+  }
+
   protected void pollForJobs() {
-    int currentWorkersInUse = workersInUse.get();
+    int currentWorkersInUse = WORKERS_IN_USE.get();
     LOGGER.info(
       "Checking for items available to run. Worker usage: {}/{}",
-      workersInUse,
+      WORKERS_IN_USE,
       maxWorkersCount
     );
 
@@ -105,14 +111,14 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             (DataImportQueueItem item) -> {
               LOGGER.info("Running item: {}", item);
 
-              workersInUse.incrementAndGet();
+              WORKERS_IN_USE.incrementAndGet();
 
               long startTimeStamp = System.currentTimeMillis();
 
               vertx.runOnContext(v ->
                 processQueueItem(item)
                   .onComplete((AsyncResult<QueueJob> vv) -> {
-                    int workersLeft = workersInUse.decrementAndGet();
+                    int workersLeft = WORKERS_IN_USE.decrementAndGet();
                     LOGGER.info(
                       "Competed running item: {}; Time spent (in ms): {}; Active workers left: {}",
                       item,
@@ -123,7 +129,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
               );
 
               // do it one more time in hope that there more items in the queue
-              if (workersInUse.get() < maxWorkersCount) {
+              if (WORKERS_IN_USE.get() < maxWorkersCount) {
                 pollForJobs();
               }
             },
@@ -135,10 +141,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   }
 
   protected Future<QueueJob> processQueueItem(DataImportQueueItem queueItem) {
-    LOGGER.info(
-      "Starting to process job execution {}",
-      queueItem.getJobExecutionId()
-    );
+    LOGGER.info("Starting to process job execution {}", queueItem.getJobExecutionId());
 
     // we need to store out here to ensure it is properly deleted
     // on failure and success
@@ -146,8 +149,7 @@ public class S3JobRunningVerticle extends AbstractVerticle {
 
     ConnectionParams params = getConnectionParams(queueItem);
 
-    return Future
-      .succeededFuture(new QueueJob().withQueueItem(queueItem))
+    return Future.succeededFuture(new QueueJob().withQueueItem(queueItem))
       .compose((QueueJob job) ->
         createLocalFile(queueItem)
           .map((File file) -> {
@@ -155,54 +157,34 @@ public class S3JobRunningVerticle extends AbstractVerticle {
             return job.withFile(file);
           })
       )
-      .compose(job ->
-        uploadDefinitionService
-          .getJobExecutionById(queueItem.getJobExecutionId(), params)
-          .map(job::withJobExecution)
+      .compose(job -> uploadDefinitionService.getJobExecutionById(queueItem.getJobExecutionId(), params)
+        .map(job::withJobExecution)
       )
-      .compose(job ->
-        updateJobExecutionStatusSafely(
-          job.getJobExecution().getId(),
-          new StatusDto().withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS),
-          params
-        )
-          .map(job)
+      .compose(job -> updateJobExecutionStatusSafely(job.getJobExecution().getId(),
+        new StatusDto().withStatus(StatusDto.Status.PROCESSING_IN_PROGRESS), params)
+        .map(job)
       )
       .compose(this::downloadFromS3)
       .compose(job ->
-        fileProcessor
-          .processFile(
+        fileProcessor.processFile(
             job.getFile(),
             job.getJobExecution().getId(),
             // this is the only part used on our end
             new JobProfileInfo()
-              .withDataType(
-                JobProfileInfo.DataType.fromValue(
-                  job.getQueueItem().getDataType()
-                )
-              ),
+              .withDataType(JobProfileInfo.DataType.fromValue(job.getQueueItem().getDataType())),
             // we need to include the user ID here since some later checks in mod-invoice/etc use it
-            getConnectionParams(queueItem, job.getJobExecution().getUserId())
-          )
+            getConnectionParams(queueItem, job.getJobExecution().getUserId()))
           .map(job)
       )
       .onFailure((Throwable err) -> {
         LOGGER.error("Unable to start chunk {}", queueItem, err);
 
-        updateJobExecutionStatusSafely(
-          queueItem.getJobExecutionId(),
-          new StatusDto()
-            .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
-            .withStatus(StatusDto.Status.ERROR),
-          params
-        );
+        updateJobExecutionStatusSafely(queueItem.getJobExecutionId(), new StatusDto()
+          .withErrorStatus(ErrorStatus.FILE_PROCESSING_ERROR)
+          .withStatus(StatusDto.Status.ERROR), params);
       })
       .onSuccess((QueueJob result) ->
-        LOGGER.info(
-          "Completed processing job execution {}!",
-          queueItem.getJobExecutionId()
-        )
-      )
+        LOGGER.info("Completed processing job execution {}!", queueItem.getJobExecutionId()))
       .onComplete((AsyncResult<QueueJob> v) -> {
         queueItemDao.deleteQueueItemById(queueItem.getId());
 
@@ -213,11 +195,9 @@ public class S3JobRunningVerticle extends AbstractVerticle {
       });
   }
 
-  protected Future<Void> updateJobExecutionStatusSafely(
-    String jobExecutionId,
-    StatusDto status,
-    ConnectionParams params
-  ) {
+  protected Future<Void> updateJobExecutionStatusSafely(String jobExecutionId,
+                                                        StatusDto status,
+                                                        ConnectionParams params) {
     return uploadDefinitionService
       .updateJobExecutionStatus(jobExecutionId, status, params)
       .map((Boolean successful) -> {
@@ -274,55 +254,34 @@ public class S3JobRunningVerticle extends AbstractVerticle {
   }
 
   /**
-   * Get connection parameters (Okapi URL/token)
+   * Get connection parameters (Okapi URL/token).
    */
-  protected ConnectionParams getConnectionParams(
-    DataImportQueueItem queueItem
-  ) {
+  protected ConnectionParams getConnectionParams(DataImportQueueItem queueItem) {
     return ConnectionParams.createSystemUserConnectionParams(
       Map.of(
-        XOkapiHeaders.URL.toLowerCase(),
-        queueItem.getOkapiUrl(),
-        XOkapiHeaders.TENANT.toLowerCase(),
-        queueItem.getTenant(),
-        XOkapiHeaders.TOKEN.toLowerCase(),
-        queueItem.getOkapiToken(),
-        XOkapiHeaders.PERMISSIONS.toLowerCase(),
-        queueItem.getOkapiPermissions(),
-        XOkapiHeaders.REQUEST_ID.toLowerCase(),
-        queueItem.getOkapiRequestId()
+        XOkapiHeaders.URL, queueItem.getOkapiUrl(),
+        XOkapiHeaders.TENANT, queueItem.getTenant(),
+        XOkapiHeaders.TOKEN, queueItem.getOkapiToken(),
+        XOkapiHeaders.PERMISSIONS, queueItem.getOkapiPermissions(),
+        XOkapiHeaders.REQUEST_ID, queueItem.getOkapiRequestId()
       )
     );
   }
 
   /**
-   * Get connection parameters (Okapi URL/token), including a user ID
+   * Get connection parameters (Okapi URL/token), including a user ID.
    */
-  protected ConnectionParams getConnectionParams(
-    DataImportQueueItem queueItem,
-    String userId
-  ) {
+  protected ConnectionParams getConnectionParams(DataImportQueueItem queueItem, String userId) {
     return ConnectionParams.createSystemUserConnectionParams(
       Map.of(
-        XOkapiHeaders.URL.toLowerCase(),
-        queueItem.getOkapiUrl(),
-        XOkapiHeaders.TENANT.toLowerCase(),
-        queueItem.getTenant(),
-        XOkapiHeaders.TOKEN.toLowerCase(),
-        queueItem.getOkapiToken(),
-        XOkapiHeaders.PERMISSIONS.toLowerCase(),
-        queueItem.getOkapiPermissions(),
-        XOkapiHeaders.REQUEST_ID.toLowerCase(),
-        queueItem.getOkapiRequestId(),
-        XOkapiHeaders.USER_ID.toLowerCase(),
-        userId
+        XOkapiHeaders.URL, queueItem.getOkapiUrl(),
+        XOkapiHeaders.TENANT, queueItem.getTenant(),
+        XOkapiHeaders.TOKEN, queueItem.getOkapiToken(),
+        XOkapiHeaders.PERMISSIONS, queueItem.getOkapiPermissions(),
+        XOkapiHeaders.REQUEST_ID, queueItem.getOkapiRequestId(),
+        XOkapiHeaders.USER_ID, userId
       )
     );
-  }
-
-  @Override
-  public void stop() {
-    LOGGER.info("Stopping S3JobRunningVerticle");
   }
 
   @Data

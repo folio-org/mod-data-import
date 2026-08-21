@@ -9,8 +9,9 @@ public class ScoreUtils {
   /**
    * Calculate the logarithm-based score for a given value [0,inf).
    *
+   * <p>
    * For example, if we expect {@code value} to be from 0-31 (reference=31),
-   * {@value lowerScore=0}, and {@value upperScore=5}:
+   * {@code lowerScore=0}, and {@code upperScore=5}:
    *
    * <pre>
    * Values   | Score
@@ -23,23 +24,21 @@ public class ScoreUtils {
    * ...
    * </pre>
    *
-   * @param value the value to calculate the score for; MUST be greater than or
-   *              equal to 0. Typically is less than {@code upperReference},
-   *              but it can go as large as +Infinity
-   * @param lowerScore the score to assign to a value of 0
-   * @param upperScore the score to assign to a value of {@code upperReference}
+   * @param value          the value to calculate the score for; MUST be greater than or
+   *                       equal to 0. Typically is less than {@code upperReference},
+   *                       but it can go as large as +Infinity
+   * @param lowerScore     the score to assign to a value of 0
+   * @param upperScore     the score to assign to a value of {@code upperReference}
    * @param upperReference the typical upper bound of the value.  This does not
    *                       need to be an absolute bound, since {@code value}
    *                       can go to Infinity, however, it should be the
    *                       "typical" or "expected" maximum value
    * @return the logarithm-based score for the given value
    */
-  public static double calculateUnboundedLogarithmicScore(
-    @Min(0) long value,
-    int lowerScore,
-    int upperScore,
-    @Min(0) int upperReference
-  ) {
+  public static double calculateUnboundedLogarithmicScore(@Min(0) long value,
+                                                          int lowerScore,
+                                                          int upperScore,
+                                                          @Min(0) int upperReference) {
     // if the score or value range is 0, we don't care about this metric, so just return zero.
     // this also prevents a divide-by-zero error later when doing log(upperReference)
     //   in the event that upperReference == 0
@@ -61,13 +60,15 @@ public class ScoreUtils {
    * Calculate the logarithm-based score for a given value [0,inf), with an
    * "escape hatch" to prevent this value from getting "too large".
    *
+   * <p>
    * An example usage of this could be for a job's age: we want to increase
    * the score as the job ages, however, if it exceeds a given amount of time,
    * it should be given the utmost priority and bypass the traditional
    * calculation.
    *
+   * <p>
    * For example, if we expect {@code value} to be from 0-31 (threshold=32),
-   * {@value lowerScore=0}, {@value upperScore=5}, and
+   * {@code lowerScore=0}, {@code upperScore=5}, and
    * {@code upperThresholdScore=100}:
    *
    * <pre>
@@ -81,26 +82,24 @@ public class ScoreUtils {
    * ...
    * </pre>
    *
-   * @param value the value to calculate the score for; MUST be greater than or
-   *              equal to 0. Typically is less than {@code upperReference},
-   *              but it can go as large as +Infinity
-   * @param lowerScore the score to assign to a value of 0
-   * @param upperScore the score to assign to a value of {@code upperReference}
-   * @param upperThreshold the typical upper bound of the value.  This does not
-   *                       need to be an absolute bound, since {@code value}
-   *                       can go to Infinity, however, it should be the
-   *                       "typical" or "expected" maximum value
+   * @param value               the value to calculate the score for; MUST be greater than or
+   *                            equal to 0. Typically is less than {@code upperReference},
+   *                            but it can go as large as +Infinity
+   * @param lowerScore          the score to assign to a value of 0
+   * @param upperScore          the score to assign to a value of {@code upperReference}
+   * @param upperThreshold      the typical upper bound of the value.  This does not
+   *                            need to be an absolute bound, since {@code value}
+   *                            can go to Infinity, however, it should be the
+   *                            "typical" or "expected" maximum value
    * @param upperThresholdScore the score to give values that exceed
    *                            {@code upperThreshold}
    * @return the bounded logarithm-based score for the given value
    */
-  public static double calculateBoundedLogarithmicScore(
-    @Min(0) long value,
-    int lowerScore,
-    int upperScore,
-    @Min(0) int upperThreshold,
-    int upperThresholdScore
-  ) {
+  public static double calculateBoundedLogarithmicScore(@Min(0) long value,
+                                                        int lowerScore,
+                                                        int upperScore,
+                                                        @Min(0) int upperThreshold,
+                                                        int upperThresholdScore) {
     if (value >= upperThreshold) {
       return upperThresholdScore;
     }
@@ -114,23 +113,18 @@ public class ScoreUtils {
   }
 
   /**
-   * Calculate the linear score for an {@code value} between 0 and 1
-   * (inclusive).
+   * Calculate the linear score for an {@code value} between 0 and 1 (inclusive).
    *
+   * <p>
    * An example usage of this could be for a tenant's current usage, as it
    * has a known bound and this proportion would range from 0 to 100% (1).
    *
-   * @param value the value to calculate the score for; MUST be between zero
-   *              and one (inclusive).
+   * @param value      the value to calculate the score for; MUST be between zero and one (inclusive).
    * @param lowerScore the score to assign to a value of 0
    * @param upperScore the score to assign to a value of 1
    * @return the linear score for the given value
    */
-  public static double calculateLinearScore(
-    double value,
-    int lowerScore,
-    int upperScore
-  ) {
+  public static double calculateLinearScore(double value, int lowerScore, int upperScore) {
     return lowerScore + (value * (upperScore - lowerScore));
   }
 }

@@ -1,42 +1,39 @@
 package org.folio.service.processing.split;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
-@RunWith(VertxUnitRunner.class)
-public class FileSplitWriterUnusedMethodTest {
+class FileSplitWriterUnusedMethodTest {
 
-  protected static Vertx vertx = Vertx.vertx();
+  @TempDir
+  Path tempDir;
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
+  @DisplayName(
+    "should return self from setWriteQueueMaxSize, "
+      + "return false from writeQueueFull, and return self from drainHandler")
   @Test
-  public void testUnusedMethods(TestContext context) throws IOException {
+  void shouldReturnSelfFromQueueMethods() throws IOException {
     FileSplitWriter writer = new FileSplitWriter(
       FileSplitWriterOptions
         .builder()
         .chunkUploadingCompositeFuturePromise(Promise.promise())
         .outputKey("")
-        .chunkFolder(temporaryFolder.newFolder().toString())
+        .chunkFolder(Files.createTempDirectory(tempDir, "").toString())
         .maxRecordsPerChunk(1)
         .uploadFilesToS3(false)
         .deleteLocalFiles(false)
         .build()
     );
 
-    assertThat(writer.setWriteQueueMaxSize(0), is(writer));
-    assertThat(writer.writeQueueFull(), is(false));
-    assertThat(writer.drainHandler(null), is(writer));
+    assertThat(writer.setWriteQueueMaxSize(0)).isSameAs(writer);
+    assertThat(writer.writeQueueFull()).isFalse();
+    assertThat(writer.drainHandler(null)).isSameAs(writer);
   }
 }

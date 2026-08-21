@@ -2,40 +2,32 @@ package org.folio.rest;
 
 import static org.hamcrest.Matchers.is;
 
-import io.restassured.RestAssured;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.folio.support.AbstractRestTest;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-@RunWith(VertxUnitRunner.class)
-public class SplitStatusEnabledTest extends AbstractRestTest {
+class SplitStatusEnabledTest extends AbstractRestTest {
 
   private static final String SPLIT_STATUS_PATH = "/data-import/splitStatus";
 
-  @BeforeClass
-  public static void configureEnv() {
+  // static initializer runs before BaseRestTest.deployRestVerticle() @BeforeAll,
+  // so the verticle picks up SPLIT_FILES_ENABLED=true at startup
+  static {
     System.setProperty("SPLIT_FILES_ENABLED", "true");
   }
 
-  @Test
-  public void testEnabledSplit() {
-    RestAssured
-      .given()
-      .spec(spec)
-      .when()
-      .get(SPLIT_STATUS_PATH)
-      .then()
-      .log()
-      .all()
-      .statusCode(HttpStatus.SC_OK)
-      .body("splitStatus", is(true));
+  @AfterAll
+  static void resetEnv() {
+    System.clearProperty("SPLIT_FILES_ENABLED");
   }
 
-  @AfterClass
-  public static void resetEnv() {
-    System.clearProperty("SPLIT_FILES_ENABLED");
+  @DisplayName("should return splitStatus=true when SPLIT_FILES_ENABLED is set to true")
+  @Test
+  void shouldReturnTrue_whenSplitFilesEnabledIsTrue() {
+    getRequest(SPLIT_STATUS_PATH)
+      .statusCode(HttpStatus.SC_OK)
+      .body("splitStatus", is(true));
   }
 }

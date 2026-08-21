@@ -21,6 +21,7 @@ import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
+@SuppressWarnings("java:S6813")
 public class InitApiImpl implements InitAPI {
 
   private static final Logger LOGGER = LogManager.getLogger();

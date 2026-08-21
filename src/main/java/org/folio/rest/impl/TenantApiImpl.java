@@ -25,11 +25,14 @@ import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
+@SuppressWarnings("java:S6813")
 public class TenantApiImpl extends TenantAPI {
 
   private static final Logger LOGGER = LogManager.getLogger();
+
   @Value("${data.import.cleanup.delay.time:3600000}")
   private long delayTimeBetweenCleanupValueMillis;
+
   @Autowired
   private FileExtensionService fileExtensionService;
 

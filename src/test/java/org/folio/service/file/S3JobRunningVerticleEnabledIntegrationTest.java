@@ -1,48 +1,37 @@
 package org.folio.service.file;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasItem;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.vertx.core.impl.VertxImpl;
 import io.vertx.core.internal.deployment.DeploymentManager;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.folio.rest.AbstractRestTest;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.folio.support.AbstractRestTest;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-@RunWith(VertxUnitRunner.class)
-public class S3JobRunningVerticleEnabledIntegrationTest
-  extends AbstractRestTest {
+class S3JobRunningVerticleEnabledIntegrationTest extends AbstractRestTest {
 
-  @BeforeClass
-  public static void setUpClass(TestContext context) throws Exception {
+  static {
     System.setProperty("SPLIT_FILES_ENABLED", "true");
     System.setProperty("SYSTEM_PROCESSING_PASSWORD", "password");
-
-    AbstractRestTest.setUpClass(context);
   }
 
-  @AfterClass
-  public static void resetEnv() {
+  @AfterAll
+  static void resetEnv() {
     System.clearProperty("SPLIT_FILES_ENABLED");
     System.clearProperty("SYSTEM_PROCESSING_PASSWORD");
   }
 
+  @DisplayName("should deploy S3JobRunningVerticle when splitting is enabled")
   @Test
-  public void testRunning() {
+  void shouldDeployS3JobRunningVerticle_whenSplittingIsEnabled() {
     DeploymentManager deploymentManager = ((VertxImpl) vertx).deploymentManager();
+
     assertThat(
-      "S3JobRunningVerticle is deployed when splitting is enabled",
-      vertx
-        .deploymentIDs()
-        .stream()
+      vertx.deploymentIDs().stream()
         .map(deploymentManager::deployment)
-        .map(deployment -> deployment.deployment().identifier())
-        .toList(),
-      hasItem("java:org.folio.service.file.S3JobRunningVerticle")
-    );
+        .map(d -> d.deployment().identifier())
+        .toList())
+      .contains("java:org.folio.service.file.S3JobRunningVerticle");
   }
 }

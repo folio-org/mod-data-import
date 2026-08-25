@@ -1,20 +1,15 @@
 package org.folio.service.processing.ranking;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.both;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Arrays;
-import java.util.Collection;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-@RunWith(Parameterized.class)
-public class ScoreUtilsUnboundedTest {
+class ScoreUtilsUnboundedTest {
 
   private static final int LOWER_SCORE = 0;
   private static final int UPPER_SCORE = 5;
@@ -22,56 +17,25 @@ public class ScoreUtilsUnboundedTest {
 
   private static final double EPSILON = 0.0000001;
 
-  /**
-   * returns values that, for all between start and end I (inclusive), should
-   * have scores between lower bound and upper bound
-   * @return tuples [start I, end I, lower bound, upper bound]
-   */
-  @Parameters
-  public static Collection<Object[]> getExpectedValues() {
-    return Arrays.asList(
-      new Object[] { 0, 0, 0, 0 },
-      new Object[] { 1, 1, 0, 1 },
-      new Object[] { 2, 3, 1, 2 },
-      new Object[] { 4, 7, 2, 3 },
-      new Object[] { 8, 15, 3, 4 },
-      new Object[] { 16, 31, 4, 5 },
-      new Object[] { 32, 63, 5, 6 }
+  static Stream<Arguments> getExpectedValues() {
+    return Stream.of(
+      Arguments.of(0, 0, 0, 0),
+      Arguments.of(1, 1, 0, 1),
+      Arguments.of(2, 3, 1, 2),
+      Arguments.of(4, 7, 2, 3),
+      Arguments.of(8, 15, 3, 4),
+      Arguments.of(16, 31, 4, 5),
+      Arguments.of(32, 63, 5, 6)
     );
   }
 
-  private int lowerRange;
-  private int upperRange;
-  private int lowerScore;
-  private int upperScore;
-
-  public ScoreUtilsUnboundedTest(
-    int lowerRange,
-    int upperRange,
-    int lowerScore,
-    int upperScore
-  ) {
-    this.lowerRange = lowerRange;
-    this.upperRange = upperRange;
-    this.lowerScore = lowerScore;
-    this.upperScore = upperScore;
-  }
-
-  @Test
-  public void testScoring() {
-    for (int i = lowerRange; i <= upperRange; i++) {
-      assertThat(
-        ScoreUtils.calculateUnboundedLogarithmicScore(
-          i,
-          LOWER_SCORE,
-          UPPER_SCORE,
-          UPPER_REFERENCE
-        ),
-        is(
-          both(greaterThanOrEqualTo(lowerScore - EPSILON))
-            .and(lessThanOrEqualTo(upperScore + EPSILON))
-        )
-      );
-    }
+  @ParameterizedTest(name = "[{index}] i in [{0},{1}] → score in [{2},{3}]")
+  @MethodSource("getExpectedValues")
+  @DisplayName("should score within bounds for all i in range")
+  void shouldScoreWithinBounds_forAllInRange(int lowerRange, int upperRange, int lowerScore, int upperScore) {
+    assertThat(IntStream.rangeClosed(lowerRange, upperRange).asDoubleStream()
+        .map(i -> ScoreUtils.calculateUnboundedLogarithmicScore((int) i, LOWER_SCORE, UPPER_SCORE, UPPER_REFERENCE)))
+      .isNotEmpty()
+      .allSatisfy(score -> assertThat(score).isBetween(lowerScore - EPSILON, upperScore + EPSILON));
   }
 }

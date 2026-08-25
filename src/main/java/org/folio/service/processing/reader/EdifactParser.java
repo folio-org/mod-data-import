@@ -1,22 +1,21 @@
 package org.folio.service.processing.reader;
 
+import static org.folio.service.processing.reader.model.EdifactState.MESSAGE_END;
+import static org.folio.service.processing.reader.model.EdifactState.NUMBER_INVOICES_IN_CHUNK;
+import static org.folio.service.processing.reader.model.EdifactState.Type;
+import static org.folio.service.processing.reader.model.EdifactState.Type.FINISH_INVOICE;
+import static org.folio.service.processing.reader.model.EdifactState.Type.FOOTER;
+import static org.folio.service.processing.reader.model.EdifactState.Type.HEADER;
+import static org.folio.service.processing.reader.model.EdifactState.Type.INVOICE;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.service.processing.reader.model.EdifactFooterState;
 import org.folio.service.processing.reader.model.EdifactGeneralState;
 import org.folio.service.processing.reader.model.EdifactInvoiceFinishState;
 import org.folio.service.processing.reader.model.EdifactState;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static org.folio.service.processing.reader.model.EdifactState.MESSAGE_END;
-import static org.folio.service.processing.reader.model.EdifactState.NUMBER_INVOICES_IN_CHUNK;
-import static org.folio.service.processing.reader.model.EdifactState.TYPE;
-import static org.folio.service.processing.reader.model.EdifactState.TYPE.FINISH_INVOICE;
-import static org.folio.service.processing.reader.model.EdifactState.TYPE.FOOTER;
-import static org.folio.service.processing.reader.model.EdifactState.TYPE.HEADER;
-import static org.folio.service.processing.reader.model.EdifactState.TYPE.INVOICE;
 
 /**
  * Parses the EDIFACT file into chunks corresponding to the invoices.
@@ -24,7 +23,7 @@ import static org.folio.service.processing.reader.model.EdifactState.TYPE.INVOIC
 public class EdifactParser {
 
   private final EdifactState state;
-  private final Map<TYPE, EdifactState> handlers;
+  private final Map<Type, EdifactState> handlers;
   private final List<InitialRecord> invoices = new ArrayList<>();
 
   /**
@@ -102,15 +101,15 @@ public class EdifactParser {
   }
 
   /**
-   * Cleans the collection of {@link InitialRecord InitialRecords.class} objects
+   * Cleans the collection of {@link InitialRecord InitialRecords.class} objects.
    */
   public void cleanInitialRecords() {
     invoices.clear();
   }
 
   public boolean hasNext() {
-    return handlers.get(FOOTER).getContent().length() ==
-      (MESSAGE_END.length() + NUMBER_INVOICES_IN_CHUNK.length() + getDataElementSeparator().length() * 2);
+    return handlers.get(FOOTER).getContent().length()
+           == (MESSAGE_END.length() + NUMBER_INVOICES_IN_CHUNK.length() + getDataElementSeparator().length() * 2);
   }
 
   /**
@@ -119,8 +118,7 @@ public class EdifactParser {
    * @param data - EDIFACT file segment
    */
   public void handle(String data) {
-    TYPE position = state.getCurrentLogicalPositionInFile(data);
+    Type position = state.getCurrentLogicalPositionInFile(data);
     handlers.get(position).handle(data);
   }
-
 }

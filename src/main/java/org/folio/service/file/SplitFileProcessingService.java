@@ -1,5 +1,8 @@
 package org.folio.service.file;
 
+import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
+import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
+
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -7,7 +10,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
-
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,7 +21,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.annotation.CheckForNull;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -54,12 +55,8 @@ import org.folio.service.upload.UploadDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import static org.folio.rest.jaxrs.model.StatusDto.ErrorStatus.FILE_PROCESSING_ERROR;
-import static org.folio.rest.jaxrs.model.StatusDto.Status.ERROR;
-
 /**
- * Service containing methods to manage the lifecycle and initiate processing of
- * split files.
+ * Service containing methods to manage the lifecycle and initiate processing of split files.
  */
 @Service
 public class SplitFileProcessingService {
@@ -79,14 +76,12 @@ public class SplitFileProcessingService {
   private final WorkerExecutor executor;
 
   @Autowired
-  public SplitFileProcessingService(
-    Vertx vertx,
-    FileSplitService fileSplitService,
-    MinioStorageService minioStorageService,
-    DataImportQueueItemDao queueItemDao,
-    UploadDefinitionService uploadDefinitionService,
-    ParallelFileChunkingProcessor fileProcessor
-  ) {
+  public SplitFileProcessingService(Vertx vertx,
+                                    FileSplitService fileSplitService,
+                                    MinioStorageService minioStorageService,
+                                    DataImportQueueItemDao queueItemDao,
+                                    UploadDefinitionService uploadDefinitionService,
+                                    ParallelFileChunkingProcessor fileProcessor) {
     this.vertx = vertx;
 
     this.fileSplitService = fileSplitService;
@@ -101,13 +96,11 @@ public class SplitFileProcessingService {
   }
 
   /**
-   * Start a job based on information passed to the /processFiles endpoint
+   * Start a job based on information passed to the /processFiles endpoint.
    */
-  public Future<Void> startJob(
-    ProcessFilesRqDto entity,
-    ChangeManagerClient client,
-    ConnectionParams params
-  ) {
+  public Future<Void> startJob(ProcessFilesRqDto entity,
+                               ChangeManagerClient client,
+                               ConnectionParams params) {
     return initializeJob(entity, client)
       .compose(splitPieces ->
         Future.all(splitPieces.values()
@@ -128,10 +121,15 @@ public class SplitFileProcessingService {
       .onFailure(err -> {
         String jobExecutionId = entity.getUploadDefinition().getMetaJobExecutionId();
         if (jobExecutionId != null) {
-          LOGGER.warn("startJob:: File was processed with errors by jobExecutionId {}. Cause: {}", jobExecutionId, err.getMessage());
-          uploadDefinitionService.updateJobExecutionStatus(jobExecutionId, new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params);
-          uploadDefinitionService.updateUploadDefinitionStatus(entity.getUploadDefinition().getId(), UploadDefinition.Status.ERROR, params.getTenantId())
-            .onFailure(errMsg -> LOGGER.error("startJob::Unable to update UploadDefinitionStatus by jobExecutionId {}. Cause: {}", jobExecutionId, errMsg));
+          LOGGER.warn("startJob:: File was processed with errors by jobExecutionId {}. Cause: {}",
+            jobExecutionId, err.getMessage());
+          uploadDefinitionService.updateJobExecutionStatus(jobExecutionId,
+            new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR), params);
+          uploadDefinitionService.updateUploadDefinitionStatus(entity.getUploadDefinition().getId(),
+              UploadDefinition.Status.ERROR, params.getTenantId())
+            .onFailure(errMsg -> LOGGER.error(
+              "startJob::Unable to update UploadDefinitionStatus by jobExecutionId {}. Cause: {}",
+              jobExecutionId, errMsg));
         }
         LOGGER.error("Unable to start job: ", err);
       })
@@ -139,219 +137,8 @@ public class SplitFileProcessingService {
   }
 
   /**
-   * Split file and create parent job executions for a new job
-   */
-  protected Future<Map<String, SplitFileInformation>> initializeJob(
-    ProcessFilesRqDto entity,
-    ChangeManagerClient client
-  ) {
-    CompositeFuture splittingFuture = Future.all(
-      entity
-        .getUploadDefinition()
-        .getFileDefinitions()
-        .stream()
-        .map(FileDefinition::getSourcePath)
-        .map(key -> splitFile(key, entity.getJobProfileInfo()))
-        .toList()
-    );
-
-    return Future
-      .all(
-        createParentJobExecutions(entity, client),
-        splittingFuture.map(cf ->
-          cf
-            .list()
-            .stream()
-            .map(SplitFileInformation.class::cast)
-            .collect(Collectors.toMap(SplitFileInformation::getKey, el -> el))
-        )
-      )
-      .map((CompositeFuture cf) -> {
-        Map<String, JobExecution> executions = cf.resultAt(0);
-        Map<String, SplitFileInformation> splitInformation = cf.resultAt(1);
-
-        splitInformation.forEach((key, value) -> value.setJobExecution(executions.get(key)));
-        return splitInformation;
-      })
-      .compose(result ->
-        Future.all(
-          result
-            .values()
-            .stream()
-            .map((SplitFileInformation splitInfo) -> {
-              JobExecution execution = splitInfo.getJobExecution();
-              execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
-
-              return client.putChangeManagerJobExecutionsById(execution.getId(), execution)
-                .map(this::verifyOkStatus);
-            })
-            .toList()
-        ).map(result)
-      )
-      .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
-  }
-
-  /**
-   * Register split file parts and fill split job execution job profile/status
-   */
-  protected Future<Void> initializeChildren(
-    ProcessFilesRqDto entity,
-    ChangeManagerClient client,
-    ConnectionParams params,
-    SplitFileInformation splitInfo
-  ) {
-    return registerSplitFileParts(
-      entity.getUploadDefinition(),
-      splitInfo.getJobExecution(),
-      entity.getJobProfileInfo(),
-      client,
-      splitInfo.getTotalRecords(),
-      params,
-      splitInfo.getSplitKeys()
-    )
-      .map(childExecs ->
-        childExecs
-          .list()
-          .stream()
-          .map(JobExecution.class::cast)
-          .map(jobExec ->
-            new JobExecutionDto()
-              .withId(jobExec.getId())
-              .withSourcePath(jobExec.getSourcePath())
-          )
-          .toList()
-      )
-      // update all children
-      .compose(childExecs ->
-        fileProcessor
-          .updateJobsProfile(childExecs, entity.getJobProfileInfo(), params)
-          // update parent
-          .compose(r ->
-            fileProcessor.updateJobsProfile(
-              List.of(
-                new JobExecutionDto()
-                  .withId(splitInfo.getJobExecution().getId())
-              ),
-              entity.getJobProfileInfo(),
-              params
-            )
-          )
-          .compose(r ->
-            uploadDefinitionService.updateJobExecutionStatus(
-              splitInfo.getJobExecution().getId(),
-              new StatusDto().withStatus(StatusDto.Status.COMMIT_IN_PROGRESS),
-              params
-            )
-          )
-          .map((Boolean result) -> {
-            if (Boolean.FALSE.equals(result)) {
-              throw new IllegalStateException(
-                "Could not mark job as in progress"
-              );
-            }
-            return result;
-          })
-          .compose(v ->
-            Future.all(
-              // we use an IntStream here to have access to i, as the index (and therefore part number)
-              IntStream
-                .range(0, childExecs.size())
-                .mapToObj((int i) -> {
-                  JobExecutionDto execution = childExecs.get(i);
-                  return queueItemDao.addQueueItem(
-                    new DataImportQueueItem()
-                      .withId(UUID.randomUUID().toString())
-                      .withJobExecutionId(execution.getId())
-                      .withUploadDefinitionId(
-                        entity.getUploadDefinition().getId()
-                      )
-                      .withTenant(params.getTenantId())
-                      .withOriginalSize(splitInfo.getTotalRecords())
-                      .withFilePath(execution.getSourcePath())
-                      .withTimestamp(new Date())
-                      .withPartNumber(i + 1)
-                      .withProcessing(false)
-                      .withOkapiUrl(params.getConnectionUrl())
-                      .withDataType(
-                        entity.getJobProfileInfo().getDataType().toString()
-                      )
-                      .withOkapiToken(params.getToken())
-                      .withOkapiPermissions(
-                        getHeaderValue(params, XOkapiHeaders.PERMISSIONS)
-                      )
-                      .withOkapiRequestId(
-                        getHeaderValue(params, XOkapiHeaders.REQUEST_ID)
-                      )
-                  );
-                })
-                .toList()
-            )
-          )
-      )
-      .onSuccess(v ->
-        LOGGER.info("Created child job executions for {}", splitInfo.getKey())
-      )
-      .onFailure(err -> LOGGER.error("Unable to initialize children", err))
-      .mapEmpty();
-  }
-
-  /**
-   * Registers split parts as Job Executions in mod-source-record-manager
-   * and adds each part to the DI queue.
-   *
-   * @param parentUploadDefinition the upload definition representing these files
-   * @param parentJobExecution     the parent composite job execution
-   * @param jobProfileInfo         the job profile to be used for later processing
-   * @param client                 the {@link ChangeManagerClient} to make API calls to
-   * @param parentJobSize          the size of the parent job, as calculated by {@code FileSplitUtilities}
-   * @param params                 the headers from the original request
-   * @param keys                   the list of S3 keys to register, as returned by {@code FileSplitService}
-   * @return a {@link CompositeFuture} of {@link JobExecution}
-   */
-  protected CompositeFuture registerSplitFileParts(
-    UploadDefinition parentUploadDefinition,
-    JobExecution parentJobExecution,
-    JobProfileInfo jobProfileInfo,
-    ChangeManagerClient client,
-    int parentJobSize,
-    ConnectionParams params,
-    Collection<String> keys
-  ) {
-    List<Future<JobExecution>> futures = new ArrayList<>();
-
-    int partNumber = 1;
-    for (String key : keys) {
-      InitJobExecutionsRqDto initJobExecutionsRqDto = new InitJobExecutionsRqDto()
-        .withFiles(List.of(new File().withName(key)))
-        .withParentJobId(parentJobExecution.getId())
-        .withJobProfileInfo(jobProfileInfo)
-        .withJobPartNumber(partNumber)
-        .withTotalJobParts(keys.size())
-        .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
-        .withUserId(
-          getUserIdFromMetadata(parentUploadDefinition.getMetadata())
-        );
-
-      futures.add(
-        sendJobExecutionRequest(client, initJobExecutionsRqDto)
-          .map(collection -> collection.getJobExecutions().getFirst())
-          .onFailure(err ->
-            LOGGER.error(
-              "Unable to register split file execution for {}: ",
-              key,
-              err
-            )
-          )
-      );
-
-      partNumber++;
-    }
-
-    return Future.join(futures);
-  }
-
-  /**
    * Gets the S3 storage key for a given job execution ID.
+   *
    * <p>
    * <strong>No guarantee is made that the returned key will be valid in these cases:</strong>
    * <ul>
@@ -359,9 +146,11 @@ public class SplitFileProcessingService {
    * <li>The job execution was created before S3-like storage was enabled, meaning
    *     the original file was never uploaded to S3</li>
    * </ul>
+   *
    * <p>
    * The returned key <strong>may or may not</strong> exist and may have been deleted;
    * no checking for this is done.
+   *
    * <p>
    * Asynchronous as we need to communicate with mod-srm to get the key.
    * - The alternative to this would be to add an API to mod-srm (requiring adding
@@ -372,37 +161,23 @@ public class SplitFileProcessingService {
    * @param jobExecutionId the job execution ID for the slice that we want the key from
    * @return a future for the job's S3 key
    */
-  public Future<String> getKey(
-    String jobExecutionId,
-    ConnectionParams params
-  ) {
+  public Future<String> getKey(String jobExecutionId, ConnectionParams params) {
     return uploadDefinitionService
       .getJobExecutionById(jobExecutionId, params)
       .map(JobExecution::getSourcePath);
   }
 
   /**
-   * Delete all queue items (DI) and child job executions (SRM) for a given job execution ID
+   * Delete all queue items (DI) and child job executions (SRM) for a given job execution ID.
    */
-  public Future<Void> cancelJob(
-    String jobExecutionId,
-    ConnectionParams params,
-    ChangeManagerClient client
-  ) {
-    return uploadDefinitionService
-      .getJobExecutionById(jobExecutionId, params)
+  public Future<Void> cancelJob(String jobExecutionId,
+                                ConnectionParams params,
+                                ChangeManagerClient client) {
+    return uploadDefinitionService.getJobExecutionById(jobExecutionId, params)
       // we have the job execution here
       .compose((JobExecution jobExecution) -> {
-        if (
-          jobExecution.getSubordinationType() ==
-            JobExecution.SubordinationType.COMPOSITE_PARENT
-        ) {
-          return client.getChangeManagerJobExecutionsChildrenById(
-            jobExecutionId,
-            Integer.MAX_VALUE,
-            null,
-            0
-          );
+        if (jobExecution.getSubordinationType() == JobExecution.SubordinationType.COMPOSITE_PARENT) {
+          return client.getChangeManagerJobExecutionsChildrenById(jobExecutionId, Integer.MAX_VALUE, null, 0);
         } else {
           throw new IllegalStateException("Job execution is not a parent job!");
         }
@@ -410,10 +185,7 @@ public class SplitFileProcessingService {
       // we have the response buffer
       .map(this::verifyOkStatus)
       .map(buffer ->
-        BufferMapper.mapBufferContentToEntitySync(
-          buffer,
-          JobExecutionDtoCollection.class
-        )
+        BufferMapper.mapBufferContentToEntitySync(buffer, JobExecutionDtoCollection.class)
       )
       // we have the list of children
       .compose((JobExecutionDtoCollection collection) -> {
@@ -428,12 +200,11 @@ public class SplitFileProcessingService {
 
         // all children
         for (JobExecutionDto exec : collection.getJobExecutions()) {
-          futures.add(
-            queueItemDao
-              .deleteQueueItemsByJobExecutionId(exec.getId())
-              .<Void>mapEmpty()
-              // the delete call can fail if the queue item doesn't exist (has already been processed)
-              .recover(err -> Future.succeededFuture())
+          futures.add(queueItemDao
+            .deleteQueueItemsByJobExecutionId(exec.getId())
+            .<Void>mapEmpty()
+            // the delete call can fail if the queue item doesn't exist (has already been processed)
+            .recover(err -> Future.succeededFuture())
           );
 
           switch (exec.getStatus()) {
@@ -455,16 +226,87 @@ public class SplitFileProcessingService {
   }
 
   /**
-   * Sends a InitJobExecutionsRqDto with sufficient error handling
+   * Split file and create parent job executions for a new job.
+   */
+  protected Future<Map<String, SplitFileInformation>> initializeJob(ProcessFilesRqDto entity,
+                                                                    ChangeManagerClient client) {
+    return Future.all(createParentJobExecutions(entity, client), splitAllFiles(entity))
+      .map(cf -> linkExecutionsToSplits(cf.resultAt(0), cf.resultAt(1)))
+      .compose(result -> updateParentJobSizes(result, client).map(result))
+      .onFailure(e -> LOGGER.error("Unable to initialize parent job: ", e));
+  }
+
+  /**
+   * Register split file parts and fill split job execution job profile/status.
+   */
+  protected Future<Void> initializeChildren(ProcessFilesRqDto entity,
+                                            ChangeManagerClient client,
+                                            ConnectionParams params,
+                                            SplitFileInformation splitInfo) {
+    return registerSplitFileParts(entity.getUploadDefinition(), splitInfo.getJobExecution(),
+      entity.getJobProfileInfo(), client, splitInfo.getTotalRecords(), params, splitInfo.getSplitKeys())
+      .map(this::toJobExecutionDtos)
+      .compose(childExecs -> updateProfilesAndEnqueue(childExecs, entity, params, splitInfo))
+      .onSuccess(v -> LOGGER.info("Created child job executions for {}", splitInfo.getKey()))
+      .onFailure(err -> LOGGER.error("Unable to initialize children", err))
+      .mapEmpty();
+  }
+
+  /**
+   * Registers split parts as Job Executions in mod-source-record-manager
+   * and adds each part to the DI queue.
+   *
+   * @param parentUploadDefinition the upload definition representing these files
+   * @param parentJobExecution     the parent composite job execution
+   * @param jobProfileInfo         the job profile to be used for later processing
+   * @param client                 the {@link ChangeManagerClient} to make API calls to
+   * @param parentJobSize          the size of the parent job, as calculated by {@code FileSplitUtilities}
+   * @param params                 the headers from the original request
+   * @param keys                   the list of S3 keys to register, as returned by {@code FileSplitService}
+   * @return a {@link CompositeFuture} of {@link JobExecution}
+   */
+  protected CompositeFuture registerSplitFileParts(UploadDefinition parentUploadDefinition,
+                                                   JobExecution parentJobExecution,
+                                                   JobProfileInfo jobProfileInfo,
+                                                   ChangeManagerClient client,
+                                                   int parentJobSize,
+                                                   ConnectionParams params,
+                                                   Collection<String> keys) {
+    List<Future<JobExecution>> futures = new ArrayList<>();
+
+    int partNumber = 1;
+    for (String key : keys) {
+      InitJobExecutionsRqDto initJobExecutionsRqDto = new InitJobExecutionsRqDto()
+        .withFiles(List.of(new File().withName(key)))
+        .withParentJobId(parentJobExecution.getId())
+        .withJobProfileInfo(jobProfileInfo)
+        .withJobPartNumber(partNumber)
+        .withTotalJobParts(keys.size())
+        .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
+        .withUserId(
+          getUserIdFromMetadata(parentUploadDefinition.getMetadata())
+        );
+
+      futures.add(
+        sendJobExecutionRequest(client, initJobExecutionsRqDto)
+          .map(collection -> collection.getJobExecutions().getFirst())
+          .onFailure(err -> LOGGER.error("Unable to register split file execution for {}: ", key, err)));
+
+      partNumber++;
+    }
+
+    return Future.join(futures);
+  }
+
+  /**
+   * Sends a InitJobExecutionsRqDto with sufficient error handling.
    *
    * @param client  the {@link ChangeManagerClient} to send the request with
    * @param request the request to send
    * @return a promise which will succeed with the response body as a {@link InitJobExecutionsRsDto}
    */
-  protected Future<InitJobExecutionsRsDto> sendJobExecutionRequest(
-    ChangeManagerClient client,
-    InitJobExecutionsRqDto request
-  ) {
+  protected Future<InitJobExecutionsRsDto> sendJobExecutionRequest(ChangeManagerClient client,
+                                                                   InitJobExecutionsRqDto request) {
     Promise<HttpResponse<Buffer>> promise = Promise.promise();
 
     client.postChangeManagerJobExecutions(request, promise::handle);
@@ -473,11 +315,7 @@ public class SplitFileProcessingService {
       .future()
       .map(this::verifyOkStatus)
       .map(buffer ->
-        BufferMapper.mapBufferContentToEntitySync(
-          buffer,
-          InitJobExecutionsRsDto.class
-        )
-      );
+        BufferMapper.mapBufferContentToEntitySync(buffer, InitJobExecutionsRsDto.class));
   }
 
   /**
@@ -485,35 +323,27 @@ public class SplitFileProcessingService {
    *
    * @return a {@link Future} containing a map from filename/key -> {@link JobExecution}
    */
-  protected Future<Map<String, JobExecution>> createParentJobExecutions(
-    ProcessFilesRqDto entity,
-    ChangeManagerClient client
-  ) {
-    return Future
-      .all(
-        entity
-          .getUploadDefinition()
-          .getFileDefinitions()
-          .stream()
-          .map(FileDefinition::getSourcePath)
-          .map(key -> new File().withName(key))
-          .map(file ->
-            new InitJobExecutionsRqDto()
-              .withFiles(List.of(file))
-              .withJobProfileInfo(entity.getJobProfileInfo())
-              .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
-              .withUserId(
-                getUserIdFromMetadata(
-                  entity.getUploadDefinition().getMetadata()
-                )
-              )
-          )
-          .map(request ->
-            sendJobExecutionRequest(client, request)
-              .map(InitJobExecutionsRsDto::getJobExecutions)
-              .map(List::getFirst)
-          )
-          .toList()
+  protected Future<Map<String, JobExecution>> createParentJobExecutions(ProcessFilesRqDto entity,
+                                                                        ChangeManagerClient client) {
+    return Future.all(entity
+        .getUploadDefinition()
+        .getFileDefinitions()
+        .stream()
+        .map(FileDefinition::getSourcePath)
+        .map(key -> new File().withName(key))
+        .map(file ->
+          new InitJobExecutionsRqDto()
+            .withFiles(List.of(file))
+            .withJobProfileInfo(entity.getJobProfileInfo())
+            .withSourceType(InitJobExecutionsRqDto.SourceType.COMPOSITE)
+            .withUserId(getUserIdFromMetadata(entity.getUploadDefinition().getMetadata()))
+        )
+        .map(request ->
+          sendJobExecutionRequest(client, request)
+            .map(InitJobExecutionsRsDto::getJobExecutions)
+            .map(List::getFirst)
+        )
+        .toList()
       )
       .map(CompositeFuture::<JobExecution>list)
       .map((List<JobExecution> executions) -> {
@@ -529,6 +359,7 @@ public class SplitFileProcessingService {
   /**
    * Split a file into chunks, returning a {@link SplitFileInformation} object containing
    * the original key, the total number of records in the file, and the keys of the split chunks.
+   *
    * <p>
    * Note that non-MARC binary format files will not be split; instead, the keys of the split
    * chunks will simply be a list containing only the original key
@@ -556,14 +387,8 @@ public class SplitFileProcessingService {
     if (response.statusCode() >= HttpStatus.SC_OK && response.statusCode() <= HttpStatus.SC_NO_CONTENT) {
       return response.bodyAsBuffer();
     } else {
-      throw LOGGER.throwing(
-        new IllegalStateException(
-          "Response came back with status code " +
-            response.statusCode() +
-            " and body " +
-            response.bodyAsString()
-        )
-      );
+      throw LOGGER.throwing(new IllegalStateException(
+        "Response came back with status code " + response.statusCode() + " and body " + response.bodyAsString()));
     }
   }
 
@@ -574,6 +399,108 @@ public class SplitFileProcessingService {
     } else {
       return null;
     }
+  }
+
+  private Future<Map<String, SplitFileInformation>> splitAllFiles(ProcessFilesRqDto entity) {
+    return Future.all(
+        entity.getUploadDefinition().getFileDefinitions().stream()
+          .map(FileDefinition::getSourcePath)
+          .map(key -> splitFile(key, entity.getJobProfileInfo()))
+          .toList()
+      )
+      .map(cf -> cf.list().stream()
+        .map(SplitFileInformation.class::cast)
+        .collect(Collectors.toMap(SplitFileInformation::getKey, el -> el)));
+  }
+
+  private Map<String, SplitFileInformation> linkExecutionsToSplits(
+    Map<String, JobExecution> executions,
+    Map<String, SplitFileInformation> splitInformation) {
+    splitInformation.forEach((key, value) -> value.setJobExecution(executions.get(key)));
+    return splitInformation;
+  }
+
+  private Future<CompositeFuture> updateParentJobSizes(Map<String, SplitFileInformation> splits,
+                                                       ChangeManagerClient client) {
+    return Future.all(
+      splits.values().stream()
+        .map(splitInfo -> {
+          JobExecution execution = splitInfo.getJobExecution();
+          execution.setTotalRecordsInFile(splitInfo.getTotalRecords());
+          return client.putChangeManagerJobExecutionsById(execution.getId(), execution)
+            .map(this::verifyOkStatus);
+        })
+        .toList()
+    );
+  }
+
+  private Future<Void> updateProfilesAndEnqueue(List<JobExecutionDto> childExecs,
+                                                ProcessFilesRqDto entity,
+                                                ConnectionParams params,
+                                                SplitFileInformation splitInfo) {
+    return fileProcessor.updateJobsProfile(childExecs, entity.getJobProfileInfo(), params)
+      .compose(r -> fileProcessor.updateJobsProfile(
+        List.of(new JobExecutionDto().withId(splitInfo.getJobExecution().getId())),
+        entity.getJobProfileInfo(),
+        params))
+      .compose(r -> markJobInProgress(splitInfo.getJobExecution().getId(), params))
+      .compose(v -> enqueueChildren(childExecs, entity, params, splitInfo))
+      .mapEmpty();
+  }
+
+  private Future<Boolean> markJobInProgress(String jobExecutionId, ConnectionParams params) {
+    return uploadDefinitionService
+      .updateJobExecutionStatus(jobExecutionId,
+        new StatusDto().withStatus(StatusDto.Status.COMMIT_IN_PROGRESS), params)
+      .map(result -> {
+        if (Boolean.FALSE.equals(result)) {
+          throw new IllegalStateException("Could not mark job as in progress");
+        }
+        return result;
+      });
+  }
+
+  private Future<CompositeFuture> enqueueChildren(List<JobExecutionDto> childExecs,
+                                                  ProcessFilesRqDto entity,
+                                                  ConnectionParams params,
+                                                  SplitFileInformation splitInfo) {
+    return Future.all(
+      // IntStream gives access to i as the part number (1-based)
+      IntStream.range(0, childExecs.size())
+        .mapToObj(i -> queueItemDao.addQueueItem(
+          buildQueueItem(childExecs.get(i), i, entity, params, splitInfo)))
+        .toList()
+    );
+  }
+
+  private DataImportQueueItem buildQueueItem(JobExecutionDto execution, int index,
+                                             ProcessFilesRqDto entity,
+                                             ConnectionParams params,
+                                             SplitFileInformation splitInfo) {
+    return new DataImportQueueItem()
+      .withId(UUID.randomUUID().toString())
+      .withJobExecutionId(execution.getId())
+      .withUploadDefinitionId(entity.getUploadDefinition().getId())
+      .withTenant(params.getTenantId())
+      .withOriginalSize(splitInfo.getTotalRecords())
+      .withFilePath(execution.getSourcePath())
+      .withTimestamp(new Date())
+      .withPartNumber(index + 1)
+      .withProcessing(false)
+      .withOkapiUrl(params.getConnectionUrl())
+      .withDataType(entity.getJobProfileInfo().getDataType().toString())
+      .withOkapiToken(params.getToken())
+      .withOkapiPermissions(getHeaderValue(params, XOkapiHeaders.PERMISSIONS))
+      .withOkapiRequestId(getHeaderValue(params, XOkapiHeaders.REQUEST_ID));
+  }
+
+  private List<JobExecutionDto> toJobExecutionDtos(CompositeFuture cf) {
+    return cf.list().stream()
+      .map(JobExecution.class::cast)
+      .map(jobExec -> new JobExecutionDto()
+        .withId(jobExec.getId())
+        .withSourcePath(jobExec.getSourcePath()))
+      .toList();
   }
 
   private String getHeaderValue(ConnectionParams params, String headerName) {
@@ -587,8 +514,7 @@ public class SplitFileProcessingService {
   }
 
   /**
-   * Hold information about a split file that will be needed for the creation
-   * of job executions, etc
+   * Hold information about a split file that will be needed for the creation of job executions, etc.
    */
   @Data
   @With

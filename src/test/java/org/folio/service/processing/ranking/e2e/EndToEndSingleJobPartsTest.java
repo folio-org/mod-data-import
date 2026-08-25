@@ -1,12 +1,8 @@
 package org.folio.service.processing.ranking.e2e;
 
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.junit.runner.RunWith;
-
 /**
- * Combines all rankers with realistic values and properties
+ * Combines all rankers with realistic values and properties.
  */
-@RunWith(VertxUnitRunner.class)
 public class EndToEndSingleJobPartsTest extends AbstractEndToEndRankingTest {
 
   protected void initializeData() {

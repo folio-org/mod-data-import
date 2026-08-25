@@ -19,24 +19,17 @@ public class MinioStorageServiceImpl implements MinioStorageService {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private FolioS3ClientFactory folioS3ClientFactory;
-
-  private Vertx vertx;
+  private final FolioS3ClientFactory folioS3ClientFactory;
+  private final Vertx vertx;
 
   @Autowired
-  public MinioStorageServiceImpl(
-    FolioS3ClientFactory folioS3ClientFactory,
-    Vertx vertx
-  ) {
+  public MinioStorageServiceImpl(FolioS3ClientFactory folioS3ClientFactory, Vertx vertx) {
     this.folioS3ClientFactory = folioS3ClientFactory;
     this.vertx = vertx;
   }
 
   @Override
-  public Future<FileUploadInfo> getFileUploadFirstPartUrl(
-    String uploadFileName,
-    String tenantId
-  ) {
+  public Future<FileUploadInfo> getFileUploadFirstPartUrl(String uploadFileName, String tenantId) {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
     String key = buildKey(tenantId, uploadFileName);
 
@@ -54,18 +47,15 @@ public class MinioStorageServiceImpl implements MinioStorageService {
   }
 
   @Override
-  public Future<FileUploadInfo> getFileUploadPartUrl(
-    String key,
-    String uploadId,
-    int partNumber
-  ) {
+  public Future<FileUploadInfo> getFileUploadPartUrl(String key, String uploadId, int partNumber) {
     FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
 
     return vertx
       .executeBlocking(() -> {
         try {
           verifyKey(key);
-          LOGGER.info("getFileUploadPartUrl:: Getting presigned URL for part {} of key {}/upload ID {}", partNumber, key, uploadId);
+          LOGGER.info("getFileUploadPartUrl:: Getting presigned URL for part {} of key {}/upload ID {}", partNumber,
+            key, uploadId);
           return client.getPresignedMultipartUploadUrl(key, uploadId, partNumber);
         } catch (S3ClientException e) {
           LOGGER.warn("getFileUploadPartUrl:: Failed to get presigned URL for part {} of key {}/upload ID {}",
@@ -100,6 +90,22 @@ public class MinioStorageServiceImpl implements MinioStorageService {
         }
       })
       .map(url -> new FileDownloadInfo().withUrl(url));
+  }
+
+  public Future<Void> completeMultipartFileUpload(String path, String uploadId, List<String> partEtags) {
+    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
+
+    return vertx.executeBlocking(() -> {
+      try {
+        verifyKey(path);
+        client.completeMultipartUpload(path, uploadId, partEtags);
+        return null;
+      } catch (S3ClientException e) {
+        LOGGER.error("completeMultipartFileUpload:: Failed to complete multipart upload for path {}, uploadId {}",
+          path, uploadId, e);
+        throw e;
+      }
+    });
   }
 
   @Override
@@ -148,26 +154,6 @@ public class MinioStorageServiceImpl implements MinioStorageService {
         return null;
       } catch (S3ClientException e) {
         LOGGER.error("remove:: Could not remove from S3 by key {} cause:", key, e);
-        throw e;
-      }
-    });
-  }
-
-  public Future<Void> completeMultipartFileUpload(
-    String path,
-    String uploadId,
-    List<String> partEtags
-  ) {
-    FolioS3Client client = folioS3ClientFactory.getFolioS3Client();
-
-    return vertx.executeBlocking(() -> {
-      try {
-        verifyKey(path);
-        client.completeMultipartUpload(path, uploadId, partEtags);
-        return null;
-      } catch (S3ClientException e) {
-        LOGGER.error("completeMultipartFileUpload:: Failed to complete multipart upload for path {}, uploadId {}",
-          path, uploadId, e);
         throw e;
       }
     });

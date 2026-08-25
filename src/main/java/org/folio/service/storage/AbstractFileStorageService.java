@@ -2,9 +2,8 @@ package org.folio.service.storage;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.file.FileSystem;
-import org.folio.rest.jaxrs.model.FileDefinition;
-
 import java.io.File;
+import org.folio.rest.jaxrs.model.FileDefinition;
 
 public abstract class AbstractFileStorageService implements FileStorageService {
 

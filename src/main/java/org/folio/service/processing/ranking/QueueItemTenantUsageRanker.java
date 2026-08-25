@@ -16,29 +16,24 @@ import org.springframework.stereotype.Component;
 @Component
 public class QueueItemTenantUsageRanker implements QueueItemRanker {
 
-  private int scoreNoWorkers;
-  private int scoreAllWorkers;
+  private final int scoreNoWorkers;
+  private final int scoreAllWorkers;
 
   @Autowired
-  public QueueItemTenantUsageRanker(
-    @Value("${SCORE_TENANT_USAGE_MIN:100}") int scoreNoWorkers,
-    @Value("${SCORE_TENANT_USAGE_MAX:-200}") int scoreAllWorkers
-  ) {
+  public QueueItemTenantUsageRanker(@Value("${SCORE_TENANT_USAGE_MIN:100}") int scoreNoWorkers,
+                                    @Value("${SCORE_TENANT_USAGE_MAX:-200}") int scoreAllWorkers) {
     this.scoreNoWorkers = scoreNoWorkers;
     this.scoreAllWorkers = scoreAllWorkers;
   }
 
   @Override
-  public double score(
-    DataImportQueueItem queueItem,
-    Map<String, Long> tenantUsage
-  ) {
+  public double score(DataImportQueueItem queueItem, Map<String, Long> tenantUsage) {
     // this may not be an accurate calculation if not all workers are currently
     // in use.  however, if this is the case, that indicates that the pool is
     // not saturated (therefore no competition), meaning any tenant which wants
     // to run a job can start their job immediately, and this ranking has
     // effectively no effect.
-    Long totalWorkers = tenantUsage.values().stream().reduce(0L, Long::sum);
+    long totalWorkers = tenantUsage.values().stream().reduce(0L, Long::sum);
 
     // same reasoning as above; if there are no workers in use, then we don't
     // care about the result of this metric (since all tenants should be
@@ -49,8 +44,7 @@ public class QueueItemTenantUsageRanker implements QueueItemRanker {
     }
 
     return ScoreUtils.calculateLinearScore(
-      (double) tenantUsage.getOrDefault(queueItem.getTenant(), 0L) /
-      totalWorkers,
+      (double) tenantUsage.getOrDefault(queueItem.getTenant(), 0L) / totalWorkers,
       scoreNoWorkers,
       scoreAllWorkers
     );

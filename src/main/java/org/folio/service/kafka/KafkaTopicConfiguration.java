@@ -4,11 +4,11 @@ import org.folio.kafka.services.KafkaTopic;
 import org.folio.service.kafka.support.DataImportKafkaTopic;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-@Service
+@Component
 @PropertySource(value = "kafka.properties")
-public class DIKafkaTopicService {
+public class KafkaTopicConfiguration {
 
   @Value("${di_initialization_started.partitions}")
   private Integer diInitNumPartitions;

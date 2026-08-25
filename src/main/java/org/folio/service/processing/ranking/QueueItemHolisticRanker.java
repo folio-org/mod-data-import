@@ -6,23 +6,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Service for ranking queue items based on all of their properties
+ * Service for ranking queue items based on all of their properties.
  */
 @Component
 public class QueueItemHolisticRanker implements QueueItemRanker {
 
-  private QueueItemAgeRanker ageRanker;
-  private QueueItemPartNumberRanker partNumberRanker;
-  private QueueItemSizeRanker sizeRanker;
-  private QueueItemTenantUsageRanker tenantUsageRanker;
+  private final QueueItemAgeRanker ageRanker;
+  private final QueueItemPartNumberRanker partNumberRanker;
+  private final QueueItemSizeRanker sizeRanker;
+  private final QueueItemTenantUsageRanker tenantUsageRanker;
 
   @Autowired
-  public QueueItemHolisticRanker(
-    QueueItemAgeRanker ageRanker,
-    QueueItemPartNumberRanker partNumberRanker,
-    QueueItemSizeRanker sizeRanker,
-    QueueItemTenantUsageRanker tenantUsageRanker
-  ) {
+  public QueueItemHolisticRanker(QueueItemAgeRanker ageRanker,
+                                 QueueItemPartNumberRanker partNumberRanker,
+                                 QueueItemSizeRanker sizeRanker,
+                                 QueueItemTenantUsageRanker tenantUsageRanker) {
     this.ageRanker = ageRanker;
     this.partNumberRanker = partNumberRanker;
     this.sizeRanker = sizeRanker;
@@ -30,15 +28,10 @@ public class QueueItemHolisticRanker implements QueueItemRanker {
   }
 
   @Override
-  public double score(
-    DataImportQueueItem queueItem,
-    Map<String, Long> tenantUsage
-  ) {
-    return (
-      ageRanker.score(queueItem, tenantUsage) +
-      partNumberRanker.score(queueItem, tenantUsage) +
-      sizeRanker.score(queueItem, tenantUsage) +
-      tenantUsageRanker.score(queueItem, tenantUsage)
-    );
+  public double score(DataImportQueueItem queueItem, Map<String, Long> tenantUsage) {
+    return ageRanker.score(queueItem, tenantUsage)
+           + partNumberRanker.score(queueItem, tenantUsage)
+           + sizeRanker.score(queueItem, tenantUsage)
+           + tenantUsageRanker.score(queueItem, tenantUsage);
   }
 }

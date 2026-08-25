@@ -19,10 +19,8 @@ import org.apache.logging.log4j.Logger;
 @Accessors(chain = true, fluent = true)
 public class AsyncInputStream implements ReadStream<Buffer> {
 
-  private static final Logger LOGGER = LogManager.getLogger();
-
   public static final int READ_BUFFER_SIZE = 8192;
-
+  private static final Logger LOGGER = LogManager.getLogger();
   private final ReadableByteChannel channel;
   private final Context context;
 
@@ -45,7 +43,7 @@ public class AsyncInputStream implements ReadStream<Buffer> {
   private Handler<Throwable> exceptionHandler;
 
   /**
-   * Create a new AsyncInputStream to wrap a regular {@link InputStream}
+   * Create a new AsyncInputStream to wrap a regular {@link InputStream}.
    */
   public AsyncInputStream(Context context, InputStream in) {
     this.context = context;
@@ -66,14 +64,9 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     return this;
   }
 
-  public void read() {
-    fetch(1L);
-  }
-
   /**
    * Fetch the specified amount of elements. If the ReadStream has been paused, reading will
    * recommence.
-   *
    * <strong>Note: the {@code amount} parameter is currently ignored.</strong>
    *
    * @param amount has no effect; retained for compatibility with {@link ReadStream#fetch(long)}
@@ -86,6 +79,27 @@ public class AsyncInputStream implements ReadStream<Buffer> {
     }
 
     return this;
+  }
+
+  public void read() {
+    fetch(1L);
+  }
+
+  public void close() {
+    if (!closed) {
+      closed = true;
+      active = false;
+
+      if (this.endHandler != null) {
+        context.runOnContext(vv -> this.endHandler.handle(null));
+      }
+
+      try {
+        channel.close();
+      } catch (IOException e) {
+        reportException(e);
+      }
+    }
   }
 
   private void doRead() {
@@ -113,26 +127,8 @@ public class AsyncInputStream implements ReadStream<Buffer> {
         LOGGER.error("Unable to read from channel:", e);
         close();
         reportException(e);
-        return;
       }
     });
-  }
-
-  public void close() {
-    if (!closed) {
-      closed = true;
-      active = false;
-
-      if (this.endHandler != null) {
-        context.runOnContext(vv -> this.endHandler.handle(null));
-      }
-
-      try {
-        channel.close();
-      } catch (IOException e) {
-        reportException(e);
-      }
-    }
   }
 
   private void reportException(Exception e) {

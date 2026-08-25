@@ -15,22 +15,23 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.services.KafkaAdminClientService;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.service.kafka.DIKafkaTopicService;
 import org.folio.rest.jaxrs.model.FileExtensionCollection;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.service.cleanup.StorageCleanupService;
 import org.folio.service.fileextension.FileExtensionService;
+import org.folio.service.kafka.KafkaTopicConfiguration;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
-public class ModTenantAPI extends TenantAPI {
+@SuppressWarnings("java:S6813")
+public class TenantApiImpl extends TenantAPI {
+
+  private static final Logger LOGGER = LogManager.getLogger();
 
   @Value("${data.import.cleanup.delay.time:3600000}")
   private long delayTimeBetweenCleanupValueMillis;
-
-  private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
   private FileExtensionService fileExtensionService;
@@ -39,9 +40,9 @@ public class ModTenantAPI extends TenantAPI {
   private StorageCleanupService storageCleanupService;
 
   @Autowired
-  private DIKafkaTopicService diKafkaTopicService;
+  private KafkaTopicConfiguration kafkaTopicConfiguration;
 
-  public ModTenantAPI() {
+  public TenantApiImpl() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
 
@@ -53,7 +54,7 @@ public class ModTenantAPI extends TenantAPI {
         Vertx vertx = context.owner();
         var tenantId = tenantId(headers);
         var kafkaAdminClientService = new KafkaAdminClientService(vertx);
-        kafkaAdminClientService.createKafkaTopics(diKafkaTopicService.createTopicObjects(), tenantId);
+        kafkaAdminClientService.createKafkaTopics(kafkaTopicConfiguration.createTopicObjects(), tenantId);
         handler.handle(Future.succeededFuture(ar.result()));
       } else {
         handler.handle(Future.failedFuture(ar.cause()));
@@ -81,7 +82,8 @@ public class ModTenantAPI extends TenantAPI {
     }
   }
 
-  private Future<Boolean> createDefExtensionsIfNeeded(FileExtensionCollection collection, FileExtensionService service, String tenantId) {
+  private Future<Boolean> createDefExtensionsIfNeeded(FileExtensionCollection collection, FileExtensionService service,
+                                                      String tenantId) {
     Promise<Boolean> promise = Promise.promise();
     if (collection.getTotalRecords() == 0) {
       return service.copyExtensionsFromDefault(tenantId)

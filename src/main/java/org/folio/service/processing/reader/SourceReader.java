@@ -1,9 +1,8 @@
 package org.folio.service.processing.reader;
 
+import java.util.List;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
-
-import java.util.List;
 
 /**
  * The root interface for traversing and partitioning elements of a source records.
@@ -32,5 +31,4 @@ public interface SourceReader extends AutoCloseable {
    * @return content type.
    */
   RecordsMetadata.ContentType getContentType();
-
 }

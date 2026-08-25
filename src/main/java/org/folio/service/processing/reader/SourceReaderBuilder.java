@@ -1,19 +1,18 @@
 package org.folio.service.processing.reader;
 
-import org.apache.commons.io.FilenameUtils;
-import org.folio.rest.jaxrs.model.JobProfileInfo;
-
-import java.io.File;
-import java.util.Objects;
-
 import static java.util.Optional.ofNullable;
 import static org.folio.service.processing.reader.MarcJsonReader.JSON_EXTENSION;
 import static org.folio.service.processing.reader.MarcXmlReader.XML_EXTENSION;
 
+import java.io.File;
+import java.util.Objects;
+import org.apache.commons.io.FilenameUtils;
+import org.folio.rest.jaxrs.model.JobProfileInfo;
+
 /**
- * Builds source reader depending on job profile type
+ * Builds source reader depending on job profile type.
  */
-public class SourceReaderBuilder {
+public final class SourceReaderBuilder {
 
   private static final String MARC_RAW_CHUNK_SIZE_KEY = "file.processing.marc.raw.buffer.chunk.size";
   private static final String MARC_JSON_CHUNK_SIZE_KEY = "file.processing.marc.json.buffer.chunk.size";
@@ -47,7 +46,7 @@ public class SourceReaderBuilder {
   }
 
   private static boolean isEdifact(JobProfileInfo jobProfile) {
-    return Objects.nonNull(jobProfile) && (jobProfile.getDataType() == JobProfileInfo.DataType.EDIFACT);
+    return Objects.nonNull(jobProfile) && jobProfile.getDataType() == JobProfileInfo.DataType.EDIFACT;
   }
 
   private static boolean isMarc(JobProfileInfo jobProfile) {

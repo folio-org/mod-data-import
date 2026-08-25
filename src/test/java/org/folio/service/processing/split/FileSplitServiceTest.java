@@ -1,9 +1,6 @@
 package org.folio.service.processing.split;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
@@ -13,8 +10,8 @@ import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -22,126 +19,118 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import org.folio.service.s3storage.MinioStorageService;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
-public class FileSplitServiceTest {
+@ExtendWith({MockitoExtension.class, VertxExtension.class})
+class FileSplitServiceTest {
 
-  protected static final Vertx vertx = Vertx.vertx();
+  private static final Vertx VERTX = Vertx.vertx();
 
   @Mock
-  MinioStorageService minioStorageService;
+  private MinioStorageService minioStorageService;
 
-  FileSplitService fileSplitService;
+  @TempDir
+  private Path tempDir;
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  private FileSplitService fileSplitService;
 
-  @Before
-  public void setUp() throws IOException {
-    MockitoAnnotations.openMocks(this);
-
-    this.fileSplitService =
-      new FileSplitService(vertx, minioStorageService, 1000);
-    when(minioStorageService.write(any(), any()))
-      .thenReturn(Future.succeededFuture());
+  @BeforeEach
+  void setUp() {
+    this.fileSplitService = new FileSplitService(VERTX, minioStorageService, 1000);
   }
 
+  @DisplayName("should split file from S3 into 10 chunks and verify interactions when source has 10000 records")
   @Test
-  public void testSplitFileFromS3(TestContext context) throws IOException {
+  void shouldSplitFileFromS3_into10Chunks_andVerifyInteractions(VertxTestContext testContext)
+    throws IOException {
+    when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture());
     when(minioStorageService.readFile("test-key"))
       .thenReturn(
         Future.succeededFuture(
-          new ByteArrayInputStream(
-            Files.readAllBytes(Path.of("src/test/resources/10000.mrc"))
-          )
+          new ByteArrayInputStream(Files.readAllBytes(Path.of("src/test/resources/10000.mrc")))
         )
       );
-    when(minioStorageService.remove("test-key"))
-      .thenReturn(Future.succeededFuture());
+    when(minioStorageService.remove("test-key")).thenReturn(Future.succeededFuture());
 
     fileSplitService
-      .splitFileFromS3(vertx.getOrCreateContext(), "test-key")
+      .splitFileFromS3(VERTX.getOrCreateContext(), "test-key")
       .onComplete(
-        context.asyncAssertSuccess(result -> {
-          try {
-            assertThat(
-              result,
-              containsInAnyOrder(
-                "test-key_1",
-                "test-key_2",
-                "test-key_3",
-                "test-key_4",
-                "test-key_5",
-                "test-key_6",
-                "test-key_7",
-                "test-key_8",
-                "test-key_9",
-                "test-key_10"
-              )
+        testContext.succeeding(result ->
+          testContext.verify(() -> {
+            assertThat(result).containsExactlyInAnyOrder(
+              "test-key_1", "test-key_2", "test-key_3", "test-key_4", "test-key_5",
+              "test-key_6", "test-key_7", "test-key_8", "test-key_9", "test-key_10"
             );
 
             verify(minioStorageService, times(1)).readFile("test-key");
             verify(minioStorageService, times(10)).write(any(), any());
             verify(minioStorageService, times(1)).remove("test-key");
-
             verifyNoMoreInteractions(minioStorageService);
-          } catch (IOException e) {
-            context.fail(e);
-          }
-        })
-      );
-  }
 
-  @Test
-  public void testSplitFileFromS3Exceptional(TestContext context) {
-    // invalid key with NUL character to cause attempt to create temporary directory with invalid name
-    // during FileSplitUtilities.createTemporaryDir(key) method call
-    String key = "test-key" + '\0';
-    when(minioStorageService.readFile(key))
-      .thenReturn(Future.succeededFuture(new ByteArrayInputStream(new byte[1])));
-
-      fileSplitService
-        .splitFileFromS3(vertx.getOrCreateContext(), key)
-        .onComplete(context.asyncAssertFailure(result -> {
-          assertThat(result, is(instanceOf(InvalidPathException.class)));
-
-          verify(minioStorageService, times(1)).readFile(key);
-
-          verifyNoMoreInteractions(minioStorageService);
-        }));
-  }
-
-  @Test
-  public void testSplitStream(TestContext context) {
-    fileSplitService
-      .splitStream(
-        vertx.getOrCreateContext(),
-        new ByteArrayInputStream(new byte[1]),
-        "test-key"
-      )
-      .onComplete(
-        context.asyncAssertSuccess(result ->
-          assertThat(result, containsInAnyOrder("test-key_1"))
+            testContext.completeNow();
+          })
         )
       );
   }
 
+  @DisplayName("should fail with InvalidPathException when key contains NUL character")
   @Test
-  public void testBadTemporaryDirectory(TestContext context)
-    throws IOException {
-    File test = temporaryFolder.newFolder();
-    System.out.println(test.toString());
+  void shouldFail_withInvalidPathException_whenKeyContainsNulCharacter(VertxTestContext testContext) {
+    String key = "test-key" + '\0';
+    when(minioStorageService.readFile(key))
+      .thenReturn(Future.succeededFuture(new ByteArrayInputStream(new byte[1])));
 
-    // mockito mock static FileSplitUtilities::createTemporaryDir(String key)
+    fileSplitService
+      .splitFileFromS3(VERTX.getOrCreateContext(), key)
+      .onComplete(
+        testContext.failing(result ->
+          testContext.verify(() -> {
+            assertThat(result).isInstanceOf(InvalidPathException.class);
+
+            verify(minioStorageService, times(1)).readFile(key);
+            verifyNoMoreInteractions(minioStorageService);
+
+            testContext.completeNow();
+          })
+        )
+      );
+  }
+
+  @DisplayName("should split stream and return one chunk key when source has one byte")
+  @Test
+  void shouldSplitStream_andReturnOneChunkKey_whenSourceHasOneByte(VertxTestContext testContext) throws IOException {
+    when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture());
+    fileSplitService
+      .splitStream(
+        VERTX.getOrCreateContext(),
+        new ByteArrayInputStream(new byte[1]),
+        "test-key"
+      )
+      .onComplete(
+        testContext.succeeding(result ->
+          testContext.verify(() -> {
+            assertThat(result).containsExactlyInAnyOrder("test-key_1");
+            testContext.completeNow();
+          })
+        )
+      );
+  }
+
+  @DisplayName("should succeed when temporary directory cannot be deleted after split")
+  @Test
+  void shouldSucceed_whenTempDirCannotBeDeletedAfterSplit(VertxTestContext testContext)
+    throws IOException {
+    when(minioStorageService.write(any(), any())).thenReturn(Future.succeededFuture());
+    File test = Files.createTempDirectory(tempDir, "split-service").toFile();
+
     try (
       MockedStatic<FileSplitUtilities> mock = Mockito.mockStatic(
         FileSplitUtilities.class,
@@ -152,16 +141,15 @@ public class FileSplitServiceTest {
         .when(() -> FileSplitUtilities.createTemporaryDir(anyString()))
         .thenReturn(test.toPath());
 
-      // can't be deleted after completion if there's a file in there
       Files.createFile(Path.of(test.getAbsolutePath(), "test-file"));
 
       fileSplitService
         .splitStream(
-          vertx.getOrCreateContext(),
+          VERTX.getOrCreateContext(),
           new ByteArrayInputStream(new byte[1]),
           "test-key"
         )
-        .onComplete(context.asyncAssertSuccess());
+        .onComplete(testContext.succeedingThenComplete());
     }
   }
 }

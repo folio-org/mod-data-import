@@ -1,5 +1,8 @@
 package org.folio.service.processing.kafka;
 
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
+import static org.folio.service.util.EventHandlingUtil.constructModuleName;
+
 import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -8,23 +11,18 @@ import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.impl.InboundBuffer;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import java.util.List;
+import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ConnectionParams;
-import org.folio.kafka.services.KafkaProducerRecordBuilder;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.jaxrs.model.InitialRecord;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
 import org.folio.rest.jaxrs.model.RecordsMetadata;
 import org.folio.service.processing.reader.SourceReader;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_READ;
-import static org.folio.service.util.EventHandlingUtil.constructModuleName;
+import org.folio.service.util.EventHandlingUtil;
 
 public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRecord<String, String>> {
   private static final Logger LOGGER = LogManager.getLogger();
@@ -52,7 +50,8 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   private boolean closed;
 
   public SourceReaderReadStreamWrapper(Vertx vertx, SourceReader reader, String jobExecutionId, int totalRecordsInFile,
-                                       ConnectionParams okapiConnectionParams, int maxDistributionNum, String topicName) {
+                                       ConnectionParams okapiConnectionParams, int maxDistributionNum,
+                                       String topicName) {
     this.vertx = vertx;
     this.reader = reader;
     this.jobExecutionId = jobExecutionId;
@@ -64,14 +63,14 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
       .entrySet()
       .stream()
       .map(e -> KafkaHeader.header(e.getKey(), e.getValue()))
-      .collect(Collectors.toList());
+      .toList();
 
     this.queue = new InboundBuffer<>(vertx.getOrCreateContext(), 0);
     this.topicName = topicName;
-    queue.handler(record -> {
-      handleNextChunk(record);
+    queue.handler(producerRecord -> {
+      handleNextChunk(producerRecord);
 
-      if (record.headers().stream().anyMatch(h -> END_SENTINEL.equals(h.key()))) {
+      if (producerRecord.headers().stream().anyMatch(h -> END_SENTINEL.equals(h.key()))) {
         handleEnd();
       }
     });
@@ -89,7 +88,8 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   }
 
   @Override
-  public ReadStream<KafkaProducerRecord<String, String>> handler(@Nullable Handler<KafkaProducerRecord<String, String>> handler) {
+  public ReadStream<KafkaProducerRecord<String, String>> handler(
+    @Nullable Handler<KafkaProducerRecord<String, String>> handler) {
     check();
     if (closed) {
       return this;
@@ -154,7 +154,6 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
               .withCounter(recordsCounter)
               .withLast(false)
               .withTotal(totalRecordsInFile));
-
         } else {
           chunk = new RawRecordsDto()
             .withId(UUID.randomUUID().toString())
@@ -192,23 +191,18 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
     int chunkNumber = ++messageCounter;
     String key = String.valueOf(chunkNumber % maxDistributionNum);
 
-    var producerRecord = new KafkaProducerRecordBuilder<String, Object>(event.getEventMetadata().getTenantId())
-      .key(key)
-      .value(event)
-      .topic(topicName)
-      .build();
-
-    producerRecord.addHeaders(kafkaHeaders);
+    var producerRecord = EventHandlingUtil.createProducerRecord(event, key, topicName, kafkaHeaders);
 
     producerRecord.addHeader("jobExecutionId", jobExecutionId);
     producerRecord.addHeader("chunkId", chunk.getId());
     producerRecord.addHeader("chunkNumber", String.valueOf(chunkNumber));
 
-    if (chunk.getRecordsMetadata().getLast()) {
+    if (Boolean.TRUE.equals(chunk.getRecordsMetadata().getLast())) {
       producerRecord.addHeader(END_SENTINEL, "true");
     }
 
-    LOGGER.debug("createKafkaProducerRecord:: Next chunk has been created: chunkId: {} chunkNumber: {}", chunk.getId(), chunkNumber);
+    LOGGER.debug("createKafkaProducerRecord:: Next chunk has been created: chunkId: {} chunkNumber: {}", chunk.getId(),
+      chunkNumber);
     return producerRecord;
   }
 
@@ -223,12 +217,12 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
   }
 
   private void handleNextChunk(KafkaProducerRecord<String, String> packedChunk) {
-    Handler<KafkaProducerRecord<String, String>> handler;
+    Handler<KafkaProducerRecord<String, String>> messageHandler;
     synchronized (this) {
-      handler = this.handler;
+      messageHandler = this.handler;
     }
-    if (handler != null) {
-      handler.handle(packedChunk);
+    if (messageHandler != null) {
+      messageHandler.handle(packedChunk);
     }
   }
 
@@ -239,13 +233,13 @@ public class SourceReaderReadStreamWrapper implements ReadStream<KafkaProducerRe
 
     closeReader();
 
-    Handler<Void> endHandler;
+    Handler<Void> completionHandler;
     synchronized (this) {
       handler = null;
-      endHandler = this.endHandler;
+      completionHandler = this.endHandler;
     }
-    if (endHandler != null) {
-      endHandler.handle(null);
+    if (completionHandler != null) {
+      completionHandler.handle(null);
     }
   }
 

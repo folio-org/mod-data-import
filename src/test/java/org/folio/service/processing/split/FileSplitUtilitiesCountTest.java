@@ -1,79 +1,59 @@
 package org.folio.service.processing.split;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.stream.Stream;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-@RunWith(Parameterized.class)
-public class FileSplitUtilitiesCountTest {
+class FileSplitUtilitiesCountTest {
 
   private static final JobProfileInfo MARC_PROFILE = new JobProfileInfo()
     .withDataType(JobProfileInfo.DataType.MARC);
   private static final JobProfileInfo EDIFACT_PROFILE = new JobProfileInfo()
     .withDataType(JobProfileInfo.DataType.EDIFACT);
 
-  // tuples of [path, number of records, profile]
-  @Parameters
-  public static Collection<Object[]> getCases() {
-    return Arrays.asList(
-      new Object[] { "0.mrc", 0, MARC_PROFILE },
-      // 1 buffer read
-      new Object[] { "1.mrc", 1, MARC_PROFILE },
-      // multiple buffer reads
-      new Object[] { "100.mrc", 100, MARC_PROFILE },
-      new Object[] { "2500.mrc", 2500, MARC_PROFILE },
-      new Object[] { "5000.mrc", 5000, MARC_PROFILE },
-      new Object[] { "10000.mrc", 10000, MARC_PROFILE },
-      new Object[] { "22778.mrc", 22778, MARC_PROFILE },
-      new Object[] { "50000.mrc", 50000, MARC_PROFILE },
-      new Object[] { "invalidMarcFile.mrc", 0, MARC_PROFILE },
-      // MARC XML
-      new Object[] { "UChicago_SampleBibs.xml", 62, MARC_PROFILE },
-      // MARC JSON
-      new Object[] { "ChalmersFOLIOExamples.json", 62, MARC_PROFILE },
-      // Edifact
-      new Object[] { "edifact/TAMU-HRSW20200808072013.EDI", 7, EDIFACT_PROFILE }
+  static Stream<Arguments> getCases() {
+    return Stream.of(
+      Arguments.of("0.mrc", 0, MARC_PROFILE),
+      Arguments.of("1.mrc", 1, MARC_PROFILE),
+      Arguments.of("100.mrc", 100, MARC_PROFILE),
+      Arguments.of("2500.mrc", 2500, MARC_PROFILE),
+      Arguments.of("5000.mrc", 5000, MARC_PROFILE),
+      Arguments.of("10000.mrc", 10000, MARC_PROFILE),
+      Arguments.of("22778.mrc", 22778, MARC_PROFILE),
+      Arguments.of("50000.mrc", 50000, MARC_PROFILE),
+      Arguments.of("invalidMarcFile.mrc", 0, MARC_PROFILE),
+      Arguments.of("UChicago_SampleBibs.xml", 62, MARC_PROFILE),
+      Arguments.of("ChalmersFOLIOExamples.json", 62, MARC_PROFILE),
+      Arguments.of("edifact/TAMU-HRSW20200808072013.EDI", 7, EDIFACT_PROFILE)
     );
   }
 
-  private String path;
-  private int count;
-  private JobProfileInfo profile;
-
-  public FileSplitUtilitiesCountTest(
+  @ParameterizedTest
+  @MethodSource("getCases")
+  @DisplayName("should count records in file and close the stream")
+  void shouldCountRecords_andCloseStream(
     String path,
     int count,
     JobProfileInfo profile
-  ) {
-    this.path = "src/test/resources/" + path;
-    this.count = count;
-    this.profile = profile;
-  }
-
-  @Test
-  public void testCountAndStreamClose() throws IOException {
+  ) throws IOException {
+    String fullPath = "src/test/resources/" + path;
     BufferedInputStream inputStream = new BufferedInputStream(
-      new FileInputStream(path)
+      new FileInputStream(fullPath)
     );
 
-    assertThat(
-      FileSplitUtilities.countRecordsInFile(path, inputStream, profile),
-      is(count)
-    );
+    assertThat(FileSplitUtilities.countRecordsInFile(fullPath, inputStream, profile))
+      .isEqualTo(count);
 
-    // countRecordsInMarcFile closes the stream, so it should be unavailable after
-    // call, throwing an IOException
-    assertThrows(IOException.class, () -> inputStream.available());
+    assertThatThrownBy(inputStream::available)
+      .isInstanceOf(IOException.class);
   }
 }

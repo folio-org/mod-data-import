@@ -1,17 +1,16 @@
 package org.folio.service.processing.reader;
 
-import org.folio.rest.jaxrs.model.InitialRecord;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.folio.rest.jaxrs.model.InitialRecord;
 
 /**
  * Represents buffer with source records.
  */
 public class RecordsBuffer {
 
-  private List<InitialRecord> records;
-  private int chunkSize;
+  private final List<InitialRecord> records;
+  private final int chunkSize;
 
   RecordsBuffer(int chunkSize) {
     this.chunkSize = chunkSize;

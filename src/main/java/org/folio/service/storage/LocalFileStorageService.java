@@ -3,16 +3,15 @@ package org.folio.service.storage;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.FileDefinition;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 
 public class LocalFileStorageService extends AbstractFileStorageService {
 
@@ -32,21 +31,24 @@ public class LocalFileStorageService extends AbstractFileStorageService {
     String fileId = fileDefinition.getId();
     String path = getStoragePath(fileDefinition);
 
-    return vertx.executeBlocking(() -> {
-      try {
-        if (!fs.existsBlocking(path)) {
-          fs.mkdirsBlocking(path.substring(0, path.indexOf(fileDefinition.getName()) - 1));
+    return vertx
+      .executeBlocking(() -> {
+        try {
+          if (!fs.existsBlocking(path)) {
+            fs.mkdirsBlocking(path.substring(0, path.indexOf(fileDefinition.getName()) - 1));
+          }
+          final Path pathToFile = Paths.get(path);
+          Files.write(pathToFile, data,
+            pathToFile.toFile().exists() ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
+          fileDefinition.setSourcePath(path);
+          return fileDefinition;
+        } catch (Exception e) {
+          LOGGER.warn("saveFile:: Error during save file source data to the local system's storage. FileId: {}",
+            fileId, e);
+          throw e;
         }
-        final Path pathToFile = Paths.get(path);
-        Files.write(pathToFile, data,
-          pathToFile.toFile().exists() ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
-        fileDefinition.setSourcePath(path);
-        return fileDefinition;
-      } catch (Exception e) {
-        LOGGER.warn("saveFile:: Error during save file source data to the local system's storage. FileId: {}", fileId, e);
-        throw e;
-      }
-    }).onSuccess(v -> LOGGER.info("saveFile:: File part was saved to the storage. FileId: {}", fileId))
+      })
+      .onSuccess(v -> LOGGER.info("saveFile:: File part was saved to the storage. FileId: {}", fileId))
       .onFailure(e -> LOGGER.warn("saveFile:: Error during calculating path for file save. FileId: {}", fileId, e));
   }
 
@@ -72,7 +74,7 @@ public class LocalFileStorageService extends AbstractFileStorageService {
   @Override
   protected String getStoragePath(FileDefinition fileDefinition) {
     return fileDefinition.getSourcePath() != null
-      ? fileDefinition.getSourcePath()
-      : super.getStoragePath(fileDefinition) + "/" + fileDefinition.getName();
+           ? fileDefinition.getSourcePath()
+           : super.getStoragePath(fileDefinition) + "/" + fileDefinition.getName();
   }
 }

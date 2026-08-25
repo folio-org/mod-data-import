@@ -1,29 +1,26 @@
 package org.folio.service.processing.ranking;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-public class ScoreUtilsUnboundedExclusionTest {
+class ScoreUtilsUnboundedExclusionTest {
 
+  @DisplayName("should return zero when excluded metrics are provided")
   @Test
-  public void testExcludedMetrics() {
+  void shouldReturnZero_whenExcludedMetricsAreProvided() {
     assertThat(
-      ScoreUtils.calculateUnboundedLogarithmicScore(0, 0, 0, 0),
-      is(0d)
-    );
+      ScoreUtils.calculateUnboundedLogarithmicScore(0, 0, 0, 0)
+    ).isEqualTo(0d);
     assertThat(
-      ScoreUtils.calculateUnboundedLogarithmicScore(10, 0, 0, 0),
-      is(0d)
-    );
+      ScoreUtils.calculateUnboundedLogarithmicScore(10, 0, 0, 0)
+    ).isEqualTo(0d);
     assertThat(
-      ScoreUtils.calculateUnboundedLogarithmicScore(10, 0, 10, 0),
-      is(0d)
-    );
+      ScoreUtils.calculateUnboundedLogarithmicScore(10, 0, 10, 0)
+    ).isEqualTo(0d);
     assertThat(
-      ScoreUtils.calculateUnboundedLogarithmicScore(10, 0, 0, 10),
-      is(0d)
-    );
+      ScoreUtils.calculateUnboundedLogarithmicScore(10, 0, 0, 10)
+    ).isEqualTo(0d);
   }
 }

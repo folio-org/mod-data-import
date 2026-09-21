@@ -4,6 +4,7 @@ import io.vertx.codegen.annotations.ProxyGen;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.folio.kafka.KafkaConfig;
+import org.folio.service.s3storage.MinioStorageService;
 
 /**
  * Processing files associated with given request.
@@ -13,8 +14,8 @@ public interface FileProcessor { //NOSONAR
 
   String FILE_PROCESSOR_ADDRESS = "file-processor.queue"; //NOSONAR
 
-  static FileProcessor create(Vertx vertx, KafkaConfig kafkaConfig) {
-    return new ParallelFileChunkingProcessor(vertx, kafkaConfig);
+  static FileProcessor create(Vertx vertx, KafkaConfig kafkaConfig, MinioStorageService minioStorageService) {
+    return new ParallelFileChunkingProcessor(vertx, kafkaConfig, minioStorageService);
   }
 
   static FileProcessor createProxy(Vertx vertx) {

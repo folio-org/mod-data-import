@@ -22,6 +22,21 @@ class S3JobRunningVerticleEnabledIntegrationTest extends AbstractRestTest {
     System.clearProperty("SYSTEM_PROCESSING_PASSWORD");
   }
 
+  @Override
+  protected boolean shareVerticle() {
+    // SPLIT_FILES_ENABLED is read once, when the verticle first boots; this class must not
+    // share a deployment that another test class may have already booted with the flag unset.
+    return false;
+  }
+
+  @Override
+  protected String getModuleName() {
+    // JUnit's per-class store still inherits values from ancestor (e.g. root) stores, so reusing
+    // the standard module id here would still find and reuse another class's shared deployment
+    // even with shareVerticle() == false. A distinct key guarantees a genuinely fresh deployment.
+    return super.getModuleName() + "-split-files-enabled";
+  }
+
   @DisplayName("should deploy S3JobRunningVerticle when splitting is enabled")
   @Test
   void shouldDeployS3JobRunningVerticle_whenSplittingIsEnabled() {

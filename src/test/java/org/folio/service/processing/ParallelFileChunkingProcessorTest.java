@@ -35,6 +35,7 @@ import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.JobProfileInfo;
 import org.folio.rest.jaxrs.model.RawRecordsDto;
+import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.storage.FileStorageService;
 import org.folio.support.AbstractRestTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,7 +91,7 @@ class ParallelFileChunkingProcessorTest extends AbstractRestTest {
       .build();
 
     jobProfiles = createJobProfilesMap();
-    fileProcessor = new ParallelFileChunkingProcessor(vertx, kafkaConfig);
+    fileProcessor = new ParallelFileChunkingProcessor(vertx, kafkaConfig, mock(MinioStorageService.class));
   }
 
   @DisplayName("should read MARC bib file and send all chunks to Kafka")

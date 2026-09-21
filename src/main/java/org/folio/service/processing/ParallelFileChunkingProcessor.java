@@ -16,6 +16,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.handler.HttpException;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +48,8 @@ import org.folio.service.processing.kafka.WriteStreamWrapper;
 import org.folio.service.processing.reader.RecordsReaderException;
 import org.folio.service.processing.reader.SourceReader;
 import org.folio.service.processing.reader.SourceReaderBuilder;
+import org.folio.service.processing.split.FileSplitUtilities;
+import org.folio.service.s3storage.MinioStorageService;
 import org.folio.service.storage.FileStorageService;
 import org.folio.service.storage.FileStorageServiceBuilder;
 import org.folio.service.upload.UploadDefinitionService;
@@ -64,11 +72,13 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
 
   private final Vertx vertx;
   private final KafkaConfig kafkaConfig;
+  private final MinioStorageService minioStorageService;
 
   @Autowired
-  public ParallelFileChunkingProcessor(Vertx vertx, KafkaConfig kafkaConfig) {
+  public ParallelFileChunkingProcessor(Vertx vertx, KafkaConfig kafkaConfig, MinioStorageService minioStorageService) {
     this.vertx = vertx;
     this.kafkaConfig = kafkaConfig;
+    this.minioStorageService = minioStorageService;
   }
 
   /**
@@ -227,22 +237,49 @@ public class ParallelFileChunkingProcessor implements FileProcessor {
                             ConnectionParams params) {
     List<FileDefinition> fileDefinitions = new UnmodifiableList<>(uploadDefinition.getFileDefinitions());
     for (FileDefinition fileDefinition : fileDefinitions) {
-      vertx.runOnContext(v ->
-        processFile(fileStorageService.getFile(fileDefinition.getSourcePath()), fileDefinition.getJobExecutionId(),
-          jobProfile, params).onComplete(par -> {
+      vertx.runOnContext(v -> {
+        String sourcePath = fileDefinition.getSourcePath();
+        File localFile = fileStorageService.getFile(sourcePath);
+        Future<File> fileFuture = localFile.exists()
+          ? succeededFuture(localFile)
+          : downloadFromS3(sourcePath);
+        fileFuture
+          .compose(file -> processFile(file, fileDefinition.getJobExecutionId(), jobProfile, params)
+            .eventually(() -> localFile.equals(file)
+              ? succeededFuture()
+              : vertx.fileSystem().delete(file.toString())))
+          .onComplete(par -> {
             if (par.failed()) {
-              LOGGER.warn("processFiles:: File was processed with errors {}. Cause: {}", fileDefinition.getSourcePath(),
-                par.cause());
+              LOGGER.warn("processFiles:: File was processed with errors {}. Cause: {}", sourcePath, par.cause());
               uploadDefinitionService.updateJobExecutionStatus(
                 fileDefinition.getJobExecutionId(),
                 new StatusDto().withStatus(ERROR).withErrorStatus(FILE_PROCESSING_ERROR),
                 params);
             } else {
-              LOGGER.info("processFiles:: File {} successfully processed.", fileDefinition.getSourcePath());
+              LOGGER.info("processFiles:: File {} successfully processed.", sourcePath);
             }
-          }
-        ));
+          });
+      });
     }
+  }
+
+  private Future<File> downloadFromS3(String key) {
+    LOGGER.info("downloadFromS3:: File not found locally, downloading from S3. Key: {}", key);
+    String suffix = Path.of(key).getFileName().toString();
+    Future<String> tempFileFuture = FileSplitUtilities.isWindows()
+      ? vertx.fileSystem().createTempFile("di-tmp-", suffix)
+      : vertx.fileSystem().createTempFile("di-tmp-", suffix, "rwx------");
+    return tempFileFuture
+      .map(File::new)
+      .compose(tempFile -> minioStorageService.readFile(key)
+        .map(inputStream -> {
+          try (InputStream is = inputStream; OutputStream os = new FileOutputStream(tempFile)) {
+            is.transferTo(os);
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+          return tempFile;
+        }));
   }
 
   /**

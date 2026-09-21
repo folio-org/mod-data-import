@@ -10,6 +10,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -101,7 +103,9 @@ public class SplitFileProcessingService {
   public Future<Void> startJob(ProcessFilesRqDto entity,
                                ChangeManagerClient client,
                                ConnectionParams params) {
-    return initializeJob(entity, client)
+    return Future.<Void>succeededFuture()
+      .compose(v -> ensureFilesHaveS3Keys(entity.getUploadDefinition().getFileDefinitions(), params.getTenantId()))
+      .compose(v -> initializeJob(entity, client))
       .compose(splitPieces ->
         Future.all(splitPieces.values()
           .stream()
@@ -381,6 +385,54 @@ public class SplitFileProcessingService {
           return Future.succeededFuture(file.withSplitKeys(List.of(key)));
         }
       });
+  }
+
+  private Future<Void> ensureFilesHaveS3Keys(List<FileDefinition> fileDefinitions, String tenantId) {
+    List<FileDefinition> localFiles = fileDefinitions.stream()
+      .filter(fd -> fd.getSourcePath() == null || !fd.getSourcePath().startsWith("data-import/"))
+      .toList();
+    if (localFiles.isEmpty()) {
+      return Future.succeededFuture();
+    }
+    LOGGER.info("ensureFilesHaveS3Keys:: Found {} file(s) with local paths, uploading to S3", localFiles.size());
+    return Future.all(localFiles.stream().map(fd -> uploadLocalFileToS3(fd, tenantId)).toList()).mapEmpty();
+  }
+
+  private Future<Void> uploadLocalFileToS3(FileDefinition fileDefinition, String tenantId) {
+    String localPath = fileDefinition.getSourcePath();
+    if (localPath == null) {
+      return Future.failedFuture(new IllegalStateException(
+        "uploadLocalFileToS3:: File definition '" + fileDefinition.getId() + "' has no source path"));
+    }
+    java.io.File localFile = new java.io.File(localPath);
+    if (!localFile.exists()) {
+      return Future.failedFuture(new IllegalStateException(
+        "uploadLocalFileToS3:: File not found at path '" + localPath
+        + "'. The file may have been lost after a pod restart."));
+    }
+    String s3Key = "data-import/" + tenantId + "/" + System.currentTimeMillis() + "-" + localFile.getName();
+    InputStream stream;
+    try {
+      stream = new FileInputStream(localFile);
+    } catch (IOException e) {
+      return Future.failedFuture(e);
+    }
+    Future<String> writeFuture;
+    try {
+      writeFuture = minioStorageService.write(s3Key, stream);
+    } catch (IOException e) {
+      return Future.failedFuture(e);
+    }
+    return writeFuture
+      .onSuccess(key -> {
+        LOGGER.info("uploadLocalFileToS3:: Uploaded local file '{}' to S3 key '{}'", localPath, key);
+        fileDefinition.setSourcePath(key);
+      })
+      .eventually(() -> vertx.executeBlocking(() -> {
+        stream.close();
+        return null;
+      }))
+      .mapEmpty();
   }
 
   protected Buffer verifyOkStatus(HttpResponse<Buffer> response) {

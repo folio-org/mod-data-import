@@ -17,6 +17,7 @@ import org.folio.liquibase.LiquibaseUtil;
 import org.folio.rest.resource.interfaces.InitAPI;
 import org.folio.service.file.S3JobRunningVerticle;
 import org.folio.service.processing.FileProcessor;
+import org.folio.service.s3storage.MinioStorageService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,9 @@ public class InitApiImpl implements InitAPI {
 
   @Autowired
   private KafkaConfig kafkaConfig;
+
+  @Autowired
+  private MinioStorageService minioStorageService;
 
   @Autowired
   private S3JobRunningVerticle s3JobRunningVerticle;
@@ -54,14 +58,16 @@ public class InitApiImpl implements InitAPI {
 
       if (fileSplittingEnabled) {
         LOGGER.info("Starting S3JobRunningVerticle");
-        vertx.deployVerticle(s3JobRunningVerticle, new DeploymentOptions().setThreadingModel(WORKER));
+        vertx.deployVerticle(s3JobRunningVerticle, new DeploymentOptions().setThreadingModel(WORKER))
+          .<Boolean>mapEmpty()
+          .map(true)
+          .onComplete(handler);
       } else {
         LOGGER.info(
           "File splitting is disabled; not starting S3JobRunningVerticle"
         );
+        handler.handle(Future.succeededFuture(true));
       }
-
-      handler.handle(Future.succeededFuture(true));
     } catch (Exception e) {
       handler.handle(Future.failedFuture(e));
     }
@@ -70,6 +76,6 @@ public class InitApiImpl implements InitAPI {
   private void initFileProcessor(Vertx vertx) {
     new ServiceBinder(vertx)
       .setAddress(FileProcessor.FILE_PROCESSOR_ADDRESS)
-      .register(FileProcessor.class, FileProcessor.create(vertx, kafkaConfig));
+      .register(FileProcessor.class, FileProcessor.create(vertx, kafkaConfig, minioStorageService));
   }
 }

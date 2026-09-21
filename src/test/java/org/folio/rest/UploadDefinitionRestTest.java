@@ -446,7 +446,7 @@ class UploadDefinitionRestTest extends AbstractRestTest {
       .put(XOkapiHeaders.TENANT, TENANT_ID)
       .put(XOkapiHeaders.TOKEN, TOKEN);
 
-    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null);
+    FileProcessor fileProcessor = FileProcessor.create(Vertx.vertx(), null, null);
     fileProcessor.process(JsonObject.mapFrom(new ProcessFilesRqDto()
       .withUploadDefinition(uploadDef)
       .withJobProfileInfo(new JobProfileInfo().withId(UUID.randomUUID().toString())
@@ -490,7 +490,7 @@ class UploadDefinitionRestTest extends AbstractRestTest {
     WIRE_MOCK.stubFor(WireMock.post(new UrlPathPattern(new RegexPattern("/change-manager/records/.*"), true))
       .willReturn(WireMock.serverError()));
 
-    FileProcessor.create(Vertx.vertx(), null)
+    FileProcessor.create(Vertx.vertx(), null, null)
       .process(JsonObject.mapFrom(new ProcessFilesRqDto()
         .withUploadDefinition(uploadDef)
         .withJobProfileInfo(new JobProfileInfo().withId(UUID.randomUUID().toString())

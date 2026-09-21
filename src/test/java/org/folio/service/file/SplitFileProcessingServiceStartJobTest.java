@@ -25,9 +25,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import org.folio.dao.UploadDefinitionDaoImpl;
 import org.folio.dataimport.util.ConnectionParams;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.jaxrs.model.FileDefinition;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRqDto;
 import org.folio.rest.jaxrs.model.InitJobExecutionsRsDto;
 import org.folio.rest.jaxrs.model.JobExecution;
@@ -329,8 +330,8 @@ class SplitFileProcessingServiceStartJobTest extends SplitFileProcessingServiceA
 
     when(uploadDefinitionService.updateBlocking(any(), any(), any()))
       .thenAnswer(v -> {
-        assertThat(v.<Function<UploadDefinition, UploadDefinition>>getArgument(1)
-          .apply(new UploadDefinition()).getStatus())
+        UploadDefinitionDaoImpl.UploadDefinitionMutator mutator = v.getArgument(1);
+        assertThat(mutator.mutate(new UploadDefinition()).result().getStatus())
           .isEqualTo(UploadDefinition.Status.COMPLETED);
         return Future.succeededFuture();
       });
@@ -339,7 +340,13 @@ class SplitFileProcessingServiceStartJobTest extends SplitFileProcessingServiceA
       new ProcessFilesRqDto()
         .withJobProfileInfo(JOB_PROFILE_INFO)
         .withUploadDefinition(new UploadDefinition()
-          .withFileDefinitions(Arrays.asList(FILE_DEFINITION_1, FILE_DEFINITION_2, FILE_DEFINITION_3))),
+          .withFileDefinitions(Arrays.asList(
+            new FileDefinition().withName(FILE_DEFINITION_1.getName())
+              .withSourcePath("data-import/tenant/" + FILE_DEFINITION_1.getSourcePath()),
+            new FileDefinition().withName(FILE_DEFINITION_2.getName())
+              .withSourcePath("data-import/tenant/" + FILE_DEFINITION_2.getSourcePath()),
+            new FileDefinition().withName(FILE_DEFINITION_3.getName())
+              .withSourcePath("data-import/tenant/" + FILE_DEFINITION_3.getSourcePath())))),
       changeManagerClient,
       new ConnectionParams(Map.of(XOkapiHeaders.TENANT, "tenant"), null)
     );

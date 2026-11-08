@@ -30,15 +30,15 @@
     <folio-kafka-wrapper.version>4.1.0-SNAPSHOT</folio-kafka-wrapper.version>
     <okapi-common.version>7.0.10</okapi-common.version>
 
-    <vertx.version>5.2.2</vertx.version>
+    <vertx.version>5.2.3</vertx.version>
     <spring.version>7.0.10</spring.version>
     <marc4j.version>2.9.8</marc4j.version>
-    <aspectj.version>1.9.26</aspectj.version>
+    <aspectj.version>1.9.27</aspectj.version>
     <lombok.version>1.18.48</lombok.version>
-    <aws-sdk-java.version>2.57.6</aws-sdk-java.version>
+    <aws-sdk-java.version>2.57.9</aws-sdk-java.version>
     <gson.version>2.15.0</gson.version>
     <dom4j.version>2.2.0</dom4j.version>
-    <staedi.version>1.26.5</staedi.version>
+    <staedi.version>1.26.6</staedi.version>
     <jackson.version>2.22.4</jackson.version>
     <log4j.version>2.26.1</log4j.version>
 
@@ -48,7 +48,7 @@
     <testcontainers.version>2.0.5</testcontainers.version>
     <wiremock.version>3.13.2</wiremock.version>
     <assertj.version>3.27.7</assertj.version>
-    <byte-buddy.version>1.18.16</byte-buddy.version>
+    <byte-buddy.version>1.18.17</byte-buddy.version>
 
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
     <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
@@ -65,7 +65,7 @@
     <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
     <folio-java-checkstyle.version>1.2.0</folio-java-checkstyle.version>
-    <checkstyle.version>14.3.0</checkstyle.version>
+    <checkstyle.version>14.4.0</checkstyle.version>
   </properties>
 
   <dependencyManagement>

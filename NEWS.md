@@ -1,3 +1,6 @@
+## 2026-04-16 v3.4.1
+* [MODDATAIMP-1337](https://folio-org.atlassian.net/browse/MODDATAIMP-1337) Downgrade Liquibase from 5 to 4
+
 ## 2026-04-16 v3.4.0
 * [MODDATAIMP-1214](https://folio-org.atlassian.net/browse/MODDATAIMP-1214) Ensure permission that allows update of shared instance and MARC
 * [MODSOURMAN-1136](https://folio-org.atlassian.net/browse/MODSOURMAN-1136) Use dedicated job cancellation endpoint instead for job status update

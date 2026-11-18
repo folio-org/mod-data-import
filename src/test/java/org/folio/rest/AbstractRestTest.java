@@ -3,11 +3,14 @@ package org.folio.rest;
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
@@ -24,6 +27,10 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.UUID;
 import lombok.extern.log4j.Log4j2;
 import org.folio.liquibase.LiquibaseUtil;
 import org.folio.postgres.testing.PostgresTesterContainer;
@@ -52,15 +59,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.UUID;
-
-import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 
 /**
  * Abstract test for the REST API testing needs.
@@ -134,7 +132,7 @@ public abstract class AbstractRestTest {
 
   @Container
   private static final LocalStackContainer localStackContainer = new LocalStackContainer(
-    DockerImageName.parse("localstack/localstack:s3-latest")
+    DockerImageName.parse("localstack/localstack:s3-community-archive")
   )
     .withServices(LocalStackContainer.Service.S3);
 

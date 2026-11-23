@@ -20,6 +20,20 @@ class S3JobRunningVerticleDisabledIntegrationTest extends AbstractRestTest {
     System.clearProperty("SPLIT_FILES_ENABLED");
   }
 
+  @Override
+  protected boolean shareVerticle() {
+    // SPLIT_FILES_ENABLED is read once, when the verticle first boots; this class must not
+    // reuse a shared deployment that another test class already booted with splitting enabled.
+    return false;
+  }
+
+  @Override
+  protected String getModuleName() {
+    // A distinct key guarantees a genuinely fresh deployment instead of one inherited from
+    // an ancestor JUnit store (see S3JobRunningVerticleEnabledIntegrationTest).
+    return super.getModuleName() + "-split-files-disabled";
+  }
+
   @DisplayName("should not deploy S3JobRunningVerticle when splitting is disabled")
   @Test
   void shouldNotDeployS3JobRunningVerticle_whenSplittingIsDisabled() {
